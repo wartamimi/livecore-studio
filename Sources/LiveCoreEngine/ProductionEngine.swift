@@ -207,8 +207,12 @@ public final class ProductionEngine {
         }
 
         var needed = Set<InputID>()
-        for c in plan.program + plan.overlays + plan.preview + (plan.transition?.incoming ?? []) + (plan.detail ?? []) + (plan.fullPreview ?? []) { needed.insert(c.source) }
-        for list in plan.extra.values { for c in list { needed.insert(c.source) } }
+        var lists: [[DrawCommand]] = [plan.program, plan.overlays, plan.preview]
+        lists.append(plan.transition?.incoming ?? [])
+        lists.append(plan.detail ?? [])
+        lists.append(plan.fullPreview ?? [])
+        lists.append(contentsOf: plan.extra.values)
+        for list in lists { for c in list { needed.insert(c.source) } }
         for list in plan.thumbnails.values { for c in list { needed.insert(c.source) } }
         if let s = plan.stinger { needed.insert(s.source) }
         var frames: [InputID: CVPixelBuffer] = [:]
