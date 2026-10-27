@@ -455,7 +455,7 @@
 "dock.external_off" = "Off";
 "dock.external_syphon" = "Syphon: %d output(s)";
 "dock.external_nothing" = "On · nothing selected (see ⚙)";
-"dock.external_help" = "Send the outputs to other apps: Syphon (OBS, Resolume, MadMapper…) and the LiveCore virtual camera";
+"dock.external_help" = "Send the outputs to other apps over Syphon (OBS \"Syphon Client\", Resolume, MadMapper…)";
 "record.not_recording" = "NOT RECORDING";
 "record.reminder" = "NOT RECORDING reminder";
 "record.reminder.off" = "Off";
@@ -472,23 +472,13 @@
 "output.syphon" = "Syphon";
 "output.syphon_help" = "While EXTERNAL is on, other apps receive this output as the Syphon source \"LiveCore Studio – %@\"";
 "output.obs_hint" = "OBS: add a \"Syphon Client\" source, choose LiveCore Studio – Output N, then press Start Virtual Camera in OBS to use it in Zoom or Meet.";
-"vcam.title" = "Virtual camera (like OBS)";
-"vcam.output" = "Camera shows";
-"vcam.off" = "Nothing";
-"vcam.install" = "Activate virtual camera";
-"vcam.remove" = "Remove virtual camera";
-"vcam.check" = "Check again";
-"vcam.open_settings" = "Open System Settings";
-"vcam.short_on" = "Virtual camera";
-"vcam.status_not_installed" = "Not active. \"LiveCore Virtual Camera\" is not available to other apps yet.";
-"vcam.status_installed" = "Active. Turn EXTERNAL on to send the chosen output.";
-"vcam.status_no_output" = "Active. Choose which output the camera shows.";
-"vcam.status_sending" = "Sending: Zoom, Meet, OBS… can pick \"LiveCore Virtual Camera\".";
-"vcam.status_approval" = "Waiting for your approval in System Settings → General → Login Items & Extensions → Camera Extensions.";
-"vcam.reboot" = "The virtual camera will be ready after you restart the Mac.";
-"vcam.err_unsigned" = "macOS refused: this build is not signed with an Apple Developer ID, so it may not install a camera extension. Use Syphon + OBS Virtual Camera for now (see above).";
-"vcam.err_location" = "Move LiveCore Studio to the Applications folder and open it from there, then try again.";
-"vcam.err_missing" = "The camera extension is missing from the app. Download the app again.";
-"vcam.err_signature" = "macOS refused the extension's signature. It needs a Developer ID signed and notarized build.";
-"vcam.err_cancelled" = "Activation was cancelled.";
-"vcam.note" = "Like OBS, the camera is a macOS Camera Extension. macOS only accepts it from an app signed with an Apple Developer ID; this unsigned build cannot activate it yet.";
+
+/* 0.23.0 */
+"lock.dock_help" = "Lock RECORD and STREAM: while locked they cannot start or stop";
+"dock.external_clients" = "%d app(s) receiving";
+"output.external_off_hint" = "EXTERNAL is off: press EXTERNAL in the bottom dock to start sending the Syphon outputs.";
+"output.syphon_connected" = "App connected";
+"output.syphon_waiting" = "Sending, no app yet";
+"output.syphon_off_external" = "Starts with EXTERNAL";
+"overlay.tile_help" = "Overlay %d with this input (fade, full screen). Click: Preview · Right / two-finger click: Program";
+"snapshot.button" = "Program photo";

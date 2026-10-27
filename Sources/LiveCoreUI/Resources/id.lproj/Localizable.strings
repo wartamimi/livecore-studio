@@ -455,7 +455,7 @@
 "dock.external_off" = "Mati";
 "dock.external_syphon" = "Syphon: %d output";
 "dock.external_nothing" = "Nyala · belum ada yang dipilih (lihat ⚙)";
-"dock.external_help" = "Kirim output ke aplikasi lain: Syphon (OBS, Resolume, MadMapper…) dan kamera virtual LiveCore";
+"dock.external_help" = "Kirim output ke aplikasi lain lewat Syphon (OBS \"Syphon Client\", Resolume, MadMapper…)";
 "record.not_recording" = "NOT RECORDING";
 "record.reminder" = "Pengingat NOT RECORDING";
 "record.reminder.off" = "Mati";
@@ -472,23 +472,13 @@
 "output.syphon" = "Syphon";
 "output.syphon_help" = "Saat EXTERNAL nyala, aplikasi lain menerima output ini sebagai sumber Syphon \"LiveCore Studio – %@\"";
 "output.obs_hint" = "OBS: tambahkan source \"Syphon Client\", pilih LiveCore Studio – Output N, lalu tekan Start Virtual Camera di OBS untuk dipakai di Zoom atau Meet.";
-"vcam.title" = "Kamera virtual (seperti OBS)";
-"vcam.output" = "Kamera menampilkan";
-"vcam.off" = "Tidak ada";
-"vcam.install" = "Aktifkan kamera virtual";
-"vcam.remove" = "Hapus kamera virtual";
-"vcam.check" = "Periksa lagi";
-"vcam.open_settings" = "Buka System Settings";
-"vcam.short_on" = "Kamera virtual";
-"vcam.status_not_installed" = "Belum aktif. \"LiveCore Virtual Camera\" belum tersedia untuk aplikasi lain.";
-"vcam.status_installed" = "Aktif. Nyalakan EXTERNAL untuk mengirim output yang dipilih.";
-"vcam.status_no_output" = "Aktif. Pilih output yang ditampilkan kamera.";
-"vcam.status_sending" = "Mengirim: Zoom, Meet, OBS… bisa memilih \"LiveCore Virtual Camera\".";
-"vcam.status_approval" = "Menunggu izin Anda di System Settings → General → Login Items & Extensions → Camera Extensions.";
-"vcam.reboot" = "Kamera virtual siap setelah Mac dinyalakan ulang.";
-"vcam.err_unsigned" = "Ditolak macOS: build ini tidak ditandatangani dengan Apple Developer ID, jadi tidak boleh memasang camera extension. Untuk sementara pakai Syphon + Virtual Camera OBS (lihat di atas).";
-"vcam.err_location" = "Pindahkan LiveCore Studio ke folder Applications dan buka dari sana, lalu coba lagi.";
-"vcam.err_missing" = "Camera extension tidak ada di dalam app. Unduh ulang app-nya.";
-"vcam.err_signature" = "macOS menolak tanda tangan extension. Perlu build yang ditandatangani Developer ID dan dinotarisasi.";
-"vcam.err_cancelled" = "Aktivasi dibatalkan.";
-"vcam.note" = "Seperti OBS, kameranya adalah Camera Extension macOS. macOS hanya menerimanya dari app yang ditandatangani Apple Developer ID; build unsigned ini belum bisa mengaktifkannya.";
+
+/* 0.23.0 */
+"lock.dock_help" = "Kunci RECORD dan STREAM: selama terkunci keduanya tidak bisa dimulai atau dihentikan";
+"dock.external_clients" = "%d aplikasi menerima";
+"output.external_off_hint" = "EXTERNAL mati: tekan EXTERNAL di dock bawah untuk mulai mengirim output Syphon.";
+"output.syphon_connected" = "Aplikasi tersambung";
+"output.syphon_waiting" = "Mengirim, belum ada aplikasi";
+"output.syphon_off_external" = "Mulai saat EXTERNAL nyala";
+"overlay.tile_help" = "Overlay %d dengan input ini (fade, layar penuh). Klik: Preview · Klik kanan / dua jari: Program";
+"snapshot.button" = "Foto Program";

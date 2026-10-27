@@ -50,11 +50,6 @@ for fw in $(otool -L "$APP/Contents/MacOS/LiveCoreStudio" | awk '/@rpath\/.*\.fr
   [ -d "$APP/Contents/Frameworks/$fw" ] || { echo "ERROR: $fw is linked but not embedded in the app"; exit 1; }
   echo "embedded: $fw"
 done
-# The LiveCore Virtual Camera (CoreMediaIO system extension) must be embedded where
-# OSSystemExtensionRequest looks for it.
-SYSEXT="$APP/Contents/Library/SystemExtensions/studio.livecore.LiveCoreStudio.CameraExtension.systemextension"
-[ -d "$SYSEXT" ] || { echo "ERROR: camera extension not embedded at $SYSEXT"; find "$APP/Contents" -maxdepth 3 | head -40; exit 1; }
-plutil -p "$SYSEXT/Contents/Info.plist" | grep -E "CFBundleIdentifier|CMIOExtensionMachServiceName"
 scripts/check_app_loadable.sh "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP" || true
 echo "Built: $APP"

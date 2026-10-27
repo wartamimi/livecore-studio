@@ -10,7 +10,6 @@ struct MainView: View {
     // Docked panels that are minimized to a slim bar (remembered between launches).
     @AppStorage("dock.inputs.minimized") private var inputsMin = false
     @AppStorage("dock.mixer.minimized") private var mixerMin = false
-    @AppStorage("dock.controls.minimized") private var controlsMin = false
     @AppStorage("dock.monitors.minimized") private var monitorsMin = false
     @AppStorage("dock.playlist.minimized") private var playlistMin = false
 
@@ -47,7 +46,7 @@ struct MainView: View {
                                             .dockHandle { monitorsMin = true }
                                             .frame(minHeight: 300)
                                     }
-                                    if !(mixerMin && controlsMin) {
+                                    if !(mixerMin && playlistMin) {
                                         HStack(alignment: .top, spacing: 6) {
                                             if mixerMin {
                                                 DockBar(title: L10n.t("audio.title"), axis: .vertical) { mixerMin = false }
@@ -59,23 +58,16 @@ struct MainView: View {
                                             } else {
                                                 PlaylistDockView()
                                                     .dockHandle { playlistMin = true }
-                                                    .frame(width: 230)
-                                            }
-                                            if controlsMin {
-                                                DockBar(title: L10n.t("dock.controls"), axis: .vertical) { controlsMin = false }
-                                            } else {
-                                                ControlPanelView()
-                                                    .dockHandle { controlsMin = true }
-                                                    .frame(width: 330)
+                                                    .frame(width: 290)
                                             }
                                         }
                                         .frame(minHeight: 230, idealHeight: 280)
                                     }
                                 }
-                                if mixerMin && controlsMin {
+                                if mixerMin && playlistMin {
                                     HStack(spacing: 6) {
                                         DockBar(title: L10n.t("audio.title"), axis: .horizontal) { mixerMin = false }
-                                        DockBar(title: L10n.t("dock.controls"), axis: .horizontal) { controlsMin = false }
+                                        DockBar(title: L10n.t("playlist.dock"), axis: .horizontal) { playlistMin = false }
                                     }
                                 }
                             }

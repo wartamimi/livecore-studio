@@ -55,7 +55,9 @@
 
 - (void)publishPixelBuffer:(CVPixelBufferRef)pixelBuffer {
     @synchronized (self) {
-        if (!_server || !_server.hasClients) return;
+        // Publish even without clients (like Syphon's own servers): the shared surface then exists
+        // as soon as a client such as OBS connects.
+        if (!_server) return;
         if (CVPixelBufferGetPixelFormatType(pixelBuffer) != kCVPixelFormatType_32BGRA) return;
         IOSurfaceRef src = CVPixelBufferGetIOSurface(pixelBuffer);
         if (!src) return;

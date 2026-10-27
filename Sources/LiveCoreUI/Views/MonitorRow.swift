@@ -11,12 +11,13 @@ struct MonitorRow: View {
         HStack(spacing: 6) {
             MonitorView(title: L10n.t("monitor.preview"), color: Theme.preview, feed: model.previewFeed,
                         inputName: name(model.switcher.preview), live: false)
-            TransitionControls().frame(width: 150)
+            TransitionControls().frame(width: 170)
             MonitorView(title: L10n.t("monitor.program"), color: Theme.program, feed: model.programFeed,
                         inputName: name(model.switcher.transition?.to ?? model.switcher.program),
                         live: model.isStreamingActive || model.isRecording,
                         notRecording: RecordReminder.applies(mode: RecordReminderMode(rawValue: reminder) ?? .always,
-                                                             recording: model.isRecording, streaming: model.isStreamingActive))
+                                                             recording: model.isRecording, streaming: model.isStreamingActive),
+                        snapshot: { model.saveSnapshot() })
         }
     }
 
@@ -33,6 +34,8 @@ struct MonitorView: View {
     let inputName: String
     let live: Bool
     var notRecording = false
+    /// Program only: camera button under the picture, at the right, that saves a PNG.
+    var snapshot: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,6 +54,17 @@ struct MonitorView: View {
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .overlay(Rectangle().stroke(color, lineWidth: 2))
                 .overlay(alignment: .top) { if notRecording { NotRecordingBadge().padding(.top, 8) } }
+            if let snapshot {
+                HStack {
+                    Spacer()
+                    Button(action: snapshot) {
+                        Label(L10n.t("snapshot.button"), systemImage: "camera").font(.system(size: 10, weight: .semibold))
+                    }
+                    .buttonStyle(.borderless)
+                    .help(L10n.t("snapshot.help"))
+                }
+                .padding(.top, 3).padding(.horizontal, 4)
+            }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(4)
@@ -78,6 +92,7 @@ struct TransitionControls: View {
     }
 
     var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
         VStack(spacing: 8) {
             SectionHeader(title: L10n.t("transition.type"))
             Picker("", selection: choice) {
@@ -117,9 +132,12 @@ struct TransitionControls: View {
             if let t = model.switcher.transition {
                 ProgressView(value: t.manualPosition ?? 0).opacity(t.manualPosition == nil ? 0 : 1)
             }
+            Divider()
+            ReplaySection()
             Spacer(minLength: 0)
         }
         .padding(8)
+        }
         .panel()
     }
 }

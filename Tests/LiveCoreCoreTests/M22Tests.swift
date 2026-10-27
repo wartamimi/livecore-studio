@@ -8,12 +8,9 @@ final class OutputRoutingTests: XCTestCase {
         XCTAssertEqual(r.slots.map(\.index), [1, 2, 3, 4])
         XCTAssertEqual(r.slot(1).source, .program)
         XCTAssertEqual(r.slot(2).source, .preview)
-        XCTAssertEqual(r.virtualCameraOutput, 1)
         let a = InputID("a"), b = InputID("b")
-        var odd = OutputRouting(slots: [OutputSlot(index: 3, source: .input(a), syphon: true), OutputSlot(index: 9)],
-                                virtualCameraOutput: 7)
+        var odd = OutputRouting(slots: [OutputSlot(index: 3, source: .input(a), syphon: true), OutputSlot(index: 9)])
         XCTAssertEqual(odd.slots.map(\.index), [1, 2, 3, 4], "always four slots in order")
-        XCTAssertNil(odd.virtualCameraOutput)
         XCTAssertEqual(odd.slot(3).source, .input(a))
         XCTAssertTrue(odd.slot(3).syphon)
         odd = odd.normalized(existing: [b])
@@ -26,14 +23,16 @@ final class OutputRoutingTests: XCTestCase {
         r.setSource(3, .input(a))
         r.setSource(4, .input(a))
         r.setSource(1, .input(b))
-        XCTAssertEqual(r.activeOutputs(windows: [], virtualCameraRunning: false), [])
+        XCTAssertEqual(r.activeOutputs(windows: []), [])
         XCTAssertEqual(r.renderedInputs(active: []), [])
         XCTAssertFalse(r.needsFullPreview(active: [1, 3]))
         XCTAssertTrue(r.needsFullPreview(active: [2]))
         XCTAssertEqual(r.renderedInputs(active: [1, 3, 4]), [b, a], "each input rendered once")
         r.setSyphon(4, true)
-        XCTAssertEqual(r.activeOutputs(windows: [2], virtualCameraRunning: true), [1, 2, 4])
-        XCTAssertEqual(r.activeOutputs(windows: [], virtualCameraRunning: false), [4])
+        XCTAssertEqual(r.activeOutputs(windows: [2]), [2, 4])
+        XCTAssertEqual(r.activeOutputs(windows: []), [4])
+        XCTAssertEqual(r.withDefaultSyphon(), r, "an output already sends: nothing changes")
+        XCTAssertEqual(OutputRouting().withDefaultSyphon().slots.filter(\.syphon).map(\.index), [1])
     }
 
     func testCodableRoundTripInProject() throws {
@@ -42,7 +41,6 @@ final class OutputRoutingTests: XCTestCase {
         var r = OutputRouting()
         r.setSource(2, .input(a))
         r.setSyphon(2, true)
-        r.virtualCameraOutput = 2
         doc.outputs = r
         let back = try JSONDecoder().decode(ProjectDocument.self, from: JSONEncoder().encode(doc))
         XCTAssertEqual(back.outputs, r)
@@ -81,22 +79,12 @@ final class RecordReminderTests: XCTestCase {
 
     func testBlinkPhase() {
         XCTAssertTrue(RecordReminder.visible(elapsed: 0))
-        XCTAssertTrue(RecordReminder.visible(elapsed: 0.59))
-        XCTAssertFalse(RecordReminder.visible(elapsed: 0.61))
-        XCTAssertTrue(RecordReminder.visible(elapsed: 10.2))
-        XCTAssertFalse(RecordReminder.visible(elapsed: -0.3), "negative time wraps like positive")
+        XCTAssertTrue(RecordReminder.visible(elapsed: 1.19), "on for 1.2 s of every 2 s")
+        XCTAssertFalse(RecordReminder.visible(elapsed: 1.21))
+        XCTAssertTrue(RecordReminder.visible(elapsed: 10.4))
+        XCTAssertFalse(RecordReminder.visible(elapsed: -0.6), "negative time wraps like positive")
+        XCTAssertFalse(RecordReminder.visible(elapsed: 0.61, period: 1))
         XCTAssertTrue(RecordReminder.visible(elapsed: .nan))
         XCTAssertTrue(RecordReminder.visible(elapsed: 3, period: 0))
-    }
-}
-
-final class VirtualCameraIdentityTests: XCTestCase {
-    func testExtensionIDsAreConsistent() {
-        XCTAssertTrue(VirtualCameraIdentity.extensionBundleID.hasPrefix("studio.livecore.LiveCoreStudio."),
-                      "a system extension's bundle id must start with its app's")
-        let ids = [VirtualCameraIdentity.deviceUUID, VirtualCameraIdentity.sourceStreamUUID, VirtualCameraIdentity.sinkStreamUUID]
-        XCTAssertEqual(Set(ids).count, 3)
-        for id in ids { XCTAssertNotNil(UUID(uuidString: id), id) }
-        XCTAssertEqual(VirtualCameraIdentity.width % 2, 0)
     }
 }
