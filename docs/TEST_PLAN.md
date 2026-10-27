@@ -49,6 +49,13 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## M. Tes manual build 0.13.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-54 | Editor scene: tambah layer & gaya | Klik kanan input › Edit Scene; "Tambah Layer" › pilih input; "Tambah Layer" › Tambah Bentuk › Lingkaran; Gaya: crop kiri 20 %, sudut bulat 30 %, border 1 % merah | Menu terbuka dan layer muncul; Preview menampilkan crop, sudut bulat halus, border; lingkaran benar-benar bulat; simpan & buka proyek mempertahankan gaya |
+| T-55 | Overlay ke Preview / Program | Isi overlay 1 dengan logo; klik tombol "1" (oranye) lalu CUT; klik dua jari tombol "2" (hijau); klik lagi tombol hijau | Klik: logo hanya di Preview, CUT membawanya ke Program dan tombol jadi hijau; klik dua jari langsung ke Program; klik tombol hijau menghilangkan dari Program |
+| T-56 | Input Lottie | Tambah Input › Lottie… › pilih .json dan .lottie (mis. dari LottieFiles); jadikan overlay lower third; Auto play = Restart | Animasi bergerak halus dengan latar transparan dan posisi tidak terbalik; masuk Program diputar dari awal; Loop off berhenti di frame terakhir |
+
 ## L. Tes manual build 0.12.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

@@ -29,7 +29,11 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Transisi Wipe 4 arah, Push ←/→, Slide ←/→, Iris | Implemented (0.4.0) | L (`TransitionMath`, 8 unit test) + shader dikompilasi CI | Bekerja dengan AUTO dan T-bar; belum dites di Mac (T-29) |
 | T-bar manual | Implemented | L + M | |
 | Overlay 4 kanal dengan fade | Implemented | L + M | |
-| Picture-in-Picture (layer pada input / overlay preset PiP) | Implemented | L + M | Preset posisi; belum ada drag-resize |
+| Overlay ke Preview (klik, oranye) / ke Program (klik dua jari / kanan, hijau) | Implemented (0.13.0), belum dites | L (planner + take, unit test) + kompilasi CI | Overlay di Preview ikut ke Program saat CUT/AUTO/T-bar. MIDI dan shortcut overlay tetap langsung ke Program. Belum dites (T-55) |
+| Gaya layer: crop 4 sisi, sudut bulat, elips/lingkaran, border + warna | Implemented (0.13.0), belum dites | L (geometri crop/mask, 5 unit test) + kompilasi shader CI | Di editor scene › Gaya. Crop juga berlaku untuk layer chroma key; sudut/elips/border tidak (dilewati bila chroma key aktif). Belum dites (T-54) |
+| Bentuk (kotak, kotak bulat, lingkaran) di editor scene | Implemented (0.13.0), belum dites | kompilasi CI | Dibuat sebagai input warna baru (muncul juga di daftar input) dengan gaya bentuk; warnanya diubah lewat input itu |
+| Input Lottie (.json / .lottie) | Implemented (0.13.0), belum dites | L (proyek) + kompilasi CI dengan Lottie 4.6.1 | Transparan; Play/Pause/Restart, Loop, Auto play seperti video; tersimpan di proyek. Dirender di CPU (thread utama) maks. 30 fps. Belum dites (T-56) |
+| Picture-in-Picture (layer pada input / overlay preset PiP) | Implemented | L + M | Preset posisi + editor scene (drag, resize). 0.13.0: tombol "Tambah Layer" diperbaiki (dulu menu tidak terbuka) |
 | Scene composition / editor layer visual | Implemented (0.3.0) | L (geometri) + M | Seret untuk pindah, sudut untuk resize (kunci rasio), snap ke tengah/safe area, urutan, opasitas, skala, preset |
 | Scaling fit/fill/stretch & aspect ratio | Implemented | L + M | `LayoutMath` teruji |
 | Resolusi/frame rate output (720p30/60, 1080p25/30/60) | Implemented | M | Terkunci saat output aktif |

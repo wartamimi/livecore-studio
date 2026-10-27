@@ -74,3 +74,11 @@
     selama transisi. Kompilasi terjadi di thread utama saat shader dipilih (sekitar sepersekian detik). Bila file
     transisi yang dipakai proyek tidak ada di Mac lain, transisi jatuh ke Dissolve dan muncul peringatan. Belum ada
     pratinjau transisi di luar Program, dan tidak ada parameter yang bisa diatur dari UI.
+40. **Lottie**: dirender oleh mesin main-thread Lottie di CPU, maks. 30 fps dan sisi terpanjang 1920 px; animasi sangat
+    kompleks bisa membebani thread UI. Ekspresi After Effects dan sebagian efek tidak didukung Lottie. Belum ada
+    seekbar. Bila animasi tampil terbalik (belum bisa diverifikasi tanpa Mac), laporkan; perbaikannya satu baris.
+41. **Gaya layer**: sudut bulat / elips / border tidak diterapkan pada layer yang memakai chroma key (crop tetap).
+    Kanvas editor scene menampilkan sudut & border secara perkiraan dan tidak menampilkan crop; monitor Preview
+    menampilkan hasil sebenarnya. Bentuk dibuat sebagai input warna terpisah.
+42. **Overlay ke Preview**: overlay yang sedang tampil di Preview tidak ikut stinger kecuali stinger dijalankan lewat
+    AUTO (ikut seperti transisi lain). Shortcut keyboard dan MIDI overlay tetap langsung ke Program.
