@@ -30,6 +30,7 @@ public final class StreamingEngine {
         public var reconnects: Int = 0
         public var encoderHardware: Bool = false
         public var encoderDropped: UInt64 = 0
+        public init() {}
     }
 
     public var onStats: ((Stats) -> Void)?          // delivered on main
