@@ -109,6 +109,9 @@ public final class ProductionEngine {
     // MARK: Lifecycle
 
     public func start() {
+        if let id = settings.customTransition, let err = setCustomTransition(id) {
+            onError?("Custom transition: \(err)")
+        }
         mixer.start()
         startRenderLoop()
     }
@@ -625,6 +628,23 @@ public final class ProductionEngine {
         settings.transitionDuration = min(max(duration, 0.1), 10)
     }
 
+    /// Selects and compiles the shader `TransitionKind.custom` uses (`CustomTransitionLibrary` id).
+    /// Returns the problem, or nil when it compiled; until a shader compiles, `.custom` dissolves.
+    @discardableResult
+    public func setCustomTransition(_ id: String?) -> String? {
+        settings.customTransition = id
+        guard let id else { compositor.clearCustomTransition(); return nil }
+        guard let code = CustomTransitionLibrary.code(for: id) else {
+            compositor.clearCustomTransition()
+            return "Transition shader not found (\(id))."
+        }
+        if let err = compositor.loadCustomTransition(code: code) {
+            compositor.clearCustomTransition()
+            return err
+        }
+        return nil
+    }
+
     // MARK: Overlays
 
     public var overlays: [OverlayChannel] { control.read { $0.overlays } }
@@ -686,7 +706,9 @@ public final class ProductionEngine {
         guard errs.isEmpty else { return errs }
         let formatChanged = new.output != settings.output
         if formatChanged && isOutputActive { return ["Stop streaming and recording before changing resolution or frame rate."] }
+        let customChanged = new.customTransition != settings.customTransition
         settings = new
+        if customChanged, let err = setCustomTransition(new.customTransition) { return ["Custom transition: \(err)"] }
         if formatChanged {
             renderQueue.sync { compositor.configure(outputSize: new.output.size) }
             startRenderLoop()

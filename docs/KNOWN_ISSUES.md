@@ -70,3 +70,7 @@
     (butuh Zoom SDK).
 38. **Instant replay**: video saja (tanpa audio); buffer 30 detik tetap; satu klip replay sekaligus; mengganti resolusi
     output menghapus buffer. Buffer memakai satu encode H.264 tambahan (hardware) dan ~40 MB disk sementara pada 1080p30.
+39. **Transisi custom**: shader berjalan di GPU tanpa batas waktu; shader yang sangat berat bisa menurunkan FPS Program
+    selama transisi. Kompilasi terjadi di thread utama saat shader dipilih (sekitar sepersekian detik). Bila file
+    transisi yang dipakai proyek tidak ada di Mac lain, transisi jatuh ke Dissolve dan muncul peringatan. Belum ada
+    pratinjau transisi di luar Program, dan tidak ada parameter yang bisa diatur dari UI.

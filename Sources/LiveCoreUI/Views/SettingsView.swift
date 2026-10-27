@@ -187,6 +187,7 @@ struct SettingsView: View {
         let old = model.settings
         draft.transition = model.transitionKind
         draft.transitionDuration = model.transitionDuration
+        draft.customTransition = model.customTransitionID
         let errs = model.apply(draft)
         if !keyField.isEmpty { model.saveStreamKey(keyField) }
         for d in draft.stream.additional { if let k = destKeys[d.id], !k.isEmpty { model.saveKey(k, account: d.keychainAccount) } }

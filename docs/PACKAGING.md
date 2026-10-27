@@ -14,7 +14,7 @@ scripts/rtmp_e2e_test.sh           # E2E RTMP ke server ffmpeg lokal
 scripts/build_macos.sh release     # xcodegen + xcodebuild → build/DerivedData/Build/Products/Release/LiveCoreStudio.app
 open build/DerivedData/Build/Products/Release/LiveCoreStudio.app
 ```
-DMG (tanpa tanda tangan) untuk dibagikan: `scripts/make_dmg.sh` → `build/LiveCoreStudio-0.10.1-unsigned.dmg`. Pertama kali dibuka: klik kanan app → Open (Gatekeeper).
+DMG (tanpa tanda tangan) untuk dibagikan: `scripts/make_dmg.sh` → `build/LiveCoreStudio-0.12.0-unsigned.dmg`. Pertama kali dibuka: klik kanan app → Open (Gatekeeper).
 Alternatif tanpa XcodeGen: `scripts/bundle_spm_app.sh` (SwiftPM + bundle .app manual + ad-hoc codesign).
 Untuk mengembangkan di Xcode: `xcodegen generate && open LiveCoreStudio.xcodeproj`, pilih skema *LiveCoreStudio*, ⌘R.
 

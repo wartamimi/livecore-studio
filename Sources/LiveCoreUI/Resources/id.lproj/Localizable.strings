@@ -266,3 +266,8 @@
 "replay.available" = "%ld dtk tersimpan";
 "replay.started" = "Buffer replay dimulai; replay tersedia setelah beberapa detik.";
 "replay.empty" = "Belum ada yang tersimpan.";
+"transition.custom.new" = "Baru…";
+"transition.custom.import" = "Impor .metal…";
+"transition.custom.reload" = "Muat Ulang";
+"transition.custom.folder" = "Folder";
+"transition.custom.fallback" = "Sementara AUTO/T-bar memakai Dissolve sampai shader berhasil dikompilasi.";

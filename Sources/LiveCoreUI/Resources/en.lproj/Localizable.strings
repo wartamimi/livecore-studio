@@ -266,3 +266,8 @@
 "replay.available" = "%ld s buffered";
 "replay.started" = "Replay buffer started; replays are available after a few seconds.";
 "replay.empty" = "Nothing buffered yet.";
+"transition.custom.new" = "New…";
+"transition.custom.import" = "Import .metal…";
+"transition.custom.reload" = "Reload";
+"transition.custom.folder" = "Folder";
+"transition.custom.fallback" = "AUTO/T-bar uses Dissolve until the shader compiles.";

@@ -15,3 +15,10 @@ echo "Metal shaders compile: OK"
 for fn in quad_vertex layer_fragment key_fragment transition_fragment wipe_mask straight_fragment; do
   grep -q "$fn" "$OUT/LiveCoreShaders.metal" || { echo "missing function $fn"; exit 1; }
 done
+
+# Custom transitions: the built-in examples and the user template, wrapped exactly as the app does.
+swift run -q livecore-transition-dump "$OUT/transitions"
+for f in "$OUT"/transitions/*.metal; do
+  xcrun -sdk macosx metal -c "$f" -o "${f%.metal}.air"
+done
+echo "Custom transition shaders compile: OK"

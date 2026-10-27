@@ -49,6 +49,12 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## L. Tes manual build 0.12.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-52 | Transisi custom bawaan | Panel transisi › pilih tiap contoh (Wipe Diagonal, Clock Wipe, Doors Open, Blinds, Zoom Dissolve, Pixelate); AUTO dan geser T-bar | Tiap transisi berjalan halus tanpa kedip di awal/akhir; FPS stabil; pilihan tetap setelah app dibuka ulang dan tersimpan di proyek |
+| T-53 | Shader buatan sendiri | "Baru…" (file terbuka di editor); ubah rumus, simpan, "Muat Ulang"; lalu buat salah ketik dan "Muat Ulang"; "Impor .metal…" file lain | Perubahan terlihat setelah Muat Ulang; salah ketik menampilkan pesan error dengan nomor baris dan AUTO memakai Dissolve tanpa crash; file impor muncul di daftar dengan tanda ✎ |
+
 ## K. Tes manual build 0.10.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

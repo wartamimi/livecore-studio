@@ -40,7 +40,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Browser source (halaman web / HTML lokal) | Implemented (0.6.0) | L (kebijakan URL, 2 unit test) + kompilasi CI | WKWebView di jendela offscreen, snapshot 5–30 fps, latar transparan; data store non-persisten, tanpa bridge JS→app, tanpa pop-up, hanya http/https/file. Audio halaman tidak masuk mixer. Belum dites di Mac (T-32) |
 | Jam / hitung mundur / stopwatch | Implemented (0.6.0) | L (`TimerMath`, 5 unit test) + kompilasi CI | Input generator, keterangan opsional, merah saat hitung mundur habis; kontrol lewat klik kanan. Belum dites (T-33) |
 | Transisi stinger (klip video, idealnya dengan alpha) | Implemented (0.5.0) | L (`Switcher`/`FramePlanner`, 6 unit test) + kompilasi CI | Klip = input file video; titik potong diatur; durasi = panjang klip; audio klip lewat mixer. T-bar memakai dissolve. Belum dites di Mac (T-30) |
-| Transisi custom (shader pengguna) | Planned | — | |
+| Transisi custom (shader pengguna) | Implemented (0.12.0), belum dites | L (validasi, pembungkus, ID file, 5 unit test) + kompilasi offline 6 contoh bawaan & template di CI Mac | Satu fungsi Metal `transition(uv, progress, ratio, from, to, s)` per file `.metal`; 6 contoh bawaan (Wipe Diagonal, Clock Wipe, Doors Open, Blinds, Zoom Dissolve, Pixelate); Baru/Impor/Muat Ulang/Folder di panel transisi; dikompilasi saat dipilih, error kompilasi ditampilkan dan AUTO/T-bar memakai Dissolve sampai shader berhasil. Belum dites (T-52, T-53) |
 
 ## Audio
 | Fitur | Status | Verifikasi | Catatan |
