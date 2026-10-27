@@ -125,3 +125,12 @@
 56. **Dock bawah**: tidak bisa diperkecil (sesuai permintaan); di layar sempit tombol OUT 1–4 bisa terdorong ke kanan.
 57. **Nomor overlay di kotak input**: overlay selalu layar penuh dengan fade (posisi diatur dari layer/scene inputnya).
     Satu kanal overlay hanya memegang satu input; menekan nomor yang sama di input lain memindahkan kanal itu.
+58. **Output NDI (0.24.0)**: butuh runtime NDI 5/6 dari NDI Tools atau NDI Runtime (LiveCore tidak menyertakannya);
+    bila dipasang setelah LiveCore dibuka, buka ulang LiveCore. App memakai entitlement
+    `com.apple.security.cs.disable-library-validation` supaya bisa memuat pustaka NDI yang ditandatangani NDI.
+    macOS meminta izin "Jaringan Lokal" saat NDI pertama kali dipakai; bila ditolak, sumber tidak terlihat
+    (System Settings › Privacy & Security › Local Network). Timecode NDI disintesis saat kirim, jadi sinkron audio-video
+    lewat NDI belum diukur. Frame rate sumber NDI mengikuti setelan saat output NDI dibuat (ubah frame rate → matikan dan
+    nyalakan lagi NDI). Kompresi NDI memakai CPU; bila komputer berat, frame NDI dibuang (bukan memperlambat render).
+    Nama kamera di Zoom tetap "NDI Virtual Camera"; kamera bernama "LiveCore" butuh Camera Extension bertanda tangan
+    Developer ID.

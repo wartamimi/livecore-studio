@@ -4,7 +4,10 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.23.0 — Milestone 3 berjalan.** 0.23.0 memperbaiki Syphon (frame dikirim sejak awal, Output 1 otomatis
+> **Status: 0.24.0 — Milestone 3 berjalan.** 0.24.0 menambah output NDI®: tiap output bisa dikirim sebagai sumber NDI
+> "LiveCore Output N", sehingga Zoom/Meet bisa memakai LiveCore lewat kamera "NDI Virtual Camera" dari NDI Tools tanpa OBS.
+> LiveCore memakai runtime NDI yang sudah terpasang (NDI Tools / NDI Runtime) dan tidak menyertakannya. CI membuktikan proses
+> lain menemukan sumber NDI dan menerima frame-nya — menunggu tes T-93..T-95 di Mac. 0.23.0 memperbaiki Syphon (frame dikirim sejak awal, Output 1 otomatis
 > nyala saat EXTERNAL, status "aplikasi tersambung", dan CI kini membuktikan proses lain bisa menemukan source dan membaca
 > frame-nya), memperlambat kedipan NOT RECORDING, menghapus kamera virtual Camera Extension, memindahkan foto Program ke
 > bawah monitor Program dan instant replay ke bawah T-bar, menyatukan gembok RECORD/STREAM, dan mengganti dock Overlay
@@ -22,7 +25,7 @@ tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 > slideshow foto (folder, durasi per foto, crossfade) — menunggu tes T-69..T-71. 0.16.0 menambah koreksi warna & balik/putar per input dan nada tes 1 kHz —
 > menunggu tes T-67..T-68. 0.15.0 menghapus Lottie, menambah input Scene + template tata letak,
 > Colour Bars, tombol fullscreen per input, pengaturan capture card, Properti Audio per kanal, dan transparansi + tepi
-> halus untuk media transparan — menunggu tes T-61..T-66. Virtual camera: lewat Syphon → OBS Virtual Camera (Camera Extension sendiri dihapus di 0.23.0).
+> halus untuk media transparan — menunggu tes T-61..T-66. Virtual camera: lewat NDI → NDI Virtual Camera (0.24.0, tanpa OBS) atau Syphon → OBS Virtual Camera (Camera Extension sendiri dihapus di 0.23.0).
 > 0.14.0 memperbaiki Lottie .json yang tidak tampil, menghapus menu Tambah
 > Bentuk, menambah tombol "x" untuk menutup source, gembok untuk source / streaming / rekaman, konfirmasi Stop, dan
 > rekam otomatis saat streaming — menunggu tes T-57..T-60.

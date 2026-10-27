@@ -31,8 +31,8 @@ final class OutputRoutingTests: XCTestCase {
         r.setSyphon(4, true)
         XCTAssertEqual(r.activeOutputs(windows: [2]), [2, 4])
         XCTAssertEqual(r.activeOutputs(windows: []), [4])
-        XCTAssertEqual(r.withDefaultSyphon(), r, "an output already sends: nothing changes")
-        XCTAssertEqual(OutputRouting().withDefaultSyphon().slots.filter(\.syphon).map(\.index), [1])
+        XCTAssertEqual(r.withDefaultSending(ndi: false), r, "an output already sends: nothing changes")
+        XCTAssertEqual(OutputRouting().withDefaultSending(ndi: false).slots.filter(\.syphon).map(\.index), [1])
     }
 
     func testCodableRoundTripInProject() throws {

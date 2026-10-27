@@ -448,14 +448,14 @@
 "dock.external" = "EXTERNAL";
 "dock.record_settings" = "Recording settings";
 "dock.stream_settings" = "Streaming settings";
-"dock.external_settings" = "Outputs, Syphon and virtual camera";
+"dock.external_settings" = "Outputs, Syphon and NDI";
 "dock.more_settings" = "More settings…";
 "dock.record_off" = "Not recording";
 "dock.stream_ready" = "Off · %d destination(s) ready";
 "dock.external_off" = "Off";
 "dock.external_syphon" = "Syphon: %d output(s)";
 "dock.external_nothing" = "On · nothing selected (see ⚙)";
-"dock.external_help" = "Send the outputs to other apps over Syphon (OBS \"Syphon Client\", Resolume, MadMapper…)";
+"dock.external_help" = "Send the outputs to other apps: Syphon (OBS \"Syphon Client\", Resolume…) and NDI (NDI Virtual Camera for Zoom / Meet, OBS, vMix…)";
 "record.not_recording" = "NOT RECORDING";
 "record.reminder" = "NOT RECORDING reminder";
 "record.reminder.off" = "Off";
@@ -471,14 +471,28 @@
 "output.fullscreen_close" = "Close full screen";
 "output.syphon" = "Syphon";
 "output.syphon_help" = "While EXTERNAL is on, other apps receive this output as the Syphon source \"LiveCore Studio – %@\"";
-"output.obs_hint" = "OBS: add a \"Syphon Client\" source, choose LiveCore Studio – Output N, then press Start Virtual Camera in OBS to use it in Zoom or Meet.";
+"output.obs_hint" = "OBS: add a \"Syphon Client\" source (LiveCore Studio – Output N) or an \"NDI Source\" (needs the DistroAV plugin).";
 
 /* 0.23.0 */
 "lock.dock_help" = "Lock RECORD and STREAM: while locked they cannot start or stop";
 "dock.external_clients" = "%d app(s) receiving";
-"output.external_off_hint" = "EXTERNAL is off: press EXTERNAL in the bottom dock to start sending the Syphon outputs.";
-"output.syphon_connected" = "App connected";
-"output.syphon_waiting" = "Sending, no app yet";
-"output.syphon_off_external" = "Starts with EXTERNAL";
+"output.external_off_hint" = "EXTERNAL is off: press EXTERNAL in the bottom dock to start sending the Syphon and NDI outputs.";
+"output.syphon_connected" = "Syphon: app connected";
+"output.syphon_waiting" = "Syphon: sending, no app yet";
+"output.syphon_off_external" = "Syphon starts with EXTERNAL";
 "overlay.tile_help" = "Overlay %d with this input (fade, full screen). Click: Preview · Right / two-finger click: Program";
 "snapshot.button" = "Program photo";
+
+/* 0.24.0: NDI output */
+"dock.external_ndi" = "NDI: %d output(s)";
+"output.ndi" = "NDI";
+"output.ndi_help" = "While EXTERNAL is on, this output is an NDI source \"<this Mac> (%@)\": NDI Virtual Camera (Zoom, Meet, Teams), OBS, vMix and other computers on the network can receive it";
+"output.ndi_connected" = "NDI: %d receiver(s)";
+"output.ndi_waiting" = "NDI: sending, no receiver yet";
+"output.ndi_off_external" = "NDI starts with EXTERNAL";
+"output.ndi_no_runtime" = "NDI runtime not installed";
+"output.ndi_zoom_hint" = "Zoom / Meet without OBS: tick NDI, turn EXTERNAL on, then in NDI Tools (the NDI icon in the menu bar, \"NDI Virtual Input\") choose \"<this Mac> (LiveCore Output 1)\". In Zoom choose the camera \"NDI Virtual Camera\".";
+"output.ndi_runtime" = "NDI runtime %@";
+"output.ndi_missing" = "The NDI runtime was not found. Install NDI Tools or the NDI Runtime, then restart LiveCore Studio.";
+"output.ndi_download" = "Download the NDI Runtime (ndi.link)";
+"output.ndi_trademark" = "NDI® is a registered trademark of Vizrt NDI AB.";

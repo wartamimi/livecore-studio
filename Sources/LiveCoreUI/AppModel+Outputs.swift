@@ -22,6 +22,7 @@ extension AppModel {
         router.onWindowFrame = { [weak self] i, pb in self?.outputFeeds[i]?.push(pb) }
         router.onError = { [weak self] msg in self?.report(msg) }
         outputRouter = router
+        ndiAvailable = NDIRuntime.isAvailable
         if let data = UserDefaults.standard.data(forKey: Self.routingKey),
            let r = try? JSONDecoder().decode(OutputRouting.self, from: data) {
             outputRouting = r
@@ -46,6 +47,12 @@ extension AppModel {
     public func setOutputSyphon(_ index: Int, _ on: Bool) {
         var r = outputRouting
         r.setSyphon(index, on)
+        setOutputRouting(r)
+    }
+
+    public func setOutputNDI(_ index: Int, _ on: Bool) {
+        var r = outputRouting
+        r.setNDI(index, on)
         setOutputRouting(r)
     }
 
@@ -87,16 +94,26 @@ extension AppModel {
 
     public func setExternal(_ on: Bool) {
         guard outputRouter != nil else { return }
-        if on { setOutputRouting(outputRouting.withDefaultSyphon()) }
+        if on {
+            // NDI is switched on for Output 1 once, the first time EXTERNAL starts with the NDI
+            // runtime installed; after that the operator's choice is kept.
+            let offerNDI = ndiAvailable && !UserDefaults.standard.bool(forKey: Self.ndiOfferedKey)
+            setOutputRouting(outputRouting.withDefaultSending(ndi: offerNDI))
+            if offerNDI { UserDefaults.standard.set(true, forKey: Self.ndiOfferedKey) }
+        }
         outputRouter?.setExternal(on)
         externalActive = on
-        refreshSyphonStatus()
+        refreshExternalStatus()
     }
 
-    /// Re-reads which Syphon outputs run and which have an app connected (shown under EXTERNAL ⚙).
-    public func refreshSyphonStatus() {
+    private static let ndiOfferedKey = "outputs.ndi.offered"
+
+    /// Re-reads which Syphon and NDI outputs run and who receives them (shown under EXTERNAL ⚙).
+    public func refreshExternalStatus() {
         let s = outputRouter?.syphonStatus() ?? [:]
         if s != syphonStatus { syphonStatus = s }
+        let n = outputRouter?.ndiStatus() ?? [:]
+        if n != ndiStatus { ndiStatus = n }
     }
 }
 #endif
