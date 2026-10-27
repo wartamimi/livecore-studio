@@ -51,6 +51,10 @@ public final class ProductionEngine {
     public private(set) var streamers: [String: StreamingEngine] = [:]
     private var streamTerminal: [String: Bool] = [:]
     public let recorder = RecordingEngine()
+    /// Music inputs (audio-file playlists), each with its own mixer channel. Main thread.
+    public private(set) var musicPlayers: [MusicPlayer] = []
+    public var onMusicChange: (() -> Void)?
+    public static let musicChannelPrefix = "music:"
     public let performance = PerformanceMonitor()
 
     private struct ControlState {
@@ -110,6 +114,7 @@ public final class ProductionEngine {
         renderTimer?.cancel()
         renderTimer = nil
         control.read { $0.sources.values.forEach { $0.stop() } }
+        musicPlayers.forEach { $0.stop() }
         audioInputs.values.forEach { $0.stop() }
         mixer.stop()
     }
@@ -242,6 +247,35 @@ public final class ProductionEngine {
         src.start()
         add(src)
         return src.id
+    }
+
+    /// Adds a music input playing `urls` into a new mixer channel (paused until Play).
+    @discardableResult
+    public func addMusic(urls: [URL], name: String? = nil, id: String? = nil) -> MusicPlayer {
+        let mid = id ?? String(UUID().uuidString.prefix(8)).lowercased()
+        let title = name ?? (urls.count == 1 ? urls[0].deletingPathExtension().lastPathComponent : "Music")
+        // Same buffering as video-file audio: AVPlayer taps deliver large blocks.
+        let ch = mixer.addChannel(id: Self.musicChannelPrefix + mid, name: title, primeFrames: 4096, maxBufferedFrames: 14_400)
+        let m = MusicPlayer(id: mid, name: title, tracks: urls, channel: ch)
+        m.onChange = { [weak self] in self?.onMusicChange?() }
+        musicPlayers.append(m)
+        onAudioChannelsChange?()
+        onMusicChange?()
+        return m
+    }
+
+    public func removeMusic(id: String) {
+        guard let i = musicPlayers.firstIndex(where: { $0.id == id }) else { return }
+        let m = musicPlayers.remove(at: i)
+        m.stop()
+        mixer.removeChannel(id: Self.musicChannelPrefix + id)
+        onAudioChannelsChange?()
+        onMusicChange?()
+    }
+
+    public func musicPlayer(channelID: String) -> MusicPlayer? {
+        guard channelID.hasPrefix(Self.musicChannelPrefix) else { return nil }
+        return musicPlayers.first { Self.musicChannelPrefix + $0.id == channelID }
     }
 
     /// Mixer channel id used for the audio of a video-file input.
@@ -683,22 +717,16 @@ extension ProductionEngine {
         doc.audio.aux = mixer.aux.indices.map { i in
             ProjectAuxBus(faderDB: mixer.aux[i].faderDB.value, muted: mixer.aux[i].muted.value, outputDeviceUID: auxOutputUID(i))
         }
-        for ch in mixer.channelList {
+        for ch in mixer.channelList where !ch.id.hasPrefix(Self.musicChannelPrefix) {
             let isFile = ch.id.hasPrefix("file:")
-            var p = ProjectAudioChannel(deviceUniqueID: isFile ? nil : ch.id,
-                                        inputID: isFile ? InputID(String(ch.id.dropFirst(5))) : nil, name: ch.name)
-            let c = ch.controls
-            p.faderDB = c.faderDB.value; p.gainDB = c.gainDB.value; p.pan = c.pan.value
-            p.muted = c.muted.value; p.toProgram = c.toProgram.value
-            p.toBusA = c.toBusA.value; p.toBusB = c.toBusB.value
-            p.compressorEnabled = c.compressorEnabled.value; p.compThresholdDB = c.compThresholdDB.value; p.compRatio = c.compRatio.value
-            p.gateEnabled = c.gateEnabled.value; p.gateThresholdDB = c.gateThresholdDB.value
-            var eq = ProjectEQ()
-            eq.highPassEnabled = c.highPassEnabled.value; eq.highPassHz = c.highPassHz.value
-            eq.eqEnabled = c.eqEnabled.value
-            eq.lowDB = c.eqLowDB.value; eq.midDB = c.eqMidDB.value; eq.midHz = c.eqMidHz.value; eq.highDB = c.eqHighDB.value
-            p.eq = eq
-            doc.audio.channels.append(p)
+            doc.audio.channels.append(Self.projectChannel(ch, deviceUniqueID: isFile ? nil : ch.id,
+                                                          inputID: isFile ? InputID(String(ch.id.dropFirst(5))) : nil))
+        }
+        doc.audio.music = musicPlayers.isEmpty ? nil : musicPlayers.map { m in
+            ProjectMusic(id: m.id, name: m.name,
+                         tracks: m.tracks.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) },
+                         loop: m.loopPlaylist, shuffle: m.shuffle,
+                         channel: Self.projectChannel(m.channel, deviceUniqueID: nil, inputID: nil))
         }
         return doc
     }
@@ -780,6 +808,14 @@ extension ProductionEngine {
             mixer.aux[i].muted.value = bus.muted
             if let msg = setAuxOutput(i, uid: bus.outputDeviceUID) { warnings.append(msg) }
         }
+        for m in musicPlayers.map(\.id) { removeMusic(id: m) }
+        for pm in doc.audio.music ?? [] {
+            let urls = pm.tracks.map { mediaURL($0.path, $0.relativePath) }
+            let m = addMusic(urls: urls, name: pm.name, id: pm.id)
+            m.loopPlaylist = pm.loop
+            m.shuffle = pm.shuffle
+            if let ch = pm.channel { Self.apply(ch, to: m.channel.controls) }
+        }
         for ch in doc.audio.channels {
             if let uid = ch.deviceUniqueID {
                 guard DeviceManager.device(uniqueID: uid) != nil else {
@@ -800,6 +836,23 @@ extension ProductionEngine {
         onAudioChannelsChange?()
         publishInputs()
         return warnings
+    }
+
+    /// Mixer settings of a channel as stored in projects.
+    static func projectChannel(_ ch: MixerChannel, deviceUniqueID: String?, inputID: InputID?) -> ProjectAudioChannel {
+        var p = ProjectAudioChannel(deviceUniqueID: deviceUniqueID, inputID: inputID, name: ch.name)
+        let c = ch.controls
+        p.faderDB = c.faderDB.value; p.gainDB = c.gainDB.value; p.pan = c.pan.value
+        p.muted = c.muted.value; p.toProgram = c.toProgram.value
+        p.toBusA = c.toBusA.value; p.toBusB = c.toBusB.value
+        p.compressorEnabled = c.compressorEnabled.value; p.compThresholdDB = c.compThresholdDB.value; p.compRatio = c.compRatio.value
+        p.gateEnabled = c.gateEnabled.value; p.gateThresholdDB = c.gateThresholdDB.value
+        var eq = ProjectEQ()
+        eq.highPassEnabled = c.highPassEnabled.value; eq.highPassHz = c.highPassHz.value
+        eq.eqEnabled = c.eqEnabled.value
+        eq.lowDB = c.eqLowDB.value; eq.midDB = c.eqMidDB.value; eq.midHz = c.eqMidHz.value; eq.highDB = c.eqHighDB.value
+        p.eq = eq
+        return p
     }
 
     /// Core Audio UID of the device aux bus `index` plays on, nil if none.

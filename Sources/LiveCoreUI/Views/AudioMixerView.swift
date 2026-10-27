@@ -14,6 +14,8 @@ struct AudioMixerView: View {
                 Spacer()
                 Menu {
                     ForEach(model.audioDevices) { d in Button(d.name) { model.addAudioInput(d) } }
+                    Divider()
+                    Button(L10n.t("music.add")) { model.addMusic() }
                 } label: { Image(systemName: "plus.circle.fill") }
                 .menuStyle(.borderlessButton).fixedSize()
                 .help(L10n.t("audio.add"))
@@ -54,6 +56,7 @@ struct ChannelStripView: View {
         VStack(spacing: 4) {
             HStack(spacing: 2) {
                 if vm.isFileChannel { Image(systemName: "film").font(.system(size: 8)).help(L10n.t("audio.file")) }
+                if vm.isMusicChannel { Image(systemName: "music.note").font(.system(size: 8)).help(L10n.t("music.title")) }
                 Text(vm.channel.name).font(.system(size: 10, weight: .semibold)).lineLimit(1)
             }
             .frame(width: 84)
@@ -69,6 +72,7 @@ struct ChannelStripView: View {
                 toggle(L10n.t("audio.solo"), $vm.solo, Theme.warning)
                 toggle(L10n.t("audio.pgm"), $vm.toProgram, Theme.accent)
             }
+            if let m = model.musicPlayer(vm.id) { MusicTransport(player: m) }
             HStack(spacing: 3) {
                 toggle("A", $vm.toBusA, Theme.preview).help(L10n.t("aux.send_a"))
                 toggle("B", $vm.toBusB, Theme.preview).help(L10n.t("aux.send_b"))
@@ -79,8 +83,20 @@ struct ChannelStripView: View {
                 .contextMenu {
                     Button(L10n.f("aux.mix_minus", "A")) { model.makeMixMinus(bus: 0, excluding: vm.id) }
                     Button(L10n.f("aux.mix_minus", "B")) { model.makeMixMinus(bus: 1, excluding: vm.id) }
+                    if let m = model.musicPlayer(vm.id) {
+                        Divider()
+                        Button(L10n.t("music.add_tracks")) { model.addTracks(toMusic: vm.id) }
+                        Toggle(L10n.t("music.loop"), isOn: Binding(get: { m.loopPlaylist }, set: { m.loopPlaylist = $0; model.objectWillChange.send() }))
+                        Toggle(L10n.t("music.shuffle"), isOn: Binding(get: { m.shuffle }, set: { m.shuffle = $0; model.objectWillChange.send() }))
+                        Menu(L10n.t("music.tracks")) {
+                            ForEach(Array(m.tracks.enumerated()), id: \.offset) { i, u in
+                                Button((i == m.index ? "▶ " : "") + u.deletingPathExtension().lastPathComponent) { m.select(i) }
+                            }
+                        }
+                        Button(L10n.t("music.remove"), role: .destructive) { model.removeMusic(vm.id) }
+                    }
                     // File audio belongs to its video input: remove the input instead.
-                    if !vm.isFileChannel { Button(L10n.t("inputs.remove"), role: .destructive) { model.removeAudioInput(vm.id) } }
+                    if !vm.isFileChannel && !vm.isMusicChannel { Button(L10n.t("inputs.remove"), role: .destructive) { model.removeAudioInput(vm.id) } }
                 }
         }
         .padding(4)
@@ -106,6 +122,26 @@ struct ChannelStripView: View {
             .background(b.wrappedValue ? color : Theme.panel)
             .clipShape(RoundedRectangle(cornerRadius: 3))
             .buttonStyle(.plain)
+    }
+}
+
+/// Play/pause, previous/next and the current track of a music input.
+struct MusicTransport: View {
+    @EnvironmentObject var model: AppModel
+    let player: MusicPlayer
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(player.currentTitle).font(.system(size: 9)).lineLimit(1).truncationMode(.middle)
+                .foregroundStyle(Theme.textDim).frame(width: 84)
+                .help("\(player.index + 1)/\(player.tracks.count) · \(player.currentTitle)")
+            HStack(spacing: 6) {
+                Button { player.previous() } label: { Image(systemName: "backward.fill") }
+                Button { player.togglePlay() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }
+                Button { player.next() } label: { Image(systemName: "forward.fill") }
+            }
+            .buttonStyle(.borderless).font(.system(size: 10))
+        }
     }
 }
 

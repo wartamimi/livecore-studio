@@ -198,3 +198,22 @@
 "timer.edit" = "Edit timer…";
 "snapshot.help" = "Save the current Program frame as PNG in the recording folder";
 "snapshot.saved" = "Saved %@";
+
+"midi.stream" = "Start/stop stream";
+"midi.record" = "Start/stop recording";
+"midi.preview" = "Preview input %ld";
+"midi.cut_direct" = "Cut input %ld to Program";
+"midi.no_devices" = "No MIDI devices found. Connect a controller; it is picked up automatically.";
+"midi.devices" = "MIDI devices: %@";
+"midi.last" = "Last message: %@";
+"midi.waiting" = "Press a pad or move a fader…";
+"midi.learn" = "Learn";
+"midi.hint" = "Buttons trigger on press (note or CC ≥ 64). Bind a fader or knob (CC) to T-bar. Mappings are saved on this Mac.";
+
+"music.add" = "Music (audio files)…";
+"music.title" = "Music";
+"music.add_tracks" = "Add tracks…";
+"music.loop" = "Repeat playlist";
+"music.shuffle" = "Shuffle";
+"music.tracks" = "Tracks";
+"music.remove" = "Remove music input";

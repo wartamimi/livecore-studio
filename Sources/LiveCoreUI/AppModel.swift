@@ -39,6 +39,7 @@ public final class AppModel: ObservableObject {
     /// Last Program snapshot saved with `saveSnapshot()`.
     @Published public private(set) var lastSnapshotURL: URL?
     private var lastProgramFrame: CVPixelBuffer?
+    private var lastMusicError: String?
 
     // Audio
     @Published public var audioChannels: [ChannelVM] = []
@@ -86,6 +87,7 @@ public final class AppModel: ObservableObject {
             hasStreamKey = ((try? KeychainStore.load(account: settings.stream.keychainAccount)) ?? nil)?.isEmpty == false
             overlays = e.overlays
             syncAuxFromEngine()
+            startMIDI()
         } catch {
             startupError = error.localizedDescription
             return
@@ -95,6 +97,7 @@ public final class AppModel: ObservableObject {
 
     public func shutdown() {
         statsTimer?.invalidate()
+        midi.stop()
         engine?.shutdown()
     }
 
@@ -131,6 +134,10 @@ public final class AppModel: ObservableObject {
         e.onRecordStats = { [weak self] s in self?.recordStats = s }
         e.onError = { [weak self] msg in self?.report(msg) }
         e.onAudioChannelsChange = { [weak self] in self?.reloadAudioChannels() }
+        e.onMusicChange = { [weak self] in
+            self?.objectWillChange.send()
+            if let err = e.musicPlayers.compactMap(\.error).first, self?.lastMusicError != err { self?.lastMusicError = err; self?.report(err) }
+        }
         e.devices.onChange = { [weak self] in self?.refreshDevices() }
     }
 
@@ -309,6 +316,75 @@ public final class AppModel: ObservableObject {
         preview(inputs[n - 1].id)
     }
 
+    // MARK: MIDI control
+
+    public let midi = MIDIInput()
+    @Published public var midiMap = AppModel.loadMIDIMap() { didSet { saveMIDIMap() } }
+    /// Action waiting for the next MIDI message to be bound to it (Learn).
+    @Published public var midiLearning: ControlAction?
+    @Published public private(set) var midiSources: [String] = []
+    @Published public private(set) var lastMIDI: String = ""
+
+    private func startMIDI() {
+        midi.onSourcesChange = { [weak self] in self?.midiSources = self?.midi.sourceNames ?? [] }
+        midi.onMessage = { [weak self] m in self?.handleMIDI(m) }
+        midi.start()
+        if let err = midi.error { report(err) }
+    }
+
+    private func handleMIDI(_ m: MIDIMessage) {
+        lastMIDI = m.trigger.description
+        if let action = midiLearning {
+            // Learn on a press or a fader move; ignore the release that follows a press.
+            if case .noteOff = m { return }
+            midiMap.bind(m.trigger, to: action)
+            midiLearning = nil
+            return
+        }
+        switch midiMap.event(for: m) {
+        case let .fire(a)?: perform(a)
+        case let .set(.tbar, v)?: setTBar(v)
+        default: break
+        }
+    }
+
+    public func perform(_ a: ControlAction) {
+        switch a {
+        case .cut: cut()
+        case .auto: auto()
+        case .tbar: break
+        case .streamToggle: toggleStream()
+        case .recordToggle: toggleRecord()
+        case .snapshot: saveSnapshot()
+        case let .preview(n): previewNumber(n)
+        case let .cutDirect(n): if n >= 1, n <= inputs.count { cutDirect(inputs[n - 1].id) }
+        case let .overlay(i): toggleOverlay(i)
+        }
+    }
+
+    public static func actionName(_ a: ControlAction) -> String {
+        switch a {
+        case .cut: return "CUT"
+        case .auto: return "AUTO"
+        case .tbar: return "T-bar"
+        case .streamToggle: return L10n.t("midi.stream")
+        case .recordToggle: return L10n.t("midi.record")
+        case .snapshot: return "Snapshot"
+        case let .preview(n): return L10n.f("midi.preview", n)
+        case let .cutDirect(n): return L10n.f("midi.cut_direct", n)
+        case let .overlay(i): return "Overlay \(i)"
+        }
+    }
+
+    private static func loadMIDIMap() -> MIDIMap {
+        guard let d = UserDefaults.standard.data(forKey: "midiMap"), let m = try? JSONDecoder().decode(MIDIMap.self, from: d) else { return MIDIMap() }
+        return m
+    }
+
+    private func saveMIDIMap() {
+        if let d = try? JSONEncoder().encode(midiMap) { UserDefaults.standard.set(d, forKey: "midiMap") }
+    }
+
     // MARK: Overlays
 
     public func configureOverlay(_ index: Int, source: InputID?, preset: LayoutPreset) {
@@ -326,6 +402,39 @@ public final class AppModel: ObservableObject {
 
     public func addAudioInput(_ d: DeviceManager.Device) {
         engine?.addAudioInput(uniqueID: d.id)
+        reloadAudioChannels()
+    }
+
+    // MARK: Music
+
+    private func pickAudioFiles() -> [URL] {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.audio]
+        return panel.runModal() == .OK ? panel.urls : []
+    }
+
+    /// Adds a music input with one or more audio files (one mixer channel, plays as a playlist).
+    public func addMusic() {
+        let urls = pickAudioFiles()
+        guard !urls.isEmpty, let e = engine else { return }
+        e.addMusic(urls: urls)
+        reloadAudioChannels()
+    }
+
+    public func addTracks(toMusic channelID: String) {
+        guard let m = engine?.musicPlayer(channelID: channelID) else { return }
+        let urls = pickAudioFiles()
+        guard !urls.isEmpty else { return }
+        m.setTracks(m.tracks + urls)
+    }
+
+    public func musicPlayer(_ channelID: String) -> MusicPlayer? { engine?.musicPlayer(channelID: channelID) }
+
+    public func removeMusic(_ channelID: String) {
+        guard let m = engine?.musicPlayer(channelID: channelID) else { return }
+        engine?.removeMusic(id: m.id)
         reloadAudioChannels()
     }
 
@@ -605,6 +714,8 @@ public final class ChannelVM: ObservableObject, Identifiable {
     @Published public var eqHigh: Double { didSet { channel.controls.eqHighDB.value = Float(eqHigh) } }
     /// Audio of a video-file input (removed together with the input, not from the mixer).
     public var isFileChannel: Bool { channel.id.hasPrefix("file:") }
+    /// Channel of a music input (removed with the music input).
+    public var isMusicChannel: Bool { channel.id.hasPrefix(ProductionEngine.musicChannelPrefix) }
 
     public init(channel: MixerChannel) {
         self.channel = channel
