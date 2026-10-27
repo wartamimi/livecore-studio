@@ -9,8 +9,15 @@ OUT="${2:-build/LiveCoreStudio-0.4.0-unsigned.dmg}"
 STAGE="$(mktemp -d)"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
-rm -f "$OUT"
-hdiutil create -volname "LiveCore Studio" -srcfolder "$STAGE" -ov -format UDZO "$OUT"
+# hdiutil on CI runners sometimes fails transiently ("Resource temporarily unavailable"): retry.
+ok=0
+for attempt in 1 2 3; do
+  rm -f "$OUT"
+  if hdiutil create -volname "LiveCore Studio" -srcfolder "$STAGE" -ov -format UDZO "$OUT" && sleep 2 && hdiutil verify "$OUT"; then
+    ok=1; break
+  fi
+  echo "hdiutil attempt $attempt failed, retrying…"; sleep $((attempt * 5))
+done
 rm -rf "$STAGE"
-hdiutil verify "$OUT"
+[ "$ok" = 1 ] || { echo "DMG creation failed after 3 attempts"; exit 1; }
 echo "DMG: $OUT"
