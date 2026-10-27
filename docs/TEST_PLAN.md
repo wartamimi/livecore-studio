@@ -49,6 +49,14 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## J. Tes manual build 0.9.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-41 | Fullscreen output | Sambungkan monitor/proyektor; klik kanan tombol Fullscreen › pilih layar; klik Fullscreen; CUT/AUTO; klik lagi (atau ⌘⇧F) | Program penuh layar di layar pilihan tanpa menu/Dock/UI; jendela utama tetap bisa dipakai; cabut kabel menutup output tanpa crash. Dengan satu layar, Esc menutup |
+| T-42 | Bus audio per output | Kirim mic ke Bus A saja (tombol A di channel), musik ke Master saja; Pengaturan › Rekam › Bus audio = Bus A; rekam 30 dtk; stream dengan satu tujuan Bus A dan satu Master | Rekaman hanya berisi mic; tujuan Bus A hanya mic, tujuan Master berisi musik; lip-sync tetap benar |
+| T-44 | T-bar sampai ujung | Geser T-bar perlahan sampai mentok kanan dan tahan; lepas; geser lagi ke kiri sampai mentok | Tidak ada kedip/bolak-balik di ujung; bar tetap di kanan setelah transisi selesai; geser ke kiri menjalankan transisi berikutnya (seperti vMix) |
+| T-43 | Tambah Media | Input › Tambah Media: pilih 1 mp4 + 1 mp3; lalu Tambah Media Playlist dengan mp3 saja, dan dengan mp4+mp3 | mp4 jadi input video, mp3 jadi input musik di mixer; playlist mp3 jadi musik; playlist campuran jadi input video (klip mp3 tampil hitam, suaranya lewat mixer) |
+
 ## I. Tes manual build 0.8.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

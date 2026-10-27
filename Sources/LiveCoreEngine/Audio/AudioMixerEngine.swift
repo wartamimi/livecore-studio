@@ -67,6 +67,11 @@ public final class AudioMixerEngine {
     /// Program audio for the encoders. Single consumer: `ProgramAudioPump`.
     public let programRingL: SPSCFloatRingBuffer
     public let programRingR: SPSCFloatRingBuffer
+    /// Aux bus audio for the encoders (recording/stream fed from Bus A/B). Written in the same
+    /// block as the program ring, all or nothing, so every encoder ring stays sample-aligned
+    /// with the program ring and shares its clock anchor.
+    public let auxEncodeRingsL: [SPSCFloatRingBuffer]
+    public let auxEncodeRingsR: [SPSCFloatRingBuffer]
     public let anchor = ClockAnchor()
     public let programOverflows = AtomicCounter()
     public private(set) var isRunning = false
@@ -94,6 +99,8 @@ public final class AudioMixerEngine {
     public init() {
         programRingL = SPSCFloatRingBuffer(minimumCapacity: 48_000 * 2)
         programRingR = SPSCFloatRingBuffer(minimumCapacity: 48_000 * 2)
+        auxEncodeRingsL = (0..<Self.auxCount).map { _ in SPSCFloatRingBuffer(minimumCapacity: 48_000 * 2) }
+        auxEncodeRingsR = (0..<Self.auxCount).map { _ in SPSCFloatRingBuffer(minimumCapacity: 48_000 * 2) }
         limiter = Limiter(sampleRate: 48_000)
         func alloc() -> UnsafeMutablePointer<Float> {
             let p = UnsafeMutablePointer<Float>.allocate(capacity: Self.maxFrames)
@@ -230,14 +237,6 @@ public final class AudioMixerEngine {
         master.peakR.storeMax(AudioMath.peak(progR, count: frames))
         master.gainReductionDB.value = limiterEnabled.value ? limiter.gainReductionDB : 0
 
-        // Program ring for encoders/recorder.
-        // Anchor = ring write position of this block's first sample (the consumer timestamps
-        // by ring read position, so dropped samples on overflow never skew the mapping).
-        anchor.publish(sampleIndex: programRingL.totalWritten, hostSeconds: host)
-        let wl = programRingL.write(progL, count: frames)
-        let wr = programRingR.write(progR, count: frames)
-        if wl < frames || wr < frames { programOverflows.add() }
-
         // Aux buses: fader/mute, meters, and the ring of the bus's own output device.
         for b in 0..<Self.auxCount {
             let c = aux[b]
@@ -248,6 +247,24 @@ public final class AudioMixerEngine {
                 _ = auxRingsL[b].write(auxL[b], count: frames)
                 _ = auxRingsR[b].write(auxR[b], count: frames)
             }
+        }
+
+        // Encoder rings (program + aux buses) for the stream/recorder.
+        // Anchor = ring write position of this block's first sample (the consumer timestamps
+        // by ring read position, so dropped samples on overflow never skew the mapping).
+        // Written all or nothing so the buses stay aligned sample for sample.
+        var room = min(programRingL.availableToWrite, programRingR.availableToWrite)
+        for b in 0..<Self.auxCount { room = min(room, auxEncodeRingsL[b].availableToWrite, auxEncodeRingsR[b].availableToWrite) }
+        if room >= frames {
+            anchor.publish(sampleIndex: programRingL.totalWritten, hostSeconds: host)
+            _ = programRingL.write(progL, count: frames)
+            _ = programRingR.write(progR, count: frames)
+            for b in 0..<Self.auxCount {
+                _ = auxEncodeRingsL[b].write(auxL[b], count: frames)
+                _ = auxEncodeRingsR[b].write(auxR[b], count: frames)
+            }
+        } else {
+            programOverflows.add()
         }
 
         // Monitor output.

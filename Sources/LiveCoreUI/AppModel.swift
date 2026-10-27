@@ -27,6 +27,8 @@ public final class AppModel: ObservableObject {
     public let programFeed = FrameFeed()
     public let previewFeed = FrameFeed()
     public let programOutputFeed = FrameFeed()   // external-display window
+    /// vMix-style fullscreen Program output on a chosen display.
+    public private(set) lazy var fullscreen = FullscreenOutput(feed: programOutputFeed)
     public private(set) var thumbnailFeeds: [InputID: FrameFeed] = [:]
 
     // Devices
@@ -122,7 +124,7 @@ public final class AppModel: ObservableObject {
             guard let self else { return }
             for (id, pb) in thumbs { self.feed(for: id).push(pb) }
         }
-        e.onSwitcherChange = { [weak self] s in self?.switcher = s; if s.transition == nil { self?.tbar = 0 } }
+        e.onSwitcherChange = { [weak self] s in self?.switcher = s; if s.transition == nil { self?.tbar = s.tbarRest } }
         e.onInputsChange = { [weak self] list in
             guard let self else { return }
             self.inputs = list
@@ -186,28 +188,43 @@ public final class AppModel: ObservableObject {
         pickFile(types: ["public.image"]) { [weak self] url in self?.engine?.addImage(url: url) }
     }
 
-    public func addVideo() {
-        pickFile(types: ["public.movie"]) { [weak self] url in self?.engine?.addVideoFile(url: url) }
-    }
-
-    private func pickMovies() -> [URL] {
+    /// Media files: video or audio. Several can be picked at once.
+    private func pickMedia() -> [URL] {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
-        panel.allowedContentTypes = [.movie]
+        panel.allowedContentTypes = [.movie, .audio]
         return panel.runModal() == .OK ? panel.urls : []
     }
 
-    /// One input that plays several clips in order.
-    public func addVideoPlaylist() {
-        let urls = pickMovies()
-        guard !urls.isEmpty else { return }
-        engine?.addVideoFile(urls: urls)
+    static func isAudioOnly(_ url: URL) -> Bool {
+        guard let t = UTType(filenameExtension: url.pathExtension.lowercased()) else { return false }
+        return t.conforms(to: .audio) && !t.conforms(to: .movie)
+    }
+
+    /// "Add Media": every picked file becomes its own input. Video files become video inputs
+    /// (with their audio in the mixer); audio files become music inputs (a mixer channel with
+    /// transport controls).
+    public func addMedia() {
+        guard let e = engine else { return }
+        for url in pickMedia() {
+            if Self.isAudioOnly(url) { e.addMusic(urls: [url]) } else { e.addVideoFile(url: url) }
+        }
+        reloadAudioChannels()
+    }
+
+    /// "Add Media Playlist": one input that plays the picked files in order. Only audio files ->
+    /// a music playlist; any video file -> a video playlist (audio-only clips show black).
+    public func addMediaPlaylist() {
+        let urls = pickMedia()
+        guard !urls.isEmpty, let e = engine else { return }
+        if urls.allSatisfy(Self.isAudioOnly) { e.addMusic(urls: urls) } else { e.addVideoFile(urls: urls) }
+        reloadAudioChannels()
     }
 
     public func addClips(to id: InputID) {
         guard let v = videoFile(id) else { return }
-        let urls = pickMovies()
+        let urls = pickMedia()
         guard !urls.isEmpty else { return }
         v.setURLs(v.urls + urls)
         if v.isPlaylist, v.name == v.urls.first?.deletingPathExtension().lastPathComponent { rename(id, "Playlist") }
@@ -384,6 +401,7 @@ public final class AppModel: ObservableObject {
         case .streamToggle: toggleStream()
         case .recordToggle: toggleRecord()
         case .snapshot: saveSnapshot()
+        case .fullscreenToggle: fullscreen.toggle()
         case let .preview(n): previewNumber(n)
         case let .cutDirect(n): if n >= 1, n <= inputs.count { cutDirect(inputs[n - 1].id) }
         case let .overlay(i): toggleOverlay(i)
@@ -398,6 +416,7 @@ public final class AppModel: ObservableObject {
         case .streamToggle: return L10n.t("midi.stream")
         case .recordToggle: return L10n.t("midi.record")
         case .snapshot: return "Snapshot"
+        case .fullscreenToggle: return L10n.t("midi.fullscreen")
         case let .preview(n): return L10n.f("midi.preview", n)
         case let .cutDirect(n): return L10n.f("midi.cut_direct", n)
         case let .overlay(i): return "Overlay \(i)"
@@ -441,14 +460,6 @@ public final class AppModel: ObservableObject {
         panel.canChooseDirectories = false
         panel.allowedContentTypes = [.audio]
         return panel.runModal() == .OK ? panel.urls : []
-    }
-
-    /// Adds a music input with one or more audio files (one mixer channel, plays as a playlist).
-    public func addMusic() {
-        let urls = pickAudioFiles()
-        guard !urls.isEmpty, let e = engine else { return }
-        e.addMusic(urls: urls)
-        reloadAudioChannels()
     }
 
     public func addTracks(toMusic channelID: String) {
@@ -579,9 +590,9 @@ public final class AppModel: ObservableObject {
         if isStreamingActive { e.stopStreaming(); return }
         var targets: [ProductionEngine.StreamTarget] = []
         let st = settings.stream
-        var candidates: [(id: String, name: String, url: String, account: String)] = []
-        if st.primaryEnabled { candidates.append((Self.primaryDestinationID, st.primaryName, st.serverURL, st.keychainAccount)) }
-        for d in st.additional where d.enabled { candidates.append((d.id, d.name, d.serverURL, d.keychainAccount)) }
+        var candidates: [(id: String, name: String, url: String, account: String, bus: OutputBus)] = []
+        if st.primaryEnabled { candidates.append((Self.primaryDestinationID, st.primaryName, st.serverURL, st.keychainAccount, st.primaryAudioBus)) }
+        for d in st.additional where d.enabled { candidates.append((d.id, d.name, d.serverURL, d.keychainAccount, d.bus)) }
         for c in candidates {
             let label = c.name.isEmpty ? c.id : c.name
             do {
@@ -589,7 +600,7 @@ public final class AppModel: ObservableObject {
                 guard let key = try KeychainStore.load(account: c.account), !key.isEmpty else {
                     report(L10n.f("stream.dest_no_key", label)); continue
                 }
-                targets.append(.init(id: c.id, name: label, url: try RTMPURL.parse(serverURL: c.url, streamKey: key)))
+                targets.append(.init(id: c.id, name: label, url: try RTMPURL.parse(serverURL: c.url, streamKey: key), audioBus: c.bus))
             } catch let err as RTMPURL.ParseError {
                 report("\(label): \(err.description)")
             } catch {

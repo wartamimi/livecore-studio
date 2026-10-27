@@ -61,8 +61,8 @@ struct InputPanelView: View {
                 if model.videoDevices.isEmpty { Text(L10n.t("inputs.no_cameras")) }
                 ForEach(model.videoDevices) { d in Button(d.name) { model.addCamera(d) } }
             }
-            Button(L10n.t("inputs.video")) { model.addVideo() }
-            Button(L10n.t("playlist.add")) { model.addVideoPlaylist() }
+            Button(L10n.t("media.add")) { model.addMedia() }
+            Button(L10n.t("media.add_playlist")) { model.addMediaPlaylist() }
             Button(L10n.t("inputs.image")) { model.addImage() }
             Button(L10n.t("inputs.title_generator")) { showTitleSheet = true }
             Button(L10n.t("browser.add")) { showBrowserSheet = true }

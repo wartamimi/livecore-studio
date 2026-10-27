@@ -49,10 +49,44 @@ final class SwitcherTests: XCTestCase {
         XCTAssertTrue(s.update(now: 100).isEmpty)
         s.setTBar(1.0, kind: .dissolve, now: 0)
         XCTAssertEqual(s.state.program, b)
-        // Abort back to 0
+        // The bar now rests at 1; moving it back towards 1 after starting aborts.
+        XCTAssertEqual(s.state.tbarRest, 1)
         s.setPreview(c)
-        s.setTBar(0.5, kind: .dissolve, now: 0); s.setTBar(0, kind: .dissolve, now: 0)
+        s.setTBar(0.5, kind: .dissolve, now: 0); s.setTBar(1, kind: .dissolve, now: 0)
         XCTAssertEqual(s.state.program, b); XCTAssertEqual(s.state.preview, c); XCTAssertNil(s.state.transition)
+    }
+
+    /// Regression: holding the bar at the far end after the transition completed used to start
+    /// a new transition on the next drag event and swap Program back (flicker).
+    func testTBarHeldAtEndDoesNotFlicker() {
+        let s = Switcher()
+        s.setPreview(a); s.cut(); s.setPreview(b)
+        s.setTBar(0.6, kind: .dissolve, now: 0)
+        s.setTBar(1.0, kind: .dissolve, now: 0)
+        XCTAssertEqual(s.state.program, b)
+        for _ in 0..<5 { XCTAssertTrue(s.setTBar(1.0, kind: .dissolve, now: 0).isEmpty) }
+        XCTAssertTrue(s.setTBar(0.998, kind: .dissolve, now: 0).isEmpty, "jitter at the end is ignored")
+        XCTAssertEqual(s.state.program, b); XCTAssertNil(s.state.transition)
+    }
+
+    func testTBarRunsBackwardsForTheNextTransition() {
+        let s = Switcher()
+        s.setPreview(a); s.cut(); s.setPreview(b)
+        s.setTBar(1.0, kind: .dissolve, now: 0)
+        XCTAssertEqual(s.state.program, b); XCTAssertEqual(s.state.preview, a)
+        s.setTBar(0.25, kind: .dissolve, now: 0)
+        XCTAssertEqual(s.state.transition?.manualPosition ?? -1, 0.75, accuracy: 1e-9)
+        s.setTBar(0.0, kind: .dissolve, now: 0)
+        XCTAssertEqual(s.state.program, a); XCTAssertEqual(s.state.preview, b)
+        XCTAssertEqual(s.state.tbarRest, 0)
+    }
+
+    func testTBarDoesNotTakeOverAuto() {
+        let s = Switcher()
+        s.setPreview(a); s.cut(); s.setPreview(b)
+        s.auto(kind: .dissolve, duration: 1, now: 0)
+        XCTAssertTrue(s.setTBar(0.5, kind: .dissolve, now: 0).isEmpty)
+        XCTAssertNil(s.state.transition?.manualPosition)
     }
 
     func testRemovingOnAirInputGoesToBlackWithoutCrash() {

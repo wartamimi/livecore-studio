@@ -234,3 +234,12 @@
 "autoplay.off" = "Mati";
 "autoplay.playPause" = "Putar saat di Program, jeda saat keluar";
 "autoplay.restartPause" = "Mulai dari awal saat di Program, jeda saat keluar";
+"bus.output" = "Bus audio";
+"bus.note" = "Master adalah mix Program. Bus A/B adalah bus aux dari mixer (pakai tombol kirim A/B di tiap channel), misalnya rekaman tanpa musik atau mix berbeda per platform.";
+"fullscreen.button" = "Output fullscreen";
+"fullscreen.help" = "Tampilkan Program penuh layar di layar pilihan (Esc untuk keluar). Klik kanan untuk memilih layar.";
+"fullscreen.display" = "Layar output";
+"fullscreen.none" = "Tidak ada layar";
+"midi.fullscreen" = "Output fullscreen";
+"media.add" = "Tambah Media (video atau audio)…";
+"media.add_playlist" = "Tambah Media Playlist…";

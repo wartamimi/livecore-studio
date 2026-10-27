@@ -81,6 +81,7 @@ struct SettingsView: View {
                     TextField(L10n.t("stream.dest_name"), text: $draft.stream.primaryName, prompt: Text("YouTube"))
                 }
                 TextField(L10n.t("stream.server"), text: $draft.stream.serverURL, prompt: Text("rtmp://a.rtmp.youtube.com/live2"))
+                OutputBusPicker(selection: $draft.stream.primaryAudioBus)
                 SecureField(L10n.t("stream.key"), text: $keyField,
                             prompt: Text(model.hasStreamKey ? "•••••••• (\(L10n.t("stream.key_saved")))" : ""))
                 if model.hasStreamKey {
@@ -98,6 +99,7 @@ struct SettingsView: View {
                         }
                     }
                     TextField(L10n.t("stream.server"), text: $d.serverURL, prompt: Text("rtmps://live-api-s.facebook.com:443/rtmp/"))
+                    OutputBusPicker(selection: Binding(get: { d.bus }, set: { d.audioBus = $0 }))
                     SecureField(L10n.t("stream.key"), text: Binding(get: { destKeys[d.id] ?? "" }, set: { destKeys[d.id] = $0 }),
                                 prompt: Text(model.hasKey(account: d.keychainAccount) ? "•••••••• (\(L10n.t("stream.key_saved")))" : ""))
                 }
@@ -140,6 +142,8 @@ struct SettingsView: View {
             Stepper(value: $draft.recording.bitrateKbps, in: 2_000...50_000, step: 1_000) {
                 LabeledContent(L10n.t("settings.record_bitrate"), value: "\(draft.recording.bitrateKbps)")
             }
+            OutputBusPicker(selection: Binding(get: { draft.recording.bus }, set: { draft.recording.audioBus = $0 }))
+            Text(L10n.t("bus.note")).font(.caption).foregroundStyle(Theme.textDim)
         }
         .formStyle(.grouped)
     }
@@ -233,6 +237,17 @@ struct MIDISettingsView: View {
         }
         .padding(8)
         .onDisappear { model.midiLearning = nil }
+    }
+}
+/// Audio bus feeding an output (recording or one stream destination).
+struct OutputBusPicker: View {
+    @Binding var selection: OutputBus
+    var body: some View {
+        Picker(L10n.t("bus.output"), selection: $selection) {
+            Text("Master").tag(OutputBus.master)
+            Text("Bus A").tag(OutputBus.busA)
+            Text("Bus B").tag(OutputBus.busB)
+        }
     }
 }
 #endif

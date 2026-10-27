@@ -147,7 +147,16 @@ public final class ProgramAudioPump {
         public var left: [Float]
         public var right: [Float]
         public var hostTime: Double      // host time of the first sample
+        /// Aux bus A/B audio for the same samples.
+        public var auxLeft: [[Float]] = []
+        public var auxRight: [[Float]] = []
         public var frames: Int { left.count }
+
+        /// The same chunk carrying the chosen bus in `left`/`right`.
+        public func bus(_ bus: OutputBus) -> Chunk {
+            guard let i = bus.auxIndex, auxLeft.indices.contains(i), auxRight.indices.contains(i) else { return self }
+            return Chunk(left: auxLeft[i], right: auxRight[i], hostTime: hostTime)
+        }
     }
 
     public static let chunkFrames = 1024
@@ -174,14 +183,21 @@ public final class ProgramAudioPump {
     private func startIfNeeded() {
         guard timer == nil else { return }
         // Discard anything buffered while no output was running so timestamps start "now".
-        let stale = min(mixer.programRingL.availableToRead, mixer.programRingR.availableToRead)
-        mixer.programRingL.skip(stale); mixer.programRingR.skip(stale)
+        let stale = available()
+        for r in rings { r.skip(stale) }
         let t = DispatchSource.makeTimerSource(flags: .strict, queue: queue)
         t.schedule(deadline: .now(), repeating: .milliseconds(10), leeway: .milliseconds(2))
         t.setEventHandler { [weak self] in self?.drain() }
         t.resume()
         timer = t
     }
+
+    /// Program and aux encoder rings, read in lockstep (the mixer writes them all or nothing).
+    private var rings: [SPSCFloatRingBuffer] {
+        [mixer.programRingL, mixer.programRingR] + mixer.auxEncodeRingsL + mixer.auxEncodeRingsR
+    }
+
+    private func available() -> Int { rings.map(\.availableToRead).min() ?? 0 }
 
     private func stop() {
         timer?.cancel()
@@ -190,13 +206,17 @@ public final class ProgramAudioPump {
 
     private func drain() {
         let n = Self.chunkFrames
-        while min(mixer.programRingL.availableToRead, mixer.programRingR.availableToRead) >= n {
+        while available() >= n {
             let index = mixer.programRingL.totalRead
-            var l = [Float](repeating: 0, count: n), r = [Float](repeating: 0, count: n)
-            l.withUnsafeMutableBufferPointer { _ = mixer.programRingL.read(into: $0.baseAddress!, count: n) }
-            r.withUnsafeMutableBufferPointer { _ = mixer.programRingR.read(into: $0.baseAddress!, count: n) }
+            func take(_ ring: SPSCFloatRingBuffer) -> [Float] {
+                var a = [Float](repeating: 0, count: n)
+                a.withUnsafeMutableBufferPointer { _ = ring.read(into: $0.baseAddress!, count: n) }
+                return a
+            }
+            let l = take(mixer.programRingL), r = take(mixer.programRingR)
+            let al = mixer.auxEncodeRingsL.map(take), ar = mixer.auxEncodeRingsR.map(take)
             guard let host = mixer.anchor.hostTime(ofSample: index, sampleRate: mixer.sampleRate) else { continue }
-            let chunk = Chunk(left: l, right: r, hostTime: host + Double(syncOffsetSeconds.value))
+            let chunk = Chunk(left: l, right: r, hostTime: host + Double(syncOffsetSeconds.value), auxLeft: al, auxRight: ar)
             let current = sinksLock.withLock { Array(sinks.values) }
             for s in current { s(chunk) }
         }

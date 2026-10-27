@@ -29,6 +29,8 @@ public enum LiveCoreScenes {
                 Divider()
                 Button(model.isStreamingActive ? L10n.t("stream.stop") : L10n.t("stream.start")) { model.toggleStream() }
                 Button(model.isRecording ? L10n.t("record.stop") : L10n.t("record.start")) { model.toggleRecord() }
+                Divider()
+                Button(L10n.t("fullscreen.button")) { model.fullscreen.toggle() }.keyboardShortcut("f", modifiers: [.command, .shift])
             }
         }
 

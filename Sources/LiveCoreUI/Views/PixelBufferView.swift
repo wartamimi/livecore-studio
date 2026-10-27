@@ -26,6 +26,9 @@ public final class FrameFeed {
         for v in views.allObjects { v.layer?.contents = nil }
     }
 
+    /// Attaches a view created outside SwiftUI (fullscreen output window).
+    func attachView(_ v: PixelBufferNSView) { attach(v) }
+
     fileprivate func attach(_ v: PixelBufferNSView) {
         if v.feed !== self {
             v.feed?.views.remove(v)   // SwiftUI reused the view for another feed

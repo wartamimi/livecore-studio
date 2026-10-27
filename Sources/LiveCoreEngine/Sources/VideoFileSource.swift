@@ -55,6 +55,8 @@ public final class VideoFileSource: NSObject, VideoSource {
     private var loadToken = 0
     private var started = false
     private var wantsPlay = true
+    /// False while an audio-only clip is loaded.
+    public private(set) var hasVideo = true
 
     public convenience init(id: InputID, url: URL) { self.init(id: id, urls: [url]) }
 
@@ -97,9 +99,15 @@ public final class VideoFileSource: NSObject, VideoSource {
         let token = loadToken
         let asset = AVURLAsset(url: urls[i])
         asset.loadTracks(withMediaType: .audio) { [weak self] tracks, _ in
-            DispatchQueue.main.async {
-                guard let self, token == self.loadToken else { return }
-                self.install(asset: asset, audioTrack: tracks?.first)
+            asset.loadTracks(withMediaType: .video) { videoTracks, _ in
+                DispatchQueue.main.async {
+                    guard let self, token == self.loadToken else { return }
+                    // Audio-only clips (mixed media playlists) show black instead of the
+                    // previous clip's last frame.
+                    self.hasVideo = !(videoTracks ?? []).isEmpty
+                    if !self.hasVideo { self.slot.clear() }
+                    self.install(asset: asset, audioTrack: tracks?.first)
+                }
             }
         }
     }
