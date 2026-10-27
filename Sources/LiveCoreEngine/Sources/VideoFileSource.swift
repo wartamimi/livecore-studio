@@ -164,8 +164,10 @@ final class FileAudioTapContext {
                 Unmanaged<FileAudioTapContext>.fromOpaque(MTAudioProcessingTapGetStorage(tap))
                     .takeUnretainedValue().process(bufferList, frames: Int(framesOut.pointee))
             })
-        var tap: MTAudioProcessingTap?
-        let err = MTAudioProcessingTapCreate(kCFAllocatorDefault, &callbacks, kMTAudioProcessingTapCreationFlag_PreEffects, &tap)
+        // The macOS SDK returns the tap as a +1 Unmanaged reference.
+        var tapRef: Unmanaged<MTAudioProcessingTap>?
+        let err = MTAudioProcessingTapCreate(kCFAllocatorDefault, &callbacks, kMTAudioProcessingTapCreationFlag_PreEffects, &tapRef)
+        let tap = tapRef?.takeRetainedValue()
         if err != noErr || tap == nil {
             Unmanaged.passUnretained(ctx).release()   // balance passRetained: the tap will never finalize
             Log.audio.error("MTAudioProcessingTapCreate failed: \(err)")
