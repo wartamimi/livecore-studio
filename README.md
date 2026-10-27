@@ -4,7 +4,11 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: Milestone 1 — kode lengkap, belum terverifikasi di Mac.**
+> **Status: Milestone 2 (0.2.0) dalam pengembangan.** Fungsi inti M1 (kamera, CUT/AUTO, meter, rekam, stream) dilaporkan
+> berfungsi di Mac pengguna. M2 menambah audio file video ke mixer, noise gate, chroma key, Multiview, dan simpan/muat
+> proyek — dikompilasi & diuji unit, menunggu tes perangkat T-17..T-22.
+>
+> Catatan M1 sebelumnya:
 > Logika inti (switcher, transisi, DSP audio, FLV/RTMP) lulus 47 unit test dan uji end-to-end RTMP ke server nyata
 > (ffmpeg) di Linux. Seluruh kode khusus macOS sudah ditulis dan lolos *syntax parse*, tetapi **belum dikompilasi atau
 > dijalankan di macOS** karena lingkungan pembuatan tidak memiliki Mac/Xcode. Milestone 1 baru dinyatakan selesai setelah
@@ -13,7 +17,7 @@ tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 ## Mulai cepat (di Mac)
 ```bash
 brew install xcodegen ffmpeg
-swift test                        # 47 unit test inti
+swift test                        # 61 unit test inti
 scripts/rtmp_e2e_test.sh          # uji RTMP end-to-end ke server ffmpeg lokal
 scripts/build_macos.sh release    # generate Xcode project + build .app (Universal)
 open build/DerivedData/Build/Products/Release/LiveCoreStudio.app
@@ -32,6 +36,10 @@ Kebutuhan: macOS 13 Ventura+, **Xcode 16+ lengkap** (bukan hanya Command Line To
 4. Overlay 1–4: pilih sumber + layout (lower third, PiP), klik nomor untuk on/off (fade).
 5. ⚙︎ Settings → Stream: URL + key (disimpan di Keychain) → **Start Stream** (⌘L). **Start Recording** (⌘R).
 6. Jendela Program Output (ikon ⧉) dapat diseret ke monitor/proyektor eksternal → ⌃⌘F.
+7. **Multiview** (ikon grid): Preview, Program, dan semua input dengan tally — cocok untuk monitor kedua.
+8. **Chroma key**: klik kanan input kamera/file/gambar → Chroma Key…; lalu jadikan layer PiP atau overlay di atas latar.
+9. **File video dengan suara** otomatis mendapat kanal mixer (ikon film). **Noise gate**: tombol DSP di kanal.
+10. **Proyek**: File › Save Project (⌘S) / Open Project (⌘O) menyimpan input, layer, overlay, key, mixer (tanpa stream key).
 
 ## Struktur proyek
 ```
@@ -67,7 +75,8 @@ docs/                         Dokumentasi (lihat di bawah)
 ## Roadmap
 - **M1 Working MVP** (kode selesai, menunggu verifikasi Mac): input kamera/file/gambar/teks/warna, Preview/Program,
   CUT/Dissolve/Fade/Wipe/T-bar, overlay & PiP dasar, mixer + compressor/limiter + meter, RTMP/RTMPS + reconnect, rekaman MP4/MOV.
-- **M2 Production Workflow**: audio file video ke mixer, resampler drift, noise gate/EQ, multiview, editor scene visual,
-  simpan/muat proyek, chroma key, browser source (dievaluasi), capture 4:2:0, optimasi performa.
+- **M2 Production Workflow** — selesai di kode (0.2.0, menunggu tes perangkat): audio file video ke mixer, noise gate,
+  multiview, simpan/muat proyek, chroma key. Masih planned di M2: koreksi drift clock (resampler adaptif), EQ,
+  editor scene visual (drag-resize), browser source (evaluasi keamanan), capture 4:2:0, optimasi performa.
 - **M3 Broadcast Expansion**: Blackmagic DeckLink, AJA/Magewell SDK, NDI, stinger & transisi lanjutan, output SDI/HDMI,
   routing audio lanjutan (aux/mix-minus), multi-destination streaming, profil operator.
