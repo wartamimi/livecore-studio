@@ -64,6 +64,77 @@ public final class ColorSource: VideoSource {
     public func currentFrame() -> CVPixelBuffer? { frame }
 }
 
+/// SMPTE-style colour bars (75 % bars, castellations, -I / white / +Q and a PLUGE), like the
+/// "Colour Bars" input of vision mixers. Drawn once at the output size.
+public final class ColorBarsSource: VideoSource {
+    public let id: InputID
+    public let kind: InputKind = .colorBars
+    public var name: String
+    public private(set) var status: SourceStatus = .live
+    public var onStatusChange: ((SourceStatus) -> Void)?
+    private var frame: CVPixelBuffer?
+
+    public init(id: InputID, size: PixelSize, name: String = "Colour Bars") {
+        self.id = id; self.name = name
+        frame = Self.render(width: max(2, size.width), height: max(2, size.height))
+    }
+
+    static func render(width w: Int, height h: Int) -> CVPixelBuffer? {
+        PixelBufferFactory.draw(width: w, height: h) { ctx in
+            func rgb(_ r: Int, _ g: Int, _ b: Int) -> CGColor {
+                CGColor(srgbRed: CGFloat(r) / 255, green: CGFloat(g) / 255, blue: CGFloat(b) / 255, alpha: 1)
+            }
+            let W = CGFloat(w), H = CGFloat(h)
+            // CoreGraphics origin is bottom-left: draw the bands from the top down.
+            func band(_ top: CGFloat, _ height: CGFloat, _ cells: [(CGFloat, CGColor)]) {
+                var x: CGFloat = 0
+                for (frac, color) in cells {
+                    ctx.setFillColor(color)
+                    let cw = (frac * W).rounded()
+                    ctx.fill(CGRect(x: x, y: H - top - height, width: x + cw > W - 1 ? W - x : cw, height: height))
+                    x += cw
+                }
+            }
+            let seventh = 1.0 / 7.0
+            let main = [(191, 191, 191), (191, 191, 0), (0, 191, 191), (0, 191, 0), (191, 0, 191), (191, 0, 0), (0, 0, 191)]
+            band(0, (H * 2 / 3).rounded(), main.map { (CGFloat(seventh), rgb($0.0, $0.1, $0.2)) })
+            let castle = [(0, 0, 191), (19, 19, 19), (191, 0, 191), (19, 19, 19), (0, 191, 191), (19, 19, 19), (191, 191, 191)]
+            band((H * 2 / 3).rounded(), (H / 12).rounded(), castle.map { (CGFloat(seventh), rgb($0.0, $0.1, $0.2)) })
+            let top3 = (H * 2 / 3).rounded() + (H / 12).rounded()
+            let q = 5.0 / 4.0 * seventh
+            let pluge = seventh / 3
+            band(top3, H - top3, [
+                (CGFloat(q), rgb(0, 33, 76)), (CGFloat(q), rgb(255, 255, 255)), (CGFloat(q), rgb(50, 0, 106)),
+                (CGFloat(q), rgb(19, 19, 19)),
+                (CGFloat(pluge), rgb(9, 9, 9)), (CGFloat(pluge), rgb(19, 19, 19)), (CGFloat(pluge), rgb(29, 29, 29)),
+                (CGFloat(seventh), rgb(19, 19, 19)),
+            ])
+        }
+    }
+
+    public func start() {}
+    public func stop() {}
+    public func currentFrame() -> CVPixelBuffer? { frame }
+}
+
+/// Empty, transparent canvas: a vMix-style scene whose picture is made of its layers only.
+public final class SceneSource: VideoSource {
+    public let id: InputID
+    public let kind: InputKind = .scene
+    public var name: String
+    public private(set) var status: SourceStatus = .live
+    public var onStatusChange: ((SourceStatus) -> Void)?
+    private let frame: CVPixelBuffer?
+
+    public init(id: InputID, name: String) {
+        self.id = id; self.name = name
+        frame = PixelBufferFactory.draw(width: 32, height: 18) { _ in }   // cleared = transparent
+    }
+    public func start() {}
+    public func stop() {}
+    public func currentFrame() -> CVPixelBuffer? { frame }
+}
+
 /// Title / lower-third generator rendered with CoreText into a transparent buffer.
 /// Re-rendered only when the text or style changes (never per frame).
 public final class TextSource: VideoSource {

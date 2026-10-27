@@ -4,7 +4,10 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.14.0 — Milestone 3 berjalan.** 0.14.0 memperbaiki Lottie .json yang tidak tampil, menghapus menu Tambah
+> **Status: 0.15.0 — Milestone 3 berjalan.** 0.15.0 menghapus Lottie, menambah input Scene + template tata letak,
+> Colour Bars, tombol fullscreen per input, pengaturan capture card, Properti Audio per kanal, dan transparansi + tepi
+> halus untuk media transparan — menunggu tes T-61..T-66. Virtual camera: blocked (butuh akun Apple Developer).
+> 0.14.0 memperbaiki Lottie .json yang tidak tampil, menghapus menu Tambah
 > Bentuk, menambah tombol "x" untuk menutup source, gembok untuk source / streaming / rekaman, konfirmasi Stop, dan
 > rekam otomatis saat streaming — menunggu tes T-57..T-60.
 > 0.13.2 memperbaiki crash saat dibuka di 0.13.0/0.13.1 (Lottie kini di-link statis).

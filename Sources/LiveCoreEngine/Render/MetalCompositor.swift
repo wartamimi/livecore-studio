@@ -32,6 +32,7 @@ public final class MetalCompositor {
     private var programPool: CVPixelBufferPool?
     private var previewPool: CVPixelBufferPool?
     private var thumbPool: CVPixelBufferPool?
+    private var detailPool: CVPixelBufferPool?
     public private(set) var outputSize: PixelSize
     public var previewSize: PixelSize { LayoutMath.evenSize(PixelSize(width: outputSize.width / 2, height: outputSize.height / 2)) }
     /// Input thumbnails, also used by the Multiview window (large enough for a 4-column grid).
@@ -132,6 +133,7 @@ public final class MetalCompositor {
         programPool = PixelBufferFactory.makePool(width: outputSize.width, height: outputSize.height, minimumCount: 6)
         previewPool = PixelBufferFactory.makePool(width: previewSize.width, height: previewSize.height, minimumCount: 4)
         thumbPool = PixelBufferFactory.makePool(width: Self.thumbnailSize.width, height: Self.thumbnailSize.height, minimumCount: 24)
+        detailPool = PixelBufferFactory.makePool(width: outputSize.width, height: outputSize.height, minimumCount: 3)
         let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: outputSize.width,
                                                           height: outputSize.height, mipmapped: false)
         td.usage = [.renderTarget, .shaderRead]
@@ -144,6 +146,8 @@ public final class MetalCompositor {
         public var program: CVPixelBuffer?
         public var preview: CVPixelBuffer?
         public var thumbnails: [InputID: CVPixelBuffer]
+        /// Full-size picture of `FramePlan.detail` (transparent background), nil when not requested.
+        public var detail: CVPixelBuffer? = nil
         public var gpuMs: Double
     }
 
@@ -151,8 +155,7 @@ public final class MetalCompositor {
     /// `completion` runs on a Metal completion thread once the GPU finished; the returned buffers
     /// are safe to read/encode from then on.
     /// `keys` holds the enabled chroma keys, so thumbnails show the keyed picture too.
-    public func render(plan: FramePlan, frames: [InputID: CVPixelBuffer], thumbnailsFor: [InputID],
-                       keys: [InputID: ChromaKey] = [:],
+    public func render(plan: FramePlan, frames: [InputID: CVPixelBuffer],
                        completion: @escaping (Result) -> Void) -> Bool {
         guard let cb = queue.makeCommandBuffer(), let programPool, let previewPool,
               let programPB = makeBuffer(programPool), let previewPB = makeBuffer(previewPool),
@@ -160,10 +163,14 @@ public final class MetalCompositor {
         else { return false }
         var keepAlive: [CVMetalTexture] = [programTex.cv, previewTex.cv]
         var textures: [InputID: (MTLTexture, PixelSize)] = [:]
+        var straightSources = Set<InputID>()
         for (id, pb) in frames {
             if let t = texture(for: pb) {
                 keepAlive.append(t.cv)
                 textures[id] = (t.tex, PixelSize(width: CVPixelBufferGetWidth(pb), height: CVPixelBufferGetHeight(pb)))
+                // Clips with an alpha channel (ProRes 4444, HEVC with alpha) are tagged as straight
+                // alpha by VideoFileSource; they are premultiplied while drawing.
+                if Self.isTaggedStraight(pb) { straightSources.insert(id) }
             }
         }
 
@@ -177,8 +184,8 @@ public final class MetalCompositor {
 
         // Program (with optional transition) + overlays.
         if let t = plan.transition, t.kind != .cut, let a = intermediateA, let b = intermediateB {
-            drawComposition(cb, target: a, size: outputSize, layers: plan.program, textures: textures, load: .clear)
-            drawComposition(cb, target: b, size: outputSize, layers: t.incoming, textures: textures, load: .clear)
+            drawComposition(cb, target: a, size: outputSize, layers: plan.program, textures: textures, load: .clear, straight: straightSources)
+            drawComposition(cb, target: b, size: outputSize, layers: t.incoming, textures: textures, load: .clear, straight: straightSources)
             let rp = passDescriptor(programTex.tex, load: .dontCare)
             if let enc = cb.makeRenderCommandEncoder(descriptor: rp) {
                 var verts = quad(dest: PixelRect(x: 0, y: 0, width: Double(outputSize.width), height: Double(outputSize.height)),
@@ -202,37 +209,54 @@ public final class MetalCompositor {
                 enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
                 enc.endEncoding()
             }
-            drawComposition(cb, target: programTex.tex, size: outputSize, layers: plan.overlays + top, textures: textures, load: .load)
+            drawComposition(cb, target: programTex.tex, size: outputSize, layers: plan.overlays + top, textures: textures, load: .load,
+                            straight: straightSources)
         } else {
             drawComposition(cb, target: programTex.tex, size: outputSize, layers: plan.program + plan.overlays + top,
-                            textures: textures, load: .clear)
+                            textures: textures, load: .clear, straight: straightSources)
         }
-        drawComposition(cb, target: previewTex.tex, size: previewSize, layers: plan.preview, textures: textures, load: .clear)
+        drawComposition(cb, target: previewTex.tex, size: previewSize, layers: plan.preview, textures: textures, load: .clear,
+                        straight: straightSources)
 
-        // Thumbnails (caller decides the rate).
+        // Thumbnails (caller decides the rate): each input's whole scene on a transparent background.
         var thumbs: [InputID: CVPixelBuffer] = [:]
         if let thumbPool {
-            for id in thumbnailsFor {
-                guard textures[id] != nil, let pb = makeBuffer(thumbPool, threshold: 96), let t = texture(for: pb) else { continue }
+            for (id, layers) in plan.thumbnails {
+                guard layers.contains(where: { textures[$0.source] != nil }),
+                      let pb = makeBuffer(thumbPool, threshold: 96), let t = texture(for: pb) else { continue }
                 keepAlive.append(t.cv)
-                drawComposition(cb, target: t.tex, size: Self.thumbnailSize,
-                                layers: [DrawCommand(source: id, rect: .full, scaleMode: .fit, opacity: 1, key: keys[id])],
-                                textures: textures, load: .clear)
+                drawComposition(cb, target: t.tex, size: Self.thumbnailSize, layers: layers, textures: textures,
+                                load: .clear, transparent: true, straight: straightSources)
                 thumbs[id] = pb
             }
+        }
+        // Per-input viewer at full output size.
+        var detailPB: CVPixelBuffer?
+        if let layers = plan.detail, let detailPool, let pb = makeBuffer(detailPool), let t = texture(for: pb) {
+            keepAlive.append(t.cv)
+            drawComposition(cb, target: t.tex, size: outputSize, layers: layers, textures: textures,
+                            load: .clear, transparent: true, straight: straightSources)
+            detailPB = pb
         }
 
         cb.addCompletedHandler { buffer in
             _ = keepAlive // CVMetalTextures must outlive GPU use
             let gpuMs = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
             let ok = buffer.status == .completed
-            completion(Result(program: ok ? programPB : nil, preview: ok ? previewPB : nil, thumbnails: ok ? thumbs : [:], gpuMs: gpuMs))
+            completion(Result(program: ok ? programPB : nil, preview: ok ? previewPB : nil, thumbnails: ok ? thumbs : [:],
+                              detail: ok ? detailPB : nil, gpuMs: gpuMs))
         }
         cb.commit()
         return true
     }
 
     // MARK: Helpers
+
+    /// Explicitly tagged as straight alpha (untagged buffers are our own premultiplied ones or opaque).
+    static func isTaggedStraight(_ pb: CVPixelBuffer) -> Bool {
+        guard let mode = CVBufferCopyAttachment(pb, kCVImageBufferAlphaChannelModeKey, nil) as? String else { return false }
+        return mode == (kCVImageBufferAlphaChannelMode_StraightAlpha as String)
+    }
 
     static func hasStraightAlpha(_ pb: CVPixelBuffer) -> Bool {
         guard let mode = CVBufferCopyAttachment(pb, kCVImageBufferAlphaChannelModeKey, nil) as? String else { return true }
@@ -258,12 +282,15 @@ public final class MetalCompositor {
     }
 
     private func drawComposition(_ cb: MTLCommandBuffer, target: MTLTexture, size: PixelSize, layers: [DrawCommand],
-                                 textures: [InputID: (MTLTexture, PixelSize)], load: MTLLoadAction) {
-        let rp = passDescriptor(target, load: load)
+                                 textures: [InputID: (MTLTexture, PixelSize)], load: MTLLoadAction,
+                                 transparent: Bool = false, straight: Set<InputID> = []) {
+        let rp = passDescriptor(target, load: load, transparent: transparent)
         guard let enc = cb.makeRenderCommandEncoder(descriptor: rp) else { return }
         let canvas = PixelRect(x: 0, y: 0, width: Double(size.width), height: Double(size.height))
         for (i, layer) in layers.enumerated() {
             guard let entry = textures[layer.source], layer.opacity > 0.001 else { continue }
+            var layer = layer
+            if straight.contains(layer.source) { layer.premultiply = true }
             let (tex, srcSize) = entry
             // Clip to the layer box (crop for .fill, plus the layer's own crop) and to the canvas.
             guard let draw = LayerDraw.compute(rect: layer.rect, source: srcSize, mode: layer.scaleMode,
@@ -272,7 +299,7 @@ public final class MetalCompositor {
             let masked = layer.key == nil && (layer.style?.needsMask ?? false)
             // The first layer drawn onto a cleared (opaque black) target is a plain copy when it is
             // fully opaque content; everything else uses premultiplied "over" blending.
-            let opaqueCopy = i == 0 && load == .clear && layer.opacity >= 0.999 && layer.rect == .full
+            let opaqueCopy = !transparent && i == 0 && load == .clear && layer.opacity >= 0.999 && layer.rect == .full
                 && layer.scaleMode != .fit && layer.key == nil && !masked && (layer.style?.crop.isNone ?? true)
             var verts = quad(dest: dest, uv: (Float(draw.uv.0), Float(draw.uv.1), Float(draw.uv.2), Float(draw.uv.3)), canvas: size)
             enc.setVertexBytes(&verts, length: MemoryLayout<Float>.stride * verts.count, index: 0)
@@ -306,11 +333,11 @@ public final class MetalCompositor {
         enc.endEncoding()
     }
 
-    private func passDescriptor(_ tex: MTLTexture, load: MTLLoadAction) -> MTLRenderPassDescriptor {
+    private func passDescriptor(_ tex: MTLTexture, load: MTLLoadAction, transparent: Bool = false) -> MTLRenderPassDescriptor {
         let rp = MTLRenderPassDescriptor()
         rp.colorAttachments[0].texture = tex
         rp.colorAttachments[0].loadAction = load
-        rp.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+        rp.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: transparent ? 0 : 1)
         rp.colorAttachments[0].storeAction = .store
         return rp
     }

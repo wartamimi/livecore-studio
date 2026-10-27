@@ -231,6 +231,12 @@ public final class VideoFileSource: NSObject, VideoSource {
         let t = output.itemTime(forHostTime: CACurrentMediaTime())
         if output.hasNewPixelBuffer(forItemTime: t),
            let pb = output.copyPixelBuffer(forItemTime: t, itemTimeForDisplay: nil) {
+            // Decoders leave clips with an alpha channel (ProRes 4444, HEVC with alpha) untagged or
+            // tag them straight; mark untagged ones so the compositor premultiplies (opaque clips have
+            // alpha 1 everywhere, so this changes nothing for them).
+            if CVBufferCopyAttachment(pb, kCVImageBufferAlphaChannelModeKey, nil) == nil {
+                CVBufferSetAttachment(pb, kCVImageBufferAlphaChannelModeKey, kCVImageBufferAlphaChannelMode_StraightAlpha, .shouldNotPropagate)
+            }
             slot.put(pb)
         }
         return slot.get()

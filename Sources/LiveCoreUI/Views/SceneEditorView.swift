@@ -38,15 +38,18 @@ struct SceneEditorSheet: View {
         }
     }
 
+    private var isScene: Bool { model.inputs.first { $0.id == input }?.kind == .scene }
+
     // MARK: Canvas
 
     private var canvas: some View {
         GeometryReader { geo in
             let size = geo.size
             ZStack(alignment: .topLeading) {
-                Rectangle().fill(Color.black)
+                if isScene { Checkerboard(cell: 10) } else { Rectangle().fill(Color.black) }
                 ForEach(Array(layers.enumerated()), id: \.offset) { i, layer in
-                    layerView(i, layer, canvas: size)
+                    // A scene's own base layer is an empty canvas (its thumbnail is the whole scene).
+                    if !(isScene && i == 0) { layerView(i, layer, canvas: size) }
                 }
                 // Title-safe guides (5 %).
                 Rectangle().stroke(Color.white.opacity(0.15), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
@@ -64,7 +67,7 @@ struct SceneEditorSheet: View {
         let frame = CGRect(x: r.x * canvas.width, y: r.y * canvas.height, width: r.width * canvas.width, height: r.height * canvas.height)
         let isSel = i == selected
         return ZStack(alignment: .topLeading) {
-            PixelBufferView(feed: model.feed(for: layer.source))
+            PixelBufferView(feed: model.feed(for: layer.source), transparent: true)
                 .opacity(layer.opacity)
                 .frame(width: frame.width, height: frame.height)
                 .clipShape(EditorShape(style: layer.style))
@@ -125,6 +128,16 @@ struct SceneEditorSheet: View {
                 Button { showAddMenu() } label: { Label(L10n.t("scene.add_layer"), systemImage: "plus") }
                     .font(.system(size: 11))
             }
+            Picker(L10n.t("scene.template"), selection: Binding(get: { SceneTemplate?.none }, set: { t in
+                guard let t else { return }
+                layers = t.apply(to: layers, skip: isScene ? 1 : 0)
+                model.setLayers(layers, of: input)
+            })) {
+                Text("—").tag(SceneTemplate?.none)
+                ForEach(SceneTemplate.allCases, id: \.self) { t in Text(L10n.t("scene.template.\(t.rawValue)")).tag(Optional(t)) }
+            }
+            .font(.system(size: 11))
+            .help(L10n.t("scene.template_help"))
             List(selection: Binding(get: { selected }, set: { if let v = $0 { selected = v } })) {
                 ForEach(Array(layers.enumerated()).reversed(), id: \.offset) { i, l in
                     Text("\(i + 1)  \(name(l.source))\(i == 0 ? " (\(L10n.t("scene.base")))" : "")").tag(i)

@@ -26,21 +26,20 @@ jobs:
       - run: scripts/ci_run.sh macos-swift-build swift build --build-tests
       - run: scripts/ci_run.sh macos-swift-test swift test
       - run: scripts/ci_run.sh macos-metal-shaders scripts/check_shaders.sh
-      - run: scripts/ci_run.sh macos-lottie-render swift run livecore-lottie-check
       - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
       - run: scripts/ci_run.sh macos-app-build scripts/build_macos.sh release
       - run: scripts/ci_run.sh macos-dmg scripts/make_dmg.sh
       - uses: actions/upload-artifact@v4
         with:
           name: LiveCoreStudio-dmg
-          path: build/LiveCoreStudio-0.14.0-unsigned.dmg
+          path: build/LiveCoreStudio-0.15.0-unsigned.dmg
       - name: Publish DMG as pre-release (main and claude/* development branches)
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/claude/'))
         run: |
           if [ "$GITHUB_REF" = "refs/heads/main" ]; then TAG="build-${GITHUB_RUN_NUMBER}"; else TAG="dev-build-${GITHUB_RUN_NUMBER}"; fi
-          gh release create "$TAG" build/LiveCoreStudio-0.14.0-unsigned.dmg \
-            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.14.0 build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
-            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. New features are compiled and unit-tested but need hardware verification; see docs/TEST_PLAN.md (T-54 onwards: Lottie, layer style tools, overlay to Preview; T-57..T-60 for 0.14.0: Lottie fix, close and lock sources, stream/record locks)."
+          gh release create "$TAG" build/LiveCoreStudio-0.15.0-unsigned.dmg \
+            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.15.0 build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
+            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. New features are compiled and unit-tested but need hardware verification; see docs/TEST_PLAN.md (T-61..T-66 for 0.15.0: scenes and layouts, transparency, source viewer, capture card settings, audio properties, colour bars)."
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

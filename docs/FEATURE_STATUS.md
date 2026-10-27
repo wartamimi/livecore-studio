@@ -19,6 +19,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 |---|---|---|---|
 | Penemuan kamera USB/UVC & built-in, hot-plug | Implemented | M | `DeviceManager` |
 | Input kamera (pemilihan format sesuai output) | Implemented | U | `CameraSource` |
+| Pengaturan capture card (resolusi, frame rate, cermin, audio perangkat) saat menambah & sesudahnya | Implemented (0.15.0), belum dites | L (pemilihan format, proyek) + kompilasi CI | Disimpan di proyek |
 | Input file video (loop, play/pause/restart) | Implemented | U (video) + M (audio) | M2: audio file masuk kanal mixer sendiri via MTAudioProcessingTap, resample ke 48 kHz |
 | Input gambar (PNG alpha, JPEG, HEIC…) | Implemented | M | |
 | Input warna | Implemented | M | |
@@ -32,7 +33,11 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Overlay ke Preview (klik, oranye) / ke Program (klik dua jari / kanan, hijau) | Implemented (0.13.0), belum dites | L (planner + take, unit test) + kompilasi CI | Overlay di Preview ikut ke Program saat CUT/AUTO/T-bar. MIDI dan shortcut overlay tetap langsung ke Program. Belum dites (T-55) |
 | Gaya layer: crop 4 sisi, sudut bulat, elips/lingkaran, border + warna | Implemented (0.13.0), belum dites | L (geometri crop/mask, 5 unit test) + kompilasi shader CI | Di editor scene › Gaya. Crop juga berlaku untuk layer chroma key; sudut/elips/border tidak (dilewati bila chroma key aktif). Belum dites (T-54) |
 | Bentuk (kotak, kotak bulat, lingkaran) di editor scene | Dihapus (0.14.0) | — | Atas permintaan pengguna. Gaya layer (crop, sudut bulat, elips, border) tetap ada |
-| Input Lottie (.json / .lottie) | Implemented (0.13.0), diperbaiki 0.14.0 | L (proyek) + render piksel di CI macOS (`livecore-lottie-check`) + M | 0.13.x tidak menampilkan apa pun: layer komposisi tidak diposisikan dan orientasinya salah. Transparan; Play/Pause/Restart, Loop, Auto play |
+| Input Lottie (.json / .lottie) | Dihapus (0.15.0) | — | Atas permintaan pengguna: tidak tampil di Mac pengguna. Proyek lama tetap terbuka (input dilewati) |
+| Input Scene (kanvas kosong) + 7 template tata letak (penuh, PiP, berdampingan, grid 2×2, 1+2, tiga, wawancara) | Implemented (0.15.0), belum dites | L (template, proyek, thumbnail scene) + kompilasi CI | Seperti scene vMix: isi dengan layer di editor scene; thumbnail menampilkan isi scene |
+| Input Colour Bars (SMPTE) | Implemented (0.15.0), belum dites | L (proyek) + kompilasi CI | Gambar saja, tanpa nada audio |
+| Tombol fullscreen per input (penampil source) | Implemented (0.15.0), belum dites | L (plan detail) + kompilasi CI | Jendela besar resolusi output, papan catur untuk transparansi, tombol layar penuh / Preview / Cut |
+| Transparansi & tepi halus | Implemented (0.15.0), belum dites | kompilasi shader CI | Tile & editor scene transparan (papan catur); sampling 4-tap saat gambar diperkecil; video ber-alpha di-premultiply di semua layer (sebelumnya hanya stinger) |
 | Picture-in-Picture (layer pada input / overlay preset PiP) | Implemented | L + M | Preset posisi + editor scene (drag, resize). 0.13.0: tombol "Tambah Layer" diperbaiki (dulu menu tidak terbuka) |
 | Scene composition / editor layer visual | Implemented (0.3.0) | L (geometri) + M | Seret untuk pindah, sudut untuk resize (kunci rasio), snap ke tengah/safe area, urutan, opasitas, skala, preset |
 | Scaling fit/fill/stretch & aspect ratio | Implemented | L + M | `LayoutMath` teruji |
@@ -60,6 +65,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 |---|---|---|---|
 | Pemilihan input (semua perangkat input macOS) | Implemented | M | |
 | Kanal multi-input, fader, trim, pan | Implemented | L (DSP) + M | |
+| Properti audio per kanal (nama, mode kanal, balik fase, delay 0–1000 ms, attack/release/makeup kompresor, range gate, routing, AFV) | Implemented (0.15.0), belum dites | L (mode kanal, delay, fase) + kompilasi CI | Jendela Properti Audio ala vMix; disimpan di proyek |
 | Mute | Implemented | L + M | |
 | Solo (ke bus monitor) | Implemented | M | |
 | Routing ke Program on/off | Implemented | M | |
@@ -114,6 +120,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Blackmagic DeckLink (Desktop Video SDK) | Blocked → Planned M3 | Perlu SDK (EULA, registrasi) + perangkat uji |
 | AJA / Magewell Pro | Planned M3 | Perlu SDK vendor |
 | NDI | Blocked → Planned M3 | Perlu NDI SDK + kepatuhan lisensi |
+| Virtual camera (seperti OBS) | **Blocked** | Butuh CoreMediaIO Camera Extension yang ditandatangani dengan akun Apple Developer; build ad-hoc tidak bisa memasangnya. Lihat KNOWN_ISSUES 44 |
 
 ## Kontrol
 | Fitur | Status | Verifikasi | Catatan |

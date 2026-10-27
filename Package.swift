@@ -25,18 +25,12 @@ let package = Package(
         .library(name: "LiveCoreEngine", targets: ["LiveCoreEngine"]),
         .library(name: "LiveCoreUI", targets: ["LiveCoreUI"]),
     ],
-    dependencies: [
-        // Lottie animation player (Apache-2.0), built from source and linked statically: an embedded
-        // dynamic framework cannot load in an ad-hoc signed app with the hardened runtime.
-        .package(url: "https://github.com/airbnb/lottie-ios.git", exact: "4.6.1"),
-    ],
     targets: [
         .target(name: "CAtomics"),
         .target(name: "CObjCSupport"),   // NSException guard for capture-driver calls (Apple only)
         .target(name: "LiveCoreCore", dependencies: ["CAtomics"]),
         .target(name: "LiveCoreEngine", dependencies: [
             "LiveCoreCore", "CAtomics", "CObjCSupport",
-            .product(name: "Lottie", package: "lottie-ios", condition: .when(platforms: [.macOS])),
         ]),
         .target(
             name: "LiveCoreUI",
@@ -46,8 +40,6 @@ let package = Package(
         .executableTarget(name: "LiveCoreStudio", dependencies: ["LiveCoreUI"], path: "App"),
         .executableTarget(name: "livecore-rtmp-push", dependencies: ["LiveCoreCore"]),
         .executableTarget(name: "livecore-transition-dump", dependencies: ["LiveCoreCore"]),
-        // Renders a Lottie animation offscreen and checks the pixels (macOS CI).
-        .executableTarget(name: "livecore-lottie-check", dependencies: ["LiveCoreEngine", "LiveCoreCore"]),
         .testTarget(name: "LiveCoreCoreTests", dependencies: ["LiveCoreCore"]),
     ]
 )

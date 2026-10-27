@@ -133,6 +133,10 @@ public final class AppModel: ObservableObject {
             guard let self else { return }
             for (id, pb) in thumbs { self.feed(for: id).push(pb) }
         }
+        e.onDetailFrame = { [weak self] id, pb in
+            guard let self, self.viewerInput == id else { return }
+            self.viewerFeed.push(pb)
+        }
         e.onSwitcherChange = { [weak self] s in self?.switcher = s; if s.transition == nil { self?.tbar = s.tbarRest } }
         e.onInputsChange = { [weak self] list in
             guard let self else { return }
@@ -195,6 +199,43 @@ public final class AppModel: ObservableObject {
 
     public func addCamera(_ d: DeviceManager.Device) { engine?.addCamera(uniqueID: d.id) }
 
+    /// Camera / capture card with the format and options chosen in the capture settings sheet;
+    /// optionally adds the device's own audio (capture cards) to the mixer.
+    public func addCamera(uniqueID: String, config: CaptureConfig, audioUID: String?) {
+        engine?.addCamera(uniqueID: uniqueID, config: config)
+        if let audioUID, let d = audioDevices.first(where: { $0.id == audioUID }) { addAudioInput(d) }
+    }
+    public func updateCamera(_ id: InputID, config: CaptureConfig) { engine?.updateCamera(id, config: config) }
+    public func cameraSource(_ id: InputID) -> CameraSource? { engine?.source(id) as? CameraSource }
+    public func captureFormats(uniqueID: String) -> [CaptureFormatCandidate] {
+        DeviceManager.device(uniqueID: uniqueID).map(CameraSource.formats(of:)) ?? []
+    }
+    public var outputFormat: OutputFormat { settings.output }
+
+    public func addColorBars() { engine?.addColorBars(name: L10n.t("inputs.colorbars")) }
+
+    /// New empty scene (transparent canvas); opens nothing, the operator edits it from the tile.
+    @discardableResult
+    public func addScene() -> InputID? {
+        let n = inputs.filter { $0.kind == .scene }.count + 1
+        return engine?.addScene(name: L10n.f("scene.default_name", n))
+    }
+
+    // MARK: Per-input viewer (fullscreen button on the tiles)
+
+    @Published public private(set) var viewerInput: InputID?
+    public let viewerFeed = FrameFeed()
+    public func openViewer(_ id: InputID) {
+        viewerFeed.clear()
+        viewerInput = id
+        engine?.setDetailInput(id)
+    }
+    public func closeViewer() {
+        viewerInput = nil
+        engine?.setDetailInput(nil)
+        viewerFeed.clear()
+    }
+
     public func addImage() {
         pickFile(types: ["public.image"]) { [weak self] url in self?.engine?.addImage(url: url) }
     }
@@ -233,16 +274,6 @@ public final class AppModel: ObservableObject {
         reloadAudioChannels()
     }
 
-    public func addLottie() {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = true
-        panel.canChooseDirectories = false
-        panel.allowedContentTypes = [UTType.json] + [UTType(filenameExtension: "lottie")].compactMap { $0 }
-        guard panel.runModal() == .OK else { return }
-        for url in panel.urls { engine?.addLottie(url: url) }
-    }
-
-    public func lottie(_ id: InputID) -> LottieSource? { engine?.source(id) as? LottieSource }
 
     public func addClips(to id: InputID) {
         guard let v = videoFile(id) else { return }
@@ -932,6 +963,14 @@ public final class ChannelVM: ObservableObject, Identifiable {
     @Published public var eqMid: Double { didSet { channel.controls.eqMidDB.value = Float(eqMid) } }
     @Published public var eqMidHz: Double { didSet { channel.controls.eqMidHz.value = Float(eqMidHz) } }
     @Published public var eqHigh: Double { didSet { channel.controls.eqHighDB.value = Float(eqHigh) } }
+    // Audio properties (0.15.0)
+    @Published public var name: String { didSet { channel.name = name } }
+    @Published public var compMakeup: Double { didSet { channel.controls.compMakeupDB.value = Float(compMakeup) } }
+    @Published public var compAttack: Double { didSet { channel.controls.compAttackMs.value = Float(compAttack) } }
+    @Published public var compRelease: Double { didSet { channel.controls.compReleaseMs.value = Float(compRelease) } }
+    @Published public var mode: ChannelMode { didSet { channel.controls.mode = mode } }
+    @Published public var invertPhase: Bool { didSet { channel.controls.invertPhase.value = invertPhase } }
+    @Published public var delayMs: Double { didSet { channel.controls.delayMs.value = Float(delayMs) } }
     /// Audio of a video-file input (removed together with the input, not from the mixer).
     /// Audio that belongs to an input (video file or window/display capture).
     public var isFileChannel: Bool { ProductionEngine.inputOfChannel(channel.id) != nil }
@@ -941,6 +980,13 @@ public final class ChannelVM: ObservableObject, Identifiable {
     public init(channel: MixerChannel) {
         self.channel = channel
         let c = channel.controls
+        name = channel.name
+        compMakeup = Double(c.compMakeupDB.value)
+        compAttack = Double(c.compAttackMs.value)
+        compRelease = Double(c.compReleaseMs.value)
+        mode = c.mode
+        invertPhase = c.invertPhase.value
+        delayMs = Double(c.delayMs.value)
         fader = FaderLaw.position(forDB: c.faderDB.value)
         gainDB = Double(c.gainDB.value)
         pan = Double(c.pan.value)
