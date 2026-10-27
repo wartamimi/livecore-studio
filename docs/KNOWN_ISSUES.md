@@ -85,15 +85,9 @@
 43. **Kunci**: kunci stream/rekam hanya berlaku selama app terbuka (tidak disimpan). Kunci source tidak menghalangi
     perubahan lewat file proyek yang dibuka, dan tidak mencegah source berganti status (mis. kamera dicabut).
     Menutup app tetap mungkin walau stream terkunci (konfirmasi quit tetap muncul saat output aktif).
-44. **Virtual camera (seperti OBS)**: kode ada sejak 0.22.0 — **Blocked**. macOS modern hanya menerima kamera virtual
-    sebagai CoreMediaIO Camera Extension, yaitu system extension yang wajib ditandatangani dengan Team ID Apple
-    Developer, memakai entitlement `com.apple.developer.system-extension.install` + provisioning profile, dan app harus di
-    /Applications. Build CI ini ad-hoc (tanpa Team ID), jadi "Aktifkan kamera virtual" ditolak macOS (app menampilkan
-    alasannya). Plug-in DAL lama sudah tidak dimuat macOS 14+. Mematikan SIP + `systemextensionsctl developer on`
-    tidak disarankan. Butuh akun Apple Developer Program (berbayar); langkahnya di `docs/VIRTUAL_CAMERA.md`. Sementara:
-    EXTERNAL ⚙ › Syphon pada satu output, di OBS tambahkan "Syphon Client", lalu Start Virtual Camera di OBS.
-    Kamera virtual (setelah aktif) selalu 1920×1080 30 fps; output lain diskalakan, dan tanpa kiriman dari LiveCore
-    gambarnya hitam.
+44. **Virtual camera sendiri**: dihapus di 0.23.0 atas permintaan pemilik. macOS hanya menerima kamera virtual sebagai
+    CoreMediaIO Camera Extension yang ditandatangani Apple Developer ID, jadi build unsigned tidak bisa memakainya.
+    Gunakan EXTERNAL › Syphon → OBS "Syphon Client" → Start Virtual Camera di OBS.
 45. **Penampil source**: satu jendela untuk satu input sekaligus (membuka input lain mengganti isinya). Dirender pada
     resolusi output setiap frame selama terbuka (menambah beban GPU sedikit).
 46. **Transparansi**: tile input menampilkan bagian transparan sebagai papan catur; Preview/Program tetap di atas
@@ -121,8 +115,13 @@
 54. **Dock playlist**: daftar diperbarui tiap 0,5 s; seret-urutkan nonaktif saat kolom cari terisi. Impor M3U hanya
     file lokal (URL stream http di M3U dilewati), dan file yang hilang dilewati dengan pesan.
 55. **4 output / EXTERNAL**: output yang memakai satu input atau Preview menambah satu render penuh resolusi output per
-    frame (hanya selama output itu dipakai: jendela/layar penuh terbuka, Syphon nyala, atau kamera virtual). Pengingat
+    frame (hanya selama output itu dipakai: jendela/layar penuh terbuka atau Syphon nyala). Pengingat
     NOT RECORDING hanya di monitor Program, tidak di Multiview atau output. Syphon: sumber di OBS bernama
     "LiveCore Studio – Output N"; bila tidak ada aplikasi yang menerima, tidak ada yang disalin. Jendela output
-    dibuka kembali kosong sampai frame berikutnya. Kamera virtual: lihat 44.
+    dibuka kembali kosong sampai frame berikutnya. Sejak 0.23.0 server Syphon menyalin frame setiap frame walau belum
+    ada aplikasi penerima (seperti server Syphon lain), sedikit menambah kerja GPU selama EXTERNAL nyala.
+    OBS 32.0.x punya bug Syphon Client (gambar kosong untuk server yang IOSurface-nya tanpa format piksel); server
+    LiveCore memberi format 32BGRA, tetapi bila OBS tetap kosong, coba versi OBS lain.
 56. **Dock bawah**: tidak bisa diperkecil (sesuai permintaan); di layar sempit tombol OUT 1–4 bisa terdorong ke kanan.
+57. **Nomor overlay di kotak input**: overlay selalu layar penuh dengan fade (posisi diatur dari layer/scene inputnya).
+    Satu kanal overlay hanya memegang satu input; menekan nomor yang sama di input lain memindahkan kanal itu.

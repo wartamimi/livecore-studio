@@ -22,6 +22,10 @@ struct OutputDockView: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            // One padlock for the whole dock: while locked RECORD and STREAM cannot start or stop.
+            LockButton(locked: Binding(get: { model.recordLocked && model.streamLocked },
+                                       set: { model.recordLocked = $0; model.streamLocked = $0 }),
+                       help: L10n.t("lock.dock_help"))
             group {
                 Button { model.requestToggleRecord() } label: {
                     Label(L10n.t("dock.record"), systemImage: model.isRecording ? "stop.circle.fill" : "record.circle")
@@ -29,11 +33,6 @@ struct OutputDockView: View {
                 .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isRecording))
                 .frame(width: 120)
                 .disabled(model.recordLocked)
-                LockButton(locked: $model.recordLocked, help: L10n.t("lock.record_help"))
-                Button { model.saveSnapshot() } label: { Image(systemName: "camera") }
-                    .buttonStyle(StudioButtonStyle(color: Theme.accent))
-                    .frame(width: 40)
-                    .help(L10n.t("snapshot.help"))
                 gear($showRecord, help: L10n.t("dock.record_settings")) {
                     VStack(alignment: .leading, spacing: 10) {
                         RecordDetails()
@@ -52,7 +51,6 @@ struct OutputDockView: View {
                 .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isStreamingActive))
                 .frame(width: 120)
                 .disabled(model.streamLocked)
-                LockButton(locked: $model.streamLocked, help: L10n.t("lock.stream_help"))
                 gear($showStream, help: L10n.t("dock.stream_settings")) {
                     VStack(alignment: .leading, spacing: 10) {
                         StreamDetails()
@@ -123,11 +121,10 @@ struct OutputDockView: View {
 
     private var externalStatus: String {
         guard model.externalActive else { return L10n.t("dock.external_off") }
-        let syphon = model.outputRouting.slots.filter(\.syphon).count
-        var parts: [String] = []
-        if syphon > 0 { parts.append(L10n.f("dock.external_syphon", syphon)) }
-        if model.virtualCamera == .sending { parts.append(L10n.t("vcam.short_on")) }
-        return parts.isEmpty ? L10n.t("dock.external_nothing") : parts.joined(separator: " · ")
+        let running = model.syphonStatus.count
+        guard running > 0 else { return L10n.t("dock.external_nothing") }
+        let connected = model.syphonStatus.values.filter { $0 }.count
+        return L10n.f("dock.external_syphon", running) + (connected > 0 ? " · " + L10n.f("dock.external_clients", connected) : "")
     }
 }
 
@@ -185,7 +182,7 @@ struct OutputSourcePicker: View {
     }
 }
 
-/// EXTERNAL ⚙: the four outputs (picture, window, full screen, Syphon) and the virtual camera.
+/// EXTERNAL ⚙: the four outputs (picture, window, full screen, Syphon).
 struct ExternalSettingsView: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.openWindow) private var openWindow
@@ -214,69 +211,29 @@ struct ExternalSettingsView: View {
                                                                       set: { model.setOutputSyphon(i, $0) }))
                             .toggleStyle(.checkbox).font(.system(size: 11))
                             .help(L10n.f("output.syphon_help", OutputRouting.syphonName(i)))
+                        syphonState(i)
                     }
                 }
             }
+            if !model.externalActive {
+                Label(L10n.t("output.external_off_hint"), systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11)).foregroundStyle(Theme.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             Text(L10n.t("output.obs_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
-            Divider()
-            VirtualCameraSection()
         }
-    }
-}
-
-struct VirtualCameraSection: View {
-    @EnvironmentObject var model: AppModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: L10n.t("vcam.title"))
-            Picker(L10n.t("vcam.output"), selection: Binding(get: { model.outputRouting.virtualCameraOutput ?? 0 },
-                                                            set: { model.setVirtualCameraOutput($0 == 0 ? nil : $0) })) {
-                Text(L10n.t("vcam.off")).tag(0)
-                ForEach(1...OutputRouting.count, id: \.self) { i in Text(L10n.f("output.title", i)).tag(i) }
-            }
-            .font(.system(size: 11))
-            .frame(width: 260)
-            HStack(spacing: 6) {
-                Circle().fill(color).frame(width: 7, height: 7)
-                Text(statusText).font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
-            }
-            HStack(spacing: 8) {
-                switch model.virtualCamera {
-                case .installed, .sending:
-                    Button(L10n.t("vcam.remove")) { model.removeVirtualCamera() }
-                case .waitingForApproval:
-                    Button(L10n.t("vcam.open_settings")) { model.openExtensionSettings() }
-                    Button(L10n.t("vcam.check")) { model.refreshVirtualCamera() }
-                default:
-                    Button(L10n.t("vcam.install")) { model.installVirtualCamera() }
-                    Button(L10n.t("vcam.check")) { model.refreshVirtualCamera() }
-                }
-            }
-            .font(.system(size: 11))
-            Text(L10n.t("vcam.note")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .onAppear { model.refreshVirtualCamera() }
+        .onAppear { model.refreshSyphonStatus() }
     }
 
-    private var statusText: String {
-        switch model.virtualCamera {
-        case .unknown, .notInstalled: return L10n.t("vcam.status_not_installed")
-        case .installed: return model.externalActive ? L10n.t("vcam.status_no_output") : L10n.t("vcam.status_installed")
-        case .sending: return L10n.t("vcam.status_sending")
-        case .waitingForApproval: return L10n.t("vcam.status_approval")
-        case let .failed(msg): return msg
-        }
-    }
-
-    private var color: Color {
-        switch model.virtualCamera {
-        case .sending: return Theme.preview
-        case .installed: return Theme.accent
-        case .failed, .waitingForApproval: return Theme.warning
-        default: return Theme.textDim.opacity(0.5)
+    /// Whether this output's Syphon source is offered, and whether an app receives it.
+    @ViewBuilder private func syphonState(_ i: Int) -> some View {
+        if let connected = model.syphonStatus[i] {
+            Text(connected ? L10n.t("output.syphon_connected") : L10n.t("output.syphon_waiting"))
+                .font(.system(size: 10)).foregroundStyle(connected ? Theme.preview : Theme.textDim)
+        } else {
+            Text(model.outputRouting.slot(i).syphon ? L10n.t("output.syphon_off_external") : "")
+                .font(.system(size: 10)).foregroundStyle(Theme.textDim)
         }
     }
 }

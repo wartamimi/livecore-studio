@@ -30,6 +30,7 @@
 
 #import <Foundation/Foundation.h>
 #import "SyphonServerBase.h"
+#import "SyphonClientBase.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -56,6 +57,13 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 
+
+@interface SyphonClientBase (SyphonSubclassing)
+/// Current server surface; release with CFRelease.
+- (IOSurfaceRef)newSurface;
+- (void)updateFrameID;
+- (void)invalidateFrame;
+@end
 
 NS_ASSUME_NONNULL_END
 #endif

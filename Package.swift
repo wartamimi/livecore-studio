@@ -11,6 +11,7 @@
 //                     VideoToolbox/AAC encoders, RTMP transport (Network.framework), AVAssetWriter.
 //   LiveCoreUI        SwiftUI operator interface (macOS) + localisation resources (en, id).
 //   LiveCoreStudio    App entry point (App/). On other platforms it prints a notice and exits.
+//   livecore-syphon-check  CI check: another process discovers a LiveCore Syphon server and reads a frame.
 //   livecore-rtmp-push  CLI that pushes H.264/AAC elementary streams through the LiveCoreCore RTMP
 //                     client (used for protocol validation against a real RTMP server).
 import PackageDescription
@@ -45,6 +46,7 @@ let package = Package(
         .executableTarget(name: "LiveCoreStudio", dependencies: ["LiveCoreUI"], path: "App"),
         .executableTarget(name: "livecore-rtmp-push", dependencies: ["LiveCoreCore"]),
         .executableTarget(name: "livecore-transition-dump", dependencies: ["LiveCoreCore"]),
+        .executableTarget(name: "livecore-syphon-check", dependencies: ["CSyphon"]),
         .testTarget(name: "LiveCoreCoreTests", dependencies: ["LiveCoreCore"]),
     ]
 )

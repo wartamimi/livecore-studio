@@ -198,6 +198,33 @@ struct InputPanelView: View {
 
 extension InputID: Identifiable { public var id: String { raw } }
 
+/// Small overlay dock under each input (vMix-style): 1–4 put this input on that overlay channel.
+/// Click = Preview (orange), secondary / two-finger click = Program (green); fade, full screen.
+struct OverlayNumbers: View {
+    @EnvironmentObject var model: AppModel
+    let input: InputID
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(model.overlays, id: \.index) { ch in
+                let mine = ch.source == input
+                let program = mine && ch.isOn
+                let preview = mine && ch.onPreview && !ch.isOn
+                Text("\(ch.index)")
+                    .font(.system(size: 10, weight: .heavy))
+                    .frame(maxWidth: .infinity, minHeight: 16)
+                    .foregroundStyle(program || preview ? Color.white : Theme.textDim)
+                    .background(program ? Theme.overlayProgram : (preview ? Theme.overlayPreview : Theme.panel))
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.border, lineWidth: 1))
+                    .overlay(TwoClickArea(primary: { model.overlayFromTile(ch.index, input: input, toProgram: false) },
+                                          secondary: { model.overlayFromTile(ch.index, input: input, toProgram: true) }))
+                    .help(L10n.f("overlay.tile_help", ch.index))
+            }
+        }
+    }
+}
+
 struct InputTile: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.openWindow) private var openWindow
@@ -247,6 +274,7 @@ struct InputTile: View {
                 .buttonStyle(.plain)
                 .help(info.locked ? L10n.t("lock.unlock_input") : L10n.t("lock.lock_input"))
             }
+            OverlayNumbers(input: info.id)
             if info.kind == .videoFile, let v = model.videoFile(info.id) { MediaClock(video: v) }
             if !info.status.isHealthy, info.status != .starting {
                 Text(info.status.label).font(.system(size: 9)).foregroundStyle(Theme.warning).lineLimit(2)

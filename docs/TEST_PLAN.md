@@ -50,6 +50,15 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## W. Tes manual build 0.23.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-88 | Kedip NOT RECORDING | Buka app tanpa merekam | Tulisan berkedip pelan (±1,2 s tampil, 0,8 s redup) |
+| T-89 | Syphon terdeteksi OBS | Nyalakan EXTERNAL (Output 1 otomatis Syphon); di OBS tambah "Syphon Client"; buka EXTERNAL ⚙ | "LiveCore Studio – Output 1" ada di daftar OBS dan gambarnya tampil; EXTERNAL ⚙ menampilkan "Aplikasi tersambung"; Start Virtual Camera di OBS lalu Zoom/Meet menerima gambar |
+| T-90 | Foto Program & gembok | Klik "Foto Program" di bawah monitor Program; klik gembok di dock bawah lalu RECORD dan STREAM | PNG tersimpan di folder rekaman; selama terkunci RECORD dan STREAM tidak bereaksi |
+| T-91 | Nomor overlay di input | Di bawah input logo klik 1 (oranye di Preview), CUT; klik kanan 2 pada input lain (hijau, langsung Program); klik lagi | Overlay muncul/hilang dengan fade, layar penuh; warna nomor sesuai status; dock Overlay lama tidak ada |
+| T-92 | Replay di bawah T-bar | Nyalakan buffer replay di bawah T-bar, tunggu 20 s, klik 10s, ubah kecepatan | Replay dimuat ke Preview seperti sebelumnya |
+
 ## V. Tes manual build 0.22.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|
@@ -58,7 +67,7 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-84 | 4 output | EXTERNAL ⚙: Output 2 = Preview, Output 3 = input kamera, Output 4 = input video; buka jendela Output 2–4 dan layar penuh Output 3 di monitor kedua; CUT; simpan & buka proyek; hapus input kamera | Tiap jendela menampilkan sumbernya pada resolusi output; layar penuh di monitor terpilih; setelah proyek dibuka sumber kembali; input dihapus → output kembali ke Program; FPS render tetap stabil |
 | T-85 | Syphon ke OBS | EXTERNAL ⚙: centang Syphon di Output 1; nyalakan EXTERNAL; di OBS tambah "Syphon Client" › LiveCore Studio – Output 1; Start Virtual Camera di OBS; pilih "OBS Virtual Camera" di Zoom/Meet/QuickTime | OBS menampilkan output tanpa jeda besar dan tidak terbalik; Zoom/Meet menerima gambar; matikan EXTERNAL → sumber hilang di OBS |
 | T-86 | Playlist pilih vs putar | Dock Playlist: klik lagu ke-3 (tidak berbunyi, latar biru), tekan ▶; klik dua kali lagu ke-5 | Klik sekali hanya memilih; ▶ memutar lagu terpilih; klik dua kali langsung memutar |
-| T-87 | Kamera virtual (perlu build bertanda tangan) | App di /Applications; EXTERNAL ⚙ › Aktifkan kamera virtual | Build unsigned: pesan jelas bahwa perlu Developer ID (bukan crash). Build bertanda tangan: izin di System Settings, lalu "LiveCore Virtual Camera" muncul di Zoom/QuickTime saat EXTERNAL nyala |
+| T-87 | (dihapus di 0.23.0) Kamera virtual Camera Extension | App di /Applications; EXTERNAL ⚙ › Aktifkan kamera virtual | Build unsigned: pesan jelas bahwa perlu Developer ID (bukan crash). Build bertanda tangan: izin di System Settings, lalu "LiveCore Virtual Camera" muncul di Zoom/QuickTime saat EXTERNAL nyala |
 
 ## U. Tes manual build 0.21.0
 | ID | Tes | Langkah | Kriteria lulus |

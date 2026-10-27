@@ -4,112 +4,45 @@ import SwiftUI
 import LiveCoreCore
 import LiveCoreEngine
 
-/// Lower-right control area: overlays and instant replay. Record / Stream / External live in
-/// the bottom dock (OutputDockView).
-struct ControlPanelView: View {
-    @EnvironmentObject var model: AppModel
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                OverlaySection()
-                Divider()
-                ReplaySection()
-            }
-            .padding(8)
-        }
-        .panel()
-    }
-}
-
-/// Instant replay: buffer on/off, replay the last 5/10/20 s, speed, transport.
+/// Instant replay under the T-bar: buffer on/off, replay the last 5/10/20 s, speed, transport.
+/// Sized for the narrow transition column.
 struct ReplaySection: View {
     @EnvironmentObject var model: AppModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                SectionHeader(title: L10n.t("replay.title"))
-                Spacer()
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 4) {
+                Text(L10n.t("replay.title").uppercased()).font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.textDim)
+                Spacer(minLength: 0)
                 Toggle(L10n.t("replay.buffer"), isOn: Binding(get: { model.replayEnabled }, set: { model.setReplayEnabled($0) }))
-                    .toggleStyle(.switch).controlSize(.mini)
+                    .toggleStyle(.switch).controlSize(.mini).labelsHidden()
                     .help(L10n.t("replay.help"))
             }
             if model.replayEnabled {
-                HStack(spacing: 6) {
+                HStack(spacing: 3) {
                     ForEach(ReplayIndex.lengths, id: \.self) { sec in
-                        Button(L10n.f("replay.last", Int(sec))) { model.replayLast(sec) }
-                            .buttonStyle(StudioButtonStyle(color: Theme.preview, active: false))
+                        Button("\(Int(sec))s") { model.replayLast(sec) }
+                            .font(.system(size: 10, weight: .bold))
+                            .buttonStyle(.bordered).controlSize(.small)
                             .disabled(model.replayAvailable < 1)
+                            .help(L10n.f("replay.last", Int(sec)))
                     }
                 }
-                HStack(spacing: 6) {
-                    Picker(L10n.t("replay.speed"), selection: $model.replaySpeed) {
+                HStack(spacing: 4) {
+                    Picker("", selection: $model.replaySpeed) {
                         ForEach(ReplayIndex.speeds, id: \.self) { Text("\(Int($0 * 100))%").tag($0) }
                     }
-                    .pickerStyle(.segmented).frame(width: 170)
+                    .labelsHidden().controlSize(.small)
+                    .help(L10n.t("replay.speed"))
                     if let r = model.replaySource, r.hasClip {
                         Button { r.isPlaying ? r.pause() : r.play() } label: { Image(systemName: r.isPlaying ? "pause.fill" : "play.fill") }
                             .buttonStyle(.borderless)
                         Button { r.cue() } label: { Image(systemName: "backward.end.fill") }
                             .buttonStyle(.borderless)
                     }
-                    Spacer()
-                    Text(L10n.f("replay.available", Int(model.replayAvailable)))
-                        .font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.textDim)
                 }
-            }
-        }
-    }
-}
-
-struct OverlaySection: View {
-    @EnvironmentObject var model: AppModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            SectionHeader(title: L10n.t("overlay.title"))
-            ForEach(model.overlays, id: \.index) { ch in
-                HStack(spacing: 6) {
-                    // Click = Preview (orange), secondary / two-finger click = Program (green).
-                    Button("\(ch.index)") {}
-                        .buttonStyle(StudioButtonStyle(color: ch.isOn ? Theme.overlayProgram : Theme.overlayPreview,
-                                                       active: ch.isOn || ch.onPreview))
-                        .frame(width: 44)
-                        .overlay(TwoClickArea(primary: { model.toggleOverlayPreview(ch.index) },
-                                              secondary: { model.toggleOverlay(ch.index) }))
-                        .disabled(ch.source == nil)
-                        .help(L10n.t("overlay.help"))
-                    Picker("", selection: Binding(get: { ch.source }, set: { model.configureOverlay(ch.index, source: $0, preset: ch.preset) })) {
-                        Text(L10n.t("overlay.none")).tag(InputID?.none)
-                        ForEach(model.inputs) { i in Text("\(i.number) \(i.name)").tag(Optional(i.id)) }
-                    }
-                    .labelsHidden()
-                    Picker("", selection: Binding(get: { ch.preset }, set: { model.configureOverlay(ch.index, source: ch.source, preset: $0) })) {
-                        ForEach(LayoutPreset.allCases, id: \.self) { p in Text(p.rawValue).tag(p) }
-                    }
-                    .labelsHidden()
-                    .frame(width: 110)
-                    Menu {
-                        Section(L10n.t("overlay.animation")) {
-                            ForEach(OverlayAnimation.allCases, id: \.self) { a in
-                                Button((ch.animation == a ? "✓ " : "") + L10n.t("overlay.anim." + a.rawValue)) {
-                                    model.setOverlayAnimation(ch.index, animation: a, duration: ch.fadeDuration)
-                                }
-                            }
-                        }
-                        Section(L10n.t("overlay.duration")) {
-                            ForEach([0.25, 0.5, 0.75, 1.0, 1.5, 2.0], id: \.self) { d in
-                                Button((abs(ch.fadeDuration - d) < 0.01 ? "✓ " : "") + String(format: "%.2g s", d)) {
-                                    model.setOverlayAnimation(ch.index, animation: ch.animation, duration: d)
-                                }
-                            }
-                        }
-                    } label: { Image(systemName: "wand.and.stars") }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
-                    .help(L10n.t("overlay.animation_help"))
-                }
+                Text(L10n.f("replay.available", Int(model.replayAvailable)))
+                    .font(.system(size: 9).monospacedDigit()).foregroundStyle(Theme.textDim)
             }
         }
     }

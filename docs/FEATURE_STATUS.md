@@ -127,8 +127,8 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Blackmagic DeckLink (Desktop Video SDK) | Blocked → Planned M3 | Perlu SDK (EULA, registrasi) + perangkat uji |
 | AJA / Magewell Pro | Planned M3 | Perlu SDK vendor |
 | NDI | Blocked → Planned M3 | Perlu NDI SDK + kepatuhan lisensi |
-| Virtual camera (seperti OBS) | **Blocked** (kode siap, 0.22.0) | Camera Extension CoreMediaIO "LiveCore Virtual Camera" (stream sink + source seperti OBS) ikut di dalam app dan tombol Aktifkan ada di EXTERNAL ⚙, tetapi macOS hanya mengaktifkannya bila app ditandatangani Developer ID + entitlement system extension. Build unsigned menampilkan alasannya. Lihat `docs/VIRTUAL_CAMERA.md`, KNOWN_ISSUES 44 |
-| Syphon (kirim output ke OBS, Resolume, MadMapper…) | Implemented (0.22.0), belum dites | Server Syphon (kode BSD, di-vendor) per output; nyala saat EXTERNAL aktif. Di OBS: source "Syphon Client" lalu Start Virtual Camera (T-85) |
+| Virtual camera sendiri (Camera Extension seperti OBS) | Dihapus (0.23.0) | Dibuat di 0.22.0 lalu dihapus atas permintaan pemilik (butuh tanda tangan Developer ID). Pakai Syphon → OBS → OBS Virtual Camera |
+| Syphon (kirim output ke OBS, Resolume, MadMapper…) | Implemented (0.22.0), diperbaiki 0.23.0, belum dites di Mac pengguna | Server Syphon (kode BSD, di-vendor) per output; nyala saat EXTERNAL aktif (Output 1 otomatis bila belum ada yang dipilih); frame dikirim sejak server dibuat; status "aplikasi tersambung" di EXTERNAL ⚙. CI `livecore-syphon-check`: proses lain menemukan server lewat direktori Syphon dan membaca frame 1280×720 BGRA dari IOSurface (T-89) |
 
 ## Kontrol
 | Fitur | Status | Verifikasi | Catatan |
@@ -137,10 +137,10 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Kontrol MIDI dengan Learn (CUT, AUTO, T-bar, preview/cut 1–8, overlay 1–4, stream, rekam, snapshot) | Implemented (0.7.0) | L (parser MIDI 1.0/UMP, pemetaan, 6 unit test) + kompilasi CI | Semua sumber CoreMIDI tersambung otomatis; pemetaan disimpan di Mac (bukan proyek). Belum dites dengan controller (T-35) |
 | Input tangkap jendela / layar (Zoom, Teams, Meet, slide) | Implemented (0.10.0) | L (pencocokan jendela, 5 unit test) + kompilasi CI | ScreenCaptureKit; audio aplikasi (jendela) atau sistem (layar) ke channel mixer sendiri; audio & jendela LiveCore sendiri dikecualikan; jendela ditemukan lagi lewat aplikasi + judul saat proyek dibuka. Perlu izin Perekaman Layar. Belum dites (T-46) |
 | Input Zoom via Zoom Meeting SDK (peserta terpisah, seperti vMix) | Ditunda (dihapus dari build publik di 0.10.1) | — | Pernah dibuat di 0.11.x dan dikompilasi dengan SDK, lalu ditarik dari repo & rilis publik atas keputusan pemilik; diarsipkan secara privat. Join meeting akun lain gagal (kode 63) sampai aplikasi SDK lolos review Zoom Marketplace. Untuk sekarang pakai input tangkap jendela |
-| Program sebagai kamera virtual (untuk Zoom) | Blocked (kode siap) | kompilasi CI | Camera Extension sudah dibuat (0.22.0) tetapi perlu tanda tangan Developer ID. Sementara: Syphon → OBS → OBS Virtual Camera |
-| Dock bawah RECORD / STREAM / EXTERNAL dengan ⚙ | Implemented (0.22.0), belum dites | kompilasi CI | Selalu tampil (tidak bisa diperkecil); ⚙ membuka detail & setelan masing-masing; status singkat di sebelahnya; tombol OUT 1–4 (T-83) |
+| Program sebagai kamera virtual (untuk Zoom) | Lewat OBS | — | EXTERNAL › Syphon → OBS "Syphon Client" → OBS Virtual Camera. Camera Extension sendiri dihapus di 0.23.0 |
+| Dock bawah RECORD / STREAM / EXTERNAL dengan ⚙ | Implemented (0.22.0), belum dites | kompilasi CI | Selalu tampil (tidak bisa diperkecil); ⚙ membuka detail & setelan masing-masing; status singkat di sebelahnya; tombol OUT 1–4 (T-83). 0.23.0: satu gembok untuk RECORD + STREAM; tombol foto pindah ke bawah monitor Program (T-90) |
 | 4 output dengan sumber sendiri (Program / Preview / satu input) | Implemented (0.22.0), belum dites | L (routing, render ekstra, proyek; 4 unit test) + kompilasi CI | Tiap output: jendela, layar penuh di monitor pilihan, Syphon. Input dirender penuh resolusi output hanya bila output-nya dipakai. Disimpan di proyek (T-84) |
-| Pengingat NOT RECORDING berkedip (vMix-style) | Implemented (0.22.0), belum dites | L (2 unit test) + kompilasi CI | Di monitor Program saja (bukan di output). Setelan: mati / setiap kali tidak merekam / hanya saat streaming (RECORD ⚙) (T-82) |
+| Pengingat NOT RECORDING berkedip (vMix-style) | Implemented (0.22.0), belum dites | L (2 unit test) + kompilasi CI | Di monitor Program saja (bukan di output). Setelan: mati / setiap kali tidak merekam / hanya saat streaming (RECORD ⚙) (T-82). 0.23.0: kedip lebih pelan, siklus 2 detik (T-88) |
 | Instant replay (5/10/20 dtk terakhir, 100/50/25%) | Implemented (0.10.0) | L (indeks segmen, 5 unit test) + kompilasi CI | Program direkam terus ke segmen H.264 2 dtk di folder sementara (30 dtk terakhir); replay digabung tanpa encode ulang dan dimuat ke input "Replay" di Preview; mulai putar saat masuk Program. Video saja. Belum dites (T-47) |
 | Input playlist video | Implemented (0.8.0) | L (urutan, model proyek) + kompilasi CI | Satu input memutar beberapa klip berurutan; next/previous/pilih klip; ulangi playlist; tersimpan di proyek. Belum dites (T-38) |
 | Auto play saat masuk Program (vMix-style) | Implemented (0.8.0) | kompilasi CI | Mati / putar-jeda / mulai dari awal-jeda; berlaku juga untuk layer scene, overlay aktif, dan transisi. Belum dites (T-39) |
@@ -158,3 +158,9 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Shortcut keyboard dapat diubah | Implemented | M |
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
+
+## Perubahan tata letak 0.23.0
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Nomor overlay 1–4 di bawah tiap kotak input (vMix-style) | Implemented (0.23.0), belum dites | kompilasi CI | Klik = Preview (oranye), klik kanan / dua jari = Program (hijau); selalu layar penuh + fade. Dock Overlay (pilihan source, posisi, animasi) dihapus (T-91) |
+| Instant replay di bawah T-bar | Implemented (0.23.0), belum dites | kompilasi CI | Panel kontrol kanan dihapus; mixer dan Playlist mendapat ruang lebih (T-92) |

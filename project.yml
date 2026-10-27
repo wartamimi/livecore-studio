@@ -24,18 +24,13 @@ targets:
     dependencies:
       - package: LiveCoreStudio
         product: LiveCoreUI
-      # LiveCore Virtual Camera, embedded in Contents/Library/SystemExtensions. macOS only
-      # activates it once the app is signed with a Developer ID (docs/VIRTUAL_CAMERA.md).
-      - target: LiveCoreCameraExtension
-        embed: true
-        codeSign: true
     info:
       path: Config/Info.plist
       properties:
         CFBundleName: LiveCore Studio
         CFBundleDisplayName: LiveCore Studio
-        CFBundleShortVersionString: "0.22.0"
-        CFBundleVersion: "27"
+        CFBundleShortVersionString: "0.23.0"
+        CFBundleVersion: "28"
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, id]
         LSApplicationCategoryType: public.app-category.video
@@ -60,24 +55,6 @@ targets:
         CODE_SIGN_IDENTITY: "-"          # ad-hoc by default; set your Developer ID for distribution
         COMBINE_HIDPI_IMAGES: YES
         GENERATE_INFOPLIST_FILE: NO
-  LiveCoreCameraExtension:
-    type: system-extension
-    platform: macOS
-    sources:
-      - path: CameraExtension
-        excludes: [Info.plist, CameraExtension.entitlements]
-      - path: Sources/LiveCoreCore/Model/VirtualCameraIdentity.swift
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: studio.livecore.LiveCoreStudio.CameraExtension
-        PRODUCT_NAME: studio.livecore.LiveCoreStudio.CameraExtension
-        INFOPLIST_FILE: CameraExtension/Info.plist
-        GENERATE_INFOPLIST_FILE: NO
-        CODE_SIGN_ENTITLEMENTS: CameraExtension/CameraExtension.entitlements
-        ENABLE_HARDENED_RUNTIME: YES
-        CODE_SIGN_STYLE: Automatic
-        CODE_SIGN_IDENTITY: "-"
-        SKIP_INSTALL: YES
 schemes:
   LiveCoreStudio:
     build:

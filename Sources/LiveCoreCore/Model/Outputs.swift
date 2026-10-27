@@ -1,6 +1,6 @@
 /// The four extra outputs (vMix "Outputs"): each takes its own picture, Program, Preview or a
 /// single input at full output size, and sends it to a window or full-screen display, to other
-/// apps over Syphon, and/or to the virtual camera.
+/// apps over Syphon.
 
 /// Where an output takes its picture from.
 public enum OutputSource: Codable, Equatable, Hashable, Sendable {
@@ -25,12 +25,9 @@ public struct OutputRouting: Codable, Equatable, Sendable {
     public static let count = 4
 
     public var slots: [OutputSlot]
-    /// Output that feeds the LiveCore virtual camera (nil = camera shows nothing).
-    public var virtualCameraOutput: Int?
 
-    public init(slots: [OutputSlot] = OutputRouting.defaultSlots, virtualCameraOutput: Int? = 1) {
+    public init(slots: [OutputSlot] = OutputRouting.defaultSlots) {
         self.slots = slots
-        self.virtualCameraOutput = virtualCameraOutput
         self = normalized(existing: nil)
     }
 
@@ -64,12 +61,11 @@ public struct OutputRouting: Codable, Equatable, Sendable {
             if case let .input(id) = s.source, let existing, !existing.contains(id) { s.source = .program }
             return s
         }
-        if let v = virtualCameraOutput, !(1...Self.count).contains(v) { out.virtualCameraOutput = nil }
         return out
     }
 
     /// Inputs that need their own full-size picture this frame, for outputs that are in use.
-    /// `active` lists the outputs that have somewhere to go (window, Syphon or virtual camera).
+    /// `active` lists the outputs that have somewhere to go (window or Syphon).
     public func renderedInputs(active: Set<Int>) -> [InputID] {
         var seen = Set<InputID>()
         var list: [InputID] = []
@@ -84,12 +80,20 @@ public struct OutputRouting: Codable, Equatable, Sendable {
         slots.contains { active.contains($0.index) && $0.source == .preview }
     }
 
-    /// Outputs that have a destination: Syphon on, the virtual camera's output, or `windows`.
-    public func activeOutputs(windows: Set<Int>, virtualCameraRunning: Bool) -> Set<Int> {
+    /// Outputs that have a destination: Syphon on, or shown in `windows`.
+    public func activeOutputs(windows: Set<Int>) -> Set<Int> {
         var a = windows
         for s in slots where s.syphon { a.insert(s.index) }
-        if virtualCameraRunning, let v = virtualCameraOutput { a.insert(v) }
         return a
+    }
+
+    /// EXTERNAL turned on with no Syphon output: Output 1 starts sending, so other apps always
+    /// find at least one source.
+    public func withDefaultSyphon() -> OutputRouting {
+        guard !slots.contains(where: \.syphon) else { return self }
+        var r = self
+        r.setSyphon(1, true)
+        return r
     }
 
     public static func syphonName(_ index: Int) -> String { "Output \(index)" }
@@ -115,8 +119,8 @@ public enum RecordReminder {
         }
     }
 
-    /// Blink phase: visible for the first 60 % of each period.
-    public static func visible(elapsed: Double, period: Double = 1.0) -> Bool {
+    /// Blink phase: visible for the first 60 % of each period (a calm 2-second cycle).
+    public static func visible(elapsed: Double, period: Double = 2.0) -> Bool {
         guard period > 0, elapsed.isFinite else { return true }
         var t = elapsed.truncatingRemainder(dividingBy: period)
         if t < 0 { t += period }

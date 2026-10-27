@@ -41,11 +41,11 @@ public final class AppModel: ObservableObject {
     public let outputFeeds: [Int: FrameFeed] = Dictionary(uniqueKeysWithValues: (1...OutputRouting.count).map { ($0, FrameFeed()) })
     public private(set) lazy var outputFullscreens: [Int: FullscreenOutput] = makeOutputFullscreens()
     @Published public internal(set) var outputRouting = OutputRouting()
-    /// EXTERNAL button: Syphon and the virtual camera are sending.
+    /// EXTERNAL button: the Syphon outputs are sending.
     @Published public internal(set) var externalActive = false
-    @Published public internal(set) var virtualCamera = VirtualCameraStatus.unknown
+    /// Output index → an app is connected to its Syphon server (only outputs that send).
+    @Published public internal(set) var syphonStatus: [Int: Bool] = [:]
     public internal(set) var outputRouter: OutputRouter?
-    let virtualCameraInstaller = VirtualCameraInstaller()
     var outputWindows: Set<Int> = []
 
     // Devices
@@ -194,7 +194,7 @@ public final class AppModel: ObservableObject {
         guard let e = engine else { return }
         meters.update(channels: e.audioChannels, master: e.mixer.master, aux: e.mixer.aux)
         tickCount += 1
-        if tickCount % 30 == 0 { performance = e.samplePerformance() }
+        if tickCount % 30 == 0 { performance = e.samplePerformance(); refreshSyphonStatus() }
     }
 
     // MARK: Devices
@@ -678,6 +678,22 @@ public final class AppModel: ObservableObject {
     public func configureOverlay(_ index: Int, source: InputID?, preset: LayoutPreset) {
         engine?.configureOverlay(index, source: source, preset: preset)
         overlays = engine?.overlays ?? []
+    }
+
+    /// Overlay number under an input tile: uses overlay channel `index` for this input (full
+    /// screen, fade), then shows / hides it on Preview (click) or Program (secondary click).
+    /// A channel showing another input switches to this one and stays on.
+    public func overlayFromTile(_ index: Int, input: InputID, toProgram: Bool) {
+        guard let e = engine, let ch = e.overlays.first(where: { $0.index == index }) else { return }
+        if ch.source != input {
+            e.configureOverlay(index, source: input, preset: .fullScreen)
+            e.setOverlayAnimation(index, animation: .fade, duration: ch.fadeDuration)
+            if ch.isOn || ch.onPreview {
+                overlays = e.overlays
+                return
+            }
+        }
+        if toProgram { toggleOverlay(index) } else { toggleOverlayPreview(index) }
     }
 
     /// Click (one finger): show / hide the overlay on Preview only; CUT/AUTO takes it to Program.
