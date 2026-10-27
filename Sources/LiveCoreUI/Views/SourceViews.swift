@@ -308,10 +308,10 @@ struct SlideshowSheet: View {
                 Toggle(L10n.t("slideshow.loop"), isOn: $loop)
                 Toggle(L10n.t("slideshow.kenburns"), isOn: $kenBurns)
             }
+            .formStyle(.grouped)
             if folder != nil {
                 Text(L10n.t("slideshow.watch_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
             }
-            .formStyle(.grouped)
             HStack {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
