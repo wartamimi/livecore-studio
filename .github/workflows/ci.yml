@@ -3,6 +3,11 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+permissions:
+  contents: write
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 jobs:
   linux-core:
     runs-on: ubuntu-24.04
@@ -11,16 +16,18 @@ jobs:
       - uses: swift-actions/setup-swift@v2
         with: { swift-version: "6.0" }
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: scripts/validate_linux.sh
+      - run: scripts/ci_run.sh linux-validate scripts/validate_linux.sh
   macos-app:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
       - run: brew install xcodegen ffmpeg
-      - run: swift test
-      - run: scripts/rtmp_e2e_test.sh
-      - run: scripts/build_macos.sh release
-      - run: scripts/make_dmg.sh
+      - run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || true
+      - run: scripts/ci_run.sh macos-swift-build swift build --build-tests
+      - run: scripts/ci_run.sh macos-swift-test swift test
+      - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
+      - run: scripts/ci_run.sh macos-app-build scripts/build_macos.sh release
+      - run: scripts/ci_run.sh macos-dmg scripts/make_dmg.sh
       - uses: actions/upload-artifact@v4
         with:
           name: LiveCoreStudio-dmg
@@ -29,4 +36,4 @@ jobs:
         if: failure()
         with:
           name: build-logs
-          path: build/**/*.log
+          path: build/*.log
