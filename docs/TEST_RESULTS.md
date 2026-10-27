@@ -47,6 +47,13 @@ Belum dilaporkan: T-10 (stream+rekam 10 menit), T-11 reconnect, T-12 cabut-colok
 Pengguna melaporkan "sejauh ini belum ada bug" setelah mencoba 0.2.0. Rincian per tes T-17..T-22 belum dilaporkan, jadi
 statusnya tetap Not tested per item.
 
+## Laporan pengguna build 0.13.1 (dev-build-57), 2026-10-27
+Crash yang sama. Penyebab sebenarnya: app ad-hoc dengan hardened runtime tidak bisa memuat framework apa pun di luar
+sistem (library validation butuh Team ID; tanda tangan ad-hoc tidak punya), jadi tanda tangan ulang ad-hoc tidak membantu
+dan cek Team ID di CI lolos padahal salah. 0.13.2 meng-compile Lottie dari source dan me-link-nya statis (tidak ada
+framework di app), dan `scripts/check_app_loadable.sh` menggagalkan build/DMG bila app ad-hoc + hardened runtime
+membawa framework/dylib apa pun (dicek pada salinan yang masuk DMG).
+
 ## Laporan pengguna build 0.13.0 (dev-build-53), 2026-10-27
 Crash saat dibuka: dyld menolak Lottie.framework ("different Team IDs") karena framework masih bertanda tangan Airbnb,
 sedangkan app ditandatangani ad-hoc. 0.13.1 menandatangani ulang framework secara ad-hoc dan build gagal bila Team ID
