@@ -5,6 +5,9 @@ public struct DrawCommand: Equatable, Sendable {
     public var rect: NormRect
     public var scaleMode: ScaleMode
     public var opacity: Double
+    public init(source: InputID, rect: NormRect, scaleMode: ScaleMode, opacity: Double) {
+        self.source = source; self.rect = rect; self.scaleMode = scaleMode; self.opacity = opacity
+    }
 }
 
 public struct TransitionPlan: Equatable, Sendable {

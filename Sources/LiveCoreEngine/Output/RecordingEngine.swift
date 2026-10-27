@@ -31,6 +31,7 @@ public final class RecordingEngine {
         public var droppedVideoFrames: Int = 0
         public var freeBytes: Int64 = 0
         public var fileBytes: Int64 = 0
+        public init() {}
     }
 
     public var onStats: ((Stats) -> Void)?   // main thread
