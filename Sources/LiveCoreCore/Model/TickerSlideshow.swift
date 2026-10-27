@@ -12,6 +12,15 @@ public struct TickerConfig: Codable, Equatable, Sendable {
     public var bandHeight: Double
     /// Plain-text file whose contents replace `text`, re-read when the file changes (since 0.18.0).
     public var textFilePath: String?
+    /// Scroll direction (since 0.19.0; nil = right to left).
+    public var direction: TickerDirection?
+    /// RSS / Atom feed whose item titles replace `text` (since 0.19.0). Takes priority over the file.
+    public var feedURL: String?
+    /// Minutes between feed refreshes (nil = 5).
+    public var feedRefreshMinutes: Double?
+
+    public var scrollDirection: TickerDirection { direction ?? .rightToLeft }
+    public var feedRefreshSeconds: Double { min(max(feedRefreshMinutes ?? 5, 1), 120) * 60 }
 
     public init(text: String, speed: Double = 120, fontSize: Double = 44,
                 textColor: ProjectColor = ProjectColor(r: 1, g: 1, b: 1),
@@ -37,15 +46,125 @@ public struct TickerConfig: Codable, Equatable, Sendable {
     }
 }
 
+public enum TickerDirection: String, Codable, Sendable, CaseIterable {
+    case rightToLeft, leftToRight
+}
+
 public enum TickerMath {
-    /// X position (pixels) of the text strip's left edge at `elapsed` seconds: it enters at the
-    /// right edge of the view, leaves on the left, and starts again (one copy on screen at a time).
-    public static func offset(elapsed: Double, speed: Double, stripWidth: Double, viewWidth: Double) -> Double {
+    /// X position (pixels) of the text strip's left edge at `elapsed` seconds: it enters at one
+    /// edge of the view, leaves at the other, and starts again (one copy on screen at a time).
+    /// Right to left (default) enters on the right; left to right enters on the left.
+    public static func offset(elapsed: Double, speed: Double, stripWidth: Double, viewWidth: Double,
+                              direction: TickerDirection = .rightToLeft) -> Double {
         let cycle = stripWidth + viewWidth
-        guard cycle > 0, speed > 0 else { return viewWidth }
+        guard cycle > 0, speed > 0 else { return direction == .rightToLeft ? viewWidth : -stripWidth }
         var d = (elapsed * speed).truncatingRemainder(dividingBy: cycle)
         if d < 0 { d += cycle }
-        return viewWidth - d
+        return direction == .rightToLeft ? viewWidth - d : d - stripWidth
+    }
+}
+
+/// Item titles of an RSS 2.0 / RSS 1.0 / Atom feed, without Foundation (small tolerant scanner,
+/// not a validating XML parser). The channel / feed title itself is skipped.
+public enum FeedTitles {
+    public static func parse(_ xml: String, limit: Int = 30) -> [String] {
+        let s = Array(xml.unicodeScalars)
+        var titles: [String] = []
+        var i = 0
+        var inItem = false
+        func matches(_ tag: String, at p: Int) -> Bool {
+            let t = Array(tag.unicodeScalars)
+            guard p + t.count <= s.count else { return false }
+            for k in 0..<t.count where lower(s[p + k]) != t[k] { return false }
+            // Tag name must end here (so <items> or <titles> do not match).
+            let e = p + t.count
+            return e >= s.count || [" ", ">", "/", "\t", "\n", "\r"].contains(Character(s[e]))
+        }
+        while i < s.count, titles.count < limit {
+            guard s[i] == "<" else { i += 1; continue }
+            if matches("<item", at: i) || matches("<entry", at: i) { inItem = true; i += 1; continue }
+            if matches("</item", at: i) || matches("</entry", at: i) { inItem = false; i += 1; continue }
+            if inItem, matches("<title", at: i) {
+                // Skip the start tag's attributes.
+                var j = i
+                while j < s.count, s[j] != ">" { j += 1 }
+                if j > i, s[j - 1] == "/" { i = j + 1; continue }   // <title/>
+                let start = j + 1
+                var end = start
+                while end < s.count, !matches("</title", at: end) {
+                    if matches("<![cdata[", at: end) {   // CDATA may contain "</title"-like text
+                        end += 9
+                        while end + 2 < s.count, !(s[end] == "]" && s[end + 1] == "]" && s[end + 2] == ">") { end += 1 }
+                        end += 3
+                    } else { end += 1 }
+                }
+                guard end <= s.count else { break }
+                let text = clean(String(String.UnicodeScalarView(s[start..<min(end, s.count)])))
+                if !text.isEmpty { titles.append(text) }
+                i = end + 1
+                inItem = true
+                continue
+            }
+            i += 1
+        }
+        return titles
+    }
+
+    private static func lower(_ c: Unicode.Scalar) -> Unicode.Scalar {
+        (c.value >= 65 && c.value <= 90) ? Unicode.Scalar(c.value + 32)! : c
+    }
+
+    /// CDATA unwrapped, tags removed, entities decoded, whitespace collapsed.
+    static func clean(_ raw: String) -> String {
+        // Unwrap CDATA sections.
+        let c = Array(raw)
+        let open = Array("<![CDATA["), close = Array("]]>")
+        func at(_ p: Int, _ n: [Character]) -> Bool { p + n.count <= c.count && Array(c[p..<p + n.count]) == n }
+        var t = ""
+        var i = 0
+        while i < c.count {
+            if at(i, open) {
+                i += open.count
+                while i < c.count, !at(i, close) { t.append(c[i]); i += 1 }
+                i += close.count
+            } else { t.append(c[i]); i += 1 }
+        }
+        // Remove tags (a title may contain <b>…</b> after CDATA).
+        var noTags = ""
+        var depth = false
+        for ch in t { if ch == "<" { depth = true } else if ch == ">" && depth { depth = false } else if !depth { noTags.append(ch) } }
+        let decoded = decodeEntities(noTags)
+        return decoded.split(whereSeparator: { $0 == " " || $0 == "\n" || $0 == "\t" || $0 == "\r" }).joined(separator: " ")
+    }
+
+    static func decodeEntities(_ s: String) -> String {
+        guard s.contains("&") else { return s }
+        var out = ""
+        var i = s.startIndex
+        while i < s.endIndex {
+            if s[i] == "&", let semi = s[i...].firstIndex(of: ";"), s.distance(from: i, to: semi) <= 10 {
+                let name = String(s[s.index(after: i)..<semi])
+                var rep: String?
+                switch name {
+                case "amp": rep = "&"
+                case "lt": rep = "<"
+                case "gt": rep = ">"
+                case "quot": rep = "\""
+                case "apos": rep = "'"
+                case "nbsp": rep = " "
+                default:
+                    if name.hasPrefix("#x") || name.hasPrefix("#X"), let v = UInt32(name.dropFirst(2), radix: 16), let u = Unicode.Scalar(v) {
+                        rep = String(Character(u))
+                    } else if name.hasPrefix("#"), let v = UInt32(name.dropFirst()), let u = Unicode.Scalar(v) {
+                        rep = String(Character(u))
+                    }
+                }
+                if let rep { out += rep; i = s.index(after: semi); continue }
+            }
+            out.append(s[i])
+            i = s.index(after: i)
+        }
+        return out
     }
 }
 

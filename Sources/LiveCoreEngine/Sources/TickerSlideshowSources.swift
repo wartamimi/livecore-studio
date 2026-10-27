@@ -45,9 +45,67 @@ public final class TickerSource: VideoSource {
     private var fileStamp: (Date?, Int)?
     private var pollCount = 0
 
+    // Feed (queue): next fetch time and whether a request is running.
+    private var nextFeedFetch = 0.0
+    private var feedInFlight = false
+    private var feedState = ""
+    /// Last feed result for the UI ("12 items, 14:05" or the error).
+    public var feedStatus: String { lock.withLock { feedState } }
+
+    private var hasFeed: Bool { !(cfg.feedURL ?? "").trimmingCharacters(in: .whitespaces).isEmpty }
+
+    private func setFeedStatus(_ s: String) { lock.withLock { feedState = s } }
+
+    /// Starts a feed request when one is due (queue).
+    private func pollFeed() {
+        guard hasFeed, !feedInFlight, HostClock.now() >= nextFeedFetch else { return }
+        let raw = (cfg.feedURL ?? "").trimmingCharacters(in: .whitespaces)
+        guard let url = URL(string: raw), let scheme = url.scheme?.lowercased(), scheme == "https" || scheme == "http",
+              url.host != nil else {
+            setFeedStatus("Invalid feed address (use https://…)")
+            nextFeedFetch = HostClock.now() + cfg.feedRefreshSeconds
+            return
+        }
+        feedInFlight = true
+        var req = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
+        req.setValue("LiveCore Studio", forHTTPHeaderField: "User-Agent")
+        URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
+            guard let self else { return }
+            let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+            self.queue.async { self.feedArrived(url: raw, data: data, code: code, error: error) }
+        }.resume()
+    }
+
+    private func feedArrived(url: String, data: Data?, code: Int, error: Error?) {
+        feedInFlight = false
+        guard url == (cfg.feedURL ?? "").trimmingCharacters(in: .whitespaces) else { nextFeedFetch = 0; return }   // changed meanwhile
+        let f = DateFormatter(); f.dateFormat = "HH:mm"
+        if let error {
+            setFeedStatus("Feed error: \(error.localizedDescription)")
+            nextFeedFetch = HostClock.now() + 60   // retry sooner than the normal refresh
+            return
+        }
+        guard (200..<300).contains(code), let data else {
+            setFeedStatus("Feed error: HTTP \(code)")
+            nextFeedFetch = HostClock.now() + 60
+            return
+        }
+        nextFeedFetch = HostClock.now() + cfg.feedRefreshSeconds
+        guard data.count <= 5_000_000 else { setFeedStatus("Feed error: larger than 5 MB"); return }
+        let xml = String(decoding: data, as: UTF8.self)
+        let titles = FeedTitles.parse(xml)
+        guard !titles.isEmpty else { setFeedStatus("Feed has no items (\(f.string(from: Date())))"); return }
+        setFeedStatus("\(titles.count) items, \(f.string(from: Date()))")
+        let text = titles.joined(separator: "\n")
+        guard text != cfg.text else { return }
+        cfg.text = text
+        lock.withLock { shownConfig.text = text }
+        rebuild()
+    }
+
     /// Re-reads `textFilePath` when it changed. Returns true when the text changed.
     private func reloadTextFile() -> Bool {
-        guard let path = cfg.textFilePath, !path.isEmpty else { fileStamp = nil; return false }
+        guard !hasFeed, let path = cfg.textFilePath, !path.isEmpty else { fileStamp = nil; return false }
         let attrs = try? FileManager.default.attributesOfItem(atPath: path)
         let stamp = (attrs?[.modificationDate] as? Date, (attrs?[.size] as? NSNumber)?.intValue ?? -1)
         if let f = fileStamp, f.0 == stamp.0, f.1 == stamp.1 { return false }
@@ -78,7 +136,11 @@ public final class TickerSource: VideoSource {
         lock.withLock { shownConfig = c }
         queue.async { [weak self] in
             guard let self else { return }
-            let restart = c.text != self.cfg.text || c.textFilePath != self.cfg.textFilePath
+            let restart = c.text != self.cfg.text || c.textFilePath != self.cfg.textFilePath || c.feedURL != self.cfg.feedURL
+            if c.feedURL != self.cfg.feedURL || c.feedRefreshMinutes != self.cfg.feedRefreshMinutes {
+                self.nextFeedFetch = 0
+                self.setFeedStatus("")
+            }
             self.cfg = c
             self.fileStamp = nil
             _ = self.reloadTextFile()
@@ -143,6 +205,7 @@ public final class TickerSource: VideoSource {
             pollCount = 0
             if reloadTextFile() { rebuild() }
         }
+        pollFeed()
         guard let pool else { return }
         var pbOut: CVPixelBuffer?
         guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pbOut) == kCVReturnSuccess, let pb = pbOut else { return }
@@ -160,7 +223,8 @@ public final class TickerSource: VideoSource {
             }
             if !tiles.isEmpty {
                 var x = TickerMath.offset(elapsed: elapsed, speed: config.speed * scale,
-                                          stripWidth: Double(stripWidth), viewWidth: Double(w))
+                                          stripWidth: Double(stripWidth), viewWidth: Double(w),
+                                          direction: config.scrollDirection)
                 ctx.interpolationQuality = .medium
                 for tile in tiles {
                     let tw = Double(tile.width)

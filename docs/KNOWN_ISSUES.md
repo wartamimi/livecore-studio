@@ -104,8 +104,10 @@
 50. **Nada tes**: dibangkitkan oleh timer 5 ms; bila app sangat sibuk dalam waktu lama bisa terjadi putus (underrun
     tercatat di Properti Audio).
 51. **Teks berjalan**: digambar di CPU 60 kali per detik (satu blit selebar output); di 1080p murah, tetapi teks sangat
-    panjang dipecah per 4096 px sejak 0.18.0. Hanya satu arah (kanan → kiri). File .txt dicek tiap ±2 s (bukan
-    langsung); belum ada sumber RSS / URL.
+    panjang dipecah per 4096 px sejak 0.18.0. Arah kanan → kiri atau kiri → kanan (0.19.0); belum ada gulir vertikal.
+    File .txt dicek tiap ±2 s (bukan langsung). Feed RSS/Atom (0.19.0): hanya judul item (maks. 30), alamat http biasa
+    diblokir macOS (App Transport Security) jadi pakai https; feed dengan encoding selain UTF-8 bisa tampil salah huruf;
+    bila feed gagal, teks terakhir tetap berjalan dan dicoba lagi tiap 60 detik.
 52. **Slideshow foto**: crossfade digambar di CPU (30 fps); foto didekode satu langkah di depan, jadi melompat jauh
     dengan Berikut/Sebelumnya bisa menampilkan hitam sesaat untuk foto sangat besar. Folder dicek tiap 5 s sejak 0.18.0
     (hanya bila dipilih lewat "Pilih folder", tidak termasuk subfolder). Ken Burns digambar di CPU setiap frame (30 fps);
