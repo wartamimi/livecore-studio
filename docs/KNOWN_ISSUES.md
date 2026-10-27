@@ -62,8 +62,8 @@
     akan senyap. Tiap bus berbeda pada stream menambah satu encode AAC (ringan).
 35. **Playlist media campuran**: klip audio di dalam playlist video tampil hitam (belum ada gambar sampul/visualizer).
     Pilihan "Tambah Media" memisahkan audio vs video menurut jenis file; file .mp4 berisi audio saja dianggap video.
-36. **AFV** membuka/menutup audio dengan ramp pendek (bukan crossfade mengikuti durasi transisi); selama transisi kedua
-    sisi terdengar penuh.
+36. **AFV**: sejak 0.18.0 audio crossfade (linear) selama durasi transisi AUTO. Dengan T-bar audio pindah di tengah bar
+    (ramp 50 ms), tidak mengikuti posisi bar secara bertahap. Stinger memakai durasi transisinya.
 37. **Tangkap jendela**: jendela yang diminimalkan atau di Space lain bisa berhenti mengirim frame (perilaku macOS);
     bila Zoom membuka jendela baru (mis. pindah ke breakout room) pilih ulang lewat "Ganti Jendela". Audio tangkapan
     tidak dikoreksi drift clock (selisih kecil dalam sesi sangat panjang bisa memberi klik). Tidak ada input per peserta
@@ -97,13 +97,16 @@
     HEVC alpha); file yang sebenarnya premultiplied tanpa tag akan tampak sedikit lebih gelap di tepi.
 47. **Capture card**: pilihan format sebatas yang dilaporkan driver; deinterlace dan koreksi warna per input belum ada.
     Audio perangkat ditambahkan sebagai kanal mixer terpisah (bisa diatur di Properti Audio).
-48. **Properti audio**: perubahan delay melompat (tanpa crossfade), bisa terdengar klik bila diubah saat siaran.
+48. **Properti audio**: ~~perubahan delay melompat~~ — diperbaiki 0.18.0 (crossfade 20 ms). Selama crossfade terdengar
+    campuran audio lama dan baru (bisa terdengar seperti gema singkat pada delay besar).
 49. **Koreksi warna**: diterapkan pada piksel 8-bit sRGB (bukan linear), tanpa LUT / kurva / white balance. Chroma key
     dihitung setelah koreksi warna. Putar hanya kelipatan 90° (sejak 0.17.0), tanpa sudut bebas.
 50. **Nada tes**: dibangkitkan oleh timer 5 ms; bila app sangat sibuk dalam waktu lama bisa terjadi putus (underrun
     tercatat di Properti Audio).
 51. **Teks berjalan**: digambar di CPU 60 kali per detik (satu blit selebar output); di 1080p murah, tetapi teks sangat
-    panjang (> ~16.000 px) membuat gambar strip besar. Hanya satu arah (kanan → kiri), tanpa sumber RSS / file teks.
+    panjang dipecah per 4096 px sejak 0.18.0. Hanya satu arah (kanan → kiri). File .txt dicek tiap ±2 s (bukan
+    langsung); belum ada sumber RSS / URL.
 52. **Slideshow foto**: crossfade digambar di CPU (30 fps); foto didekode satu langkah di depan, jadi melompat jauh
-    dengan Berikut/Sebelumnya bisa menampilkan hitam sesaat untuk foto sangat besar. Daftar foto diambil saat ditambah,
-    foto baru di folder tidak otomatis masuk (Ubah slideshow › Pilih folder lagi). Tanpa efek Ken Burns.
+    dengan Berikut/Sebelumnya bisa menampilkan hitam sesaat untuk foto sangat besar. Folder dicek tiap 5 s sejak 0.18.0
+    (hanya bila dipilih lewat "Pilih folder", tidak termasuk subfolder). Ken Burns digambar di CPU setiap frame (30 fps);
+    pada Mac lama dengan output 1080p bisa memakai CPU cukup besar.

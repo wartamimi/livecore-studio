@@ -214,7 +214,21 @@ struct TickerSheet: View {
                 .font(.system(size: 13))
                 .frame(height: 90)
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.textDim.opacity(0.4)))
-            Text(L10n.t("ticker.text_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                .disabled(c.textFilePath != nil)
+            HStack {
+                Button(L10n.t("ticker.from_file")) {
+                    if let u = model.pickTextFile() {
+                        c.textFilePath = u.path
+                        if let t = try? String(contentsOf: u, encoding: .utf8) { c.text = t }
+                    }
+                }
+                if let f = c.textFilePath {
+                    Text((f as NSString).lastPathComponent).lineLimit(1).truncationMode(.middle)
+                    Button { c.textFilePath = nil } label: { Image(systemName: "xmark.circle.fill") }.buttonStyle(.borderless)
+                }
+                Spacer()
+            }
+            Text(L10n.t(c.textFilePath == nil ? "ticker.text_hint" : "ticker.file_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
             Form {
                 LabeledContent(L10n.t("ticker.speed")) {
                     Slider(value: $c.speed, in: TickerConfig.speedRange)
@@ -266,13 +280,15 @@ struct SlideshowSheet: View {
     @State private var interval = 5.0
     @State private var fade = 1.0
     @State private var loop = true
+    @State private var kenBurns = false
+    @State private var folder: URL?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(L10n.t("slideshow.title")).font(.headline)
             HStack {
-                Button(L10n.t("slideshow.pick_folder")) { if let f = model.pickFolder() { urls = SlideshowSource.images(inFolder: f) } }
-                Button(L10n.t("slideshow.pick_images")) { let u = model.pickImages(); if !u.isEmpty { urls = u } }
+                Button(L10n.t("slideshow.pick_folder")) { if let f = model.pickFolder() { folder = f; urls = SlideshowSource.images(inFolder: f) } }
+                Button(L10n.t("slideshow.pick_images")) { let u = model.pickImages(); if !u.isEmpty { urls = u; folder = nil } }
                 Spacer()
                 Text(L10n.f("slideshow.count", "\(urls.count)")).foregroundStyle(Theme.textDim)
             }
@@ -290,6 +306,10 @@ struct SlideshowSheet: View {
                     Text(String(format: "%.2f s", fade)).monospacedDigit().frame(width: 60, alignment: .trailing)
                 }
                 Toggle(L10n.t("slideshow.loop"), isOn: $loop)
+                Toggle(L10n.t("slideshow.kenburns"), isOn: $kenBurns)
+            }
+            if folder != nil {
+                Text(L10n.t("slideshow.watch_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
             }
             .formStyle(.grouped)
             HStack {
@@ -297,9 +317,10 @@ struct SlideshowSheet: View {
                 Button(L10n.t("settings.cancel")) { dismiss() }
                 Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
                     if let id = editing {
-                        model.slideshowSource(id)?.update(urls: urls, interval: interval, fade: fade, loop: loop)
+                        model.slideshowSource(id)?.update(urls: urls, interval: interval, fade: fade, loop: loop,
+                                                          kenBurns: kenBurns, folder: folder)
                     } else {
-                        model.addSlideshow(urls: urls, interval: interval, fade: fade, loop: loop)
+                        model.addSlideshow(urls: urls, interval: interval, fade: fade, loop: loop, kenBurns: kenBurns, folder: folder)
                     }
                     dismiss()
                 }
@@ -311,7 +332,7 @@ struct SlideshowSheet: View {
         .frame(width: 460)
         .onAppear {
             if let id = editing, let s = model.slideshowSource(id) {
-                urls = s.urls; interval = s.interval; fade = s.fade; loop = s.loop
+                urls = s.urls; interval = s.interval; fade = s.fade; loop = s.loop; kenBurns = s.kenBurns; folder = s.folder
             }
         }
     }

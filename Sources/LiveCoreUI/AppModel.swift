@@ -369,8 +369,15 @@ public final class AppModel: ObservableObject {
     public func addTicker(_ c: TickerConfig) { engine?.addTicker(c) }
     public func updateTicker(_ id: InputID, _ c: TickerConfig) { tickerSource(id)?.update(c); objectWillChange.send() }
     public func slideshowSource(_ id: InputID) -> SlideshowSource? { engine?.source(id) as? SlideshowSource }
-    public func addSlideshow(urls: [URL], interval: Double, fade: Double, loop: Bool) {
-        engine?.addSlideshow(urls: urls, interval: interval, fade: fade, loop: loop)
+    public func addSlideshow(urls: [URL], interval: Double, fade: Double, loop: Bool, kenBurns: Bool, folder: URL?) {
+        engine?.addSlideshow(urls: urls, interval: interval, fade: fade, loop: loop, kenBurns: kenBurns, folder: folder)
+    }
+    func pickTextFile() -> URL? {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.plainText]
+        return panel.runModal() == .OK ? panel.url : nil
     }
     func pickFolder() -> URL? {
         let panel = NSOpenPanel()

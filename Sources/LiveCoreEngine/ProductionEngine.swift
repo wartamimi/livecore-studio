@@ -438,9 +438,10 @@ public final class ProductionEngine {
     }
 
     @discardableResult
-    public func addSlideshow(urls: [URL], interval: Double, fade: Double, loop: Bool, id: InputID? = nil) -> InputID {
+    public func addSlideshow(urls: [URL], interval: Double, fade: Double, loop: Bool, kenBurns: Bool = false,
+                             folder: URL? = nil, id: InputID? = nil) -> InputID {
         let src = SlideshowSource(id: id ?? InputID(UUID().uuidString), urls: urls, interval: interval, fade: fade,
-                                  loop: loop, outputSize: settings.output.size)
+                                  loop: loop, kenBurns: kenBurns, folder: folder, outputSize: settings.output.size)
         add(src)
         src.start()
         return src.id
@@ -652,9 +653,15 @@ public final class ProductionEngine {
     }
 
     private func applyAFV() {
+        let (sw, layers, overlays) = control.read { ($0.switcher.state, $0.layers, $0.overlays) }
+        let heard = OnAir.audioInputs(switcher: sw, layers: layers, overlays: overlays)
+        let fade = Float(OnAir.audioFadeSeconds(switcher: sw))
         for ch in mixer.channelList {
-            let open = OnAir.audioOpen(link: afvLinks[ch.id], visible: onAirInputs)
-            if ch.controls.afvClosed.value == open { ch.controls.afvClosed.value = !open }
+            let open = OnAir.audioOpen(link: afvLinks[ch.id], visible: heard)
+            if ch.controls.afvClosed.value == open {
+                ch.controls.afvFadeSeconds.value = fade
+                ch.controls.afvClosed.value = !open
+            }
         }
     }
 
@@ -1029,7 +1036,9 @@ extension ProductionEngine {
             case let t as TickerSource: ps = .ticker(t.config)
             case let sl as SlideshowSource:
                 ps = .slideshow(ProjectSlideshow(images: sl.urls.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) },
-                                                 interval: sl.interval, fade: sl.fade, loop: sl.loop))
+                                                 interval: sl.interval, fade: sl.fade, loop: sl.loop,
+                                                 kenBurns: sl.kenBurns ? true : nil,
+                                                 folder: sl.folder.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) }))
             case let c as ScreenCaptureSource: ps = .screen(c.config)
             default: continue
             }
@@ -1137,8 +1146,17 @@ extension ProductionEngine {
             case let .ticker(t):
                 addTicker(t, id: pi.id)
             case let .slideshow(sl):
-                addSlideshow(urls: sl.images.map { mediaURL($0.path, $0.relativePath) }, interval: sl.interval,
-                             fade: sl.fade, loop: sl.loop, id: pi.id)
+                // A watched folder that moved with the project is found next to it like the photos.
+                let folder = sl.folder.map { f -> URL in
+                    if FileManager.default.fileExists(atPath: f.path) { return URL(fileURLWithPath: f.path, isDirectory: true) }
+                    if let r = f.relativePath, let dir = projectDirectory {
+                        return URL(fileURLWithPath: ProjectPaths.resolve(r, againstDirectory: dir.standardizedFileURL.path), isDirectory: true)
+                    }
+                    return URL(fileURLWithPath: f.path, isDirectory: true)
+                }
+                let photos = folder.map { SlideshowSource.images(inFolder: $0) }.flatMap { $0.isEmpty ? nil : $0 }
+                addSlideshow(urls: photos ?? sl.images.map { mediaURL($0.path, $0.relativePath) }, interval: sl.interval,
+                             fade: sl.fade, loop: sl.loop, kenBurns: sl.kenBurns ?? false, folder: folder, id: pi.id)
             case let .screen(c):
                 addScreenCapture(c, id: pi.id)
             }
