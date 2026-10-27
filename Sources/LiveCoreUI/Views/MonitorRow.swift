@@ -54,6 +54,7 @@ struct MonitorView: View {
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .overlay(Rectangle().stroke(color, lineWidth: 2))
                 .overlay(alignment: .top) { if notRecording { NotRecordingBadge().padding(.top, 8) } }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             if let snapshot {
                 HStack {
                     Spacer()
@@ -65,7 +66,6 @@ struct MonitorView: View {
                 }
                 .padding(.top, 3).padding(.horizontal, 4)
             }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(4)
         .panel()
