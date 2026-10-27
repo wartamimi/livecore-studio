@@ -76,9 +76,13 @@
     pratinjau transisi di luar Program, dan tidak ada parameter yang bisa diatur dari UI.
 40. **Lottie**: dirender oleh mesin main-thread Lottie di CPU, maks. 30 fps dan sisi terpanjang 1920 px; animasi sangat
     kompleks bisa membebani thread UI. Ekspresi After Effects dan sebagian efek tidak didukung Lottie. Belum ada
-    seekbar. Bila animasi tampil terbalik (belum bisa diverifikasi tanpa Mac), laporkan; perbaikannya satu baris.
+    seekbar. 0.14.0: orientasi dan posisi diperiksa otomatis di CI macOS (render piksel), tetapi file Lottie
+    nyata dari pengguna belum dites.
 41. **Gaya layer**: sudut bulat / elips / border tidak diterapkan pada layer yang memakai chroma key (crop tetap).
     Kanvas editor scene menampilkan sudut & border secara perkiraan dan tidak menampilkan crop; monitor Preview
-    menampilkan hasil sebenarnya. Bentuk dibuat sebagai input warna terpisah.
+    menampilkan hasil sebenarnya. (Menu Tambah Bentuk dihapus di 0.14.0.)
 42. **Overlay ke Preview**: overlay yang sedang tampil di Preview tidak ikut stinger kecuali stinger dijalankan lewat
     AUTO (ikut seperti transisi lain). Shortcut keyboard dan MIDI overlay tetap langsung ke Program.
+43. **Kunci**: kunci stream/rekam hanya berlaku selama app terbuka (tidak disimpan). Kunci source tidak menghalangi
+    perubahan lewat file proyek yang dibuka, dan tidak mencegah source berganti status (mis. kamera dicabut).
+    Menutup app tetap mungkin walau stream terkunci (konfirmasi quit tetap muncul saat output aktif).

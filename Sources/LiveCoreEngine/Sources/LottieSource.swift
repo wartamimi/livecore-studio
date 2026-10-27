@@ -147,8 +147,11 @@ public final class LottieSource: VideoSource {
         let w = canvas.width, h = canvas.height
         let size = anim.size
         let pb = PixelBufferFactory.draw(width: w, height: h) { ctx in
-            // Bottom-left context; the geometry-flipped root puts Lottie's top-left origin at the top.
+            // render(in:) draws the flipped tree upside down into this bottom-left context (measured by
+            // livecore-lottie-check on CI), so flip the context as well.
             ctx.scaleBy(x: CGFloat(w) / size.width, y: CGFloat(h) / size.height)
+            ctx.translateBy(x: 0, y: size.height)
+            ctx.scaleBy(x: 1, y: -1)
             layer.render(in: ctx)
         }
         if let pb { lock.withLock { frame = pb } }
