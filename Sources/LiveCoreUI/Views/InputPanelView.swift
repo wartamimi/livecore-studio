@@ -22,6 +22,10 @@ struct InputPanelView: View {
     @State private var showCaptureCard = false
     @State private var editingCaptureCard: InputID?
     @State private var adjusting: InputID?
+    @State private var showTickerSheet = false
+    @State private var editingTicker: InputID?
+    @State private var showSlideshowSheet = false
+    @State private var editingSlideshow: InputID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -65,6 +69,10 @@ struct InputPanelView: View {
         .sheet(isPresented: $showCaptureCard) { CaptureCardSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCaptureCard) { id in CaptureCardSheet(editing: id).environmentObject(model) }
         .sheet(item: $adjusting) { id in InputAdjustSheet(input: id).environmentObject(model) }
+        .sheet(isPresented: $showTickerSheet) { TickerSheet(editing: nil).environmentObject(model) }
+        .sheet(item: $editingTicker) { id in TickerSheet(editing: id).environmentObject(model) }
+        .sheet(isPresented: $showSlideshowSheet) { SlideshowSheet(editing: nil).environmentObject(model) }
+        .sheet(item: $editingSlideshow) { id in SlideshowSheet(editing: id).environmentObject(model) }
         .alert(L10n.f("inputs.close_confirm", model.inputs.first { $0.id == closing }?.name ?? ""),
                isPresented: Binding(get: { closing != nil }, set: { if !$0 { closing = nil } })) {
             Button(L10n.t("inputs.close"), role: .destructive) { if let id = closing { model.remove(id) }; closing = nil }
@@ -90,10 +98,12 @@ struct InputPanelView: View {
             Button(L10n.t("media.add")) { model.addMedia() }
             Button(L10n.t("media.add_playlist")) { model.addMediaPlaylist() }
             Button(L10n.t("inputs.image")) { model.addImage() }
+            Button(L10n.t("slideshow.add")) { showSlideshowSheet = true }
             Button(L10n.t("inputs.title_generator")) { showTitleSheet = true }
             Button(L10n.t("capture.add")) { showCaptureSheet = true }
             Button(L10n.t("browser.add")) { showBrowserSheet = true }
             Button(L10n.t("timer.add")) { showTimerSheet = true }
+            Button(L10n.t("ticker.add")) { showTickerSheet = true }
             Button(L10n.t("inputs.colorbars")) { model.addColorBars() }
             Menu(L10n.t("inputs.color")) {
                 Button("Black") { model.addColor(.black, name: "Black") }
@@ -146,6 +156,17 @@ struct InputPanelView: View {
             Button(L10n.t("timer.pause")) { model.timerControl(info.id, "pause") }
             Button(L10n.t("timer.reset")) { model.timerControl(info.id, "reset") }
             Button(L10n.t("timer.edit")) { editingTimer = info.id }
+        }
+        if info.kind == .ticker, let t = model.tickerSource(info.id) {
+            Button(t.isPaused ? L10n.t("ticker.resume") : L10n.t("ticker.pause")) { t.setPaused(!t.isPaused) }
+            Button(L10n.t("ticker.restart")) { t.restart() }
+            Button(L10n.t("ticker.edit")) { editingTicker = info.id }
+        }
+        if info.kind == .slideshow, let s = model.slideshowSource(info.id) {
+            Button(L10n.t("playlist.next")) { s.next() }
+            Button(L10n.t("playlist.previous")) { s.previous() }
+            Button(s.isPaused ? L10n.t("ticker.resume") : L10n.t("ticker.pause")) { s.setPaused(!s.isPaused) }
+            Button(L10n.t("slideshow.edit")) { editingSlideshow = info.id }
         }
         if info.kind == .videoFile, let v = model.videoFile(info.id) {
             Button("Play") { v.play() }
@@ -275,6 +296,8 @@ struct InputTile: View {
         case .replay: return "gobackward"
         case .colorBars: return "chart.bar.fill"
         case .scene: return "square.on.square"
+        case .ticker: return "text.line.first.and.arrowtriangle.forward"
+        case .slideshow: return "photo.stack"
         }
     }
 }

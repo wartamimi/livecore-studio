@@ -57,3 +57,46 @@ final class ToneGeneratorTests: XCTestCase {
         XCTAssertEqual(back, doc)
     }
 }
+
+final class M17Tests: XCTestCase {
+    func testRotationCornersAndSize() {
+        let r90 = InputAdjust(rotation: 90)
+        // Clockwise: the destination's top-left shows the source's bottom-left.
+        XCTAssertEqual(r90.cornerUVs.map { [$0.u, $0.v] }, [[0, 1], [1, 1], [0, 0], [1, 0]])
+        XCTAssertEqual(r90.outputSize(width: 1920, height: 1080).width, 1080)
+        XCTAssertEqual(InputAdjust(rotation: 180).cornerUVs.map { [$0.u, $0.v] }, [[1, 1], [1, 0], [0, 1], [0, 0]])
+        XCTAssertEqual(InputAdjust(rotation: 270).cornerUVs.map { [$0.u, $0.v] }, [[1, 0], [0, 0], [1, 1], [0, 1]])
+        XCTAssertEqual(InputAdjust(rotation: -90).normalizedRotation, 270)
+        XCTAssertFalse(InputAdjust(rotation: 90).isIdentity)
+        XCTAssertEqual(InputAdjust(flipHorizontal: true).cornerUVs.map { [$0.u, $0.v] }, [[1, 0], [1, 1], [0, 0], [0, 1]])
+    }
+
+    func testTickerOffsetCycles() {
+        // 1000 px strip, 1920 px view, 100 px/s: starts at the right edge, wraps after 29.2 s.
+        XCTAssertEqual(TickerMath.offset(elapsed: 0, speed: 100, stripWidth: 1000, viewWidth: 1920), 1920)
+        XCTAssertEqual(TickerMath.offset(elapsed: 10, speed: 100, stripWidth: 1000, viewWidth: 1920), 920)
+        XCTAssertEqual(TickerMath.offset(elapsed: 29.2, speed: 100, stripWidth: 1000, viewWidth: 1920), 1920, accuracy: 1e-6)
+        XCTAssertEqual(TickerConfig(text: "x", speed: 5000).clamped.speed, 600)
+    }
+
+    func testSlideshowPositions() {
+        let p0 = SlideshowMath.position(elapsed: 1, count: 3, interval: 5, fade: 1, loop: true)
+        XCTAssertEqual(p0, .init(index: 0, next: nil, mix: 0, finished: false))
+        let fading = SlideshowMath.position(elapsed: 4.5, count: 3, interval: 5, fade: 1, loop: true)
+        XCTAssertEqual(fading.index, 0); XCTAssertEqual(fading.next, 1); XCTAssertEqual(fading.mix, 0.5, accuracy: 1e-9)
+        XCTAssertEqual(SlideshowMath.position(elapsed: 16, count: 3, interval: 5, fade: 1, loop: true).index, 0, "wraps")
+        let end = SlideshowMath.position(elapsed: 100, count: 3, interval: 5, fade: 1, loop: false)
+        XCTAssertEqual(end, .init(index: 2, next: nil, mix: 0, finished: true))
+        XCTAssertNil(SlideshowMath.position(elapsed: 4.9, count: 1, interval: 5, fade: 1, loop: true).next)
+    }
+
+    func testNewSourcesRoundTrip() throws {
+        let t = ProjectInput(id: InputID("t"), name: "Ticker", source: .ticker(TickerConfig(text: "Breaking news")))
+        let s = ProjectInput(id: InputID("s"), name: "Photos",
+                             source: .slideshow(ProjectSlideshow(images: [ProjectMediaRef(path: "/a.jpg", relativePath: "a.jpg")], interval: 4)))
+        var doc = ProjectDocument(inputs: [t, s])
+        doc.inputs[0].adjust = InputAdjust(rotation: 270)
+        let back = try JSONDecoder().decode(ProjectDocument.self, from: JSONEncoder().encode(doc))
+        XCTAssertEqual(back, doc)
+    }
+}
