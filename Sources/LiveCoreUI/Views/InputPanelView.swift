@@ -18,12 +18,19 @@ struct InputPanelView: View {
     @State private var editingTimer: InputID?
     @State private var showCaptureSheet = false
     @State private var editingCapture: InputID?
+    @State private var closing: InputID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 SectionHeader(title: L10n.t("inputs.title"))
                 Spacer()
+                if !model.inputs.isEmpty {
+                    let allLocked = model.inputs.allSatisfy(\.locked)
+                    Button { model.lockAllInputs(!allLocked) } label: { Image(systemName: allLocked ? "lock.fill" : "lock.open") }
+                        .buttonStyle(.borderless)
+                        .help(allLocked ? L10n.t("lock.unlock_all") : L10n.t("lock.lock_all"))
+                }
                 addMenu
             }
             if model.inputs.isEmpty {
@@ -33,7 +40,7 @@ struct InputPanelView: View {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 6)], spacing: 6) {
                         ForEach(model.inputs) { info in
-                            InputTile(info: info)
+                            InputTile(info: info, onClose: { closing = info.id })
                                 .contextMenu { contextMenu(info) }
                         }
                     }
@@ -52,6 +59,13 @@ struct InputPanelView: View {
         .sheet(item: $editingTimer) { id in TimerSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showCaptureSheet) { CaptureSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCapture) { id in CaptureSheet(editing: id).environmentObject(model) }
+        .alert(L10n.f("inputs.close_confirm", model.inputs.first { $0.id == closing }?.name ?? ""),
+               isPresented: Binding(get: { closing != nil }, set: { if !$0 { closing = nil } })) {
+            Button(L10n.t("inputs.close"), role: .destructive) { if let id = closing { model.remove(id) }; closing = nil }
+            Button(L10n.t("settings.cancel"), role: .cancel) { closing = nil }
+        } message: {
+            Text(L10n.t("inputs.close_message"))
+        }
         .alert(L10n.t("inputs.rename"), isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("", text: $renameText)
             Button(L10n.t("common.ok")) { if let id = renaming { model.rename(id, renameText) }; renaming = nil }
@@ -92,6 +106,13 @@ struct InputPanelView: View {
     private func contextMenu(_ info: ProductionEngine.InputInfo) -> some View {
         Button(L10n.t("inputs.preview")) { model.preview(info.id) }
         Button(L10n.t("inputs.cutdirect")) { model.cutDirect(info.id) }
+        Button(info.locked ? L10n.t("lock.unlock_input") : L10n.t("lock.lock_input")) { model.toggleLock(info.id) }
+        Divider()
+        Group { editItems(info) }.disabled(info.locked)
+    }
+
+    @ViewBuilder
+    private func editItems(_ info: ProductionEngine.InputInfo) -> some View {
         Button(L10n.t("scene.edit")) { editingScene = info.id }
         Menu(L10n.t("inputs.addlayer")) {
             ForEach([LayoutPreset.pipTopRight, .pipTopLeft, .pipBottomRight, .pipBottomLeft, .sideBySideLeft, .sideBySideRight], id: \.self) { p in
@@ -151,7 +172,7 @@ struct InputPanelView: View {
         }
         Divider()
         Button(L10n.t("inputs.rename")) { renameText = info.name; renaming = info.id }
-        Button(L10n.t("inputs.remove"), role: .destructive) { model.remove(info.id) }
+        Button(L10n.t("inputs.remove"), role: .destructive) { closing = info.id }
     }
 }
 
@@ -160,6 +181,8 @@ extension InputID: Identifiable { public var id: String { raw } }
 struct InputTile: View {
     @EnvironmentObject var model: AppModel
     let info: ProductionEngine.InputInfo
+    var onClose: () -> Void = {}
+    @State private var hovering = false
 
     private var isProgram: Bool { model.switcher.program == info.id || model.switcher.transition?.from == info.id }
     private var isPreview: Bool { model.switcher.preview == info.id }
@@ -175,12 +198,31 @@ struct InputTile: View {
                     .background(isProgram ? Theme.program : (isPreview ? Theme.preview : Color.black.opacity(0.6)))
                     .clipShape(RoundedRectangle(cornerRadius: 3))
                     .padding(4)
+                if hovering && !info.locked {
+                    Button(action: onClose) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 15))
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(.white, Color.black.opacity(0.65))
+                    }
+                    .buttonStyle(.plain)
+                    .help(L10n.t("inputs.close"))
+                    .padding(4)
+                    .frame(maxWidth: .infinity, alignment: .topTrailing)
+                }
             }
             HStack(spacing: 4) {
                 Circle().fill(statusColor).frame(width: 7, height: 7).help(info.status.label)
                 Text(info.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
                 Spacer(minLength: 0)
                 Image(systemName: icon).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                Button { model.toggleLock(info.id) } label: {
+                    Image(systemName: info.locked ? "lock.fill" : "lock.open")
+                        .font(.system(size: 10))
+                        .foregroundStyle(info.locked ? Theme.warning : Theme.textDim)
+                }
+                .buttonStyle(.plain)
+                .help(info.locked ? L10n.t("lock.unlock_input") : L10n.t("lock.lock_input"))
             }
             if info.kind == .videoFile, let v = model.videoFile(info.id) { MediaClock(video: v) }
             if !info.status.isHealthy, info.status != .starting {
@@ -192,6 +234,7 @@ struct InputTile: View {
         .clipShape(RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(isProgram ? Theme.program : (isPreview ? Theme.preview : Theme.border), lineWidth: isProgram || isPreview ? 2 : 1))
         .contentShape(Rectangle())
+        .onHover { hovering = $0 }
         .onTapGesture(count: 2) { model.cutDirect(info.id) }
         .onTapGesture { model.preview(info.id) }
         .help("Click: Preview · Double-click: Cut to Program")

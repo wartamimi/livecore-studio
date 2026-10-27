@@ -272,7 +272,6 @@
 "transition.custom.folder" = "Folder";
 "transition.custom.fallback" = "Sementara AUTO/T-bar memakai Dissolve sampai shader berhasil dikompilasi.";
 "scene.add_layer" = "Tambah Layer";
-"scene.add_shape" = "Tambah Bentuk";
 "scene.no_inputs" = "Belum ada input lain";
 "scene.style" = "Gaya: crop, sudut, bentuk, border";
 "scene.shape" = "Bentuk";
@@ -287,9 +286,24 @@
 "scene.crop.top" = "Atas";
 "scene.crop.bottom" = "Bawah";
 "scene.style_reset" = "Reset gaya";
-"scene.shape.box" = "Kotak";
-"scene.shape.rounded" = "Kotak sudut bulat";
-"scene.shape.circle" = "Lingkaran";
-"scene.shape.input_name" = "Bentuk";
 "overlay.help" = "Klik: tampil di Preview (oranye), CUT/AUTO membawanya ke Program. Klik dua jari / klik kanan: langsung ke Program (hijau).";
 "lottie.add" = "Lottie (.json / .lottie)…";
+
+"inputs.close" = "Tutup source";
+"inputs.close_confirm" = "Tutup \"%@\"?";
+"inputs.close_message" = "Source dihapus dari daftar input, scene dan overlay. Kunci source (gembok) untuk melindunginya.";
+"lock.lock_input" = "Kunci source";
+"lock.unlock_input" = "Buka kunci source";
+"lock.lock_all" = "Kunci semua source";
+"lock.unlock_all" = "Buka kunci semua source";
+"lock.input_locked" = "Source ini terkunci. Buka kuncinya (gembok) dulu.";
+"lock.stream_help" = "Kunci streaming: selama terkunci, Mulai/Stop Streaming tidak berfungsi (tombol, menu dan shortcut).";
+"lock.record_help" = "Kunci rekaman: selama terkunci, Mulai/Stop Rekam tidak berfungsi (tombol, menu dan shortcut).";
+"lock.stream_locked" = "Streaming terkunci. Buka gembok di sebelah tombol dulu.";
+"lock.record_locked" = "Rekaman terkunci. Buka gembok di sebelah tombol dulu.";
+"stream.stop_confirm" = "Hentikan streaming?";
+"stream.stop_message" = "Semua tujuan stream akan offline.";
+"record.stop_confirm" = "Hentikan rekaman?";
+"record.stop_message" = "File diselesaikan; rekaman berikutnya membuat file baru.";
+"record.with_stream" = "Rekam otomatis saat streaming";
+"record.with_stream_help" = "Saat stream dimulai, rekaman ikut dimulai; saat stream dihentikan, rekaman itu ikut berhenti.";

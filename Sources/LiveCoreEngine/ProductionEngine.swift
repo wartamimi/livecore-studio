@@ -27,6 +27,8 @@ public final class ProductionEngine {
         public var kind: InputKind
         public var status: SourceStatus
         public var number: Int
+        /// Locked inputs cannot be closed, renamed or edited from the UI (protection on air).
+        public var locked: Bool = false
     }
 
     // MARK: Callbacks (main thread)
@@ -68,6 +70,7 @@ public final class ProductionEngine {
         var order: [InputID] = []
         var layers: [InputID: [Layer]] = [:]
         var keys: [InputID: ChromaKey] = [:]
+        var locked: Set<InputID> = []
         var stinger = StingerConfig()
     }
     private let control = Locked(ControlState())
@@ -215,7 +218,8 @@ public final class ProductionEngine {
         control.read { st in
             st.order.enumerated().compactMap { i, id in
                 guard let s = st.sources[id] else { return nil }
-                return InputInfo(id: id, name: s.name, kind: s.kind, status: s.status, number: i + 1)
+                return InputInfo(id: id, name: s.name, kind: s.kind, status: s.status, number: i + 1,
+                                 locked: st.locked.contains(id))
             }
         }
     }
@@ -398,6 +402,7 @@ public final class ProductionEngine {
             for key in st.layers.keys { st.layers[key]?.removeAll { $0.source == id && key != id } }
             st.layers[id] = nil
             st.keys[id] = nil
+            st.locked.remove(id)
             if st.stinger.source == id { st.stinger.source = nil }
             st.order.removeAll { $0 == id }
             return st.sources.removeValue(forKey: id)
@@ -414,6 +419,16 @@ public final class ProductionEngine {
         applyAFV()
         publishInputs()
     }
+
+    public func setInputLocked(_ id: InputID, _ locked: Bool) {
+        control.mutate { st in
+            guard st.sources[id] != nil else { return }
+            if locked { st.locked.insert(id) } else { st.locked.remove(id) }
+        }
+        publishInputs()
+    }
+
+    public func isInputLocked(_ id: InputID) -> Bool { control.read { $0.locked.contains(id) } }
 
     public func renameInput(_ id: InputID, to name: String) {
         control.read { $0.sources[id] }?.name = name
@@ -918,8 +933,8 @@ extension ProductionEngine {
     /// Snapshot of the current production as a project document. Media paths are also stored
     /// relative to `projectDirectory` so a copied project folder still finds its files.
     public func exportProject(projectDirectory: URL?) -> ProjectDocument {
-        let (order, sources, layers, keys, overlays, sw) = control.read { st in
-            (st.order, st.sources, st.layers, st.keys, st.overlays, st.switcher.state)
+        let (order, sources, layers, keys, overlays, sw, locked) = control.read { st in
+            (st.order, st.sources, st.layers, st.keys, st.overlays, st.switcher.state, st.locked)
         }
         var doc = ProjectDocument(settings: settings)
         func rel(_ url: URL) -> String? {
@@ -948,6 +963,7 @@ extension ProductionEngine {
                                   chromaKey: key == ChromaKey() ? nil : key)
             if let v = src as? VideoFileSource, v.autoPlay != .off { pi.autoPlay = v.autoPlay.rawValue }
             if let l = src as? LottieSource, l.autoPlay != .off { pi.autoPlay = l.autoPlay.rawValue }
+            if locked.contains(id) { pi.locked = true }
             doc.inputs.append(pi)
         }
         doc.stinger = control.read { $0.stinger.source == nil && $0.stinger.cutPoint == nil ? nil : $0.stinger }
@@ -1043,6 +1059,7 @@ extension ProductionEngine {
                 let layers = pi.layers.filter { created.contains($0.source) }
                 st.layers[pi.id] = layers.isEmpty ? [Layer(source: pi.id)] : layers
                 if let k = pi.chromaKey { st.keys[pi.id] = k.clamped }
+                if pi.locked == true { st.locked.insert(pi.id) }
             }
             st.overlays = (1...4).map { OverlayChannel(index: $0) }
             for o in doc.overlays {

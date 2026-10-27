@@ -85,6 +85,8 @@ public struct ProjectInput: Codable, Equatable, Sendable {
     public var chromaKey: ChromaKey?
     /// Video inputs: "off", "playPause" or "restartPause" (absent before 0.8.0 = off).
     public var autoPlay: String?
+    /// Protected against closing / editing in the UI (since 0.14.0; absent = unlocked).
+    public var locked: Bool?
 
     public init(id: InputID, name: String, source: ProjectSource, layers: [Layer] = [], chromaKey: ChromaKey? = nil) {
         self.id = id; self.name = name; self.source = source

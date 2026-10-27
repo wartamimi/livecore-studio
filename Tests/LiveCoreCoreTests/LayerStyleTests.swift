@@ -88,3 +88,17 @@ final class LottieProjectTests: XCTestCase {
         XCTAssertEqual(back.source, .lottie(path: "/a/b.json", relativePath: "b.json", loop: false))
     }
 }
+
+final class InputLockProjectTests: XCTestCase {
+    func testLockedFlagRoundTripsAndIsOptional() throws {
+        var pi = ProjectInput(id: InputID("cam"), name: "Cam", source: .color(ProjectColor(r: 0, g: 0, b: 0)))
+        pi.locked = true
+        let back = try JSONDecoder().decode(ProjectInput.self, from: JSONEncoder().encode(pi))
+        XCTAssertEqual(back.locked, true)
+        // Projects from before 0.14.0 have no "locked" key: the input is unlocked.
+        var dict = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(pi)) as? [String: Any])
+        dict.removeValue(forKey: "locked")
+        let old = try JSONDecoder().decode(ProjectInput.self, from: JSONSerialization.data(withJSONObject: dict))
+        XCTAssertNil(old.locked)
+    }
+}

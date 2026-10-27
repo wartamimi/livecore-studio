@@ -233,25 +233,7 @@ struct SceneEditorSheet: View {
             let id = info.id
             menu.addItem(ClosureMenuItem(title: "\(info.number) \(info.name)") { addLayer(id) })
         }
-        menu.addItem(.separator())
-        let shapes = NSMenuItem(title: L10n.t("scene.add_shape"), action: nil, keyEquivalent: "")
-        let sub = NSMenu()
-        sub.addItem(ClosureMenuItem(title: L10n.t("scene.shape.box")) { addShape(LayerStyle(), rect: NormRect(x: 0.05, y: 0.70, width: 0.5, height: 0.2)) })
-        sub.addItem(ClosureMenuItem(title: L10n.t("scene.shape.rounded")) { addShape(LayerStyle(cornerRadius: 0.25), rect: NormRect(x: 0.05, y: 0.70, width: 0.5, height: 0.2)) })
-        sub.addItem(ClosureMenuItem(title: L10n.t("scene.shape.circle")) {
-            // Square in pixels on a 16:9 canvas.
-            addShape(LayerStyle(shape: .ellipse), rect: NormRect(x: 0.40, y: 0.30, width: 0.225, height: 0.4))
-        })
-        shapes.submenu = sub
-        menu.addItem(shapes)
         menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
-    }
-
-    private func addShape(_ style: LayerStyle, rect: NormRect) {
-        guard let id = model.addShapeInput(NSColor(red: 0.0, green: 0.45, blue: 0.85, alpha: 1), name: L10n.t("scene.shape.input_name")) else { return }
-        layers.append(Layer(source: id, rect: rect, scaleMode: .stretch, style: style))
-        selected = layers.count - 1
-        model.setLayers(layers, of: input)
     }
 
     // MARK: Edits

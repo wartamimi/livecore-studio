@@ -116,10 +116,14 @@ struct StreamSection: View {
                         .lineLimit(1).truncationMode(.tail)
                 }
             }
-            Button(model.isStreamingActive ? L10n.t("stream.stop") : L10n.t("stream.start")) {
-                if !model.isStreamingActive && model.readyDestinationCount == 0 { showSettings = true } else { model.toggleStream() }
+            HStack(spacing: 6) {
+                Button(model.isStreamingActive ? L10n.t("stream.stop") : L10n.t("stream.start")) {
+                    if !model.isStreamingActive && model.readyDestinationCount == 0 { showSettings = true } else { model.requestToggleStream() }
+                }
+                .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isStreamingActive))
+                .disabled(model.streamLocked)
+                LockButton(locked: $model.streamLocked, help: L10n.t("lock.stream_help"))
             }
-            .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isStreamingActive))
             statsView
         }
     }
@@ -195,6 +199,18 @@ struct StreamSection: View {
     private func value(_ s: String) -> some View { Text(s).font(.system(size: 11).monospacedDigit()) }
 }
 
+/// Padlock next to Stream / Record: while locked the button cannot start or stop anything.
+struct LockButton: View {
+    @Binding var locked: Bool
+    let help: String
+    var body: some View {
+        Button { locked.toggle() } label: { Image(systemName: locked ? "lock.fill" : "lock.open") }
+            .buttonStyle(StudioButtonStyle(color: Theme.warning, active: locked))
+            .frame(width: 36)
+            .help(help)
+    }
+}
+
 struct RecordSection: View {
     @EnvironmentObject var model: AppModel
 
@@ -203,13 +219,18 @@ struct RecordSection: View {
             SectionHeader(title: L10n.t("record.title"))
             Text(folderLabel).font(.system(size: 11)).foregroundStyle(Theme.textDim).lineLimit(1).truncationMode(.head)
             HStack(spacing: 6) {
-                Button(model.isRecording ? L10n.t("record.stop") : L10n.t("record.start")) { model.toggleRecord() }
+                Button(model.isRecording ? L10n.t("record.stop") : L10n.t("record.start")) { model.requestToggleRecord() }
                     .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isRecording))
+                    .disabled(model.recordLocked)
+                LockButton(locked: $model.recordLocked, help: L10n.t("lock.record_help"))
                 Button { model.saveSnapshot() } label: { Image(systemName: "camera") }
                     .buttonStyle(StudioButtonStyle(color: Theme.accent))
                     .frame(width: 44)
                     .help(L10n.t("snapshot.help"))
             }
+            Toggle(L10n.t("record.with_stream"), isOn: $model.recordWithStream)
+                .toggleStyle(.checkbox).font(.system(size: 11))
+                .help(L10n.t("record.with_stream_help"))
             if let snap = model.lastSnapshotURL {
                 Button(L10n.f("snapshot.saved", snap.lastPathComponent)) { NSWorkspace.shared.activateFileViewerSelecting([snap]) }
                     .buttonStyle(.link).font(.system(size: 10)).lineLimit(1)
