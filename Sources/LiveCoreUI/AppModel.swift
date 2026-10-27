@@ -279,7 +279,8 @@ public final class AppModel: ObservableObject {
         guard let v = videoFile(id) else { return }
         let urls = pickMedia()
         guard !urls.isEmpty else { return }
-        v.setURLs(v.urls + urls)
+        v.appendClips(urls)
+        objectWillChange.send()
         if v.isPlaylist, v.name == v.urls.first?.deletingPathExtension().lastPathComponent { rename(id, "Playlist") }
     }
 
@@ -706,7 +707,7 @@ public final class AppModel: ObservableObject {
         guard let m = engine?.musicPlayer(channelID: channelID) else { return }
         let urls = pickAudioFiles()
         guard !urls.isEmpty else { return }
-        m.setTracks(m.tracks + urls)
+        m.appendTracks(urls)
     }
 
     // MARK: Instant replay
@@ -738,12 +739,51 @@ public final class AppModel: ObservableObject {
     }
 
     public func musicPlayer(_ channelID: String) -> MusicInput? { engine?.musicPlayer(channelID: channelID) }
+    public var musicInputs: [MusicInput] { engine?.musicPlayers ?? [] }
+
+    /// Media files listed in an M3U / M3U8 playlist the user picks (missing files are reported and skipped).
+    func importM3U() -> [URL] {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = ["m3u", "m3u8"].compactMap { UTType(filenameExtension: $0) }
+        guard panel.runModal() == .OK, let url = panel.url, let data = try? Data(contentsOf: url) else { return [] }
+        let text = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) ?? ""
+        let dir = url.deletingLastPathComponent()
+        var found: [URL] = [], missing = 0
+        for p in M3U.parse(text) {
+            let u = p.hasPrefix("/") ? URL(fileURLWithPath: p) : dir.appendingPathComponent(p)
+            if FileManager.default.fileExists(atPath: u.path) { found.append(u.standardizedFileURL) } else { missing += 1 }
+        }
+        if missing > 0 { report(L10n.f("playlist.m3u_missing", "\(missing)")) }
+        return found
+    }
+
+    func exportM3U(_ urls: [URL]) {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [UTType(filenameExtension: "m3u8") ?? .plainText]
+        panel.nameFieldStringValue = "Playlist.m3u8"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do { try M3U.write(paths: urls.map(\.path)).write(to: url, atomically: true, encoding: .utf8) }
+        catch { report("Cannot save playlist: \(error.localizedDescription)") }
+    }
 
     public func removeMusic(_ channelID: String) {
         guard let m = engine?.musicPlayer(channelID: channelID) else { return }
         engine?.removeMusic(id: m.id)
         reloadAudioChannels()
     }
+
+    /// Closes a mixer channel the way its source is removed: device / tone channels are removed,
+    /// a music input is removed, and audio that belongs to an input (video file, capture) removes
+    /// that input. Locked channels (and locked inputs) are kept.
+    public func closeAudioChannel(_ id: String) {
+        guard let vm = audioChannels.first(where: { $0.id == id }) else { return }
+        guard !vm.locked else { report(L10n.t("lock.audio_locked")); return }
+        if let input = ProductionEngine.inputOfChannel(id) { remove(input); return }
+        if vm.isMusicChannel { removeMusic(id) } else { removeAudioInput(id) }
+    }
+
+    public func lockAllAudio(_ locked: Bool) { for vm in audioChannels { vm.locked = locked } }
 
     public func removeAudioInput(_ id: String) {
         if let t = engine?.tone(channelID: id) { engine?.removeTone(id: t.id) } else { engine?.removeAudioInput(uniqueID: id) }
@@ -1054,6 +1094,7 @@ public final class ChannelVM: ObservableObject, Identifiable {
     @Published public var mode: ChannelMode { didSet { channel.controls.mode = mode } }
     @Published public var invertPhase: Bool { didSet { channel.controls.invertPhase.value = invertPhase } }
     @Published public var delayMs: Double { didSet { channel.controls.delayMs.value = Float(delayMs) } }
+    @Published public var locked: Bool { didSet { channel.locked = locked } }
     /// Audio of a video-file input (removed together with the input, not from the mixer).
     /// Audio that belongs to an input (video file or window/display capture).
     public var isFileChannel: Bool { ProductionEngine.inputOfChannel(channel.id) != nil }
@@ -1063,6 +1104,7 @@ public final class ChannelVM: ObservableObject, Identifiable {
     public init(channel: MixerChannel) {
         self.channel = channel
         let c = channel.controls
+        locked = channel.locked
         name = channel.name
         compMakeup = Double(c.compMakeupDB.value)
         compAttack = Double(c.compAttackMs.value)

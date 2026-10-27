@@ -113,3 +113,7 @@
     dengan Berikut/Sebelumnya bisa menampilkan hitam sesaat untuk foto sangat besar. Folder dicek tiap 5 s sejak 0.18.0
     (hanya bila dipilih lewat "Pilih folder", tidak termasuk subfolder). Ken Burns digambar di CPU setiap frame (30 fps);
     pada Mac lama dengan output 1080p bisa memakai CPU cukup besar.
+53. **Tutup audio**: audio video/tangkapan layar tidak bisa dilepas sendiri; menutupnya menghapus input pemiliknya
+    (untuk membisukan saja, pakai M atau tarik fader). Gembok kanal hanya mencegah penutupan, bukan perubahan fader.
+54. **Dock playlist**: daftar diperbarui tiap 0,5 s; seret-urutkan nonaktif saat kolom cari terisi. Impor M3U hanya
+    file lokal (URL stream http di M3U dilewati), dan file yang hilang dilewati dengan pesan.

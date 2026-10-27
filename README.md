@@ -4,7 +4,9 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.20.0 — Milestone 3 berjalan.** 0.20.0 menambah animasi masuk/keluar overlay (geser, zoom), eyedropper
+> **Status: 0.21.0 — Milestone 3 berjalan.** 0.21.0 menambah tombol x + gembok untuk kanal audio di mixer dan dock
+> Playlist di samping mixer (klik untuk memutar, seret untuk mengurutkan, cari, M3U) — menunggu tes T-80..T-81.
+> 0.20.0 menambah animasi masuk/keluar overlay (geser, zoom), eyedropper
 > chroma key, dan fade antarlagu musik — menunggu tes T-77..T-79. 0.19.0 menambah arah teks berjalan (kiri → kanan) dan teks dari feed
 > RSS/Atom — menunggu tes T-76. 0.18.0 memperbaiki klik saat delay audio diubah, membuat AFV crossfade
 > selama transisi AUTO, dan memperbaiki teks berjalan yang sangat panjang; menambah teks berjalan dari file .txt, Ken

@@ -11,6 +11,7 @@ struct MainView: View {
     @AppStorage("dock.mixer.minimized") private var mixerMin = false
     @AppStorage("dock.controls.minimized") private var controlsMin = false
     @AppStorage("dock.monitors.minimized") private var monitorsMin = false
+    @AppStorage("dock.playlist.minimized") private var playlistMin = false
 
     var body: some View {
         Group {
@@ -51,6 +52,13 @@ struct MainView: View {
                                                 DockBar(title: L10n.t("audio.title"), axis: .vertical) { mixerMin = false }
                                             } else {
                                                 AudioMixerView().dockHandle { mixerMin = true }
+                                            }
+                                            if playlistMin {
+                                                DockBar(title: L10n.t("playlist.dock"), axis: .vertical) { playlistMin = false }
+                                            } else {
+                                                PlaylistDockView()
+                                                    .dockHandle { playlistMin = true }
+                                                    .frame(width: 230)
                                             }
                                             if controlsMin {
                                                 DockBar(title: L10n.t("dock.controls"), axis: .vertical) { controlsMin = false }

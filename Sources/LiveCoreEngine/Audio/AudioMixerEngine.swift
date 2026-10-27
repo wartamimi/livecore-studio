@@ -10,6 +10,8 @@ public final class MixerChannel: @unchecked Sendable {
     public let id: String
     public var name: String
     public let controls = ChannelControls()
+    /// Protected against being closed from the mixer (main thread; saved in projects).
+    public var locked = false
     let ringL: SPSCFloatRingBuffer
     let ringR: SPSCFloatRingBuffer
     /// Jitter buffer: frames buffered before playback starts, and the most that may queue up

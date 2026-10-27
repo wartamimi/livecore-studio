@@ -106,6 +106,32 @@ public final class MusicInput {
         load(0, autoplay: wasPlaying)
     }
 
+    /// Removes one song; the song that plays keeps playing (if it is the one removed, the next
+    /// one takes over in the same play / pause state).
+    public func removeTrack(at i: Int) {
+        guard tracks.indices.contains(i) else { return }
+        if tracks.count == 1 { setTracks([]); return }
+        let r = PlaylistEdit.remove(at: i, current: index, count: tracks.count)
+        tracks.remove(at: i)
+        if r.removedCurrent { load(r.current, autoplay: isPlaying) } else { index = r.current; onChange?() }
+    }
+
+    /// Reorders the list without interrupting the song that plays.
+    public func moveTrack(from: Int, to: Int) {
+        guard tracks.indices.contains(from), tracks.indices.contains(to), from != to else { return }
+        index = PlaylistEdit.move(from: from, to: to, current: index)
+        tracks = PlaylistEdit.moved(tracks, from: from, to: to)
+        onChange?()
+    }
+
+    /// Adds songs at the end without interrupting the one that plays.
+    public func appendTracks(_ urls: [URL]) {
+        guard !urls.isEmpty else { return }
+        let wasEmpty = tracks.isEmpty
+        tracks += urls
+        if wasEmpty { load(0, autoplay: false) } else { onChange?() }
+    }
+
     public func stop() {
         pause()
         tapContext?.active.value = false

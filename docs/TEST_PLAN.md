@@ -50,6 +50,12 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## U. Tes manual build 0.21.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-80 | Tutup & kunci audio | Arahkan kursor ke strip mixer mikrofon › x › Tutup; ulangi pada musik dan pada audio video (input video ikut terhapus setelah konfirmasi); kunci satu kanal lalu coba tutup; simpan & buka proyek | Konfirmasi selalu muncul; kanal hilang sesuai pesan; kanal terkunci tidak punya x dan menolak ditutup; gembok kembali setelah proyek dibuka |
+| T-81 | Dock playlist | Input musik 5 lagu + playlist video 3 klip; di dock Playlist pilih musik, klik lagu ke-3, seret lagu ke-5 ke atas, hapus satu lagu yang tidak diputar, cari judul, Simpan sebagai M3U lalu tambahkan lagi dari M3U; pindah ke playlist video dan klik klip 2 | Lagu yang diklik langsung diputar; menyusun ulang/menghapus tidak memutus lagu yang sedang diputar; ikon speaker menandai lagu aktif; M3U tersimpan dan bisa dibaca kembali; klip video yang diklik tampil di input |
+
 ## T. Tes manual build 0.20.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|
