@@ -67,7 +67,7 @@ Putaran CI pertama M2 menemukan 1 error kompilasi (tipe out-parameter `MTAudioPr
 ## Failed (ditemukan pengguna)
 | ID | Build | Tes | Hasil | Perbaikan |
 |---|---|---|---|---|
-| T-03 | 0.3.0 | Tambah capture card HDMI USB merek generik (Mac17,2, macOS 27.0.1) | **Failed — crash** (SIGABRT: NSException dari `-[AVCaptureDALDevice setActiveVideoMinFrameDuration:]` di `CameraSource.selectFormat`) | 0.3.1: durasi frame diambil dari rentang yang dilaporkan perangkat, toleransi 29,97/30, semua setter perangkat dibungkus penangkap NSException (`CObjCSupport`); jika driver menolak, perangkat tetap dipakai dengan setelan bawaannya. Menunggu tes ulang pengguna. |
+| T-03 | 0.3.0 | Tambah capture card HDMI USB merek generik (Mac17,2, macOS 27.0.1) | **Failed — crash** (SIGABRT: NSException dari `-[AVCaptureDALDevice setActiveVideoMinFrameDuration:]` di `CameraSource.selectFormat`) | 0.3.1: durasi frame diambil dari rentang yang dilaporkan perangkat, toleransi 29,97/30, semua setter perangkat dibungkus penangkap NSException (`CObjCSupport`); jika driver menolak, perangkat tetap dipakai dengan setelan bawaannya. CI macOS lulus (run 40449244649, `dev-build-11`). Menunggu tes ulang pengguna. |
 
 ## Failed (lainnya)
 Tidak ada tes yang gagal pada putaran terakhir.
