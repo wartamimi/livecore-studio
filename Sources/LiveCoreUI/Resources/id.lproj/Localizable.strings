@@ -161,3 +161,9 @@
 "stream.dest_no_url" = "%@: belum ada URL server, dilewati.";
 "stream.dest_no_key" = "%@: belum ada stream key, dilewati.";
 "stream.no_destination" = "Belum ada tujuan yang siap. Aktifkan satu tujuan lalu isi URL server dan stream key di Pengaturan › Stream.";
+
+"stinger.none" = "Belum ada klip stinger";
+"stinger.cut_point" = "Titik potong";
+"stinger.add_clip" = "Tambahkan dulu stinger sebagai input file video (ProRes 4444 atau HEVC dengan alpha).";
+"stinger.choose" = "Pilih klip stinger.";
+"stinger.help" = "AUTO memutar klip di atas Program lalu memotong ke Preview pada titik potong. Audio klip lewat channel mixer-nya. T-bar memakai dissolve untuk stinger.";

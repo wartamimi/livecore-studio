@@ -18,6 +18,7 @@ public final class AppModel: ObservableObject {
     @Published public var inputs: [ProductionEngine.InputInfo] = []
     @Published public var switcher = SwitcherSnapshot()
     @Published public var transitionKind: TransitionKind = .dissolve
+    @Published public private(set) var stinger = StingerConfig()
     @Published public var transitionDuration: Double = 1.0
     @Published public var tbar: Double = 0
     @Published public var overlays: [OverlayChannel] = []
@@ -222,6 +223,18 @@ public final class AppModel: ObservableObject {
         engine?.setTBar(v)
     }
     public func cutDirect(_ id: InputID) { engine?.cutDirect(id) }
+
+    public func setStinger(source: InputID?, cutPoint: Double?) {
+        let cfg = StingerConfig(source: source, cutPoint: cutPoint)
+        engine?.setStinger(cfg)
+        stinger = engine?.stinger ?? cfg
+    }
+
+    /// Length of the selected stinger clip, nil until the file is ready.
+    public var stingerDuration: Double? {
+        guard let id = stinger.source else { return nil }
+        return (engine?.source(id) as? VideoFileSource)?.duration
+    }
     public func previewNumber(_ n: Int) {
         guard n >= 1, n <= inputs.count else { return }
         preview(inputs[n - 1].id)
@@ -466,6 +479,7 @@ public final class AppModel: ObservableObject {
         transitionKind = settings.transition
         transitionDuration = settings.transitionDuration
         overlays = e.overlays
+        stinger = e.stinger
         reloadAudioChannels()
         syncMasterFromEngine()
     }

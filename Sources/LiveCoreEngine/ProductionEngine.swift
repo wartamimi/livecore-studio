@@ -60,6 +60,7 @@ public final class ProductionEngine {
         var order: [InputID] = []
         var layers: [InputID: [Layer]] = [:]
         var keys: [InputID: ChromaKey] = [:]
+        var stinger = StingerConfig()
     }
     private let control = Locked(ControlState())
 
@@ -161,6 +162,7 @@ public final class ProductionEngine {
         let thumbs: [InputID] = frameCounter % Int64(max(1, Int(fps / 10))) == 0 ? order : []   // ~10 fps thumbnails (inputs panel + multiview)
         var needed = Set<InputID>(thumbs)
         for c in plan.program + plan.overlays + plan.preview + (plan.transition?.incoming ?? []) { needed.insert(c.source) }
+        if let s = plan.stinger { needed.insert(s.source) }
         var frames: [InputID: CVPixelBuffer] = [:]
         for id in needed { if let pb = sources[id]?.currentFrame() { frames[id] = pb } }
 
@@ -281,6 +283,7 @@ public final class ProductionEngine {
             for key in st.layers.keys { st.layers[key]?.removeAll { $0.source == id && key != id } }
             st.layers[id] = nil
             st.keys[id] = nil
+            if st.stinger.source == id { st.stinger.source = nil }
             st.order.removeAll { $0 == id }
             return st.sources.removeValue(forKey: id)
         }
@@ -371,7 +374,22 @@ public final class ProductionEngine {
     public func cut() { control.mutate { _ = $0.switcher.cut() } }
     public func auto() {
         let kind = settings.transition, dur = settings.transitionDuration
-        control.mutate { _ = $0.switcher.auto(kind: kind, duration: dur, now: HostClock.now()) }
+        var stinger: StingerParams?
+        if kind == .stinger {
+            guard !control.read({ $0.switcher.isTransitioning }) else { return }
+            let cfg = self.stinger
+            guard let id = cfg.source, let clip = source(id) as? VideoFileSource else {
+                onError?("Stinger: choose a video file input as the stinger clip first (transition settings).")
+                return
+            }
+            guard let p = cfg.params(clipDuration: clip.duration ?? 0) else {
+                onError?("Stinger: \"\(clip.name)\" is not ready yet or has no duration.")
+                return
+            }
+            stinger = p
+            clip.restart()
+        }
+        control.mutate { _ = $0.switcher.auto(kind: kind, duration: dur, now: HostClock.now(), stinger: stinger) }
     }
     public func setTBar(_ position: Double) {
         let kind = settings.transition
@@ -380,6 +398,24 @@ public final class ProductionEngine {
     /// "Quick play": cut a specific input straight to program.
     public func cutDirect(_ id: InputID) {
         control.mutate { st in _ = st.switcher.setPreview(id); _ = st.switcher.cut() }
+    }
+
+    // MARK: Stinger
+
+    public var stinger: StingerConfig { control.read { $0.stinger } }
+
+    /// Selects the stinger clip and cut point. The clip stops looping and waits on its first frame;
+    /// a previously selected clip goes back to looping.
+    public func setStinger(_ cfg: StingerConfig) {
+        let old = control.mutate { st -> StingerConfig in let o = st.stinger; st.stinger = cfg; return o }
+        if old.source != cfg.source, let id = old.source, let prev = source(id) as? VideoFileSource {
+            prev.loop = true
+            prev.play()
+        }
+        if let id = cfg.source, let clip = source(id) as? VideoFileSource, old.source != cfg.source {
+            clip.loop = false
+            clip.cue()
+        }
     }
 
     public func setTransition(_ kind: TransitionKind, duration: Double) {
@@ -614,6 +650,7 @@ extension ProductionEngine {
             doc.inputs.append(ProjectInput(id: id, name: src.name, source: ps, layers: layers[id] ?? [],
                                            chromaKey: key == ChromaKey() ? nil : key))
         }
+        doc.stinger = control.read { $0.stinger.source == nil && $0.stinger.cutPoint == nil ? nil : $0.stinger }
         doc.overlays = overlays.map { ProjectOverlay(index: $0.index, source: $0.source, preset: $0.preset, fadeDuration: $0.fadeDuration) }
         doc.previewInput = sw.transition == nil ? sw.preview : sw.transition?.from
         doc.programInput = sw.transition?.to ?? sw.program
@@ -719,6 +756,10 @@ extension ProductionEngine {
                 if let mc = mixer.channelList.first(where: { $0.id == Self.fileChannelID(iid) }) { Self.apply(ch, to: mc.controls) }
                 else { pendingFileChannelSettings[iid] = ch }
             }
+        }
+        setStinger(StingerConfig())
+        if let s = doc.stinger {
+            setStinger(StingerConfig(source: s.source.flatMap { created.contains($0) ? $0 : nil }, cutPoint: s.cutPoint))
         }
         onAudioChannelsChange?()
         publishInputs()

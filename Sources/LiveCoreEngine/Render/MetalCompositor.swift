@@ -20,6 +20,7 @@ public final class MetalCompositor {
     private let layerPipelineOpaque: MTLRenderPipelineState
     private let transitionPipeline: MTLRenderPipelineState
     private let keyPipeline: MTLRenderPipelineState
+    private let straightPipeline: MTLRenderPipelineState
     private var textureCache: CVMetalTextureCache?
     private var intermediateA: MTLTexture?
     private var intermediateB: MTLTexture?
@@ -68,6 +69,7 @@ public final class MetalCompositor {
             layerPipelineOpaque = try pipeline("layer_fragment", blend: false)
             transitionPipeline = try pipeline("transition_fragment", blend: false)
             keyPipeline = try pipeline("key_fragment", blend: true)
+            straightPipeline = try pipeline("straight_fragment", blend: true)
         } catch {
             throw CompositorError.pipeline(error.localizedDescription)
         }
@@ -116,6 +118,14 @@ public final class MetalCompositor {
             }
         }
 
+        // Stinger clip on top of everything. Decoders tag alpha as straight or premultiplied;
+        // untagged clips are treated as straight (what ProRes 4444 / HEVC-alpha exports normally are).
+        var top: [DrawCommand] = []
+        if var s = plan.stinger, let pb = frames[s.source] {
+            s.premultiply = Self.hasStraightAlpha(pb)
+            top.append(s)
+        }
+
         // Program (with optional transition) + overlays.
         if let t = plan.transition, t.kind != .cut, let a = intermediateA, let b = intermediateB {
             drawComposition(cb, target: a, size: outputSize, layers: plan.program, textures: textures, load: .clear)
@@ -134,9 +144,9 @@ public final class MetalCompositor {
                 enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
                 enc.endEncoding()
             }
-            drawComposition(cb, target: programTex.tex, size: outputSize, layers: plan.overlays, textures: textures, load: .load)
+            drawComposition(cb, target: programTex.tex, size: outputSize, layers: plan.overlays + top, textures: textures, load: .load)
         } else {
-            drawComposition(cb, target: programTex.tex, size: outputSize, layers: plan.program + plan.overlays,
+            drawComposition(cb, target: programTex.tex, size: outputSize, layers: plan.program + plan.overlays + top,
                             textures: textures, load: .clear)
         }
         drawComposition(cb, target: previewTex.tex, size: previewSize, layers: plan.preview, textures: textures, load: .clear)
@@ -165,6 +175,11 @@ public final class MetalCompositor {
     }
 
     // MARK: Helpers
+
+    static func hasStraightAlpha(_ pb: CVPixelBuffer) -> Bool {
+        guard let mode = CVBufferCopyAttachment(pb, kCVImageBufferAlphaChannelModeKey, nil) as? String else { return true }
+        return mode != (kCVImageBufferAlphaChannelMode_PremultipliedAlpha as String)
+    }
 
     private struct TransitionParamsGPU { var progress: Float; var kind: Int32; var aspect: Float; var pad: Float = 0 }
     /// Matches `KeyParams` in the shader (float2 members are 8-byte aligned: 4 floats, then 2 + 2).
@@ -201,7 +216,7 @@ public final class MetalCompositor {
                                           keyCb: Float(kc.cb), keyCr: Float(kc.cr))
                 enc.setFragmentBytes(&params, length: MemoryLayout<KeyParamsGPU>.stride, index: 0)
             } else {
-                enc.setRenderPipelineState(opaqueCopy ? layerPipelineOpaque : layerPipeline)
+                enc.setRenderPipelineState(layer.premultiply ? straightPipeline : (opaqueCopy ? layerPipelineOpaque : layerPipeline))
                 var opacity = Float(layer.opacity)
                 enc.setFragmentBytes(&opacity, length: MemoryLayout<Float>.stride, index: 0)
             }

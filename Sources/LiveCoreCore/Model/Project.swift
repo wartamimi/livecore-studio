@@ -15,6 +15,8 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
     public var audio: ProjectAudio
     public var previewInput: InputID?
     public var programInput: InputID?
+    /// Stinger transition clip and cut point (absent in projects from before 0.5.0).
+    public var stinger: StingerConfig?
 
     public init(version: Int = ProjectDocument.currentVersion, settings: ProductionSettings = ProductionSettings(),
                 inputs: [ProjectInput] = [], overlays: [ProjectOverlay] = [], audio: ProjectAudio = ProjectAudio(),
@@ -43,6 +45,7 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
         }
         if let p = previewInput, !seen.contains(p) { issues.append("Preview points at a missing input.") }
         if let p = programInput, !seen.contains(p) { issues.append("Program points at a missing input.") }
+        if let s = stinger?.source, !seen.contains(s) { issues.append("Stinger points at a missing input.") }
         return issues
     }
 
@@ -68,6 +71,7 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
         }
         if let p = previewInput, !seen.contains(p) { doc.previewInput = nil }
         if let p = programInput, !seen.contains(p) { doc.programInput = nil }
+        if let s = doc.stinger?.source, !seen.contains(s) { doc.stinger?.source = nil }
         return doc
     }
 }
