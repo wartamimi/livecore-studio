@@ -50,6 +50,13 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## Q. Tes manual build 0.17.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-69 | Putar input | Klik kanan kamera atau video › Warna & Orientasi… › Putar 90°, lalu 270°, lalu 180°; pakai juga sebagai layer di Scene; simpan & buka proyek | Gambar berputar searah jarum jam 90°; tampil tegak penuh (pillarbox), tidak gepeng; 180° = terbalik; setelan kembali setelah proyek dibuka |
+| T-70 | Teks berjalan | Tambah › Teks berjalan…; isi 2 baris; tambah; pasang sebagai overlay 1 ke Program; klik kanan › Jeda / Lanjutkan / Mulai lagi; ubah kecepatan & warna; streaming/rekam 1 menit | Pita di bawah gambar, teks bergerak halus kanan → kiri tanpa patah-patah, baris dipisah •; jeda berhenti; perubahan langsung terlihat; rekaman sama dengan Program |
+| T-71 | Slideshow foto | Tambah › Slideshow foto… › Pilih folder (campur JPG potret/lanskap, PNG, HEIC); durasi 3 s, crossfade 1 s; tambah; klik kanan › Berikut / Sebelumnya / Jeda; simpan & buka proyek | Foto berganti tiap 3 s dengan crossfade halus; foto potret tegak (fit dengan bar hitam); Berikut/Sebelumnya langsung pindah; urutan sama dengan Finder; proyek membuka slideshow yang sama |
+
 ## P. Tes manual build 0.16.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

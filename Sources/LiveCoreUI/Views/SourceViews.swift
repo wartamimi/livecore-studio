@@ -165,6 +165,10 @@ struct InputAdjustSheet: View {
                 row(L10n.t("adjust.gamma"), \.gamma, 0.5...2, "%.2f")
                 Toggle(L10n.t("adjust.flip_h"), isOn: binding(\.flipHorizontal))
                 Toggle(L10n.t("adjust.flip_v"), isOn: binding(\.flipVertical))
+                Picker(L10n.t("adjust.rotation"), selection: binding(\.rotation)) {
+                    Text("0°").tag(0); Text("90°").tag(90); Text("180°").tag(180); Text("270°").tag(270)
+                }
+                .pickerStyle(.segmented)
                 Text(L10n.t("adjust.rotate_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
             }
             .formStyle(.grouped)
@@ -190,6 +194,125 @@ struct InputAdjustSheet: View {
         LabeledContent(label) {
             Slider(value: binding(path), in: range)
             Text(String(format: fmt, a[keyPath: path])).monospacedDigit().frame(width: 50, alignment: .trailing)
+        }
+    }
+}
+
+/// Add or edit a running-text (ticker) input.
+struct TickerSheet: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    let editing: InputID?
+    @State private var c = TickerConfig(text: "")
+    @State private var textColor = Color.white
+    @State private var barColor = Color(red: 0.6, green: 0.05, blue: 0.05).opacity(0.9)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L10n.t("ticker.title")).font(.headline)
+            TextEditor(text: $c.text)
+                .font(.system(size: 13))
+                .frame(height: 90)
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.textDim.opacity(0.4)))
+            Text(L10n.t("ticker.text_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+            Form {
+                LabeledContent(L10n.t("ticker.speed")) {
+                    Slider(value: $c.speed, in: TickerConfig.speedRange)
+                    Text("\(Int(c.speed)) px/s").monospacedDigit().frame(width: 70, alignment: .trailing)
+                }
+                LabeledContent(L10n.t("ticker.size")) {
+                    Slider(value: $c.fontSize, in: 12...120)
+                    Text("\(Int(c.fontSize)) pt").monospacedDigit().frame(width: 70, alignment: .trailing)
+                }
+                LabeledContent(L10n.t("ticker.band")) {
+                    Slider(value: $c.bandHeight, in: 0.04...0.25)
+                    Text("\(Int(c.bandHeight * 100))%").monospacedDigit().frame(width: 70, alignment: .trailing)
+                }
+                ColorPicker(L10n.t("ticker.text_color"), selection: $textColor, supportsOpacity: false)
+                Toggle(L10n.t("ticker.show_bar"), isOn: $c.showBar)
+                if c.showBar { ColorPicker(L10n.t("ticker.bar_color"), selection: $barColor, supportsOpacity: true) }
+            }
+            .formStyle(.grouped)
+            Text(L10n.t("ticker.hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+            HStack {
+                Spacer()
+                Button(L10n.t("settings.cancel")) { dismiss() }
+                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                    c.textColor = ProjectColor(NSColor(textColor))
+                    c.barColor = ProjectColor(NSColor(barColor))
+                    if let id = editing { model.updateTicker(id, c) } else { model.addTicker(c) }
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(c.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .padding(16)
+        .frame(width: 460)
+        .onAppear {
+            if let id = editing, let t = model.tickerSource(id) { c = t.config }
+            textColor = Color(c.textColor.nsColor)
+            barColor = Color(c.barColor.nsColor)
+        }
+    }
+}
+
+/// Add or edit a photo slideshow: a folder (or picked images), time per photo, cross-fade, loop.
+struct SlideshowSheet: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    let editing: InputID?
+    @State private var urls: [URL] = []
+    @State private var interval = 5.0
+    @State private var fade = 1.0
+    @State private var loop = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L10n.t("slideshow.title")).font(.headline)
+            HStack {
+                Button(L10n.t("slideshow.pick_folder")) { if let f = model.pickFolder() { urls = SlideshowSource.images(inFolder: f) } }
+                Button(L10n.t("slideshow.pick_images")) { let u = model.pickImages(); if !u.isEmpty { urls = u } }
+                Spacer()
+                Text(L10n.f("slideshow.count", "\(urls.count)")).foregroundStyle(Theme.textDim)
+            }
+            if !urls.isEmpty {
+                Text(urls.prefix(6).map(\.lastPathComponent).joined(separator: ", ") + (urls.count > 6 ? ", …" : ""))
+                    .font(.system(size: 10)).foregroundStyle(Theme.textDim).lineLimit(2)
+            }
+            Form {
+                LabeledContent(L10n.t("slideshow.interval")) {
+                    Slider(value: $interval, in: 1...60, step: 0.5)
+                    Text(String(format: "%.1f s", interval)).monospacedDigit().frame(width: 60, alignment: .trailing)
+                }
+                LabeledContent(L10n.t("slideshow.fade")) {
+                    Slider(value: $fade, in: 0...5, step: 0.25)
+                    Text(String(format: "%.2f s", fade)).monospacedDigit().frame(width: 60, alignment: .trailing)
+                }
+                Toggle(L10n.t("slideshow.loop"), isOn: $loop)
+            }
+            .formStyle(.grouped)
+            HStack {
+                Spacer()
+                Button(L10n.t("settings.cancel")) { dismiss() }
+                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                    if let id = editing {
+                        model.slideshowSource(id)?.update(urls: urls, interval: interval, fade: fade, loop: loop)
+                    } else {
+                        model.addSlideshow(urls: urls, interval: interval, fade: fade, loop: loop)
+                    }
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(urls.isEmpty)
+            }
+        }
+        .padding(16)
+        .frame(width: 460)
+        .onAppear {
+            if let id = editing, let s = model.slideshowSource(id) {
+                urls = s.urls; interval = s.interval; fade = s.fade; loop = s.loop
+            }
         }
     }
 }

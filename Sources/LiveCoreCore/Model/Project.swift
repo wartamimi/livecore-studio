@@ -145,6 +145,10 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case colorBars
     /// Empty transparent canvas whose content is its scene layers (since 0.15.0).
     case scene
+    /// Scrolling text band (since 0.17.0).
+    case ticker(TickerConfig)
+    /// Photo slideshow (since 0.17.0).
+    case slideshow(ProjectSlideshow)
 }
 
 public struct ProjectBrowser: Codable, Equatable, Sendable {

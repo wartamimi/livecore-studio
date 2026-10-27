@@ -365,6 +365,27 @@ public final class AppModel: ObservableObject {
         src.reconfigure(c)
     }
     public func timerSource(_ id: InputID) -> TimerSource? { engine?.source(id) as? TimerSource }
+    public func tickerSource(_ id: InputID) -> TickerSource? { engine?.source(id) as? TickerSource }
+    public func addTicker(_ c: TickerConfig) { engine?.addTicker(c) }
+    public func updateTicker(_ id: InputID, _ c: TickerConfig) { tickerSource(id)?.update(c); objectWillChange.send() }
+    public func slideshowSource(_ id: InputID) -> SlideshowSource? { engine?.source(id) as? SlideshowSource }
+    public func addSlideshow(urls: [URL], interval: Double, fade: Double, loop: Bool) {
+        engine?.addSlideshow(urls: urls, interval: interval, fade: fade, loop: loop)
+    }
+    func pickFolder() -> URL? {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        return panel.runModal() == .OK ? panel.url : nil
+    }
+    func pickImages() -> [URL] {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.image]
+        return panel.runModal() == .OK ? panel.urls : []
+    }
     public func addTimer(_ config: TimerConfig) { engine?.addTimer(config) }
     public func updateTimer(_ id: InputID, _ config: TimerConfig) {
         guard let t = timerSource(id) else { return }

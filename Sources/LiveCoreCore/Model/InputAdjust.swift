@@ -12,14 +12,16 @@ public struct InputAdjust: Codable, Equatable, Sendable {
     public var gamma: Double
     public var flipHorizontal: Bool
     public var flipVertical: Bool
+    /// Clockwise rotation in degrees: 0, 90, 180 or 270 (since 0.17.0). 90 / 270 swap width and height.
+    public var rotation: Int
 
     public init(brightness: Double = 0, contrast: Double = 1, saturation: Double = 1, gamma: Double = 1,
-                flipHorizontal: Bool = false, flipVertical: Bool = false) {
+                flipHorizontal: Bool = false, flipVertical: Bool = false, rotation: Int = 0) {
         self.brightness = brightness; self.contrast = contrast; self.saturation = saturation; self.gamma = gamma
-        self.flipHorizontal = flipHorizontal; self.flipVertical = flipVertical
+        self.flipHorizontal = flipHorizontal; self.flipVertical = flipVertical; self.rotation = rotation
     }
 
-    private enum CodingKeys: String, CodingKey { case brightness, contrast, saturation, gamma, flipHorizontal, flipVertical }
+    private enum CodingKeys: String, CodingKey { case brightness, contrast, saturation, gamma, flipHorizontal, flipVertical, rotation }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.init(brightness: try c.decodeIfPresent(Double.self, forKey: .brightness) ?? 0,
@@ -27,24 +29,50 @@ public struct InputAdjust: Codable, Equatable, Sendable {
                   saturation: try c.decodeIfPresent(Double.self, forKey: .saturation) ?? 1,
                   gamma: try c.decodeIfPresent(Double.self, forKey: .gamma) ?? 1,
                   flipHorizontal: try c.decodeIfPresent(Bool.self, forKey: .flipHorizontal) ?? false,
-                  flipVertical: try c.decodeIfPresent(Bool.self, forKey: .flipVertical) ?? false)
+                  flipVertical: try c.decodeIfPresent(Bool.self, forKey: .flipVertical) ?? false,
+                  rotation: try c.decodeIfPresent(Int.self, forKey: .rotation) ?? 0)
+    }
+
+    /// Rotation snapped to 0 / 90 / 180 / 270.
+    public var normalizedRotation: Int { ((Int((Double(rotation) / 90).rounded()) % 4) + 4) % 4 * 90 }
+
+    /// Size of the adjusted picture (width and height swap for 90° / 270°).
+    public func outputSize(width: Int, height: Int) -> (width: Int, height: Int) {
+        normalizedRotation % 180 == 90 ? (height, width) : (width, height)
+    }
+
+    /// Source texture coordinates (0...1, origin top-left) shown at the destination's top-left,
+    /// bottom-left, top-right and bottom-right corners: flips (in the destination) then the
+    /// clockwise rotation.
+    public var cornerUVs: [(u: Double, v: Double)] {
+        [(0.0, 0.0), (0, 1), (1, 0), (1, 1)].map { corner in
+            var x = corner.0, y = corner.1
+            if flipHorizontal { x = 1 - x }
+            if flipVertical { y = 1 - y }
+            switch normalizedRotation {
+            case 90: return (y, 1 - x)
+            case 180: return (1 - x, 1 - y)
+            case 270: return (1 - y, x)
+            default: return (x, y)
+            }
+        }
     }
 
     public var clamped: InputAdjust {
         InputAdjust(brightness: min(max(brightness, -0.5), 0.5), contrast: min(max(contrast, 0), 2),
                     saturation: min(max(saturation, 0), 2), gamma: min(max(gamma, 0.5), 2),
-                    flipHorizontal: flipHorizontal, flipVertical: flipVertical)
+                    flipHorizontal: flipHorizontal, flipVertical: flipVertical, rotation: normalizedRotation)
     }
 
     /// True when the picture is unchanged (the compositor then skips the adjustment pass).
     public var isIdentity: Bool {
         let a = clamped
         return abs(a.brightness) < 1e-4 && abs(a.contrast - 1) < 1e-4 && abs(a.saturation - 1) < 1e-4
-            && abs(a.gamma - 1) < 1e-4 && !flipHorizontal && !flipVertical
+            && abs(a.gamma - 1) < 1e-4 && !flipHorizontal && !flipVertical && a.rotation == 0
     }
 
     public var hasColorChange: Bool {
-        var a = self; a.flipHorizontal = false; a.flipVertical = false
+        var a = self; a.flipHorizontal = false; a.flipVertical = false; a.rotation = 0
         return !a.isIdentity
     }
 

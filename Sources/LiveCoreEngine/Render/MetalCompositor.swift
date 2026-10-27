@@ -182,15 +182,20 @@ public final class MetalCompositor {
         // Colour correction / flips: each adjusted input is drawn once into its own texture, which
         // then replaces the input everywhere in this frame (premultiplied from here on).
         for (id, adj) in adjusts where !adj.isIdentity {
-            guard let entry = textures[id], let dst = adjustTexture(id, size: entry.1) else { continue }
-            let (src, size) = entry
+            guard let entry = textures[id] else { continue }
+            let a = adj.clamped
+            // 90° / 270° rotation swaps the picture's width and height.
+            let out = a.outputSize(width: entry.1.width, height: entry.1.height)
+            let size = PixelSize(width: out.width, height: out.height)
+            guard let dst = adjustTexture(id, size: size) else { continue }
+            let src = entry.0
             let rp = passDescriptor(dst, load: .dontCare)
             guard let enc = cb.makeRenderCommandEncoder(descriptor: rp) else { continue }
-            let a = adj.clamped
-            let u0: Float = a.flipHorizontal ? 1 : 0, u1: Float = a.flipHorizontal ? 0 : 1
-            let v0: Float = a.flipVertical ? 1 : 0, v1: Float = a.flipVertical ? 0 : 1
-            var verts = quad(dest: PixelRect(x: 0, y: 0, width: Double(size.width), height: Double(size.height)),
-                             uv: (u0, v0, u1, v1), canvas: size)
+            // Full-target quad (TL, BL, TR, BR in NDC) with the flipped / rotated source corners.
+            let corners = a.cornerUVs
+            let ndc: [(Float, Float)] = [(-1, 1), (-1, -1), (1, 1), (1, -1)]
+            var verts: [Float] = []
+            for (p, c) in zip(ndc, corners) { verts += [p.0, p.1, Float(c.u), Float(c.v)] }
             enc.setRenderPipelineState(adjustPipeline)
             enc.setVertexBytes(&verts, length: MemoryLayout<Float>.stride * verts.count, index: 0)
             var params = AdjustParamsGPU(brightness: Float(a.brightness), contrast: Float(a.contrast),

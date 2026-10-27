@@ -4,7 +4,8 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.16.0 — Milestone 3 berjalan.** 0.16.0 menambah koreksi warna & balik/putar per input dan nada tes 1 kHz —
+> **Status: 0.17.0 — Milestone 3 berjalan.** 0.17.0 menambah putar input 90°/270°, input teks berjalan (ticker) dan
+> slideshow foto (folder, durasi per foto, crossfade) — menunggu tes T-69..T-71. 0.16.0 menambah koreksi warna & balik/putar per input dan nada tes 1 kHz —
 > menunggu tes T-67..T-68. 0.15.0 menghapus Lottie, menambah input Scene + template tata letak,
 > Colour Bars, tombol fullscreen per input, pengaturan capture card, Properti Audio per kanal, dan transparansi + tepi
 > halus untuk media transparan — menunggu tes T-61..T-66. Virtual camera: blocked (butuh akun Apple Developer).

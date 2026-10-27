@@ -427,6 +427,25 @@ public final class ProductionEngine {
         return src.id
     }
 
+    /// Running-text band; placed at the bottom of the picture when used as a layer or overlay.
+    @discardableResult
+    public func addTicker(_ config: TickerConfig, id: InputID? = nil) -> InputID {
+        let src = TickerSource(id: id ?? InputID(UUID().uuidString), config: config, outputSize: settings.output.size)
+        add(src)
+        src.start()
+        control.mutate { $0.layers[src.id] = [Layer(source: src.id, rect: config.layerRect, scaleMode: .fit)] }
+        return src.id
+    }
+
+    @discardableResult
+    public func addSlideshow(urls: [URL], interval: Double, fade: Double, loop: Bool, id: InputID? = nil) -> InputID {
+        let src = SlideshowSource(id: id ?? InputID(UUID().uuidString), urls: urls, interval: interval, fade: fade,
+                                  loop: loop, outputSize: settings.output.size)
+        add(src)
+        src.start()
+        return src.id
+    }
+
     public func source(_ id: InputID) -> VideoSource? { control.read { $0.sources[id] } }
 
     private func add(_ src: VideoSource) {
@@ -540,7 +559,9 @@ public final class ProductionEngine {
         guard let src = source(id) else { return nil }
         // Video files: read the cached frame; pulling from AVPlayerItemVideoOutput is the render queue's job.
         guard let pb = (src as? VideoFileSource)?.lastFrame() ?? src.currentFrame() else { return nil }
-        return PixelSize(width: CVPixelBufferGetWidth(pb), height: CVPixelBufferGetHeight(pb))
+        // Rotated 90° / 270° inputs are composited with width and height swapped.
+        let r = adjust(of: id).outputSize(width: CVPixelBufferGetWidth(pb), height: CVPixelBufferGetHeight(pb))
+        return PixelSize(width: r.width, height: r.height)
     }
 
     public func removeLayer(from id: InputID, at index: Int) {
@@ -1005,6 +1026,10 @@ extension ProductionEngine {
             case let t as TextSource: ps = .title(ProjectTitleStyle(t.style))
             case let b as BrowserSource: ps = .browser(b.config)
             case let t as TimerSource: ps = .timer(t.config, nil)
+            case let t as TickerSource: ps = .ticker(t.config)
+            case let sl as SlideshowSource:
+                ps = .slideshow(ProjectSlideshow(images: sl.urls.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) },
+                                                 interval: sl.interval, fade: sl.fade, loop: sl.loop))
             case let c as ScreenCaptureSource: ps = .screen(c.config)
             default: continue
             }
@@ -1109,6 +1134,11 @@ extension ProductionEngine {
                 addBrowser(b, id: pi.id)
             case let .timer(t, _):
                 addTimer(t, id: pi.id)
+            case let .ticker(t):
+                addTicker(t, id: pi.id)
+            case let .slideshow(sl):
+                addSlideshow(urls: sl.images.map { mediaURL($0.path, $0.relativePath) }, interval: sl.interval,
+                             fade: sl.fade, loop: sl.loop, id: pi.id)
             case let .screen(c):
                 addScreenCapture(c, id: pi.id)
             }

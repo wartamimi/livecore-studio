@@ -99,6 +99,11 @@
     Audio perangkat ditambahkan sebagai kanal mixer terpisah (bisa diatur di Properti Audio).
 48. **Properti audio**: perubahan delay melompat (tanpa crossfade), bisa terdengar klik bila diubah saat siaran.
 49. **Koreksi warna**: diterapkan pada piksel 8-bit sRGB (bukan linear), tanpa LUT / kurva / white balance. Chroma key
-    dihitung setelah koreksi warna. Balik hanya horizontal/vertikal (putar 90° belum ada).
+    dihitung setelah koreksi warna. Putar hanya kelipatan 90° (sejak 0.17.0), tanpa sudut bebas.
 50. **Nada tes**: dibangkitkan oleh timer 5 ms; bila app sangat sibuk dalam waktu lama bisa terjadi putus (underrun
     tercatat di Properti Audio).
+51. **Teks berjalan**: digambar di CPU 60 kali per detik (satu blit selebar output); di 1080p murah, tetapi teks sangat
+    panjang (> ~16.000 px) membuat gambar strip besar. Hanya satu arah (kanan → kiri), tanpa sumber RSS / file teks.
+52. **Slideshow foto**: crossfade digambar di CPU (30 fps); foto didekode satu langkah di depan, jadi melompat jauh
+    dengan Berikut/Sebelumnya bisa menampilkan hitam sesaat untuk foto sangat besar. Daftar foto diambil saat ditambah,
+    foto baru di folder tidak otomatis masuk (Ubah slideshow › Pilih folder lagi). Tanpa efek Ken Burns.
