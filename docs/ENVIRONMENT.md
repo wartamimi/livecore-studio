@@ -81,7 +81,7 @@ FPS render aktual, waktu GPU per frame, dan status termal — sehingga kompatibi
 | Blackmagic Desktop Video SDK (M3) | EULA Blackmagic (gratis, perlu registrasi) | Belum dipakai |
 | NDI SDK (M3) | Lisensi NDI (wajib atribusi "NDI®", syarat distribusi) | Belum dipakai |
 
-Aplikasi M1 **tidak memiliki dependency pihak ketiga** saat runtime.
+Aplikasi M1 **tidak memiliki dependency pihak ketiga** saat runtime. Sejak 0.13.0 satu dependency: Lottie (airbnb/lottie-spm 4.6.1, Apache-2.0) untuk input Lottie, ditanam sebagai Lottie.framework.
 
 ## 7. Risiko teknis terbesar
 

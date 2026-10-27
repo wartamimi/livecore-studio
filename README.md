@@ -4,7 +4,9 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.12.0 — Milestone 3 berjalan.** 0.12.0 menambah transisi custom: shader Metal milik sendiri (Baru/Impor)
+> **Status: 0.13.0 — Milestone 3 berjalan.** 0.13.0 menambah input Lottie (.json/.lottie), gaya layer (crop, sudut
+> bulat, elips, border, bentuk), overlay ke Preview (klik) / Program (klik dua jari), dan memperbaiki tombol Tambah Layer —
+> menunggu tes T-54..T-56. 0.12.0 menambah transisi custom: shader Metal milik sendiri (Baru/Impor)
 > plus 6 contoh bawaan — menunggu tes T-52..T-53. 0.10.1 sama dengan 0.10.0 (input Zoom SDK dari 0.11.x ditarik dari build publik dan ditunda). 0.10.0 menambah audio follow video (AFV), input tangkap jendela/layar
 > dengan audio aplikasi (untuk Zoom/Teams/Meet; Zoom SDK resmi ditunda), dan instant replay 5/10/20 detik
 > dengan slow motion — menunggu tes T-45..T-47. 0.9.0 menambah tombol Fullscreen output ke layar pilihan, pilihan bus audio
