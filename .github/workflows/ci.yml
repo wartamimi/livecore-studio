@@ -1,5 +1,8 @@
 name: CI
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
 jobs:
   linux-core:
     runs-on: ubuntu-24.04
@@ -17,7 +20,13 @@ jobs:
       - run: swift test
       - run: scripts/rtmp_e2e_test.sh
       - run: scripts/build_macos.sh release
+      - run: scripts/make_dmg.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: LiveCoreStudio.app
-          path: build/DerivedData/Build/Products/Release/LiveCoreStudio.app
+          name: LiveCoreStudio-dmg
+          path: build/LiveCoreStudio-0.1.0-unsigned.dmg
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs
+          path: build/**/*.log

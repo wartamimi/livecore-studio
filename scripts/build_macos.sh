@@ -35,8 +35,11 @@ command -v xcodegen >/dev/null || { echo "Install XcodeGen: brew install xcodege
 xcodegen generate
 
 echo "== Build app ($XC_CONFIG)"
+mkdir -p build
 xcodebuild -project LiveCoreStudio.xcodeproj -scheme LiveCoreStudio -configuration "$XC_CONFIG" \
-  -derivedDataPath build/DerivedData -destination 'generic/platform=macOS' build | tail -n 20
+  -derivedDataPath build/DerivedData -destination 'generic/platform=macOS' build > build/xcodebuild.log 2>&1 \
+  || { grep -E "error:" build/xcodebuild.log | head -50; echo "Full log: build/xcodebuild.log"; exit 1; }
+tail -n 5 build/xcodebuild.log
 
 APP="build/DerivedData/Build/Products/$XC_CONFIG/LiveCoreStudio.app"
 echo "== Verify bundle"
