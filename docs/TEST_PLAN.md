@@ -49,6 +49,14 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## G. Tes manual build 0.6.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-32 | Browser source | Input › Halaman web: buka overlay HTML dengan latar transparan (mis. jam/animasi CSS), 30 fps; jadikan overlay | Halaman tampil dengan latar transparan; animasi berjalan (juga saat app di belakang); CPU wajar; tidak crash saat URL salah |
+| T-32b | Keamanan | Halaman yang mencoba `window.open`, link `mailto:`/skema lain | Tidak ada jendela/app lain terbuka; app tetap jalan |
+| T-33 | Hitung mundur | Input › Jam / hitung mundur: 1 menit, keterangan "Mulai dalam"; klik kanan › Mulai, Jeda, Reset | Angka berjalan per detik, berhenti di 00:00 dan berubah merah; jeda/reset bekerja |
+| T-34 | Snapshot | Klik tombol kamera di panel Rekam | PNG resolusi output muncul di folder rekaman, isinya sama dengan Program |
+
 ## F. Tes manual build 0.5.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

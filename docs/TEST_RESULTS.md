@@ -47,6 +47,9 @@ Belum dilaporkan: T-10 (stream+rekam 10 menit), T-11 reconnect, T-12 cabut-colok
 Pengguna melaporkan "sejauh ini belum ada bug" setelah mencoba 0.2.0. Rincian per tes T-17..T-22 belum dilaporkan, jadi
 statusnya tetap Not tested per item.
 
+## Laporan pengguna build 0.5.0 (dev-build-19), 2026-10-27
+Pengguna melaporkan 0.5.0 "sudah bisa": transisi stinger dan aux bus berfungsi (T-30, T-31 — laporan ringkas, tanpa angka).
+
 ## Laporan pengguna build 0.4.0 (dev-build-15), 2026-10-27
 Pengguna melaporkan 0.4.0 "sudah bisa": multi-destination streaming dan transisi baru berfungsi di Mac mereka
 (T-28, T-29 — laporan ringkas, tanpa angka pengukuran).

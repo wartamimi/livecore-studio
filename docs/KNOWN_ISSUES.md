@@ -43,3 +43,9 @@
     Klip tanpa alpha (mis. H.264 biasa) menutupi seluruh layar selama transisi. Klip stinger tidak berulang (loop dimatikan).
 27. **Aux bus** hanya 2 (A dan B) dan selalu post-fader. Bus tidak ikut ke stream/rekaman (itu tetap Master). Bila perangkat
     output aux dicabut, bus berhenti diputar; pilih ulang perangkatnya. Latensi output aux ≈ 45–60 ms (buffer koreksi drift).
+28. **Browser source** mengambil gambar halaman dengan `takeSnapshot` (bukan capture GPU langsung): maksimal 30 fps,
+    memakai CPU, dan animasi halaman bisa tersendat. Jendela web ada di luar layar; jika macOS memperlambat halaman yang
+    tidak terlihat, animasi bisa melambat (perlu dicek di T-32). Audio halaman diputar ke output sistem, tidak lewat mixer.
+    Tidak ada interaksi mouse/keyboard ke halaman. Untuk alamat http (bukan https), app mengizinkan konten web tanpa TLS
+    (`NSAllowsArbitraryLoadsInWebContent`).
+29. **Timer** memakai jam sistem; hitung mundur tidak tersimpan berjalan di file proyek (dimuat dalam keadaan reset).

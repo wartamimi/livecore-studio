@@ -37,7 +37,8 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Jendela Program untuk monitor eksternal | Implemented | M | Seret ke layar lain + full screen |
 | Multiview | Implemented (M2) | M | Jendela terpisah: Preview, Program, semua input + tally; input 10 fps 384×216 |
 | Chroma key | Implemented (M2) | L (matematika) + M (shader) | Per input (kamera/file/gambar), warna kunci, similarity, smoothness, spill; GPU |
-| Browser source | Planned (M2) | — | Butuh evaluasi keamanan WKWebView offscreen |
+| Browser source (halaman web / HTML lokal) | Implemented (0.6.0) | L (kebijakan URL, 2 unit test) + kompilasi CI | WKWebView di jendela offscreen, snapshot 5–30 fps, latar transparan; data store non-persisten, tanpa bridge JS→app, tanpa pop-up, hanya http/https/file. Audio halaman tidak masuk mixer. Belum dites di Mac (T-32) |
+| Jam / hitung mundur / stopwatch | Implemented (0.6.0) | L (`TimerMath`, 5 unit test) + kompilasi CI | Input generator, keterangan opsional, merah saat hitung mundur habis; kontrol lewat klik kanan. Belum dites (T-33) |
 | Transisi stinger (klip video, idealnya dengan alpha) | Implemented (0.5.0) | L (`Switcher`/`FramePlanner`, 6 unit test) + kompilasi CI | Klip = input file video; titik potong diatur; durasi = panjang klip; audio klip lewat mixer. T-bar memakai dissolve. Belum dites di Mac (T-30) |
 | Transisi custom (shader pengguna) | Planned | — | |
 
@@ -86,6 +87,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Finalisasi benar saat stop / quit | Implemented | M | Konfirmasi quit saat aktif |
 | Rekam + stream bersamaan dari satu pipeline | Implemented | M | |
 | MOV tahan crash (movie fragments 10 s) | Implemented | M | |
+| Snapshot Program ke PNG | Implemented (0.6.0) | kompilasi CI | Tombol kamera di panel Rekam; disimpan di folder rekaman. Belum dites (T-34) |
 
 ## Perangkat broadcast
 | Fitur | Status | Catatan |

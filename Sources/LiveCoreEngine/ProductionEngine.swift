@@ -263,6 +263,26 @@ public final class ProductionEngine {
         return src.id
     }
 
+    /// Web page input. Titles-like default placement: full screen (overlay pages are made for it).
+    @discardableResult
+    public func addBrowser(_ config: ProjectBrowser, id: InputID? = nil) -> InputID {
+        var c = config
+        c.fps = BrowserURLPolicy.clampFPS(c.fps)
+        let src = BrowserSource(id: id ?? InputID(UUID().uuidString), config: c)
+        add(src)
+        src.start()
+        return src.id
+    }
+
+    @discardableResult
+    public func addTimer(_ config: TimerConfig, id: InputID? = nil) -> InputID {
+        let src = TimerSource(id: id ?? InputID(UUID().uuidString), config: config, outputSize: settings.output.size)
+        add(src)
+        src.start()
+        control.mutate { $0.layers[src.id] = [Layer(source: src.id, rect: TimerSource.defaultRect, scaleMode: .fit)] }
+        return src.id
+    }
+
     public func source(_ id: InputID) -> VideoSource? { control.read { $0.sources[id] } }
 
     private func add(_ src: VideoSource) {
@@ -644,6 +664,8 @@ extension ProductionEngine {
             case let i as ImageSource: ps = .image(path: i.url.path, relativePath: rel(i.url))
             case let c as ColorSource: ps = .color(ProjectColor(c.color))
             case let t as TextSource: ps = .title(ProjectTitleStyle(t.style))
+            case let b as BrowserSource: ps = .browser(b.config)
+            case let t as TimerSource: ps = .timer(t.config, nil)
             default: continue
             }
             let key = keys[id]
@@ -722,6 +744,10 @@ extension ProductionEngine {
                 addColor(c.nsColor, name: pi.name, id: pi.id)
             case let .title(t):
                 addTitle(t.textStyle, id: pi.id)
+            case let .browser(b):
+                addBrowser(b, id: pi.id)
+            case let .timer(t, _):
+                addTimer(t, id: pi.id)
             }
             created.insert(pi.id)
             renameInput(pi.id, to: pi.name)

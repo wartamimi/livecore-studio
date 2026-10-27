@@ -1,5 +1,6 @@
 #if os(macOS)
 import SwiftUI
+import UniformTypeIdentifiers
 import LiveCoreCore
 import LiveCoreEngine
 
@@ -11,6 +12,10 @@ struct InputPanelView: View {
     @State private var editingScene: InputID?
     @State private var renaming: InputID?
     @State private var renameText = ""
+    @State private var showBrowserSheet = false
+    @State private var editingBrowser: InputID?
+    @State private var showTimerSheet = false
+    @State private var editingTimer: InputID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -39,6 +44,10 @@ struct InputPanelView: View {
         .sheet(item: $editingTitle) { id in TitleSheet(editing: id).environmentObject(model) }
         .sheet(item: $keying) { id in ChromaKeySheet(input: id).environmentObject(model) }
         .sheet(item: $editingScene) { id in SceneEditorSheet(input: id).environmentObject(model) }
+        .sheet(isPresented: $showBrowserSheet) { BrowserSheet(editing: nil).environmentObject(model) }
+        .sheet(item: $editingBrowser) { id in BrowserSheet(editing: id).environmentObject(model) }
+        .sheet(isPresented: $showTimerSheet) { TimerSheet(editing: nil).environmentObject(model) }
+        .sheet(item: $editingTimer) { id in TimerSheet(editing: id).environmentObject(model) }
         .alert(L10n.t("inputs.rename"), isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("", text: $renameText)
             Button(L10n.t("common.ok")) { if let id = renaming { model.rename(id, renameText) }; renaming = nil }
@@ -55,6 +64,8 @@ struct InputPanelView: View {
             Button(L10n.t("inputs.video")) { model.addVideo() }
             Button(L10n.t("inputs.image")) { model.addImage() }
             Button(L10n.t("inputs.title_generator")) { showTitleSheet = true }
+            Button(L10n.t("browser.add")) { showBrowserSheet = true }
+            Button(L10n.t("timer.add")) { showTimerSheet = true }
             Menu(L10n.t("inputs.color")) {
                 Button("Black") { model.addColor(.black, name: "Black") }
                 Button("White") { model.addColor(.white, name: "White") }
@@ -84,6 +95,16 @@ struct InputPanelView: View {
             Button(L10n.t("key.menu")) { keying = info.id }
         }
         if info.kind == .text { Button("Edit Title…") { editingTitle = info.id } }
+        if info.kind == .browser {
+            Button(L10n.t("browser.edit")) { editingBrowser = info.id }
+            Button(L10n.t("browser.reload")) { model.browserSource(info.id)?.reload() }
+        }
+        if info.kind == .timer {
+            Button(L10n.t("timer.start")) { model.timerControl(info.id, "play") }
+            Button(L10n.t("timer.pause")) { model.timerControl(info.id, "pause") }
+            Button(L10n.t("timer.reset")) { model.timerControl(info.id, "reset") }
+            Button(L10n.t("timer.edit")) { editingTimer = info.id }
+        }
         if info.kind == .videoFile, let v = model.videoFile(info.id) {
             Button("Play") { v.play() }
             Button("Pause") { v.pause() }
@@ -152,6 +173,114 @@ struct InputTile: View {
         case .videoFile: return "film"
         case .color: return "paintpalette"
         case .text: return "textformat"
+        case .browser: return "globe"
+        case .timer: return "timer"
+        }
+    }
+}
+
+/// Add or edit a web page input.
+struct BrowserSheet: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    let editing: InputID?
+    @State private var url = "https://"
+    @State private var size = 1080
+    @State private var fps = 15
+    @State private var transparent = true
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L10n.t("browser.title")).font(.headline)
+            HStack {
+                TextField("https://…", text: $url)
+                Button(L10n.t("browser.file")) {
+                    let p = NSOpenPanel()
+                    p.allowedContentTypes = [.html]
+                    if p.runModal() == .OK, let u = p.url { url = u.absoluteString }
+                }
+            }
+            Picker(L10n.t("browser.size"), selection: $size) {
+                Text("1920 × 1080").tag(1080)
+                Text("1280 × 720").tag(720)
+            }
+            Picker(L10n.t("browser.fps"), selection: $fps) {
+                ForEach(BrowserURLPolicy.allowedFPS, id: \.self) { Text("\($0) fps").tag($0) }
+            }
+            Toggle(L10n.t("browser.transparent"), isOn: $transparent)
+            Text(L10n.t("browser.note")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
+                .fixedSize(horizontal: false, vertical: true)
+            if let error { Text(error).foregroundStyle(Theme.warning).font(.system(size: 11)) }
+            HStack {
+                Spacer()
+                Button(L10n.t("settings.cancel")) { dismiss() }
+                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                    let w = size == 1080 ? 1920 : 1280
+                    let err = editing.map { model.updateBrowser($0, url: url, width: w, height: size, fps: fps, transparent: transparent) }
+                        ?? model.addBrowser(url: url, width: w, height: size, fps: fps, transparent: transparent)
+                    if let err { error = err } else { dismiss() }
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(16)
+        .frame(width: 460)
+        .onAppear {
+            if let id = editing, let b = model.browserSource(id)?.config {
+                url = b.url; size = b.height >= 1080 ? 1080 : 720; fps = b.fps; transparent = b.transparent
+            }
+        }
+    }
+}
+
+/// Add or edit a clock / countdown / count-up input.
+struct TimerSheet: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    let editing: InputID?
+    @State private var config = TimerConfig()
+    @State private var minutes = 5
+    @State private var seconds = 0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L10n.t("timer.title")).font(.headline)
+            Picker(L10n.t("timer.mode"), selection: $config.mode) {
+                Text(L10n.t("timer.mode.countdown")).tag(TimerConfig.Mode.countdown)
+                Text(L10n.t("timer.mode.countup")).tag(TimerConfig.Mode.countUp)
+                Text(L10n.t("timer.mode.clock")).tag(TimerConfig.Mode.clock)
+            }
+            .pickerStyle(.segmented)
+            if config.mode == .countdown {
+                HStack {
+                    Stepper("\(minutes) min", value: $minutes, in: 0...599)
+                    Stepper("\(seconds) s", value: $seconds, in: 0...59)
+                }
+            }
+            Toggle(L10n.t("timer.show_seconds"), isOn: $config.showSeconds)
+            TextField(L10n.t("timer.label"), text: $config.label, prompt: Text(L10n.t("timer.label_prompt")))
+            if config.mode != .clock {
+                Text(L10n.t("timer.hint")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
+            }
+            HStack {
+                Spacer()
+                Button(L10n.t("settings.cancel")) { dismiss() }
+                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                    config.durationSeconds = Double(minutes * 60 + seconds)
+                    if let id = editing { model.updateTimer(id, config) } else { model.addTimer(config) }
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(16)
+        .frame(width: 420)
+        .onAppear {
+            if let id = editing, let t = model.timerSource(id) {
+                config = t.config
+                minutes = Int(t.config.durationSeconds) / 60; seconds = Int(t.config.durationSeconds) % 60
+            }
         }
     }
 }

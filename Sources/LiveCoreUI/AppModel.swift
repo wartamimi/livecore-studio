@@ -2,6 +2,8 @@
 import AppKit
 import AVFoundation
 import Combine
+import CoreImage
+import ImageIO
 import LiveCoreCore
 import LiveCoreEngine
 import SwiftUI
@@ -34,6 +36,9 @@ public final class AppModel: ObservableObject {
     @Published public var monitorDeviceUID: String = ""
     /// Aux buses A and B (created once the engine runs).
     @Published public private(set) var auxBuses: [AuxBusVM] = []
+    /// Last Program snapshot saved with `saveSnapshot()`.
+    @Published public private(set) var lastSnapshotURL: URL?
+    private var lastProgramFrame: CVPixelBuffer?
 
     // Audio
     @Published public var audioChannels: [ChannelVM] = []
@@ -105,7 +110,10 @@ public final class AppModel: ObservableObject {
     }
 
     private func wire(_ e: ProductionEngine) {
-        e.onProgramFrame = { [weak self] pb in self?.programFeed.push(pb); self?.programOutputFeed.push(pb) }
+        e.onProgramFrame = { [weak self] pb in
+            self?.lastProgramFrame = pb
+            self?.programFeed.push(pb); self?.programOutputFeed.push(pb)
+        }
         e.onPreviewFrame = { [weak self] pb in self?.previewFeed.push(pb) }
         e.onThumbnails = { [weak self] thumbs in
             guard let self else { return }
@@ -186,6 +194,64 @@ public final class AppModel: ObservableObject {
     }
 
     public func remove(_ id: InputID) { engine?.removeInput(id) }
+
+    // MARK: Browser & timer inputs
+
+    /// Adds a web page input; returns an error message if the address is not allowed.
+    public func addBrowser(url: String, width: Int, height: Int, fps: Int, transparent: Bool) -> String? {
+        if case let .rejected(reason) = BrowserURLPolicy.check(url) { return reason }
+        engine?.addBrowser(ProjectBrowser(url: url, width: width, height: height, fps: fps, transparent: transparent))
+        return nil
+    }
+
+    public func updateBrowser(_ id: InputID, url: String, width: Int, height: Int, fps: Int, transparent: Bool) -> String? {
+        if case let .rejected(reason) = BrowserURLPolicy.check(url) { return reason }
+        browserSource(id)?.update(ProjectBrowser(url: url, width: width, height: height, fps: fps, transparent: transparent))
+        return nil
+    }
+
+    public func browserSource(_ id: InputID) -> BrowserSource? { engine?.source(id) as? BrowserSource }
+    public func timerSource(_ id: InputID) -> TimerSource? { engine?.source(id) as? TimerSource }
+    public func addTimer(_ config: TimerConfig) { engine?.addTimer(config) }
+    public func updateTimer(_ id: InputID, _ config: TimerConfig) {
+        guard let t = timerSource(id) else { return }
+        t.update(config)
+        objectWillChange.send()
+    }
+    public func timerControl(_ id: InputID, _ action: String) {
+        guard let t = timerSource(id) else { return }
+        switch action {
+        case "play": t.play()
+        case "pause": t.pause()
+        default: t.reset()
+        }
+        objectWillChange.send()
+    }
+
+    // MARK: Snapshot
+
+    /// Saves the current Program frame as a PNG in the recording folder.
+    public func saveSnapshot() {
+        guard let pb = lastProgramFrame else { report("No Program frame to save yet."); return }
+        let folder = settings.recording.folderPath.isEmpty ? RecordingEngine.defaultFolder()
+            : URL(fileURLWithPath: settings.recording.folderPath, isDirectory: true)
+        let f = DateFormatter()
+        f.dateFormat = "yyyy-MM-dd HH.mm.ss"
+        let url = folder.appendingPathComponent("Snapshot \(f.string(from: Date())).png")
+        let ci = CIImage(cvPixelBuffer: pb)
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            guard let cg = CIContext().createCGImage(ci, from: ci.extent),
+                  let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
+                report("Cannot create snapshot image."); return
+            }
+            CGImageDestinationAddImage(dest, cg, nil)
+            guard CGImageDestinationFinalize(dest) else { report("Cannot write snapshot to \(url.path)."); return }
+            lastSnapshotURL = url
+        } catch {
+            report("Cannot save snapshot: \(error.localizedDescription)")
+        }
+    }
 
     // MARK: Chroma key
 
