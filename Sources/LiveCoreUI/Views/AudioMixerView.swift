@@ -80,7 +80,7 @@ struct ChannelStripView: View {
 
     /// "DSP", with a marker for each active processor (G = gate, C = compressor).
     private var dspLabel: String {
-        let active = [vm.gate ? "G" : nil, vm.compressor ? "C" : nil].compactMap { $0 }
+        let active = [vm.highPass || vm.eq ? "EQ" : nil, vm.gate ? "G" : nil, vm.compressor ? "C" : nil].compactMap { $0 }
         return active.isEmpty ? L10n.t("audio.dsp") : "\(L10n.t("audio.dsp")) " + active.joined(separator: "·")
     }
 
@@ -117,11 +117,24 @@ struct DSPPopover: View {
                     Text(!vm.gate ? "—" : (gateDB < 1 ? "Open" : String(format: "Closed (−%.0f dB)", gateDB))).monospacedDigit()
                 }
             }
+            Section(L10n.t("audio.eq")) {
+                Toggle(L10n.t("audio.hpf"), isOn: $vm.highPass)
+                LabeledContent("HPF") { Slider(value: $vm.highPassHz, in: 40...300); Text(String(format: "%.0f Hz", vm.highPassHz)).monospacedDigit() }
+                Toggle(L10n.t("audio.eq_enable"), isOn: $vm.eq)
+                LabeledContent("Low 120 Hz") { Slider(value: $vm.eqLow, in: -12...12); Text(String(format: "%+.1f dB", vm.eqLow)).monospacedDigit() }
+                LabeledContent("Mid") { Slider(value: $vm.eqMid, in: -12...12); Text(String(format: "%+.1f dB", vm.eqMid)).monospacedDigit() }
+                LabeledContent("Mid freq") { Slider(value: $vm.eqMidHz, in: 200...6000); Text(String(format: "%.0f Hz", vm.eqMidHz)).monospacedDigit() }
+                LabeledContent("High 8 kHz") { Slider(value: $vm.eqHigh, in: -12...12); Text(String(format: "%+.1f dB", vm.eqHigh)).monospacedDigit() }
+            }
             Section("Compressor") {
                 Toggle("Enabled", isOn: $vm.compressor)
                 LabeledContent("Threshold") { Slider(value: $vm.compThreshold, in: -50...0); Text(String(format: "%.0f dB", vm.compThreshold)).monospacedDigit() }
                 LabeledContent("Ratio") { Slider(value: $vm.compRatio, in: 1...20); Text(String(format: "%.1f:1", vm.compRatio)).monospacedDigit() }
                 LabeledContent("Gain reduction") { Text(String(format: "%.1f dB", grDB)).monospacedDigit() }
+            }
+            Section(L10n.t("audio.clock")) {
+                LabeledContent(L10n.t("audio.drift")) { Text(String(format: "%+.0f ppm", vm.channel.driftPPM.value)).monospacedDigit() }
+                LabeledContent(L10n.t("audio.underruns")) { Text("\(vm.channel.underrunCount)").monospacedDigit() }
             }
         }
         .formStyle(.grouped)

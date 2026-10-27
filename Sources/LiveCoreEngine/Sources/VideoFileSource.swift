@@ -110,6 +110,9 @@ public final class VideoFileSource: NSObject, VideoSource {
     public func restart() { tapContext?.active.value = true; player.seek(to: .zero); player.play() }
     public var isPlaying: Bool { player.rate != 0 }
 
+    /// Most recent decoded frame without pulling a new one (safe from any thread).
+    public func lastFrame() -> CVPixelBuffer? { slot.get() }
+
     /// Called from the render queue. AVPlayerItemVideoOutput's hasNewPixelBuffer/copyPixelBuffer
     /// are designed to be called from a display-link/render thread.
     public func currentFrame() -> CVPixelBuffer? {

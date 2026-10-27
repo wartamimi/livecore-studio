@@ -123,3 +123,29 @@
 "audio.gate" = "Noise Gate";
 "audio.dsp" = "DSP";
 "audio.file" = "Audio file video";
+
+/* Build 0.3.0 */
+"scene.title" = "Editor Scene";
+"scene.edit" = "Edit Layer Scene…";
+"scene.hint" = "Seret layer untuk memindah, seret sudut untuk mengubah ukuran. Input ini dipasang di Preview agar hasil persisnya terlihat di sana.";
+"scene.layers" = "Layer (paling atas dulu)";
+"scene.base" = "dasar";
+"scene.preset" = "Preset posisi";
+"scene.scale" = "Skala";
+"scene.opacity" = "Opasitas";
+"scene.lock" = "Kunci rasio saat mengubah ukuran";
+"scene.fit_source" = "Samakan kotak dengan rasio sumber";
+"title.layout" = "Tata letak";
+"title.layout.bar" = "Kotak di belakang teks";
+"title.layout.full" = "Bar selebar layar";
+"title.layout.centered" = "Teks di tengah";
+"title.size" = "Ukuran judul";
+"title.subsize" = "Ukuran subjudul";
+"title.text_color" = "Teks";
+"title.bar_color" = "Bar";
+"audio.eq" = "EQ";
+"audio.hpf" = "Filter high-pass";
+"audio.eq_enable" = "EQ 3-band";
+"audio.clock" = "Clock";
+"audio.drift" = "Koreksi drift";
+"audio.underruns" = "Buffer kosong";

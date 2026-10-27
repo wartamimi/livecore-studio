@@ -98,6 +98,10 @@ public struct ProjectTitleStyle: Codable, Equatable, Sendable {
     public var showBar: Bool
     public var textColor: ProjectColor
     public var barColor: ProjectColor
+    // Added in 0.3.0 (optional so 0.2.0 projects still decode).
+    public var titleSize: Double?
+    public var subtitleSize: Double?
+    public var layout: String?
     public init(title: String, subtitle: String, showBar: Bool = true,
                 textColor: ProjectColor = ProjectColor(r: 1, g: 1, b: 1),
                 barColor: ProjectColor = ProjectColor(r: 0.05, g: 0.27, b: 0.62, a: 0.88)) {
@@ -151,6 +155,8 @@ public struct ProjectAudioChannel: Codable, Equatable, Sendable {
     public var compRatio: Float = 3
     public var gateEnabled = false
     public var gateThresholdDB: Float = -50
+    /// Added in 0.3.0 (optional so 0.2.0 projects still decode).
+    public var eq: ProjectEQ?
     public init(deviceUniqueID: String? = nil, inputID: InputID? = nil, name: String) {
         self.deviceUniqueID = deviceUniqueID; self.inputID = inputID; self.name = name
     }
@@ -179,4 +185,15 @@ public enum ProjectPaths {
         }
         return "/" + parts.joined(separator: "/")
     }
+}
+
+public struct ProjectEQ: Codable, Equatable, Sendable {
+    public var highPassEnabled = false
+    public var highPassHz: Float = 80
+    public var eqEnabled = false
+    public var lowDB: Float = 0
+    public var midDB: Float = 0
+    public var midHz: Float = 1000
+    public var highDB: Float = 0
+    public init() {}
 }

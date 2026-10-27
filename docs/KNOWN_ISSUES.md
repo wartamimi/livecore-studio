@@ -4,8 +4,8 @@
 2. **Audio file video (M2):** latensi ±85–300 ms jitter buffer (AVPlayer menyerahkan audio dalam blok besar); sinkronisasi
    bibir terhadap video file belum diukur. Resampler linear (bukan kualitas mastering). Jika file tidak punya trek audio,
    kanal tidak dibuat. Format sampel non-float diabaikan (senyap) dan dicatat di log.
-3. **Tidak ada koreksi drift clock audio.** Perangkat input dan output memiliki clock berbeda; jitter buffer membatasi latensi
-   (buang kelebihan > 100 ms, isi senyap saat kosong). Pada sesi sangat panjang dapat terdengar klik sesekali. M2: resampler adaptif.
+3. **Koreksi drift clock (0.3.0)** memakai interpolasi linear dengan rasio adaptif (maks ±0,5 %). Teruji dalam simulasi,
+   belum diukur di perangkat untuk sesi > 1 jam (T-25). Batas keras (buang kelebihan) tetap ada sebagai jaring pengaman.
 4. **Limiter tanpa look-ahead.** Transien sangat cepat di-clamp keras pada −1 dBFS (bisa sedikit distorsi), bukan dihaluskan.
 5. **Offset A/V manual.** Latensi kamera berbeda per perangkat; kalibrasi dengan tes tepuk tangan (T-07).
 6. **Encoder AAC priming** diasumsikan 2112 sampel (encoder Apple). Jika berbeda di versi macOS tertentu, gunakan offset A/V.
@@ -28,3 +28,6 @@
     atau jam di Multiview dan bukan output SDI/HDMI terpisah (gunakan jendela di monitor kedua).
 20. **File proyek** menyimpan path absolut + relatif. Kamera/perangkat audio dicocokkan via uniqueID macOS; perangkat yang
     tidak terpasang dilewati dengan peringatan. Overlay dimuat dalam keadaan OFF. Gaya teks (ukuran font) memakai default.
+21. **Editor scene** menggambar layer dari thumbnail 10 fps dengan skala "fit"; hasil persis (fill/crop) terlihat di Preview.
+    Belum ada crop per layer, rotasi, atau border/bayangan.
+22. **Lower third** belum punya animasi slide/wipe sendiri (masuk/keluar memakai fade overlay) dan belum ada pilihan font.

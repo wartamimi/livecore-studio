@@ -19,7 +19,11 @@ public final class MixerChannel: @unchecked Sendable {
     // Render-thread-only state:
     var dsp: ChannelStripDSP
     var primed = false
+    let drift: DriftCompensator
     let underruns = AtomicCounter()
+    /// Measured clock offset of this input relative to the output clock (parts per million).
+    public let driftPPM = AtomicFloat(0)
+    public var underrunCount: UInt64 { underruns.value }
 
     init(id: String, name: String, sampleRate: Double, primeFrames: Int = 1024, maxBufferedFrames: Int = 4800) {
         self.id = id
@@ -28,6 +32,7 @@ public final class MixerChannel: @unchecked Sendable {
         self.maxBufferedFrames = max(maxBufferedFrames, primeFrames * 2)
         ringL = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))   // 1 s headroom
         ringR = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))
+        drift = DriftCompensator(targetFill: primeFrames + primeFrames / 2, maxFrames: AudioMixerEngine.maxFrames)
         dsp = ChannelStripDSP(controls: controls, sampleRate: Float(sampleRate))
     }
 
@@ -204,23 +209,21 @@ public final class AudioMixerEngine {
     @inline(__always)
     private func mixChannel(_ ch: MixerChannel, frames: Int) {
         // Jitter buffer: wait for `primeFrames` before the first read; bound latency at `maxBufferedFrames`.
+        // Drift correction then keeps the fill near 1.5 × primeFrames by resampling ±0.5 %.
         let avail = min(ch.ringL.availableToRead, ch.ringR.availableToRead)
         if !ch.primed {
-            if avail >= ch.primeFrames { ch.primed = true } else { return }
+            if avail >= ch.primeFrames { ch.primed = true; ch.drift.reset() } else { return }
         }
         if avail > ch.maxBufferedFrames {
+            // Safety net only (e.g. a stalled render thread); drift correction normally prevents it.
             let excess = avail - ch.primeFrames * 2
             ch.ringL.skip(excess); ch.ringR.skip(excess)
         }
-        let nl = ch.ringL.read(into: chL, count: frames)
-        let nr = ch.ringR.read(into: chR, count: frames)
-        let n = min(nl, nr)
-        if n < frames {
-            (chL + nl).update(repeating: 0, count: frames - nl)
-            (chR + nr).update(repeating: 0, count: frames - nr)
+        if !ch.drift.render(ringL: ch.ringL, ringR: ch.ringR, outL: chL, outR: chR, frames: frames) {
             ch.underruns.add()
             ch.primed = false
         }
+        ch.driftPPM.value = Float((ch.drift.ratio - 1) * 1_000_000)
         ch.dsp.process(left: chL, right: chR, frames: frames)
         if ch.controls.toProgram.value {
             for i in 0..<frames { progL[i] += chL[i]; progR[i] += chR[i] }

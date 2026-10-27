@@ -67,7 +67,15 @@ public final class ColorSource: VideoSource {
 /// Title / lower-third generator rendered with CoreText into a transparent buffer.
 /// Re-rendered only when the text or style changes (never per frame).
 public final class TextSource: VideoSource {
+    /// Lower-third layouts. Raw values are stored in project files.
+    public enum Layout: String, CaseIterable, Codable, Sendable {
+        case barLeft      // coloured box behind left-aligned text (classic name/title strap)
+        case fullWidth    // bar across the whole width, text left-aligned
+        case centered     // no box, centred text with a drop shadow (captions, quotes)
+    }
+
     public struct Style: Equatable {
+        public var layout: Layout = .barLeft
         public var title: String
         public var subtitle: String
         public var titleSize: CGFloat = 54
@@ -104,9 +112,15 @@ public final class TextSource: VideoSource {
         let pb = PixelBufferFactory.draw(width: w, height: h) { ctx in
             let scale = CGFloat(w) / 1920
             let margin = 90 * scale
-            if st.showBar {
+            if st.showBar && st.layout != .centered {
                 ctx.setFillColor(st.barColor.cgColor)
-                ctx.fill(CGRect(x: margin * 0.6, y: CGFloat(h) * 0.18, width: CGFloat(w) * 0.62, height: CGFloat(h) * 0.64))
+                let barX = st.layout == .fullWidth ? 0 : margin * 0.6
+                let barW = st.layout == .fullWidth ? CGFloat(w) : CGFloat(w) * 0.62
+                ctx.fill(CGRect(x: barX, y: CGFloat(h) * 0.18, width: barW, height: CGFloat(h) * 0.64))
+            }
+            if st.layout == .centered {
+                ctx.setShadow(offset: CGSize(width: 0, height: -3 * scale), blur: 8 * scale,
+                              color: NSColor.black.withAlphaComponent(0.8).cgColor)
             }
             let gctx = NSGraphicsContext(cgContext: ctx, flipped: false)
             NSGraphicsContext.saveGraphicsState()
@@ -118,8 +132,11 @@ public final class TextSource: VideoSource {
             let title = NSAttributedString(string: st.title, attributes: titleAttrs)
             let sub = NSAttributedString(string: st.subtitle, attributes: subAttrs)
             let titleY = st.subtitle.isEmpty ? CGFloat(h) * 0.5 - title.size().height / 2 : CGFloat(h) * 0.48
-            title.draw(at: NSPoint(x: margin, y: titleY))
-            if !st.subtitle.isEmpty { sub.draw(at: NSPoint(x: margin, y: CGFloat(h) * 0.48 - sub.size().height - 4 * scale)) }
+            func x(_ s: NSAttributedString) -> CGFloat {
+                st.layout == .centered ? (CGFloat(w) - s.size().width) / 2 : margin
+            }
+            title.draw(at: NSPoint(x: x(title), y: titleY))
+            if !st.subtitle.isEmpty { sub.draw(at: NSPoint(x: x(sub), y: CGFloat(h) * 0.48 - sub.size().height - 4 * scale)) }
             NSGraphicsContext.restoreGraphicsState()
         }
         lock.withLock { frame = pb }

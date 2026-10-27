@@ -8,6 +8,7 @@ struct InputPanelView: View {
     @State private var showTitleSheet = false
     @State private var editingTitle: InputID?
     @State private var keying: InputID?
+    @State private var editingScene: InputID?
     @State private var renaming: InputID?
     @State private var renameText = ""
 
@@ -37,6 +38,7 @@ struct InputPanelView: View {
         .sheet(isPresented: $showTitleSheet) { TitleSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingTitle) { id in TitleSheet(editing: id).environmentObject(model) }
         .sheet(item: $keying) { id in ChromaKeySheet(input: id).environmentObject(model) }
+        .sheet(item: $editingScene) { id in SceneEditorSheet(input: id).environmentObject(model) }
         .alert(L10n.t("inputs.rename"), isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("", text: $renameText)
             Button(L10n.t("common.ok")) { if let id = renaming { model.rename(id, renameText) }; renaming = nil }
@@ -72,6 +74,7 @@ struct InputPanelView: View {
     private func contextMenu(_ info: ProductionEngine.InputInfo) -> some View {
         Button(L10n.t("inputs.preview")) { model.preview(info.id) }
         Button(L10n.t("inputs.cutdirect")) { model.cutDirect(info.id) }
+        Button(L10n.t("scene.edit")) { editingScene = info.id }
         Menu(L10n.t("inputs.addlayer")) {
             ForEach([LayoutPreset.pipTopRight, .pipTopLeft, .pipBottomRight, .pipBottomLeft, .sideBySideLeft, .sideBySideRight], id: \.self) { p in
                 Button(p.rawValue) { model.addPiP(source: info.id, preset: p) }
@@ -157,34 +160,53 @@ struct TitleSheet: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     let editing: InputID?
-    @State private var title = "Speaker Name"
-    @State private var subtitle = "Title / Organisation"
-    @State private var bar = true
+    @State private var style = TextSource.Style(title: "Speaker Name", subtitle: "Title / Organisation")
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(L10n.t("inputs.title_generator")).font(.headline)
-            TextField(L10n.t("title.title"), text: $title)
-            TextField(L10n.t("title.subtitle"), text: $subtitle)
-            Toggle(L10n.t("title.bar"), isOn: $bar)
+            TextField(L10n.t("title.title"), text: $style.title)
+            TextField(L10n.t("title.subtitle"), text: $style.subtitle)
+            Picker(L10n.t("title.layout"), selection: $style.layout) {
+                Text(L10n.t("title.layout.bar")).tag(TextSource.Layout.barLeft)
+                Text(L10n.t("title.layout.full")).tag(TextSource.Layout.fullWidth)
+                Text(L10n.t("title.layout.centered")).tag(TextSource.Layout.centered)
+            }
+            Toggle(L10n.t("title.bar"), isOn: $style.showBar).disabled(style.layout == .centered)
+            HStack {
+                Text(L10n.t("title.size")).frame(width: 110, alignment: .leading)
+                Slider(value: Binding(get: { Double(style.titleSize) }, set: { style.titleSize = CGFloat($0) }), in: 24...110)
+                Text("\(Int(style.titleSize))").monospacedDigit().frame(width: 30)
+            }
+            HStack {
+                Text(L10n.t("title.subsize")).frame(width: 110, alignment: .leading)
+                Slider(value: Binding(get: { Double(style.subtitleSize) }, set: { style.subtitleSize = CGFloat($0) }), in: 16...80)
+                Text("\(Int(style.subtitleSize))").monospacedDigit().frame(width: 30)
+            }
+            HStack(spacing: 16) {
+                ColorPicker(L10n.t("title.text_color"), selection: color(\.textColor), supportsOpacity: false)
+                ColorPicker(L10n.t("title.bar_color"), selection: color(\.barColor), supportsOpacity: true)
+            }
             HStack {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
                 Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
-                    if let id = editing { model.updateTitle(id, title: title, subtitle: subtitle, bar: bar) }
-                    else { model.addTitle(title: title, subtitle: subtitle, bar: bar) }
+                    if let id = editing { model.updateTitle(id, style: style) } else { model.addTitle(style) }
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
             }
         }
         .padding(16)
-        .frame(width: 380)
+        .frame(width: 420)
         .onAppear {
-            if let id = editing, let t = model.textSource(id) {
-                title = t.style.title; subtitle = t.style.subtitle; bar = t.style.showBar
-            }
+            if let id = editing, let t = model.textSource(id) { style = t.style }
         }
+    }
+
+    private func color(_ key: WritableKeyPath<TextSource.Style, NSColor>) -> Binding<Color> {
+        Binding(get: { Color(nsColor: style[keyPath: key]) },
+                set: { style[keyPath: key] = NSColor($0) })
     }
 }
 
