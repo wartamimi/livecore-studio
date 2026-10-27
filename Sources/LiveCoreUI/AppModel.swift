@@ -140,6 +140,7 @@ public final class AppModel: ObservableObject {
         e.onError = { [weak self] msg in self?.report(msg) }
         e.onAudioChannelsChange = { [weak self] in self?.reloadAudioChannels() }
         e.replay.onAvailableChange = { [weak self] a in self?.replayAvailable = a }
+        e.meeting?.onChange = { [weak self] in self?.meetingChanged() }
         e.onReplayChange = { [weak self] in self?.objectWillChange.send() }
         e.onMusicChange = { [weak self] in
             self?.objectWillChange.send()
@@ -482,6 +483,89 @@ public final class AppModel: ObservableObject {
         guard !urls.isEmpty else { return }
         m.setTracks(m.tracks + urls)
     }
+
+    // MARK: Zoom (Meeting SDK)
+
+    static let zoomIDAccount = "zoom-client-id"
+    static let zoomSecretAccount = "zoom-client-secret"
+    /// Set before joining: Program as our Zoom camera, and which bus is our Zoom microphone.
+    @Published public var zoomSendProgram = true
+    @Published public var zoomMicBus: OutputBus? = .busA
+    private var zoomWasInMeeting = false
+
+    /// False when this build does not include the Zoom SDK.
+    public var zoomAvailable: Bool { engine?.meeting != nil }
+    public var zoomState: MeetingState { engine?.meeting?.state ?? .notAuthorized }
+    public var zoomMessage: String { engine?.meeting?.statusMessage ?? "" }
+    public var zoomParticipants: [MeetingParticipant] { engine?.meeting?.participants ?? [] }
+    public var zoomVersion: String { engine?.meeting?.sdkVersion ?? "" }
+    public var zoomHasCredentials: Bool { hasKey(account: Self.zoomIDAccount) && hasKey(account: Self.zoomSecretAccount) }
+
+    /// Stores the Zoom app's Client ID and Secret in the Keychain (empty = keep the saved value).
+    public func saveZoomCredentials(clientID: String, secret: String) {
+        let id = clientID.trimmingCharacters(in: .whitespacesAndNewlines)
+        let sec = secret.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !id.isEmpty { saveKey(id, account: Self.zoomIDAccount) }
+        if !sec.isEmpty { saveKey(sec, account: Self.zoomSecretAccount) }
+        objectWillChange.send()
+    }
+
+    public func deleteZoomCredentials() {
+        saveKey("", account: Self.zoomIDAccount)
+        saveKey("", account: Self.zoomSecretAccount)
+        objectWillChange.send()
+    }
+
+    /// Signs the SDK in with a JWT made on this Mac from the Keychain credentials.
+    public func zoomAuthorize() {
+        guard let m = engine?.meeting else { return report(L10n.t("zoom.unavailable")) }
+        guard let id = (try? KeychainStore.load(account: Self.zoomIDAccount)) ?? nil, !id.isEmpty,
+              let secret = (try? KeychainStore.load(account: Self.zoomSecretAccount)) ?? nil, !secret.isEmpty else {
+            return report(L10n.t("zoom.no_credentials"))
+        }
+        m.authorize(jwt: ZoomJWT.make(clientID: id, clientSecret: secret, now: Int(Date().timeIntervalSince1970)))
+    }
+
+    /// Joins a meeting from a meeting ID or invite link.
+    public func zoomJoin(_ text: String, passcode: String, displayName: String) {
+        guard let m = engine?.meeting else { return report(L10n.t("zoom.unavailable")) }
+        guard let info = ZoomJoinInfo.parse(text) else { return report(L10n.t("zoom.bad_meeting")) }
+        let pass = passcode.isEmpty ? (info.linkPasscode ?? "") : passcode
+        m.join(meetingNumber: info.meetingNumber, passcode: pass, displayName: displayName,
+               sendVideo: zoomSendProgram, sendAudio: zoomMicBus != nil)
+    }
+
+    public func zoomLeave() { engine?.meeting?.leave() }
+    public func zoomRequestRawData() { engine?.meeting?.requestRawDataPermission() }
+
+    public func addZoomParticipant(_ p: MeetingParticipant) {
+        guard let e = engine else { return }
+        if case .inMeeting(rawData: .allowed) = zoomState {} else { report(L10n.t("zoom.need_permission")) }
+        e.addMeetingParticipant(p)
+    }
+
+    public func isZoomParticipantInput(_ p: MeetingParticipant) -> Bool {
+        inputs.contains { $0.id == InputID("meeting-\(p.id)") }
+    }
+
+    private func meetingChanged() {
+        guard let e = engine else { return }
+        let st = zoomState
+        if st.inMeeting {
+            if !zoomWasInMeeting {
+                zoomWasInMeeting = true
+                e.setMeetingSendsProgram(zoomSendProgram)
+                e.setMeetingMicBus(zoomMicBus)
+            }
+            if case .inMeeting(rawData: .allowed) = st { e.setMeetingAudio(true) }
+        } else if zoomWasInMeeting {
+            zoomWasInMeeting = false
+            e.meetingEnded()
+        }
+        if case let .failed(msg) = st, !msg.isEmpty, msg != lastZoomError { lastZoomError = msg; report("Zoom: \(msg)") }
+        objectWillChange.send()
+    }
+    private var lastZoomError = ""
 
     // MARK: Instant replay
 

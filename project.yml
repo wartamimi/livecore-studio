@@ -21,6 +21,7 @@ targets:
     platform: macOS
     sources:
       - path: App
+      - path: AppZoom      # Zoom Meeting SDK bridge; compiles to a stub unless LIVECORE_ZOOM=1
     dependencies:
       - package: LiveCoreStudio
         product: LiveCoreUI
@@ -55,6 +56,16 @@ targets:
         CODE_SIGN_IDENTITY: "-"          # ad-hoc by default; set your Developer ID for distribution
         COMBINE_HIDPI_IMAGES: YES
         GENERATE_INFOPLIST_FILE: NO
+        SWIFT_OBJC_BRIDGING_HEADER: AppZoom/LiveCore-Bridging-Header.h
+        CLANG_ENABLE_OBJC_ARC: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks"
+        # Zoom SDK builds set these (see scripts/build_macos.sh); default: stub, no SDK.
+        LIVECORE_ZOOM: "0"
+        LIVECORE_ZOOM_SDK_DIR: ""
+        LIVECORE_ZOOM_LDFLAGS: ""
+        GCC_PREPROCESSOR_DEFINITIONS: "$(inherited) LIVECORE_ZOOM=$(LIVECORE_ZOOM)"
+        FRAMEWORK_SEARCH_PATHS: "$(inherited) $(LIVECORE_ZOOM_SDK_DIR)"
+        OTHER_LDFLAGS: "$(inherited) $(LIVECORE_ZOOM_LDFLAGS)"
 schemes:
   LiveCoreStudio:
     build:
