@@ -50,6 +50,11 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## S. Tes manual build 0.19.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-76 | Ticker arah & RSS | Ubah teks berjalan › Arah Kiri → kanan; lalu isi Feed RSS dengan feed berita https (mis. feed RSS portal berita), refresh 1 menit; buka lagi Ubah teks berjalan | Teks bergerak kiri → kanan; dalam beberapa detik judul berita feed tampil dipisah •; status "N items, jam" tampil di jendela; feed salah / tanpa internet menampilkan pesan error tanpa app tersendat, teks lama tetap jalan |
+
 ## R. Tes manual build 0.18.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

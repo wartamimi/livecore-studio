@@ -399,3 +399,9 @@
 "ticker.file_hint" = "The text comes from the file (one item per line) and updates within about 2 seconds when the file is saved.";
 "slideshow.kenburns" = "Ken Burns (slow zoom and pan)";
 "slideshow.watch_hint" = "Photos added to or removed from this folder are picked up while running (checked every 5 seconds).";
+"ticker.direction" = "Direction";
+"ticker.rtl" = "Right → left";
+"ticker.ltr" = "Left → right";
+"ticker.feed" = "RSS / Atom feed";
+"ticker.feed_every" = "every %@ min";
+"ticker.feed_hint" = "Item titles from the feed are shown one after another (up to 30) and refreshed automatically. The feed takes priority over the text and the file. Use an https address.";

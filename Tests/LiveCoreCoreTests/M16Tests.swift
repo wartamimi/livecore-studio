@@ -178,3 +178,31 @@ final class M18Tests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(TickerConfig.self, from: JSONEncoder().encode(t)), t)
     }
 }
+
+final class M19Tests: XCTestCase {
+    func testLeftToRightTickerEntersOnTheLeft() {
+        XCTAssertEqual(TickerMath.offset(elapsed: 0, speed: 100, stripWidth: 1000, viewWidth: 1920, direction: .leftToRight), -1000)
+        XCTAssertEqual(TickerMath.offset(elapsed: 10, speed: 100, stripWidth: 1000, viewWidth: 1920, direction: .leftToRight), 0)
+        XCTAssertEqual(TickerConfig(text: "x").scrollDirection, .rightToLeft, "old projects keep scrolling right to left")
+    }
+
+    func testRSSAndAtomTitles() {
+        let rss = """
+        <?xml version="1.0"?><rss version="2.0"><channel><title>Channel Name</title>
+        <item><title>Gempa 5,1 SR &amp; tidak berpotensi tsunami</title><link>x</link></item>
+        <item><title><![CDATA[Harga <b>beras</b> turun]]></title></item>
+        <item><title>Skor &#8211; 2:1 &#x2014; final</title></item>
+        </channel></rss>
+        """
+        XCTAssertEqual(FeedTitles.parse(rss), ["Gempa 5,1 SR & tidak berpotensi tsunami", "Harga beras turun", "Skor \u{2013} 2:1 \u{2014} final"])
+        let atom = """
+        <feed xmlns="http://www.w3.org/2005/Atom"><title>Feed</title>
+        <entry><title type="html">Satu</title></entry><entry><title type="text">
+          Dua   baris
+        </title></entry></feed>
+        """
+        XCTAssertEqual(FeedTitles.parse(atom), ["Satu", "Dua baris"])
+        XCTAssertEqual(FeedTitles.parse("<rss><item><titles>no</titles></item></rss>"), [])
+        XCTAssertEqual(FeedTitles.parse(rss, limit: 1).count, 1)
+    }
+}

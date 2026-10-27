@@ -214,7 +214,7 @@ struct TickerSheet: View {
                 .font(.system(size: 13))
                 .frame(height: 90)
                 .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.textDim.opacity(0.4)))
-                .disabled(c.textFilePath != nil)
+                .disabled(c.textFilePath != nil || !(c.feedURL ?? "").isEmpty)
             HStack {
                 Button(L10n.t("ticker.from_file")) {
                     if let u = model.pickTextFile() {
@@ -229,7 +229,25 @@ struct TickerSheet: View {
                 Spacer()
             }
             Text(L10n.t(c.textFilePath == nil ? "ticker.text_hint" : "ticker.file_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+            HStack {
+                TextField(L10n.t("ticker.feed"), text: Binding(get: { c.feedURL ?? "" }, set: { c.feedURL = $0.isEmpty ? nil : $0 }),
+                          prompt: Text("https://…/rss.xml"))
+                Stepper(L10n.f("ticker.feed_every", "\(Int(c.feedRefreshMinutes ?? 5))"),
+                        value: Binding(get: { c.feedRefreshMinutes ?? 5 }, set: { c.feedRefreshMinutes = $0 }), in: 1...120)
+                    .fixedSize()
+            }
+            if !(c.feedURL ?? "").isEmpty {
+                Text(L10n.t("ticker.feed_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                if let id = editing, let st = model.tickerSource(id)?.feedStatus, !st.isEmpty {
+                    Text(st).font(.system(size: 10)).foregroundStyle(st.hasPrefix("Feed error") || st.hasPrefix("Invalid") ? Theme.warning : Theme.textDim)
+                }
+            }
             Form {
+                Picker(L10n.t("ticker.direction"), selection: Binding(get: { c.scrollDirection }, set: { c.direction = $0 })) {
+                    Text(L10n.t("ticker.rtl")).tag(TickerDirection.rightToLeft)
+                    Text(L10n.t("ticker.ltr")).tag(TickerDirection.leftToRight)
+                }
+                .pickerStyle(.segmented)
                 LabeledContent(L10n.t("ticker.speed")) {
                     Slider(value: $c.speed, in: TickerConfig.speedRange)
                     Text("\(Int(c.speed)) px/s").monospacedDigit().frame(width: 70, alignment: .trailing)
@@ -258,7 +276,7 @@ struct TickerSheet: View {
                     dismiss()
                 }
                 .keyboardShortcut(.defaultAction)
-                .disabled(c.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .disabled(c.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (c.feedURL ?? "").isEmpty)
             }
         }
         .padding(16)

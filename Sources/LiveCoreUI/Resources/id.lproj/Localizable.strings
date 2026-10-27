@@ -399,3 +399,9 @@
 "ticker.file_hint" = "Teks diambil dari file (satu berita per baris) dan diperbarui sekitar 2 detik setelah file disimpan.";
 "slideshow.kenburns" = "Ken Burns (zoom & geser pelan)";
 "slideshow.watch_hint" = "Foto yang ditambah atau dihapus di folder ini ikut masuk saat berjalan (dicek tiap 5 detik).";
+"ticker.direction" = "Arah";
+"ticker.rtl" = "Kanan → kiri";
+"ticker.ltr" = "Kiri → kanan";
+"ticker.feed" = "Feed RSS / Atom";
+"ticker.feed_every" = "tiap %@ menit";
+"ticker.feed_hint" = "Judul berita dari feed ditampilkan berurutan (maks. 30) dan diperbarui otomatis. Feed diutamakan daripada teks dan file. Gunakan alamat https.";
