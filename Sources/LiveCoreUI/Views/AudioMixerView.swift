@@ -32,6 +32,10 @@ struct AudioMixerView: View {
                     }
                 }
                 Divider()
+                ForEach(model.auxBuses) { bus in
+                    AuxStripView(bus: bus, level: bus.index < meters.aux.count ? meters.aux[bus.index] : nil)
+                }
+                Divider()
                 MasterStripView()
             }
         }
@@ -65,10 +69,16 @@ struct ChannelStripView: View {
                 toggle(L10n.t("audio.solo"), $vm.solo, Theme.warning)
                 toggle(L10n.t("audio.pgm"), $vm.toProgram, Theme.accent)
             }
+            HStack(spacing: 3) {
+                toggle("A", $vm.toBusA, Theme.preview).help(L10n.t("aux.send_a"))
+                toggle("B", $vm.toBusB, Theme.preview).help(L10n.t("aux.send_b"))
+            }
             Button(dspLabel) { showDSP.toggle() }
                 .buttonStyle(.borderless).font(.system(size: 10))
                 .popover(isPresented: $showDSP) { DSPPopover(vm: vm, grDB: level?.gr ?? 0, gateDB: level?.gate ?? 0) }
                 .contextMenu {
+                    Button(L10n.f("aux.mix_minus", "A")) { model.makeMixMinus(bus: 0, excluding: vm.id) }
+                    Button(L10n.f("aux.mix_minus", "B")) { model.makeMixMinus(bus: 1, excluding: vm.id) }
                     // File audio belongs to its video input: remove the input instead.
                     if !vm.isFileChannel { Button(L10n.t("inputs.remove"), role: .destructive) { model.removeAudioInput(vm.id) } }
                 }
@@ -139,6 +149,49 @@ struct DSPPopover: View {
         }
         .formStyle(.grouped)
         .frame(width: 320)
+    }
+}
+
+/// Aux bus A/B: post-fader sends from the channels, own fader/mute, optional output device.
+struct AuxStripView: View {
+    @EnvironmentObject var model: AppModel
+    @ObservedObject var bus: AuxBusVM
+    let level: MeterModel.Level?
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(bus.name).font(.system(size: 10, weight: .heavy))
+            HStack(spacing: 4) {
+                MeterView(levelDB: level?.l ?? -120, holdDB: level?.holdL ?? -120)
+                MeterView(levelDB: level?.r ?? -120, holdDB: level?.holdR ?? -120)
+                VerticalFader(value: $bus.fader)
+            }
+            .frame(height: 120)
+            Button(L10n.t("audio.mute")) { bus.muted.toggle() }
+                .font(.system(size: 9, weight: .bold))
+                .frame(width: 34, height: 18)
+                .background(bus.muted ? Theme.program : Theme.panel)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+                .buttonStyle(.plain)
+            Menu {
+                Button(L10n.t("aux.no_output")) { model.setAuxDevice(bus.index, uid: "") }
+                Divider()
+                ForEach(model.outputDevices, id: \.uid) { d in
+                    Button(d.name) { model.setAuxDevice(bus.index, uid: d.uid) }
+                }
+            } label: {
+                Image(systemName: bus.deviceUID.isEmpty ? "speaker.slash" : "speaker.wave.2.fill").font(.system(size: 10))
+            }
+            .menuStyle(.borderlessButton).fixedSize()
+            .help(deviceName)
+        }
+        .padding(4)
+        .frame(width: 70)
+    }
+
+    private var deviceName: String {
+        if bus.deviceUID.isEmpty { return L10n.t("aux.no_output") }
+        return model.outputDevices.first { $0.uid == bus.deviceUID }?.name ?? bus.deviceUID
     }
 }
 

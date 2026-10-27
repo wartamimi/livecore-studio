@@ -167,3 +167,8 @@
 "stinger.add_clip" = "Add the stinger as a video file input first (ProRes 4444 or HEVC with alpha).";
 "stinger.choose" = "Choose the stinger clip.";
 "stinger.help" = "AUTO plays the clip over Program and cuts to Preview at the cut point. The clip's audio goes through its mixer channel. The T-bar uses a dissolve for stingers.";
+
+"aux.send_a" = "Send to aux bus A (post-fader)";
+"aux.send_b" = "Send to aux bus B (post-fader)";
+"aux.mix_minus" = "Mix-minus on bus %@ (everything except this channel)";
+"aux.no_output" = "No output device (meter only)";

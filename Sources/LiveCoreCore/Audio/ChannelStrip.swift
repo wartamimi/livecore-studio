@@ -7,6 +7,8 @@ public final class ChannelControls: @unchecked Sendable {
     public let muted = AtomicBool(false)
     public let solo = AtomicBool(false)         // affects the monitor bus only
     public let toProgram = AtomicBool(true)     // routed to the Program (stream/record) bus
+    public let toBusA = AtomicBool(false)       // routed (post-fader) to aux bus A
+    public let toBusB = AtomicBool(false)       // routed (post-fader) to aux bus B
     public let compressorEnabled = AtomicBool(false)
     public let compThresholdDB = AtomicFloat(-18)
     public let compRatio = AtomicFloat(3)

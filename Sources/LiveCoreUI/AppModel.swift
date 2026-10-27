@@ -32,6 +32,8 @@ public final class AppModel: ObservableObject {
     @Published public var audioDevices: [DeviceManager.Device] = []
     @Published public var outputDevices: [AudioDeviceInfo] = []
     @Published public var monitorDeviceUID: String = ""
+    /// Aux buses A and B (created once the engine runs).
+    @Published public private(set) var auxBuses: [AuxBusVM] = []
 
     // Audio
     @Published public var audioChannels: [ChannelVM] = []
@@ -78,6 +80,7 @@ public final class AppModel: ObservableObject {
             refreshDevices()
             hasStreamKey = ((try? KeychainStore.load(account: settings.stream.keychainAccount)) ?? nil)?.isEmpty == false
             overlays = e.overlays
+            syncAuxFromEngine()
         } catch {
             startupError = error.localizedDescription
             return
@@ -144,7 +147,7 @@ public final class AppModel: ObservableObject {
     private var tickCount = 0
     private func tick() {
         guard let e = engine else { return }
-        meters.update(channels: e.audioChannels, master: e.mixer.master)
+        meters.update(channels: e.audioChannels, master: e.mixer.master, aux: e.mixer.aux)
         tickCount += 1
         if tickCount % 30 == 0 { performance = e.samplePerformance() }
     }
@@ -279,8 +282,29 @@ public final class AppModel: ObservableObject {
         guard let m = engine?.mixer else { return }
         masterFader = FaderLaw.position(forDB: m.master.faderDB.value)
         limiterEnabled = m.limiterEnabled.value
+        syncAuxFromEngine()
         monitorVolume = Double(m.monitorVolume.value)
         syncOffsetMs = Double(engine?.audioPump.syncOffsetSeconds.value ?? 0) * 1000
+    }
+
+    /// Plays an aux bus on an output device ("" = off).
+    public func setAuxDevice(_ index: Int, uid: String) {
+        guard let e = engine, auxBuses.indices.contains(index) else { return }
+        if let msg = e.setAuxOutput(index, uid: uid.isEmpty ? nil : uid) { report(msg) }
+        auxBuses[index].deviceUID = e.auxOutputUID(index) ?? ""
+    }
+
+    /// Mix-minus helper: every channel except `excluded` goes to the bus (e.g. a remote caller
+    /// hears everyone but themselves).
+    public func makeMixMinus(bus index: Int, excluding excluded: String) {
+        for ch in audioChannels {
+            if index == 0 { ch.toBusA = ch.id != excluded } else { ch.toBusB = ch.id != excluded }
+        }
+    }
+
+    private func syncAuxFromEngine() {
+        guard let e = engine else { return }
+        auxBuses = e.mixer.aux.indices.map { i in AuxBusVM(index: i, controls: e.mixer.aux[i], deviceUID: e.auxOutputUID(i) ?? "") }
     }
 
     public func setMonitorDevice(uid: String) {
@@ -498,6 +522,8 @@ public final class ChannelVM: ObservableObject, Identifiable {
     @Published public var muted: Bool { didSet { channel.controls.muted.value = muted } }
     @Published public var solo: Bool { didSet { channel.controls.solo.value = solo } }
     @Published public var toProgram: Bool { didSet { channel.controls.toProgram.value = toProgram } }
+    @Published public var toBusA: Bool { didSet { channel.controls.toBusA.value = toBusA } }
+    @Published public var toBusB: Bool { didSet { channel.controls.toBusB.value = toBusB } }
     @Published public var compressor: Bool { didSet { channel.controls.compressorEnabled.value = compressor } }
     @Published public var compThreshold: Double { didSet { channel.controls.compThresholdDB.value = Float(compThreshold) } }
     @Published public var compRatio: Double { didSet { channel.controls.compRatio.value = Float(compRatio) } }
@@ -523,6 +549,8 @@ public final class ChannelVM: ObservableObject, Identifiable {
         muted = c.muted.value
         solo = c.solo.value
         toProgram = c.toProgram.value
+        toBusA = c.toBusA.value
+        toBusB = c.toBusB.value
         compressor = c.compressorEnabled.value
         compThreshold = Double(c.compThresholdDB.value)
         compRatio = Double(c.compRatio.value)
@@ -539,6 +567,23 @@ public final class ChannelVM: ObservableObject, Identifiable {
     }
 }
 
+/// Aux bus A/B view model (fader and mute are atomics shared with the render thread).
+public final class AuxBusVM: ObservableObject, Identifiable {
+    public let index: Int
+    public let controls: ChannelControls
+    public var id: Int { index }
+    public var name: String { index == 0 ? "AUX A" : "AUX B" }
+    @Published public var fader: Double { didSet { controls.faderDB.value = FaderLaw.db(forPosition: fader) } }
+    @Published public var muted: Bool { didSet { controls.muted.value = muted } }
+    @Published public var deviceUID: String
+
+    init(index: Int, controls: ChannelControls, deviceUID: String) {
+        self.index = index; self.controls = controls; self.deviceUID = deviceUID
+        fader = FaderLaw.position(forDB: controls.faderDB.value)
+        muted = controls.muted.value
+    }
+}
+
 /// Meter levels refreshed at 30 Hz. Kept separate so only meter views re-render.
 public final class MeterModel: ObservableObject {
     public struct Level: Equatable {
@@ -547,10 +592,11 @@ public final class MeterModel: ObservableObject {
     }
     @Published public var levels: [String: Level] = [:]
     @Published public var master = Level(l: -120, r: -120, holdL: -120, holdR: -120, gr: 0)
+    @Published public var aux: [Level] = []
     private var ballistics: [String: (MeterBallistics, MeterBallistics)] = [:]
     private var lastTime = HostClockUI.now()
 
-    func update(channels: [MixerChannel], master m: ChannelControls) {
+    func update(channels: [MixerChannel], master m: ChannelControls, aux auxControls: [ChannelControls] = []) {
         let now = HostClockUI.now()
         let dt = now - lastTime
         lastTime = now
@@ -567,6 +613,8 @@ public final class MeterModel: ObservableObject {
         let mm = step("__master", m)
         if out != levels { levels = out }
         if mm != master { master = mm }
+        let ax = auxControls.enumerated().map { step("__aux\($0.offset)", $0.element) }
+        if ax != aux { aux = ax }
     }
 }
 

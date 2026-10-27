@@ -38,7 +38,8 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Multiview | Implemented (M2) | M | Jendela terpisah: Preview, Program, semua input + tally; input 10 fps 384×216 |
 | Chroma key | Implemented (M2) | L (matematika) + M (shader) | Per input (kamera/file/gambar), warna kunci, similarity, smoothness, spill; GPU |
 | Browser source | Planned (M2) | — | Butuh evaluasi keamanan WKWebView offscreen |
-| Transisi stinger (video dengan alpha) & custom | Planned (M3) | — | |
+| Transisi stinger (klip video, idealnya dengan alpha) | Implemented (0.5.0) | L (`Switcher`/`FramePlanner`, 6 unit test) + kompilasi CI | Klip = input file video; titik potong diatur; durasi = panjang klip; audio klip lewat mixer. T-bar memakai dissolve. Belum dites di Mac (T-30) |
+| Transisi custom (shader pengguna) | Planned | — | |
 
 ## Audio
 | Fitur | Status | Verifikasi | Catatan |
@@ -57,6 +58,8 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Sinkronisasi A/V (host clock + offset manual) | Implemented | L (anchor) + M | Butuh kalibrasi per kamera |
 | Koreksi drift clock (resampling adaptif) | Implemented (0.3.0) | L (simulasi ±300 ppm, 10 menit) + M | Per kanal, maks ±0,5 %; ppm & underrun tampil di popover DSP |
 | Audio dari file video | Implemented (M2) | M | Lihat Known issue: sinkronisasi audio file belum diukur |
+| Aux bus A/B (send post-fader per channel, fader/mute/meter bus) | Implemented (0.5.0) | L (model proyek) + kompilasi CI | Belum dites di Mac (T-31) |
+| Output aux ke perangkat terpisah + mix-minus | Implemented (0.5.0) | kompilasi CI | Tiap bus bisa diputar di perangkat output lain (koreksi drift clock); menu kanal "Mix-minus" mengirim semua kanal kecuali kanal itu. Belum dites (T-31b) |
 | Audio NDI | Planned (M3) | — | |
 
 ## Streaming
