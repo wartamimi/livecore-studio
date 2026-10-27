@@ -100,3 +100,81 @@ final class M17Tests: XCTestCase {
         XCTAssertEqual(back, doc)
     }
 }
+
+final class M171Tests: XCTestCase {
+    func testDelayChangeCrossFadesWithoutAJump() {
+        var d = StereoDelay(capacity: 48_000, fadeFrames: 960)
+        var phase: Float = 0
+        var out: [Float] = []
+        // 100 Hz sine, delay jumps from 0 to 500 samples (~10 ms) mid-stream.
+        for block in 0..<40 {
+            var l = [Float](repeating: 0, count: 128)
+            for i in 0..<128 { l[i] = sin(phase); phase += 2 * .pi * 100 / 48_000 }
+            var r = l
+            d.process(left: &l, right: &r, frames: 128, samples: block < 10 ? 0 : 500)
+            out += l
+        }
+        let maxStep = zip(out.dropFirst(), out).map { abs($0 - $1) }.max() ?? 0
+        XCTAssertLessThan(maxStep, 0.05, "no click: the old and new taps are cross-faded")
+        XCTAssertEqual(out[30 * 128], sin(2 * .pi * 100 / 48_000 * Float(30 * 128 - 500)), accuracy: 5e-3,
+                       "after the fade the signal is delayed by 500 samples")
+    }
+}
+
+final class AFVCrossfadeTests: XCTestCase {
+    let cam = InputID("cam"), clip = InputID("clip")
+
+    func testAudioFollowsTheIncomingSideAsSoonAsAutoStarts() {
+        let sw = Switcher()
+        sw.setPreview(cam); sw.cut(); sw.setPreview(clip)
+        sw.auto(kind: .dissolve, duration: 2, now: 0)
+        XCTAssertEqual(OnAir.audioInputs(switcher: sw.state, layers: [:], overlays: []), [clip])
+        XCTAssertEqual(OnAir.audioFadeSeconds(switcher: sw.state), 2)
+        sw.update(now: 3)
+        XCTAssertEqual(OnAir.audioFadeSeconds(switcher: sw.state), 0.05, "cuts and finished transitions de-click only")
+    }
+
+    func testAFVGateFadesOverTheSetTime() {
+        let c = ChannelControls()
+        var dsp = ChannelStripDSP(controls: c, sampleRate: 48_000)
+        func block() -> Float {
+            var l = [Float](repeating: 0.5, count: 480), r = l
+            dsp.process(left: &l, right: &r, frames: 480)
+            return l[479]
+        }
+        for _ in 0..<10 { _ = block() }
+        c.afvFadeSeconds.value = 0.1          // 4800 samples = 10 blocks
+        c.afvClosed.value = true
+        XCTAssertEqual(block(), 0.45, accuracy: 0.01, "10% into the fade")
+        for _ in 0..<4 { _ = block() }
+        XCTAssertEqual(block(), 0.2, accuracy: 0.01, "60% into the fade")
+        for _ in 0..<5 { _ = block() }
+        XCTAssertEqual(block(), 0, accuracy: 1e-6)
+    }
+}
+
+final class M18Tests: XCTestCase {
+    func testKenBurnsStaysInsideThePhotoAndIsContinuous() {
+        for i in 0..<4 {
+            for k in 0...10 {
+                let r = SlideshowMath.kenBurnsRect(progress: Double(k) / 10, index: i)
+                XCTAssertGreaterThanOrEqual(r.x, -1e-9); XCTAssertGreaterThanOrEqual(r.y, -1e-9)
+                XCTAssertLessThanOrEqual(r.x + r.width, 1 + 1e-9); XCTAssertLessThanOrEqual(r.y + r.height, 1 + 1e-9)
+            }
+        }
+        XCTAssertEqual(SlideshowMath.kenBurnsRect(progress: 0, index: 0).width, 1, accuracy: 1e-9, "even photos start full")
+        XCTAssertEqual(SlideshowMath.kenBurnsRect(progress: 1, index: 0).width, 1 / 1.15, accuracy: 1e-9)
+        // The image fading in at the end of a slot has the same progress when it becomes the shown one.
+        let atEnd = SlideshowMath.motionProgress(within: 5, interval: 5, fade: 1).next
+        let atStart = SlideshowMath.motionProgress(within: 0, interval: 5, fade: 1).current
+        XCTAssertEqual(atEnd, atStart, accuracy: 1e-9)
+    }
+
+    func testOldSlideshowAndTickerProjectsDecode() throws {
+        let old = #"{"images":[{"path":"/a.jpg"}],"interval":4,"fade":1,"loop":true}"#
+        let s = try JSONDecoder().decode(ProjectSlideshow.self, from: Data(old.utf8))
+        XCTAssertNil(s.kenBurns); XCTAssertNil(s.folder)
+        var t = TickerConfig(text: "x"); t.textFilePath = "/tmp/news.txt"
+        XCTAssertEqual(try JSONDecoder().decode(TickerConfig.self, from: JSONEncoder().encode(t)), t)
+    }
+}

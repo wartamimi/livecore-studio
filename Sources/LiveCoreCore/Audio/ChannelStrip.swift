@@ -8,6 +8,8 @@ public final class ChannelControls: @unchecked Sendable {
     /// Audio-follow-video gate: true while the linked input is off air (engine-controlled,
     /// independent of the operator's mute).
     public let afvClosed = AtomicBool(false)
+    /// How long the AFV gate takes to open or close (the transition's duration during AUTO).
+    public let afvFadeSeconds = AtomicFloat(0.05)
     public let solo = AtomicBool(false)         // affects the monitor bus only
     public let toProgram = AtomicBool(true)     // routed to the Program (stream/record) bus
     public let toBusA = AtomicBool(false)       // routed (post-fader) to aux bus A
@@ -71,31 +73,76 @@ public struct StereoDelay: Sendable {
     private var bufL: [Float]
     private var bufR: [Float]
     private var write = 0
-    public init(capacity: Int) {
+    /// Delay currently heard, and the one being faded out while a change is in progress.
+    private var current = 0
+    private var previous = 0
+    private var fadePos = 0
+    private var primed = false
+    /// Length of the cross-fade between the old and new delay tap (avoids clicks when the delay changes).
+    public let fadeFrames: Int
+    public init(capacity: Int, fadeFrames: Int = 960) {
         bufL = [Float](repeating: 0, count: max(1, capacity))
         bufR = [Float](repeating: 0, count: max(1, capacity))
+        self.fadeFrames = max(1, fadeFrames)
+        fadePos = self.fadeFrames
     }
     public var capacity: Int { bufL.count }
 
     /// Delays the signal by `samples` (clamped to capacity - 1). 0 still feeds the line so a later
-    /// change starts from real history instead of silence.
+    /// change starts from real history instead of silence. A change cross-fades from the old tap
+    /// to the new one over `fadeFrames` samples.
     public mutating func process(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>, frames: Int, samples: Int) {
         let n = bufL.count
         let d = min(max(samples, 0), n - 1)
+        if !primed {
+            // The first block starts at the requested delay (nothing to fade from yet).
+            primed = true; current = d; previous = d; fadePos = fadeFrames
+        }
+        if d != current {
+            // A change during a fade restarts it from whichever tap is louder at this point.
+            previous = fadePos * 2 < fadeFrames ? previous : current
+            current = d
+            fadePos = 0
+        }
+        if current == 0 && fadePos >= fadeFrames {
+            // Bypass: keep the history fresh, leave the signal untouched.
+            bufL.withUnsafeMutableBufferPointer { bl in
+                bufR.withUnsafeMutableBufferPointer { br in
+                    var w = write
+                    for i in 0..<frames {
+                        bl[w] = left[i]; br[w] = right[i]
+                        w += 1
+                        if w == n { w = 0 }
+                    }
+                    write = w
+                }
+            }
+            return
+        }
+        let fade = fadeFrames
         bufL.withUnsafeMutableBufferPointer { bl in
             bufR.withUnsafeMutableBufferPointer { br in
-                var w = write
+                var w = write, pos = fadePos
+                let cur = current, prev = previous
                 for i in 0..<frames {
                     bl[w] = left[i]; br[w] = right[i]
-                    if d > 0 {
-                        var r = w - d
-                        if r < 0 { r += n }
+                    var r = w - cur
+                    if r < 0 { r += n }
+                    if pos < fade {
+                        var r0 = w - prev
+                        if r0 < 0 { r0 += n }
+                        let t = Float(pos) / Float(fade)
+                        left[i] = bl[r0] * (1 - t) + bl[r] * t
+                        right[i] = br[r0] * (1 - t) + br[r] * t
+                        pos += 1
+                    } else {
                         left[i] = bl[r]; right[i] = br[r]
                     }
                     w += 1
                     if w == n { w = 0 }
                 }
                 write = w
+                fadePos = pos
             }
         }
     }
@@ -113,6 +160,9 @@ public struct ChannelStripDSP: Sendable {
     private var gate: NoiseGate
     private var eq: ChannelEQ
     private var delay: StereoDelay
+    /// AFV gain 0...1, moved toward the gate's target at the rate set by `afvFadeSeconds`.
+    private var afvGain: Float = 1
+    private var afvPrimed = false
     private let sampleRate: Float
     public static let maxDelayMs: Float = 1000
 
@@ -131,7 +181,7 @@ public struct ChannelStripDSP: Sendable {
         if controls.invertPhase.value { for i in 0..<frames { left[i] = -left[i]; right[i] = -right[i] } }
         let delaySamples = Int((min(max(controls.delayMs.value, 0), Self.maxDelayMs) / 1000 * sampleRate).rounded())
         delay.process(left: left, right: right, frames: frames, samples: delaySamples)
-        let muted = controls.muted.value || controls.afvClosed.value
+        let muted = controls.muted.value
         let trim = AudioMath.dbToLinear(controls.gainDB.value)
         let gateOn = controls.gateEnabled.value
         let compOn = controls.compressorEnabled.value
@@ -174,6 +224,7 @@ public struct ChannelStripDSP: Sendable {
             controls.gateReductionDB.value = 0
             ramp.apply(target: muted ? 0 : trim * AudioMath.dbToLinear(controls.faderDB.value), left: left, right: right, frames: frames)
         }
+        applyAFV(left: left, right: right, frames: frames)
         // Balance-style pan (linear): centre = unity on both sides, hard left mutes right.
         let p = min(max(controls.pan.value, -1), 1)
         let gl: Float = p <= 0 ? 1 : 1 - p
@@ -183,5 +234,25 @@ public struct ChannelStripDSP: Sendable {
 
         controls.peakL.storeMax(AudioMath.peak(left, count: frames))
         controls.peakR.storeMax(AudioMath.peak(right, count: frames))
+    }
+}
+
+extension ChannelStripDSP {
+    /// Audio follow video: fades the channel in or out linearly over `afvFadeSeconds`, so a
+    /// dissolve crossfades the two sides' audio instead of switching it at the end.
+    fileprivate mutating func applyAFV(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>, frames: Int) {
+        let target: Float = controls.afvClosed.value ? 0 : 1
+        if !afvPrimed { afvPrimed = true; afvGain = target }
+        if afvGain == target {
+            if target == 0 { for i in 0..<frames { left[i] = 0; right[i] = 0 } }
+            return
+        }
+        let step = 1 / max(controls.afvFadeSeconds.value * sampleRate, 1)
+        var g = afvGain
+        for i in 0..<frames {
+            g = target > g ? min(target, g + step) : max(target, g - step)
+            left[i] *= g; right[i] *= g
+        }
+        afvGain = g
     }
 }

@@ -50,6 +50,14 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## R. Tes manual build 0.18.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-72 | Delay audio tanpa klik | Mikrofon atau musik di mixer › Properti Audio › geser Delay 0 → 300 ms → 0 sambil mendengarkan headphone | Tidak ada bunyi klik/pop saat delay berubah; setelah berubah, audio tertunda sesuai nilai |
+| T-73 | AFV crossfade | Dua video ber-audio, keduanya AFV; durasi transisi 2 s; AUTO dari video A ke B; ulangi dengan CUT dan T-bar | AUTO: audio A turun dan B naik bersamaan selama 2 s; CUT: pindah cepat tanpa klik; T-bar: audio pindah di tengah bar |
+| T-74 | Teks berjalan dari file | Buat news.txt (3 baris); Tambah › Teks berjalan › Dari file .txt…; jalankan; ubah & simpan file di TextEdit | Ketiga baris tampil dipisah •; ±2 s setelah disimpan teks berganti tanpa app tersendat; teks sangat panjang (tempel 2 halaman) tetap tampil penuh |
+| T-75 | Slideshow Ken Burns & folder dipantau | Slideshow dari folder, centang Ken Burns; tunggu 2 foto; salin foto baru ke folder; hapus satu foto | Foto bergerak pelan (zoom + geser) tanpa patah saat crossfade; foto baru muncul dalam urutan ±5 s kemudian; foto yang dihapus tidak muncul lagi; Program tetap 30/60 fps |
+
 ## Q. Tes manual build 0.17.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

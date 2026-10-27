@@ -395,3 +395,7 @@
 "slideshow.fade" = "Crossfade";
 "slideshow.loop" = "Ulang (loop)";
 "slideshow.edit" = "Ubah slideshow…";
+"ticker.from_file" = "Dari file .txt…";
+"ticker.file_hint" = "Teks diambil dari file (satu berita per baris) dan diperbarui sekitar 2 detik setelah file disimpan.";
+"slideshow.kenburns" = "Ken Burns (zoom & geser pelan)";
+"slideshow.watch_hint" = "Foto yang ditambah atau dihapus di folder ini ikut masuk saat berjalan (dicek tiap 5 detik).";
