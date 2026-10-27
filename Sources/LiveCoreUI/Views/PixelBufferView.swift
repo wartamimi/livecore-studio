@@ -64,13 +64,32 @@ final class PixelBufferNSView: NSView {
 
 struct PixelBufferView: NSViewRepresentable {
     let feed: FrameFeed
+    /// Clear background instead of black, for pictures with transparency drawn over `Checkerboard`.
+    var transparent = false
     func makeNSView(context: Context) -> PixelBufferNSView {
         let v = PixelBufferNSView(frame: .zero)
+        if transparent { v.layer?.backgroundColor = NSColor.clear.cgColor }
         feed.attach(v)
         return v
     }
     func updateNSView(_ nsView: PixelBufferNSView, context: Context) {
         if nsView.feed !== feed { feed.attach(nsView) }
+    }
+}
+
+/// Grey checkerboard shown behind transparent parts of a picture (input tiles, source viewer).
+struct Checkerboard: View {
+    var cell: CGFloat = 8
+    var body: some View {
+        Canvas { ctx, size in
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(white: 0.22)))
+            let cols = Int(size.width / cell) + 1, rows = Int(size.height / cell) + 1
+            var p = Path()
+            for r in 0..<rows { for c in 0..<cols where (r + c) % 2 == 0 {
+                p.addRect(CGRect(x: CGFloat(c) * cell, y: CGFloat(r) * cell, width: cell, height: cell))
+            } }
+            ctx.fill(p, with: .color(Color(white: 0.30)))
+        }
     }
 }
 #endif

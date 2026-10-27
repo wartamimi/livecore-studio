@@ -19,6 +19,8 @@ struct InputPanelView: View {
     @State private var showCaptureSheet = false
     @State private var editingCapture: InputID?
     @State private var closing: InputID?
+    @State private var showCaptureCard = false
+    @State private var editingCaptureCard: InputID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -59,6 +61,8 @@ struct InputPanelView: View {
         .sheet(item: $editingTimer) { id in TimerSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showCaptureSheet) { CaptureSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCapture) { id in CaptureSheet(editing: id).environmentObject(model) }
+        .sheet(isPresented: $showCaptureCard) { CaptureCardSheet(editing: nil).environmentObject(model) }
+        .sheet(item: $editingCaptureCard) { id in CaptureCardSheet(editing: id).environmentObject(model) }
         .alert(L10n.f("inputs.close_confirm", model.inputs.first { $0.id == closing }?.name ?? ""),
                isPresented: Binding(get: { closing != nil }, set: { if !$0 { closing = nil } })) {
             Button(L10n.t("inputs.close"), role: .destructive) { if let id = closing { model.remove(id) }; closing = nil }
@@ -78,15 +82,17 @@ struct InputPanelView: View {
             Section(L10n.t("inputs.camera")) {
                 if model.videoDevices.isEmpty { Text(L10n.t("inputs.no_cameras")) }
                 ForEach(model.videoDevices) { d in Button(d.name) { model.addCamera(d) } }
+                Button(L10n.t("capturecard.add_menu")) { showCaptureCard = true }
             }
+            Button(L10n.t("scene.new")) { if let id = model.addScene() { editingScene = id } }
             Button(L10n.t("media.add")) { model.addMedia() }
             Button(L10n.t("media.add_playlist")) { model.addMediaPlaylist() }
             Button(L10n.t("inputs.image")) { model.addImage() }
-            Button(L10n.t("lottie.add")) { model.addLottie() }
             Button(L10n.t("inputs.title_generator")) { showTitleSheet = true }
             Button(L10n.t("capture.add")) { showCaptureSheet = true }
             Button(L10n.t("browser.add")) { showBrowserSheet = true }
             Button(L10n.t("timer.add")) { showTimerSheet = true }
+            Button(L10n.t("inputs.colorbars")) { model.addColorBars() }
             Menu(L10n.t("inputs.color")) {
                 Button("Black") { model.addColor(.black, name: "Black") }
                 Button("White") { model.addColor(.white, name: "White") }
@@ -119,6 +125,7 @@ struct InputPanelView: View {
                 Button(p.rawValue) { model.addPiP(source: info.id, preset: p) }
             }
         }
+        if info.kind == .camera { Button(L10n.t("capturecard.edit_menu")) { editingCaptureCard = info.id } }
         if info.kind == .camera || info.kind == .videoFile || info.kind == .image {
             Button(L10n.t("key.menu")) { keying = info.id }
         }
@@ -159,17 +166,6 @@ struct InputPanelView: View {
                 }
             }
         }
-        if info.kind == .lottie, let l = model.lottie(info.id) {
-            Button("Play") { l.play() }
-            Button("Pause") { l.pause() }
-            Button("Restart") { l.restart() }
-            Toggle(L10n.t("video.loop"), isOn: Binding(get: { l.loop }, set: { l.loop = $0; model.objectWillChange.send() }))
-            Menu(L10n.t("autoplay.title")) {
-                ForEach(VideoFileSource.AutoPlay.allCases, id: \.self) { m in
-                    Button((l.autoPlay == m ? "✓ " : "") + L10n.t("autoplay." + m.rawValue)) { model.setAutoPlay(m, for: info.id) }
-                }
-            }
-        }
         Divider()
         Button(L10n.t("inputs.rename")) { renameText = info.name; renaming = info.id }
         Button(L10n.t("inputs.remove"), role: .destructive) { closing = info.id }
@@ -180,6 +176,7 @@ extension InputID: Identifiable { public var id: String { raw } }
 
 struct InputTile: View {
     @EnvironmentObject var model: AppModel
+    @Environment(\.openWindow) private var openWindow
     let info: ProductionEngine.InputInfo
     var onClose: () -> Void = {}
     @State private var hovering = false
@@ -190,25 +187,27 @@ struct InputTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             ZStack(alignment: .topLeading) {
-                PixelBufferView(feed: model.feed(for: info.id))
-                    .aspectRatio(16 / 9, contentMode: .fit)
+                ZStack {
+                    Checkerboard(cell: 6)
+                    PixelBufferView(feed: model.feed(for: info.id), transparent: true)
+                }
+                .aspectRatio(16 / 9, contentMode: .fit)
                 Text("\(info.number)")
                     .font(.system(size: 11, weight: .heavy))
                     .padding(.horizontal, 5).padding(.vertical, 1)
                     .background(isProgram ? Theme.program : (isPreview ? Theme.preview : Color.black.opacity(0.6)))
                     .clipShape(RoundedRectangle(cornerRadius: 3))
                     .padding(4)
-                if hovering && !info.locked {
-                    Button(action: onClose) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 15))
-                            .symbolRenderingMode(.palette)
-                            .foregroundStyle(.white, Color.black.opacity(0.65))
+                if hovering {
+                    HStack(spacing: 4) {
+                        Spacer()
+                        tileButton("arrow.up.left.and.arrow.down.right.circle.fill", L10n.t("viewer.open")) {
+                            model.openViewer(info.id)
+                            openWindow(id: "source-viewer")
+                        }
+                        if !info.locked { tileButton("xmark.circle.fill", L10n.t("inputs.close"), action: onClose) }
                     }
-                    .buttonStyle(.plain)
-                    .help(L10n.t("inputs.close"))
                     .padding(4)
-                    .frame(maxWidth: .infinity, alignment: .topTrailing)
                 }
             }
             HStack(spacing: 4) {
@@ -240,6 +239,17 @@ struct InputTile: View {
         .help("Click: Preview · Double-click: Cut to Program")
     }
 
+    private func tileButton(_ symbol: String, _ help: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 15))
+                .symbolRenderingMode(.palette)
+                .foregroundStyle(.white, Color.black.opacity(0.65))
+        }
+        .buttonStyle(.plain)
+        .help(help)
+    }
+
     private var statusColor: Color {
         switch info.status {
         case .live: return Theme.preview
@@ -260,7 +270,8 @@ struct InputTile: View {
         case .timer: return "timer"
         case .screen: return "macwindow"
         case .replay: return "gobackward"
-        case .lottie: return "sparkles"
+        case .colorBars: return "chart.bar.fill"
+        case .scene: return "square.on.square"
         }
     }
 }

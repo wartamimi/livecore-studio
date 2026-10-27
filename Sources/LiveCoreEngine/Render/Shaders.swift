@@ -17,19 +17,35 @@ enum ShaderSource {
         return o;
     }
 
+    // Smooth sampling: four bilinear taps spread over the output pixel's footprint in the texture.
+    // When a large picture is shown small (a 4K logo as a PiP, a thumbnail) this averages the
+    // texels that fall into the pixel instead of skipping them (no shimmering, soft alpha edges);
+    // when the picture is enlarged the taps fall inside one texel and it equals plain bilinear.
+    // Straight-alpha sources are premultiplied per tap, before averaging.
+    // The derivatives are taken in the fragment function and passed in.
+    float4 smooth_sample(texture2d<float> tex, float2 uv, float2 ddx, float2 ddy, bool straight) {
+        constexpr sampler s(address::clamp_to_edge, filter::linear);
+        float2 dx = ddx * 0.25, dy = ddy * 0.25;
+        float4 acc = float4(0.0);
+        float2 offs[4] = { dx + dy, dx - dy, -dx + dy, -dx - dy };
+        for (int i = 0; i < 4; i++) {
+            float4 c = tex.sample(s, uv + offs[i]);
+            if (straight) { c = float4(c.rgb * c.a, c.a); }
+            acc += c;
+        }
+        return acc * 0.25;
+    }
+
     // Layer: textures are premultiplied BGRA; opacity scales all channels (premultiplied blend).
     fragment float4 layer_fragment(VOut in [[stage_in]], texture2d<float> tex [[texture(0)]],
                                    constant float &opacity [[buffer(0)]]) {
-        constexpr sampler s(address::clamp_to_edge, filter::linear);
-        return tex.sample(s, in.uv) * opacity;
+        return smooth_sample(tex, in.uv, dfdx(in.uv), dfdy(in.uv), false) * opacity;
     }
 
     // Straight (non-premultiplied) alpha source, e.g. a stinger clip: premultiply, then "over".
     fragment float4 straight_fragment(VOut in [[stage_in]], texture2d<float> tex [[texture(0)]],
                                       constant float &opacity [[buffer(0)]]) {
-        constexpr sampler s(address::clamp_to_edge, filter::linear);
-        float4 c = tex.sample(s, in.uv);
-        return float4(c.rgb * c.a, c.a) * opacity;
+        return smooth_sample(tex, in.uv, dfdx(in.uv), dfdy(in.uv), true) * opacity;
     }
 
     // Layer with rounded corners / ellipse mask and border (LiveCoreCore.LayerStyle). Distances are
@@ -38,9 +54,7 @@ enum ShaderSource {
 
     fragment float4 styled_fragment(VOut in [[stage_in]], texture2d<float> tex [[texture(0)]],
                                     constant StyleParams &p [[buffer(0)]]) {
-        constexpr sampler s(address::clamp_to_edge, filter::linear);
-        float4 c = tex.sample(s, in.uv);
-        if (p.premultiply != 0) { c = float4(c.rgb * c.a, c.a); }
+        float4 c = smooth_sample(tex, in.uv, dfdx(in.uv), dfdy(in.uv), p.premultiply != 0);
         float2 halfSize = max(p.maskRect.zw * 0.5, float2(0.5));
         float2 rel = in.position.xy - (p.maskRect.xy + halfSize);
         float d;   // signed distance to the shape edge, negative inside

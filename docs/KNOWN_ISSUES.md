@@ -74,10 +74,8 @@
     selama transisi. Kompilasi terjadi di thread utama saat shader dipilih (sekitar sepersekian detik). Bila file
     transisi yang dipakai proyek tidak ada di Mac lain, transisi jatuh ke Dissolve dan muncul peringatan. Belum ada
     pratinjau transisi di luar Program, dan tidak ada parameter yang bisa diatur dari UI.
-40. **Lottie**: dirender oleh mesin main-thread Lottie di CPU, maks. 30 fps dan sisi terpanjang 1920 px; animasi sangat
-    kompleks bisa membebani thread UI. Ekspresi After Effects dan sebagian efek tidak didukung Lottie. Belum ada
-    seekbar. 0.14.0: orientasi dan posisi diperiksa otomatis di CI macOS (render piksel), tetapi file Lottie
-    nyata dari pengguna belum dites.
+40. **Lottie**: dihapus di 0.15.0 atas permintaan pengguna (tetap tidak tampil di Mac pengguna pada 0.14.0, padahal
+    uji render di CI lulus). Proyek lama berisi input Lottie tetap bisa dibuka; input itu dilewati dengan peringatan.
 41. **Gaya layer**: sudut bulat / elips / border tidak diterapkan pada layer yang memakai chroma key (crop tetap).
     Kanvas editor scene menampilkan sudut & border secara perkiraan dan tidak menampilkan crop; monitor Preview
     menampilkan hasil sebenarnya. (Menu Tambah Bentuk dihapus di 0.14.0.)
@@ -86,3 +84,17 @@
 43. **Kunci**: kunci stream/rekam hanya berlaku selama app terbuka (tidak disimpan). Kunci source tidak menghalangi
     perubahan lewat file proyek yang dibuka, dan tidak mencegah source berganti status (mis. kamera dicabut).
     Menutup app tetap mungkin walau stream terkunci (konfirmasi quit tetap muncul saat output aktif).
+44. **Virtual camera (seperti OBS)**: belum ada — **Blocked**. macOS modern hanya menerima kamera virtual sebagai
+    CoreMediaIO Camera Extension, yaitu system extension yang wajib ditandatangani dengan Team ID Apple Developer,
+    memakai entitlement `com.apple.developer.system-extension.install` + provisioning profile, dan app harus di
+    /Applications. Build CI ini ad-hoc (tanpa Team ID), jadi extension tidak bisa dipasang. Plug-in DAL lama sudah
+    tidak dimuat macOS 14+. Butuh akun Apple Developer Program (berbayar) untuk lanjut. Sementara: tangkap jendela
+    Program Output dengan Window Capture di OBS lalu nyalakan OBS Virtual Camera.
+45. **Penampil source**: satu jendela untuk satu input sekaligus (membuka input lain mengganti isinya). Dirender pada
+    resolusi output setiap frame selama terbuka (menambah beban GPU sedikit).
+46. **Transparansi**: tile input menampilkan bagian transparan sebagai papan catur; Preview/Program tetap di atas
+    hitam. Video dengan alpha yang tidak diberi tag oleh decoder dianggap straight alpha (umumnya ProRes 4444 /
+    HEVC alpha); file yang sebenarnya premultiplied tanpa tag akan tampak sedikit lebih gelap di tepi.
+47. **Capture card**: pilihan format sebatas yang dilaporkan driver; deinterlace dan koreksi warna per input belum ada.
+    Audio perangkat ditambahkan sebagai kanal mixer terpisah (bisa diatur di Properti Audio).
+48. **Properti audio**: perubahan delay melompat (tanpa crossfade), bisa terdengar klik bila diubah saat siaran.

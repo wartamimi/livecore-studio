@@ -55,7 +55,7 @@ struct ChannelStripView: View {
             HStack(spacing: 2) {
                 if vm.isFileChannel { Image(systemName: "film").font(.system(size: 8)).help(L10n.t("audio.file")) }
                 if vm.isMusicChannel { Image(systemName: "music.note").font(.system(size: 8)).help(L10n.t("music.title")) }
-                Text(vm.channel.name).font(.system(size: 10, weight: .semibold)).lineLimit(1)
+                Text(vm.name).font(.system(size: 10, weight: .semibold)).lineLimit(1)
             }
             .frame(width: 84)
             HStack(spacing: 4) {
@@ -76,10 +76,15 @@ struct ChannelStripView: View {
                 toggle("B", $vm.toBusB, Theme.preview).help(L10n.t("aux.send_b"))
                 afvButton
             }
-            Button(dspLabel) { showDSP.toggle() }
+            Button { showDSP = true } label: {
+                Label(dspLabel, systemImage: "slider.horizontal.3").labelStyle(.titleAndIcon)
+            }
                 .buttonStyle(.borderless).font(.system(size: 10))
-                .popover(isPresented: $showDSP) { DSPPopover(vm: vm, grDB: level?.gr ?? 0, gateDB: level?.gate ?? 0) }
+                .help(L10n.t("audio.properties"))
+                .sheet(isPresented: $showDSP) { AudioPropertiesSheet(vm: vm).environmentObject(model).environmentObject(model.meters) }
                 .contextMenu {
+                    Button(L10n.t("audio.properties")) { showDSP = true }
+                    Divider()
                     Button(L10n.f("aux.mix_minus", "A")) { model.makeMixMinus(bus: 0, excluding: vm.id) }
                     Button(L10n.f("aux.mix_minus", "B")) { model.makeMixMinus(bus: 1, excluding: vm.id) }
                     if let m = model.musicPlayer(vm.id) {
@@ -176,46 +181,128 @@ struct MusicTransport: View {
     }
 }
 
-struct DSPPopover: View {
+/// vMix-style audio properties of one channel: general (name, channels, phase, delay, gain, pan),
+/// EQ, noise gate, compressor and routing, with live meters.
+struct AudioPropertiesSheet: View {
+    @EnvironmentObject var model: AppModel
+    @EnvironmentObject var meters: MeterModel
     @ObservedObject var vm: ChannelVM
-    let grDB: Float
-    let gateDB: Float
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
-        Form {
-            Section("Input") {
-                LabeledContent("Gain") { Slider(value: $vm.gainDB, in: -24...24); Text(String(format: "%+.0f dB", vm.gainDB)).monospacedDigit() }
-                LabeledContent("Pan") { Slider(value: $vm.pan, in: -1...1) }
-            }
-            Section(L10n.t("audio.gate")) {
-                Toggle("Enabled", isOn: $vm.gate)
-                LabeledContent("Threshold") { Slider(value: $vm.gateThreshold, in: -80...0); Text(String(format: "%.0f dB", vm.gateThreshold)).monospacedDigit() }
-                LabeledContent("Range") { Slider(value: $vm.gateRange, in: -80...0); Text(String(format: "%.0f dB", vm.gateRange)).monospacedDigit() }
-                LabeledContent("State") {
-                    Text(!vm.gate ? "—" : (gateDB < 1 ? "Open" : String(format: "Closed (−%.0f dB)", gateDB))).monospacedDigit()
+        let level = meters.levels[vm.id]
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Text(L10n.t("audio.properties")).font(.headline)
+                Text(vm.name).foregroundStyle(Theme.textDim)
+                Spacer()
+                HStack(spacing: 3) {
+                    MeterView(levelDB: level?.l ?? -120, holdDB: level?.holdL ?? -120)
+                    MeterView(levelDB: level?.r ?? -120, holdDB: level?.holdR ?? -120)
                 }
+                .frame(height: 40)
             }
-            Section(L10n.t("audio.eq")) {
-                Toggle(L10n.t("audio.hpf"), isOn: $vm.highPass)
-                LabeledContent("HPF") { Slider(value: $vm.highPassHz, in: 40...300); Text(String(format: "%.0f Hz", vm.highPassHz)).monospacedDigit() }
-                Toggle(L10n.t("audio.eq_enable"), isOn: $vm.eq)
-                LabeledContent("Low 120 Hz") { Slider(value: $vm.eqLow, in: -12...12); Text(String(format: "%+.1f dB", vm.eqLow)).monospacedDigit() }
-                LabeledContent("Mid") { Slider(value: $vm.eqMid, in: -12...12); Text(String(format: "%+.1f dB", vm.eqMid)).monospacedDigit() }
-                LabeledContent("Mid freq") { Slider(value: $vm.eqMidHz, in: 200...6000); Text(String(format: "%.0f Hz", vm.eqMidHz)).monospacedDigit() }
-                LabeledContent("High 8 kHz") { Slider(value: $vm.eqHigh, in: -12...12); Text(String(format: "%+.1f dB", vm.eqHigh)).monospacedDigit() }
+            TabView {
+                general.tabItem { Text(L10n.t("audio.tab.general")) }
+                eqTab.tabItem { Text(L10n.t("audio.eq")) }
+                gateTab(level).tabItem { Text(L10n.t("audio.gate")) }
+                compTab(level).tabItem { Text(L10n.t("audio.compressor")) }
+                routing.tabItem { Text(L10n.t("audio.tab.routing")) }
             }
-            Section("Compressor") {
-                Toggle("Enabled", isOn: $vm.compressor)
-                LabeledContent("Threshold") { Slider(value: $vm.compThreshold, in: -50...0); Text(String(format: "%.0f dB", vm.compThreshold)).monospacedDigit() }
-                LabeledContent("Ratio") { Slider(value: $vm.compRatio, in: 1...20); Text(String(format: "%.1f:1", vm.compRatio)).monospacedDigit() }
-                LabeledContent("Gain reduction") { Text(String(format: "%.1f dB", grDB)).monospacedDigit() }
+            .frame(height: 330)
+            HStack {
+                Button(L10n.t("audio.reset_dsp")) { resetDSP() }
+                Spacer()
+                Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.defaultAction)
             }
-            Section(L10n.t("audio.clock")) {
-                LabeledContent(L10n.t("audio.drift")) { Text(String(format: "%+.0f ppm", vm.channel.driftPPM.value)).monospacedDigit() }
-                LabeledContent(L10n.t("audio.underruns")) { Text("\(vm.channel.underrunCount)").monospacedDigit() }
+        }
+        .padding(16)
+        .frame(width: 500)
+    }
+
+    private var general: some View {
+        Form {
+            TextField(L10n.t("audio.name"), text: $vm.name)
+            Picker(L10n.t("audio.channels"), selection: $vm.mode) {
+                ForEach(ChannelMode.allCases, id: \.self) { m in Text(L10n.t("audio.mode.\(m.rawValue)")).tag(m) }
+            }
+            Toggle(L10n.t("audio.invert_phase"), isOn: $vm.invertPhase)
+            row("Gain", $vm.gainDB, -24...24, "%+.0f dB")
+            row("Pan", $vm.pan, -1...1, "%+.2f")
+            row(L10n.t("audio.delay"), $vm.delayMs, 0...Double(ChannelStripDSP.maxDelayMs), "%.0f ms")
+            Text(L10n.t("audio.delay_help")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+            LabeledContent(L10n.t("audio.drift")) { Text(String(format: "%+.0f ppm", vm.channel.driftPPM.value)).monospacedDigit() }
+            LabeledContent(L10n.t("audio.underruns")) { Text("\(vm.channel.underrunCount)").monospacedDigit() }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var eqTab: some View {
+        Form {
+            Toggle(L10n.t("audio.hpf"), isOn: $vm.highPass)
+            row("HPF", $vm.highPassHz, 40...300, "%.0f Hz")
+            Toggle(L10n.t("audio.eq_enable"), isOn: $vm.eq)
+            row("Low 120 Hz", $vm.eqLow, -12...12, "%+.1f dB")
+            row("Mid", $vm.eqMid, -12...12, "%+.1f dB")
+            row("Mid freq", $vm.eqMidHz, 200...6000, "%.0f Hz")
+            row("High 8 kHz", $vm.eqHigh, -12...12, "%+.1f dB")
+        }
+        .formStyle(.grouped)
+    }
+
+    private func gateTab(_ level: MeterModel.Level?) -> some View {
+        Form {
+            Toggle(L10n.t("audio.enabled"), isOn: $vm.gate)
+            row("Threshold", $vm.gateThreshold, -80...0, "%.0f dB")
+            row("Range", $vm.gateRange, -80...0, "%.0f dB")
+            LabeledContent(L10n.t("audio.state")) {
+                let g = level?.gate ?? 0
+                Text(!vm.gate ? "—" : (g < 1 ? "Open" : String(format: "Closed (−%.0f dB)", g))).monospacedDigit()
             }
         }
         .formStyle(.grouped)
-        .frame(width: 320)
+    }
+
+    private func compTab(_ level: MeterModel.Level?) -> some View {
+        Form {
+            Toggle(L10n.t("audio.enabled"), isOn: $vm.compressor)
+            row("Threshold", $vm.compThreshold, -50...0, "%.0f dB")
+            row("Ratio", $vm.compRatio, 1...20, "%.1f:1")
+            row("Attack", $vm.compAttack, 0.1...200, "%.1f ms")
+            row("Release", $vm.compRelease, 5...2000, "%.0f ms")
+            row("Makeup", $vm.compMakeup, 0...24, "%+.1f dB")
+            LabeledContent(L10n.t("audio.gain_reduction")) { Text(String(format: "%.1f dB", level?.gr ?? 0)).monospacedDigit() }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var routing: some View {
+        Form {
+            Toggle(L10n.t("audio.route_program"), isOn: $vm.toProgram)
+            Toggle(L10n.t("aux.send_a"), isOn: $vm.toBusA)
+            Toggle(L10n.t("aux.send_b"), isOn: $vm.toBusB)
+            Toggle(L10n.t("audio.mute"), isOn: $vm.muted)
+            Toggle(L10n.t("audio.solo"), isOn: $vm.solo)
+            Picker("AFV", selection: Binding(get: { model.afvLink(vm.id) }, set: { model.setAFV(vm.id, input: $0) })) {
+                Text(L10n.t("afv.off")).tag(InputID?.none)
+                ForEach(model.inputs) { info in Text(info.name).tag(InputID?.some(info.id)) }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func row(_ label: String, _ value: Binding<Double>, _ range: ClosedRange<Double>, _ fmt: String) -> some View {
+        LabeledContent(label) {
+            Slider(value: value, in: range)
+            Text(String(format: fmt, value.wrappedValue)).monospacedDigit().frame(width: 70, alignment: .trailing)
+        }
+    }
+
+    private func resetDSP() {
+        vm.mode = .stereo; vm.invertPhase = false; vm.delayMs = 0; vm.gainDB = 0; vm.pan = 0
+        vm.highPass = false; vm.highPassHz = 80; vm.eq = false; vm.eqLow = 0; vm.eqMid = 0; vm.eqMidHz = 1000; vm.eqHigh = 0
+        vm.gate = false; vm.gateThreshold = -50; vm.gateRange = -80
+        vm.compressor = false; vm.compThreshold = -18; vm.compRatio = 3; vm.compAttack = 10; vm.compRelease = 150; vm.compMakeup = 0
     }
 }
 

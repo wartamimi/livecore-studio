@@ -35,6 +35,8 @@ public final class ProductionEngine {
     public var onProgramFrame: ((CVPixelBuffer) -> Void)?
     public var onPreviewFrame: ((CVPixelBuffer) -> Void)?
     public var onThumbnails: (([InputID: CVPixelBuffer]) -> Void)?
+    /// Full-size picture of `detailInput` (per-input viewer). Main thread.
+    public var onDetailFrame: ((InputID, CVPixelBuffer) -> Void)?
     public var onSwitcherChange: ((SwitcherSnapshot) -> Void)?
     public var onInputsChange: (([InputInfo]) -> Void)?
     /// Statistics of one stream destination (destination id, stats). Main thread.
@@ -71,6 +73,8 @@ public final class ProductionEngine {
         var layers: [InputID: [Layer]] = [:]
         var keys: [InputID: ChromaKey] = [:]
         var locked: Set<InputID> = []
+        /// Input shown in the per-input viewer window, rendered at full size every frame.
+        var detail: InputID?
         var stinger = StingerConfig()
     }
     private let control = Locked(ControlState())
@@ -156,13 +160,18 @@ public final class ProductionEngine {
 
         // Snapshot control state and advance transitions.
         var events: [SwitcherEvent] = []
-        let (plan, sources, order, snapshot, keys) = control.mutate { st -> (FramePlan, [InputID: VideoSource], [InputID], SwitcherSnapshot, [InputID: ChromaKey]) in
+        frameCounter += 1
+        let thumbTick = frameCounter % Int64(max(1, Int(fps / 10))) == 0   // ~10 fps thumbnails (inputs panel + multiview)
+        let (plan, sources, snapshot) = control.mutate { st -> (FramePlan, [InputID: VideoSource], SwitcherSnapshot) in
             events = st.switcher.update(now: now)
             let layers = st.layers
             let keys = st.keys.filter { $0.value.enabled }.mapValues { $0.clamped }
             let plan = FramePlanner.plan(snapshot: st.switcher.state, overlays: st.overlays, now: now,
-                                         layersFor: { layers[$0] }, keyFor: { keys[$0] })
-            return (plan, st.sources, st.order, st.switcher.state, keys)
+                                         layersFor: { layers[$0] }, keyFor: { keys[$0] },
+                                         thumbnailsFor: thumbTick ? st.order : [],
+                                         composedThumbnails: thumbTick ? Set(st.sources.filter { $0.value is SceneSource }.keys) : [],
+                                         detailInput: st.detail)
+            return (plan, st.sources, st.switcher.state)
         }
         if !events.isEmpty || snapshot != lastSwitcher {
             lastSwitcher = snapshot
@@ -177,16 +186,16 @@ public final class ProductionEngine {
             return
         }
 
-        frameCounter += 1
-        let thumbs: [InputID] = frameCounter % Int64(max(1, Int(fps / 10))) == 0 ? order : []   // ~10 fps thumbnails (inputs panel + multiview)
-        var needed = Set<InputID>(thumbs)
-        for c in plan.program + plan.overlays + plan.preview + (plan.transition?.incoming ?? []) { needed.insert(c.source) }
+        var needed = Set<InputID>()
+        for c in plan.program + plan.overlays + plan.preview + (plan.transition?.incoming ?? []) + (plan.detail ?? []) { needed.insert(c.source) }
+        for list in plan.thumbnails.values { for c in list { needed.insert(c.source) } }
         if let s = plan.stinger { needed.insert(s.source) }
         var frames: [InputID: CVPixelBuffer] = [:]
         for id in needed { if let pb = sources[id]?.currentFrame() { frames[id] = pb } }
 
         let pts = CMTime(seconds: frameHost, preferredTimescale: 90_000)
-        let ok = compositor.render(plan: plan, frames: frames, thumbnailsFor: thumbs, keys: keys) { [weak self] result in
+        let detailID = plan.detail == nil ? nil : control.read { $0.detail }
+        let ok = compositor.render(plan: plan, frames: frames) { [weak self] result in
             guard let self else { return }
             self.inFlight.mutate { $0 -= 1 }
             self.renderedFrames.add()
@@ -199,7 +208,9 @@ public final class ProductionEngine {
             if outs.replay { self.replay.append(program, hostTime: pts.seconds) }
             let preview = result.preview
             let thumbs = result.thumbnails
+            let detail = result.detail
             DispatchQueue.main.async {
+                if let detail, let detailID { self.onDetailFrame?(detailID, detail) }
                 self.onProgramFrame?(program)
                 if let preview { self.onPreviewFrame?(preview) }
                 if !thumbs.isEmpty { self.onThumbnails?(thumbs) }
@@ -225,10 +236,10 @@ public final class ProductionEngine {
     }
 
     @discardableResult
-    public func addCamera(uniqueID: String, id: InputID? = nil) -> InputID? {
+    public func addCamera(uniqueID: String, id: InputID? = nil, config: CaptureConfig = CaptureConfig()) -> InputID? {
         guard let dev = DeviceManager.device(uniqueID: uniqueID) else { onError?("Camera not found"); return nil }
         let id = id ?? InputID(UUID().uuidString)
-        let src = CameraSource(id: id, device: dev, target: settings.output)
+        let src = CameraSource(id: id, device: dev, target: settings.output, config: config)
         DeviceManager.requestAccess(.video) { [weak self] ok in
             if !ok { self?.onError?("Camera access denied. Enable it in System Settings › Privacy & Security › Camera.") }
             src.start()
@@ -248,17 +259,6 @@ public final class ProductionEngine {
     @discardableResult
     public func addVideoFile(url: URL, id: InputID? = nil, loop: Bool = true) -> InputID {
         addVideoFile(urls: [url], id: id, loop: loop)
-    }
-
-    /// Lottie animation input (.json / .lottie), transparent; placed full screen like titles' pages.
-    @discardableResult
-    public func addLottie(url: URL, id: InputID? = nil, loop: Bool = true, autoPlay: VideoFileSource.AutoPlay = .off) -> InputID {
-        let src = LottieSource(id: id ?? InputID(UUID().uuidString), url: url)
-        src.loop = loop
-        src.autoPlay = autoPlay
-        if autoPlay != .off { src.cue() }
-        add(src)
-        return src.id
     }
 
     /// A video input; several URLs make a playlist played in order.
@@ -319,6 +319,21 @@ public final class ProductionEngine {
     @discardableResult
     public func addColor(_ color: NSColor, name: String, id: InputID? = nil) -> InputID {
         let src = ColorSource(id: id ?? InputID(UUID().uuidString), color: color, name: name)
+        add(src)
+        return src.id
+    }
+
+    @discardableResult
+    public func addColorBars(id: InputID? = nil, name: String = "Colour Bars") -> InputID {
+        let src = ColorBarsSource(id: id ?? InputID(UUID().uuidString), size: settings.output.size, name: name)
+        add(src)
+        return src.id
+    }
+
+    /// Empty scene: a transparent canvas to build a layout on (layers added in the scene editor).
+    @discardableResult
+    public func addScene(name: String, id: InputID? = nil) -> InputID {
+        let src = SceneSource(id: id ?? InputID(UUID().uuidString), name: name)
         add(src)
         return src.id
     }
@@ -403,6 +418,7 @@ public final class ProductionEngine {
             st.layers[id] = nil
             st.keys[id] = nil
             st.locked.remove(id)
+            if st.detail == id { st.detail = nil }
             if st.stinger.source == id { st.stinger.source = nil }
             st.order.removeAll { $0 == id }
             return st.sources.removeValue(forKey: id)
@@ -420,6 +436,11 @@ public final class ProductionEngine {
         publishInputs()
     }
 
+    /// New format / options for a camera or capture-card input (applied without removing it).
+    public func updateCamera(_ id: InputID, config: CaptureConfig) {
+        (source(id) as? CameraSource)?.apply(config)
+    }
+
     public func setInputLocked(_ id: InputID, _ locked: Bool) {
         control.mutate { st in
             guard st.sources[id] != nil else { return }
@@ -427,6 +448,9 @@ public final class ProductionEngine {
         }
         publishInputs()
     }
+
+    /// Input rendered at full size for the per-input viewer (nil = none).
+    public func setDetailInput(_ id: InputID?) { control.mutate { $0.detail = id } }
 
     public func isInputLocked(_ id: InputID) -> Bool { control.read { $0.locked.contains(id) } }
 
@@ -593,12 +617,6 @@ public final class ProductionEngine {
             if !now && was { r.cue() }
         }
         for (id, src) in sources {
-            if let l = src as? LottieSource, l.autoPlay != .off {
-                let was = autoPlayOnAir.contains(id), now = visible.contains(id)
-                if now && !was { l.autoPlay == .restartPause ? l.restart() : l.play() }
-                if !now && was { l.autoPlay == .restartPause ? l.cue() : l.pause() }
-                continue
-            }
             guard let v = src as? VideoFileSource, v.autoPlay != .off, id != stingerID else { continue }
             let was = autoPlayOnAir.contains(id), now = visible.contains(id)
             if now && !was { v.autoPlay == .restartPause ? v.restart() : v.play() }
@@ -609,13 +627,6 @@ public final class ProductionEngine {
 
     /// Changes a video input's auto play mode; an input set to auto play that is not on air pauses.
     public func setAutoPlay(_ mode: VideoFileSource.AutoPlay, for id: InputID) {
-        if let l = source(id) as? LottieSource {
-            l.autoPlay = mode
-            autoPlayOnAir.remove(id)
-            if mode != .off { l.cue() }
-            applyAutoPlay()
-            return
-        }
         guard let v = source(id) as? VideoFileSource else { return }
         v.autoPlay = mode
         autoPlayOnAir.remove(id)
@@ -951,19 +962,20 @@ extension ProductionEngine {
                     : .videoFile(path: v.url.path, relativePath: rel(v.url), loop: v.loop)
             case let i as ImageSource: ps = .image(path: i.url.path, relativePath: rel(i.url))
             case let c as ColorSource: ps = .color(ProjectColor(c.color))
+            case is ColorBarsSource: ps = .colorBars
+            case is SceneSource: ps = .scene
             case let t as TextSource: ps = .title(ProjectTitleStyle(t.style))
             case let b as BrowserSource: ps = .browser(b.config)
             case let t as TimerSource: ps = .timer(t.config, nil)
             case let c as ScreenCaptureSource: ps = .screen(c.config)
-            case let l as LottieSource: ps = .lottie(path: l.url.path, relativePath: rel(l.url), loop: l.loop)
             default: continue
             }
             let key = keys[id]
             var pi = ProjectInput(id: id, name: src.name, source: ps, layers: layers[id] ?? [],
                                   chromaKey: key == ChromaKey() ? nil : key)
             if let v = src as? VideoFileSource, v.autoPlay != .off { pi.autoPlay = v.autoPlay.rawValue }
-            if let l = src as? LottieSource, l.autoPlay != .off { pi.autoPlay = l.autoPlay.rawValue }
             if locked.contains(id) { pi.locked = true }
+            if let c = src as? CameraSource, c.config != CaptureConfig() { pi.capture = c.config }
             doc.inputs.append(pi)
         }
         doc.stinger = control.read { $0.stinger.source == nil && $0.stinger.cutPoint == nil ? nil : $0.stinger }
@@ -1023,7 +1035,8 @@ extension ProductionEngine {
         for pi in doc.inputs {
             switch pi.source {
             case let .camera(uid, deviceName):
-                guard DeviceManager.device(uniqueID: uid) != nil, addCamera(uniqueID: uid, id: pi.id) != nil else {
+                guard DeviceManager.device(uniqueID: uid) != nil,
+                      addCamera(uniqueID: uid, id: pi.id, config: pi.capture ?? CaptureConfig()) != nil else {
                     warnings.append("Camera \"\(deviceName)\" is not connected; input \"\(pi.name)\" was skipped.")
                     continue
                 }
@@ -1036,11 +1049,16 @@ extension ProductionEngine {
                              autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off)
             case let .image(path, relative):
                 addImage(url: mediaURL(path, relative), id: pi.id)
-            case let .lottie(path, relative, loop):
-                addLottie(url: mediaURL(path, relative), id: pi.id, loop: loop,
-                          autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off)
+            case .lottie:
+                // Lottie inputs were removed in 0.15.0.
+                warnings.append("Input \"\(pi.name)\" is a Lottie animation; Lottie is no longer supported and it was skipped.")
+                continue
             case let .color(c):
                 addColor(c.nsColor, name: pi.name, id: pi.id)
+            case .colorBars:
+                addColorBars(id: pi.id, name: pi.name)
+            case .scene:
+                addScene(name: pi.name, id: pi.id)
             case let .title(t):
                 addTitle(t.textStyle, id: pi.id)
             case let .browser(b):
@@ -1115,6 +1133,7 @@ extension ProductionEngine {
     /// Applies saved channel settings, including the AFV link.
     private func restore(_ p: ProjectAudioChannel, to ch: MixerChannel) {
         Self.apply(p, to: ch.controls)
+        if !p.name.isEmpty { ch.name = p.name }
         afvLinks[ch.id] = p.afvInput.flatMap { source($0) != nil ? $0 : nil }
         applyAFV()
     }
@@ -1128,6 +1147,11 @@ extension ProductionEngine {
         p.toBusA = c.toBusA.value; p.toBusB = c.toBusB.value
         p.compressorEnabled = c.compressorEnabled.value; p.compThresholdDB = c.compThresholdDB.value; p.compRatio = c.compRatio.value
         p.gateEnabled = c.gateEnabled.value; p.gateThresholdDB = c.gateThresholdDB.value
+        p.gateRangeDB = c.gateRangeDB.value; p.compMakeupDB = c.compMakeupDB.value
+        p.compAttackMs = c.compAttackMs.value; p.compReleaseMs = c.compReleaseMs.value
+        if c.mode != .stereo { p.channelMode = c.mode.rawValue }
+        if c.invertPhase.value { p.invertPhase = true }
+        if c.delayMs.value > 0 { p.delayMs = c.delayMs.value }
         var eq = ProjectEQ()
         eq.highPassEnabled = c.highPassEnabled.value; eq.highPassHz = c.highPassHz.value
         eq.eqEnabled = c.eqEnabled.value
@@ -1159,6 +1183,13 @@ extension ProductionEngine {
         c.toBusA.value = p.toBusA ?? false; c.toBusB.value = p.toBusB ?? false
         c.compressorEnabled.value = p.compressorEnabled; c.compThresholdDB.value = p.compThresholdDB; c.compRatio.value = p.compRatio
         c.gateEnabled.value = p.gateEnabled; c.gateThresholdDB.value = p.gateThresholdDB
+        if let v = p.gateRangeDB { c.gateRangeDB.value = v }
+        if let v = p.compMakeupDB { c.compMakeupDB.value = v }
+        if let v = p.compAttackMs { c.compAttackMs.value = v }
+        if let v = p.compReleaseMs { c.compReleaseMs.value = v }
+        c.mode = p.channelMode.flatMap(ChannelMode.init(rawValue:)) ?? .stereo
+        c.invertPhase.value = p.invertPhase ?? false
+        c.delayMs.value = p.delayMs ?? 0
         if let eq = p.eq {
             c.highPassEnabled.value = eq.highPassEnabled; c.highPassHz.value = eq.highPassHz
             c.eqEnabled.value = eq.eqEnabled

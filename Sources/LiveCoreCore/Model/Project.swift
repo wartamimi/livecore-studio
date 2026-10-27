@@ -87,6 +87,8 @@ public struct ProjectInput: Codable, Equatable, Sendable {
     public var autoPlay: String?
     /// Protected against closing / editing in the UI (since 0.14.0; absent = unlocked).
     public var locked: Bool?
+    /// Camera / capture card format and options (since 0.15.0; absent = automatic).
+    public var capture: CaptureConfig?
 
     public init(id: InputID, name: String, source: ProjectSource, layers: [Layer] = [], chromaKey: ChromaKey? = nil) {
         self.id = id; self.name = name; self.source = source
@@ -134,8 +136,13 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case videoPlaylist(tracks: [ProjectMediaRef], loop: Bool)
     /// Window or display capture with optional app/system audio (since 0.10.0).
     case screen(ProjectScreenCapture)
-    /// Lottie animation, .json or .lottie (since 0.13.0).
+    /// Lottie animation (0.13.0–0.14.0). No longer supported: kept so such projects still open
+    /// (the input is skipped with a warning).
     case lottie(path: String, relativePath: String?, loop: Bool)
+    /// SMPTE-style colour bars generator (since 0.15.0).
+    case colorBars
+    /// Empty transparent canvas whose content is its scene layers (since 0.15.0).
+    case scene
 }
 
 public struct ProjectBrowser: Codable, Equatable, Sendable {
@@ -194,6 +201,14 @@ public struct ProjectAudioChannel: Codable, Equatable, Sendable {
     public var eq: ProjectEQ?
     /// Audio follow video: the input this channel follows (added in 0.10.0).
     public var afvInput: InputID?
+    /// Added in 0.15.0 (audio properties); absent = defaults.
+    public var gateRangeDB: Float?
+    public var compMakeupDB: Float?
+    public var compAttackMs: Float?
+    public var compReleaseMs: Float?
+    public var channelMode: Int?
+    public var invertPhase: Bool?
+    public var delayMs: Float?
     public init(deviceUniqueID: String? = nil, inputID: InputID? = nil, name: String) {
         self.deviceUniqueID = deviceUniqueID; self.inputID = inputID; self.name = name
     }

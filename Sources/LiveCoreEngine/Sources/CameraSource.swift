@@ -25,11 +25,16 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
     private let queue: DispatchQueue
     private let slot = FrameSlot()
     private let target: OutputFormat
+    /// Format and options chosen by the operator (automatic by default).
+    public var config: CaptureConfig { configLock.withLock { _config } }
+    private var _config: CaptureConfig
+    private let configLock = UnfairLock()
     private var observers: [NSObjectProtocol] = []
     private let liveReported = AtomicBool(false)
 
-    public init(id: InputID, device: AVCaptureDevice, target: OutputFormat) {
+    public init(id: InputID, device: AVCaptureDevice, target: OutputFormat, config: CaptureConfig = CaptureConfig()) {
         self.id = id
+        self._config = config
         self.name = device.localizedName
         self.deviceUniqueID = device.uniqueID
         self.target = target
@@ -41,6 +46,39 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
 
     public func start() {
         queue.async { [weak self] in self?.configureAndRun() }
+    }
+
+    /// Re-selects the format / mirroring with new settings while the input keeps running.
+    public func apply(_ c: CaptureConfig) {
+        configLock.withLock { _config = c }
+        queue.async { [weak self] in
+            guard let self, let device = AVCaptureDevice(uniqueID: self.deviceUniqueID) else { return }
+            self.selectFormat(device, config: c)
+            self.applyMirror(c.mirror)
+        }
+    }
+
+    /// Formats the device reports, for the capture settings sheet.
+    public static func formats(of device: AVCaptureDevice) -> [CaptureFormatCandidate] {
+        var out: [CaptureFormatCandidate] = []
+        _ = lc_catch_objc_exception {
+            out = device.formats.map { f in
+                let d = CMVideoFormatDescriptionGetDimensions(f.formatDescription)
+                return CaptureFormatCandidate(width: Int(d.width), height: Int(d.height),
+                                              frameRateRanges: f.videoSupportedFrameRateRanges.map { min($0.minFrameRate, $0.maxFrameRate)...max($0.minFrameRate, $0.maxFrameRate) })
+            }
+        }
+        return out
+    }
+
+    private func applyMirror(_ on: Bool) {
+        guard let conn = output.connection(with: .video) else { return }
+        _ = lc_catch_objc_exception {
+            if conn.isVideoMirroringSupported {
+                conn.automaticallyAdjustsVideoMirroring = false
+                conn.isVideoMirrored = on
+            }
+        }
     }
 
     public func stop() {
@@ -87,40 +125,34 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
             if session.canAddOutput(output) { session.addOutput(output) }
         }
         session.commitConfiguration()
-        selectFormat(device)
+        let cfg = config
+        selectFormat(device, config: cfg)
+        applyMirror(cfg.mirror)
         installObservers(device)
         session.startRunning()
         if !session.isRunning { setStatus(.error("Capture session failed to start")) }
     }
 
-    /// Chooses the device format closest to the program resolution that supports the program
-    /// frame rate (so the camera does not deliver more pixels than we need).
+    /// Uses the operator's format when one is set, otherwise the format closest to the program
+    /// resolution that supports the program frame rate (`CaptureFormatPicker`).
     ///
     /// Robustness: capture-card drivers often report frame-rate ranges they do not accept
     /// (e.g. 29.97 vs 30, or legacy DAL plug-ins that reject any explicit duration). Durations are
     /// therefore taken from the range itself, and every setter runs inside an Objective-C
     /// exception guard: if the driver refuses, the device keeps its own default and is still used.
-    private func selectFormat(_ device: AVCaptureDevice) {
-        let want = target.size
-        let fps = Double(target.frameRate)
-        var best: (format: AVCaptureDevice.Format, range: AVFrameRateRange?)?
-        var bestScore = Double.greatestFiniteMagnitude
-        for f in device.formats {
-            let d = CMVideoFormatDescriptionGetDimensions(f.formatDescription)
-            guard d.width > 0, d.height > 0 else { continue }
-            let range = Self.matchingRange(f.videoSupportedFrameRateRanges, fps: fps)
-            let pixels = Double(d.width) * Double(d.height)
-            let wantPixels = Double(want.width * want.height)
-            // Prefer a matching frame rate, then >= target size (downscale beats upscale), then closest.
-            var score = pixels >= wantPixels ? pixels - wantPixels : (wantPixels - pixels) * 4
-            if range == nil { score += 1e12 }
-            if score < bestScore { bestScore = score; best = (f, range) }
-        }
-        guard let best else {
+    private func selectFormat(_ device: AVCaptureDevice, config: CaptureConfig) {
+        let fps = config.frameRate ?? Double(target.frameRate)
+        let formats = device.formats
+        let candidates = Self.formats(of: device)
+        guard candidates.count == formats.count,
+              let index = CaptureFormatPicker.pick(candidates, config: config, outputWidth: target.size.width,
+                                                   outputHeight: target.size.height, outputFPS: Double(target.frameRate))
+        else {
             Log.devices.info("camera \(self.name, privacy: .public): no formats reported, using device default")
             activeFormatDescription = "default"
             return
         }
+        let best = (format: formats[index], range: Self.matchingRange(formats[index].videoSupportedFrameRateRanges, fps: fps))
         do {
             try device.lockForConfiguration()
             defer { device.unlockForConfiguration() }

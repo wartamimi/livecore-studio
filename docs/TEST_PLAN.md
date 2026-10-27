@@ -50,6 +50,16 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## O. Tes manual build 0.15.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-61 | Scene + template | Tambah Input › Scene Baru; di editor: Tambah Layer 3 input; Tata letak › Grid 2 × 2, lalu 1 besar + 2 kecil; geser satu layer; CUT ke Program | Layer pindah ke posisi template; tile Scene menampilkan isinya; Program sama dengan editor |
+| T-62 | Media transparan | Tambah PNG logo transparan dan video ProRes 4444 / HEVC alpha; lihat tile, editor scene, overlay di Program; perkecil logo 4K jadi PiP | Tile/editor: latar papan catur (bukan hitam); Program: hanya logo di atas gambar, tepi halus tanpa garis gelap/bergerigi |
+| T-63 | Penampil source | Arahkan kursor ke tile › ikon panah (kiri atas tombol x); Layar Penuh; Esc; buka input lain | Gambar besar dan tajam, transparansi papan catur; layar penuh di monitor tempat jendela berada; ganti input mengganti isi |
+| T-64 | Capture card | Tambah Input › Kamera / Capture Card dengan pengaturan…; pilih 1920 × 1080 59,94 dan audio perangkat; lalu klik kanan › Pengaturan Capture… ganti ke 1280 × 720; centang Cermin | Input tampil dengan format terpilih; kanal audio perangkat muncul di mixer; perubahan langsung berlaku; tersimpan di proyek |
+| T-65 | Properti audio | Klik tombol DSP/Properti di kanal mic; Umum: mono dari kiri, delay 100 ms, balik fase; Kompresor: attack/release; simpan & buka proyek | Suara mono di kedua sisi; terlambat ±100 ms; pengaturan kembali setelah proyek dibuka |
+| T-66 | Colour Bars & Lottie lama | Tambah Input › Colour Bars; buka proyek 0.14.0 yang berisi Lottie | Bars SMPTE tampil; proyek terbuka dengan peringatan bahwa input Lottie dilewati |
+
 ## N. Tes manual build 0.14.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

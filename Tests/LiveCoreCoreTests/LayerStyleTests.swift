@@ -79,12 +79,10 @@ final class LayerStyleTests: XCTestCase {
 }
 
 final class LottieProjectTests: XCTestCase {
-    func testLottieInputRoundTripsInProjects() throws {
+    /// Lottie was removed in 0.15.0; projects that contain a Lottie input must still decode.
+    func testLegacyLottieInputStillDecodes() throws {
         let pi = ProjectInput(id: InputID("l"), name: "Lower third", source: .lottie(path: "/a/b.json", relativePath: "b.json", loop: false))
-        var pi2 = pi
-        pi2.autoPlay = "restartPause"
-        let back = try JSONDecoder().decode(ProjectInput.self, from: JSONEncoder().encode(pi2))
-        XCTAssertEqual(back, pi2)
+        let back = try JSONDecoder().decode(ProjectInput.self, from: JSONEncoder().encode(pi))
         XCTAssertEqual(back.source, .lottie(path: "/a/b.json", relativePath: "b.json", loop: false))
     }
 }
