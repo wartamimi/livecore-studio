@@ -240,3 +240,21 @@ public enum SlideshowMath {
         return Position(index: slot, next: nil, mix: 0, finished: false)
     }
 }
+
+/// Fade between songs of a music input: each song fades in over its first `fade` seconds and
+/// out over its last `fade` seconds (the songs do not overlap).
+public enum MusicFade {
+    public static let range: ClosedRange<Double> = 0...10
+
+    public static func gain(position: Double, duration: Double?, fade: Double) -> Double {
+        let f = min(max(fade, 0), range.upperBound)
+        guard f > 0 else { return 1 }
+        var g = min(max(position / f, 0), 1)
+        if let d = duration, d > 0 {
+            // Short songs: never fade for more than a third of the song at either end.
+            let fe = min(f, d / 3)
+            g = min(min(max(position / fe, 0), 1), min(max((d - position) / fe, 0), 1))
+        }
+        return g
+    }
+}

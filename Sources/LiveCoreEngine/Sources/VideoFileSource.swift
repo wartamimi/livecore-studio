@@ -248,6 +248,9 @@ public final class VideoFileSource: NSObject, VideoSource {
 final class FileAudioTapContext {
     let channel: MixerChannel
     let active = AtomicBool(true)
+    /// Gain applied before the audio reaches the mixer (music fades), ramped per block.
+    let gain: AtomicFloat
+    private var ramp: GainRamp
     private(set) var formatDescription = ""
     // Prepared in `prepare` (not real-time), used in `process` (real-time).
     private var resampler: LinearResampler?
@@ -261,7 +264,11 @@ final class FileAudioTapContext {
     private var outR: UnsafeMutablePointer<Float>?
     private var outCapacity = 0
 
-    init(channel: MixerChannel) { self.channel = channel }
+    init(channel: MixerChannel, initialGain: Float = 1) {
+        self.channel = channel
+        gain = AtomicFloat(initialGain)
+        ramp = GainRamp(initial: initialGain)
+    }
     deinit { freeBuffers() }
 
     static func makeTap(_ ctx: FileAudioTapContext) -> MTAudioProcessingTap? {
@@ -335,6 +342,7 @@ final class FileAudioTapContext {
             let r = abl.count > 1 ? (abl[1].mData?.assumingMemoryBound(to: Float.self) ?? l) : l
             inL.update(from: l, count: frames); inR.update(from: r, count: frames)
         }
+        ramp.apply(target: min(max(gain.value, 0), 1), left: inL, right: inR, frames: frames)
         let srcL = UnsafePointer(inL), srcR = UnsafePointer(inR)
         if rs.isPassthrough {
             channel.ringL.write(srcL, count: frames)

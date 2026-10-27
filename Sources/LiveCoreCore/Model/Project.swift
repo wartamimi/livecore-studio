@@ -167,8 +167,10 @@ public struct ProjectOverlay: Codable, Equatable, Sendable {
     public var source: InputID?
     public var preset: LayoutPreset
     public var fadeDuration: Double
-    public init(index: Int, source: InputID?, preset: LayoutPreset, fadeDuration: Double = 0.5) {
-        self.index = index; self.source = source; self.preset = preset; self.fadeDuration = fadeDuration
+    /// In / out animation (since 0.20.0; nil = fade).
+    public var animation: OverlayAnimation?
+    public init(index: Int, source: InputID?, preset: LayoutPreset, fadeDuration: Double = 0.5, animation: OverlayAnimation? = nil) {
+        self.index = index; self.source = source; self.preset = preset; self.fadeDuration = fadeDuration; self.animation = animation
     }
 }
 
@@ -301,8 +303,11 @@ public struct ProjectMusic: Codable, Equatable, Sendable {
     public var loop: Bool
     public var shuffle: Bool
     public var channel: ProjectAudioChannel?
+    /// Seconds of fade-out at the end and fade-in at the start of each song (since 0.20.0; nil = 0).
+    public var fadeSeconds: Double?
     public init(id: String, name: String, tracks: [ProjectMediaRef], loop: Bool = true, shuffle: Bool = false,
-                channel: ProjectAudioChannel? = nil) {
+                channel: ProjectAudioChannel? = nil, fadeSeconds: Double? = nil) {
         self.id = id; self.name = name; self.tracks = tracks; self.loop = loop; self.shuffle = shuffle; self.channel = channel
+        self.fadeSeconds = fadeSeconds
     }
 }

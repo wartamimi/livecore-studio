@@ -95,6 +95,13 @@ struct ChannelStripView: View {
                         Button(L10n.t("music.add_tracks")) { model.addTracks(toMusic: vm.id) }
                         Toggle(L10n.t("music.loop"), isOn: Binding(get: { m.loopPlaylist }, set: { m.loopPlaylist = $0; model.objectWillChange.send() }))
                         Toggle(L10n.t("music.shuffle"), isOn: Binding(get: { m.shuffle }, set: { m.shuffle = $0; model.objectWillChange.send() }))
+                        Menu(L10n.t("music.fade")) {
+                            ForEach([0.0, 1, 2, 3, 5, 8], id: \.self) { s in
+                                Button((abs(m.fadeSeconds - s) < 0.01 ? "✓ " : "") + (s == 0 ? L10n.t("music.fade_off") : String(format: "%.0f s", s))) {
+                                    m.fadeSeconds = s; model.objectWillChange.send()
+                                }
+                            }
+                        }
                         Menu(L10n.t("music.tracks")) {
                             ForEach(Array(m.tracks.enumerated()), id: \.offset) { i, u in
                                 Button((i == m.index ? "▶ " : "") + u.deletingPathExtension().lastPathComponent) { m.select(i) }

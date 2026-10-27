@@ -405,3 +405,17 @@
 "ticker.feed" = "Feed RSS / Atom";
 "ticker.feed_every" = "tiap %@ menit";
 "ticker.feed_hint" = "Judul berita dari feed ditampilkan berurutan (maks. 30) dan diperbarui otomatis. Feed diutamakan daripada teks dan file. Gunakan alamat https.";
+"overlay.animation" = "Animasi";
+"overlay.duration" = "Durasi";
+"overlay.animation_help" = "Cara overlay masuk dan keluar";
+"overlay.anim.fade" = "Fade";
+"overlay.anim.slideFromLeft" = "Geser dari kiri";
+"overlay.anim.slideFromRight" = "Geser dari kanan";
+"overlay.anim.slideFromBottom" = "Geser dari bawah";
+"overlay.anim.slideFromTop" = "Geser dari atas";
+"overlay.anim.zoom" = "Zoom";
+"key.eyedropper_help" = "Ambil warna kunci langsung dari gambar";
+"key.eyedropper_hint" = "Klik pada latar hijau / biru (dirata-rata di area kecil).";
+"key.eyedropper_refresh" = "Ambil gambar baru";
+"music.fade" = "Fade antarlagu";
+"music.fade_off" = "Mati";

@@ -597,6 +597,8 @@ struct ChromaKeySheet: View {
     let input: InputID
     @State private var key = ChromaKey()
     @State private var loaded = false
+    @State private var still: AppModel.InputStill?
+    @State private var picking = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -608,6 +610,32 @@ struct ChromaKeySheet: View {
                 Button(L10n.t("key.green")) { key.keyColor = .green }
                 Button(L10n.t("key.blue")) { key.keyColor = .blue }
                 ColorPicker("", selection: colorBinding, supportsOpacity: false).labelsHidden()
+                Button { still = model.inputStill(input); picking = still != nil } label: { Image(systemName: "eyedropper") }
+                    .help(L10n.t("key.eyedropper_help"))
+            }
+            if picking, let still {
+                VStack(alignment: .leading, spacing: 4) {
+                    Image(decorative: still.image, scale: 1)
+                        .resizable()
+                        .aspectRatio(CGFloat(still.width) / CGFloat(still.height), contentMode: .fit)
+                        .overlay(GeometryReader { geo in
+                            Color.clear.contentShape(Rectangle())
+                                .gesture(SpatialTapGesture().onEnded { v in
+                                    if let c = still.sample(nx: v.location.x / geo.size.width, ny: v.location.y / geo.size.height) {
+                                        key.keyColor = c
+                                        if !key.enabled { key.enabled = true }
+                                    }
+                                })
+                        })
+                        .onHover { inside in if inside { NSCursor.crosshair.push() } else { NSCursor.pop() } }
+                        .frame(maxHeight: 220)
+                    HStack {
+                        Text(L10n.t("key.eyedropper_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                        Spacer()
+                        Button(L10n.t("key.eyedropper_refresh")) { self.still = model.inputStill(input) }.controlSize(.small)
+                        Button(L10n.t("common.ok")) { picking = false }.controlSize(.small)
+                    }
+                }
             }
             slider(L10n.t("key.similarity"), $key.similarity, 0.01...0.6)
             slider(L10n.t("key.smoothness"), $key.smoothness, 0.001...0.5)

@@ -405,3 +405,17 @@
 "ticker.feed" = "RSS / Atom feed";
 "ticker.feed_every" = "every %@ min";
 "ticker.feed_hint" = "Item titles from the feed are shown one after another (up to 30) and refreshed automatically. The feed takes priority over the text and the file. Use an https address.";
+"overlay.animation" = "Animation";
+"overlay.duration" = "Duration";
+"overlay.animation_help" = "How the overlay comes in and goes out";
+"overlay.anim.fade" = "Fade";
+"overlay.anim.slideFromLeft" = "Slide from left";
+"overlay.anim.slideFromRight" = "Slide from right";
+"overlay.anim.slideFromBottom" = "Slide from bottom";
+"overlay.anim.slideFromTop" = "Slide from top";
+"overlay.anim.zoom" = "Zoom";
+"key.eyedropper_help" = "Pick the key colour from the picture";
+"key.eyedropper_hint" = "Click on the green / blue background (averaged over a small area).";
+"key.eyedropper_refresh" = "New still";
+"music.fade" = "Fade between songs";
+"music.fade_off" = "Off";

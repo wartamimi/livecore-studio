@@ -94,9 +94,9 @@ public enum FramePlanner {
         }
         for ch in overlays.sorted(by: { $0.index < $1.index }) {
             guard let src = ch.source, layersFor(src) != nil else { continue }
-            let a = ch.opacity(at: now)
+            let (rect, a) = ch.placement(ch.preset.rect, at: now)
             guard a > 0.001 else { continue }
-            plan.overlays.append(DrawCommand(source: src, rect: ch.preset.rect, scaleMode: ch.preset == .fullScreen || ch.preset == .lowerThird ? .fit : .fill,
+            plan.overlays.append(DrawCommand(source: src, rect: rect, scaleMode: ch.preset == .fullScreen || ch.preset == .lowerThird ? .fit : .fill,
                                              opacity: a, key: key(src)))
         }
         for id in thumbnailsFor where layersFor(id) != nil {

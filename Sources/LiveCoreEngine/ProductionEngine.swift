@@ -789,6 +789,15 @@ public final class ProductionEngine {
         }
     }
 
+    /// In / out animation and its duration (0.1...5 s) of an overlay channel.
+    public func setOverlayAnimation(_ index: Int, animation: OverlayAnimation, duration: Double) {
+        control.mutate { st in
+            guard let i = st.overlays.firstIndex(where: { $0.index == index }) else { return }
+            st.overlays[i].animation = animation
+            st.overlays[i].fadeDuration = min(max(duration, 0.1), 5)
+        }
+    }
+
     public func setOverlay(_ index: Int, on: Bool) {
         let now = HostClock.now()
         control.mutate { st in
@@ -1052,7 +1061,8 @@ extension ProductionEngine {
             doc.inputs.append(pi)
         }
         doc.stinger = control.read { $0.stinger.source == nil && $0.stinger.cutPoint == nil ? nil : $0.stinger }
-        doc.overlays = overlays.map { ProjectOverlay(index: $0.index, source: $0.source, preset: $0.preset, fadeDuration: $0.fadeDuration) }
+        doc.overlays = overlays.map { ProjectOverlay(index: $0.index, source: $0.source, preset: $0.preset, fadeDuration: $0.fadeDuration,
+                                                     animation: $0.animation == .fade ? nil : $0.animation) }
         doc.previewInput = sw.transition == nil ? sw.preview : sw.transition?.from
         doc.programInput = sw.transition?.to ?? sw.program
         doc.audio.masterFaderDB = mixer.master.faderDB.value
@@ -1078,7 +1088,8 @@ extension ProductionEngine {
                          tracks: m.tracks.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) },
                          loop: m.loopPlaylist, shuffle: m.shuffle,
                          channel: { var pc = Self.projectChannel(m.channel, deviceUniqueID: nil, inputID: nil)
-                                    pc.afvInput = afvLinks[m.channel.id]; return pc }())
+                                    pc.afvInput = afvLinks[m.channel.id]; return pc }(),
+                         fadeSeconds: m.fadeSeconds > 0 ? m.fadeSeconds : nil)
         }
         return doc
     }
@@ -1177,6 +1188,7 @@ extension ProductionEngine {
                 guard let i = st.overlays.firstIndex(where: { $0.index == o.index }) else { continue }
                 let src = o.source.flatMap { created.contains($0) ? $0 : nil }
                 st.overlays[i] = OverlayChannel(index: o.index, source: src, preset: o.preset, fadeDuration: o.fadeDuration)
+                st.overlays[i].animation = o.animation ?? .fade
             }
             st.switcher = Switcher()
             if let p = doc.programInput, created.contains(p) { st.switcher.setPreview(p); st.switcher.cut() }
@@ -1199,6 +1211,7 @@ extension ProductionEngine {
             let m = addMusic(urls: urls, name: pm.name, id: pm.id)
             m.loopPlaylist = pm.loop
             m.shuffle = pm.shuffle
+            m.fadeSeconds = pm.fadeSeconds ?? 0
             if let ch = pm.channel { restore(ch, to: m.channel) }
         }
         for t in tones.map(\.id) { removeTone(id: t) }

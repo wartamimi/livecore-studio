@@ -409,6 +409,43 @@ public final class AppModel: ObservableObject {
         objectWillChange.send()
     }
 
+    // MARK: Key colour eyedropper
+
+    /// A still of an input's current picture (before keying), small enough to sample on the main thread.
+    public struct InputStill {
+        public let image: CGImage
+        public let pixels: [UInt8]   // BGRA, premultiplied
+        public let width: Int, height: Int
+        public func sample(nx: Double, ny: Double) -> ChromaKey.RGB? {
+            pixels.withUnsafeBufferPointer { p in
+                ChromaKey.sampleColor(bgra: p.baseAddress!, width: width, height: height, bytesPerRow: width * 4,
+                                      x: Int(nx * Double(width)), y: Int(ny * Double(height)))
+            }
+        }
+    }
+
+    public func inputStill(_ id: InputID, maxWidth: Int = 640) -> InputStill? {
+        guard let src = engine?.source(id),
+              let pb = (src as? VideoFileSource)?.lastFrame() ?? src.currentFrame() else { return nil }
+        var ci = CIImage(cvPixelBuffer: pb)
+        let scale = min(1, Double(maxWidth) / ci.extent.width)
+        ci = ci.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        let space = CGColorSpace(name: CGColorSpace.sRGB)!
+        guard let img = CIContext(options: [.workingColorSpace: space]).createCGImage(ci, from: ci.extent) else { return nil }
+        // Pixels for sampling: the same still drawn into a BGRA bitmap (row 0 = top of the picture).
+        let w = img.width, h = img.height
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        let ok = px.withUnsafeMutableBytes { buf -> Bool in
+            guard let c = CGContext(data: buf.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4, space: space,
+                                    bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
+            else { return false }
+            c.draw(img, in: CGRect(x: 0, y: 0, width: w, height: h))
+            return true
+        }
+        guard ok else { return nil }
+        return InputStill(image: img, pixels: px, width: w, height: h)
+    }
+
     // MARK: Snapshot
 
     /// Saves the current Program frame as a PNG in the recording folder.
@@ -618,6 +655,11 @@ public final class AppModel: ObservableObject {
     }
 
     // MARK: Overlays
+
+    public func setOverlayAnimation(_ index: Int, animation: OverlayAnimation, duration: Double) {
+        engine?.setOverlayAnimation(index, animation: animation, duration: duration)
+        overlays = engine?.overlays ?? []
+    }
 
     public func configureOverlay(_ index: Int, source: InputID?, preset: LayoutPreset) {
         engine?.configureOverlay(index, source: source, preset: preset)

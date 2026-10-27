@@ -206,3 +206,70 @@ final class M19Tests: XCTestCase {
         XCTAssertEqual(FeedTitles.parse(rss, limit: 1).count, 1)
     }
 }
+
+final class M20Tests: XCTestCase {
+    func testOverlayAnimationsStartOffScreenAndEndInPlace() {
+        let r = LayoutPreset.lowerThird.rect
+        for a in OverlayAnimation.allCases {
+            let end = a.placement(r, progress: 1)
+            XCTAssertEqual(end.rect, r, "\(a) ends at its preset")
+            XCTAssertEqual(end.opacity, 1, accuracy: 1e-9)
+        }
+        XCTAssertLessThanOrEqual(OverlayAnimation.slideFromLeft.placement(r, progress: 0).rect.x + r.width, 1e-9)
+        XCTAssertGreaterThanOrEqual(OverlayAnimation.slideFromRight.placement(r, progress: 0).rect.x, 1 - 1e-9)
+        XCTAssertGreaterThanOrEqual(OverlayAnimation.slideFromBottom.placement(r, progress: 0).rect.y, 1 - 1e-9)
+        XCTAssertLessThanOrEqual(OverlayAnimation.slideFromTop.placement(r, progress: 0).rect.y + r.height, 1e-9)
+        XCTAssertEqual(OverlayAnimation.fade.placement(r, progress: 0.3).opacity, 0.3, accuracy: 1e-9)
+        let half = OverlayAnimation.slideFromLeft.placement(r, progress: 0.5)
+        XCTAssertEqual(half.rect.x, -0.5, accuracy: 1e-9, "eased: half way at half time")
+    }
+
+    func testPlannerMovesASlidingOverlayAndProjectKeepsTheAnimation() throws {
+        let sw = Switcher()
+        var ch = OverlayChannel(index: 1, source: InputID("lt"), preset: .lowerThird, fadeDuration: 1)
+        ch.animation = .slideFromRight
+        ch.set(on: true, now: 0)
+        let plan = FramePlanner.plan(snapshot: sw.state, overlays: [ch], now: 0.5,
+                                     layersFor: { [Layer(source: $0)] }, keyFor: { _ in nil })
+        XCTAssertEqual(plan.overlays.first?.rect.x ?? -1, 0.5, accuracy: 1e-9)
+        let o = ProjectOverlay(index: 1, source: InputID("lt"), preset: .lowerThird, fadeDuration: 1, animation: .zoom)
+        XCTAssertEqual(try JSONDecoder().decode(ProjectOverlay.self, from: JSONEncoder().encode(o)).animation, .zoom)
+        let old = #"{"index":1,"preset":"lowerThird","fadeDuration":0.5}"#
+        XCTAssertNil(try JSONDecoder().decode(ProjectOverlay.self, from: Data(old.utf8)).animation)
+    }
+}
+
+final class EyedropperTests: XCTestCase {
+    func testSampleAveragesTheAreaUnderTheCursor() {
+        // 20×10 BGRA: left half green screen with noise, right half grey.
+        let w = 20, h = 10
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        for y in 0..<h { for x in 0..<w {
+            let i = (y * w + x) * 4
+            if x < 10 { px[i] = 64 + UInt8((x + y) % 2) * 2; px[i + 1] = 176 - UInt8((x * y) % 3); px[i + 2] = 0 }
+            else { px[i] = 128; px[i + 1] = 128; px[i + 2] = 128 }
+            px[i + 3] = 255
+        } }
+        let c = px.withUnsafeBufferPointer { ChromaKey.sampleColor(bgra: $0.baseAddress!, width: w, height: h, bytesPerRow: w * 4, x: 4, y: 5, radius: 3) }
+        XCTAssertNotNil(c)
+        XCTAssertEqual(c!.g, 0.685, accuracy: 0.01)
+        XCTAssertEqual(c!.r, 0, accuracy: 1e-9)
+        XCTAssertEqual(c!.b, 0.255, accuracy: 0.01)
+        let clear = [UInt8](repeating: 0, count: 16)
+        XCTAssertNil(clear.withUnsafeBufferPointer { ChromaKey.sampleColor(bgra: $0.baseAddress!, width: 2, height: 2, bytesPerRow: 8, x: 0, y: 0) })
+    }
+}
+
+final class MusicFadeTests: XCTestCase {
+    func testFadeInAndOutAtTheEndsOfASong() {
+        XCTAssertEqual(MusicFade.gain(position: 1, duration: 200, fade: 0), 1)
+        XCTAssertEqual(MusicFade.gain(position: 0, duration: 200, fade: 4), 0)
+        XCTAssertEqual(MusicFade.gain(position: 1, duration: 200, fade: 4), 0.25, accuracy: 1e-9)
+        XCTAssertEqual(MusicFade.gain(position: 100, duration: 200, fade: 4), 1)
+        XCTAssertEqual(MusicFade.gain(position: 198, duration: 200, fade: 4), 0.5, accuracy: 1e-9)
+        XCTAssertEqual(MusicFade.gain(position: 3, duration: 9, fade: 8), 1, accuracy: 1e-9, "short songs fade over a third at most")
+        XCTAssertEqual(MusicFade.gain(position: 2, duration: nil, fade: 4), 0.5, accuracy: 1e-9)
+        let old = #"{"id":"m","name":"Music","tracks":[],"loop":true,"shuffle":false}"#
+        XCTAssertNil(try JSONDecoder().decode(ProjectMusic.self, from: Data(old.utf8)).fadeSeconds)
+    }
+}

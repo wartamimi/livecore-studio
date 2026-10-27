@@ -94,6 +94,25 @@ struct OverlaySection: View {
                     }
                     .labelsHidden()
                     .frame(width: 110)
+                    Menu {
+                        Section(L10n.t("overlay.animation")) {
+                            ForEach(OverlayAnimation.allCases, id: \.self) { a in
+                                Button((ch.animation == a ? "✓ " : "") + L10n.t("overlay.anim." + a.rawValue)) {
+                                    model.setOverlayAnimation(ch.index, animation: a, duration: ch.fadeDuration)
+                                }
+                            }
+                        }
+                        Section(L10n.t("overlay.duration")) {
+                            ForEach([0.25, 0.5, 0.75, 1.0, 1.5, 2.0], id: \.self) { d in
+                                Button((abs(ch.fadeDuration - d) < 0.01 ? "✓ " : "") + String(format: "%.2g s", d)) {
+                                    model.setOverlayAnimation(ch.index, animation: ch.animation, duration: d)
+                                }
+                            }
+                        }
+                    } label: { Image(systemName: "wand.and.stars") }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                    .help(L10n.t("overlay.animation_help"))
                 }
             }
         }
