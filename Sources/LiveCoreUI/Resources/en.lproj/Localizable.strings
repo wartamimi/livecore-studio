@@ -246,3 +246,15 @@
 "afv.help" = "Audio follow video: hear this channel only while its input is on Program (or in a transition, scene layer or on-air overlay).";
 "afv.off" = "AFV off (always heard)";
 "afv.following" = "Audio follows video: %@";
+"capture.add" = "Window / Screen Capture (Zoom, Teams…)…";
+"capture.title" = "Window or display capture";
+"capture.windows" = "Windows";
+"capture.displays" = "Displays";
+"capture.audio" = "Capture audio (the app's sound for a window, system sound for a display)";
+"capture.cursor" = "Show mouse pointer";
+"capture.note" = "For Zoom: pick the meeting window and use Speaker View or a pinned participant. The audio goes to its own mixer channel; send a mix-minus Aux bus to a virtual device (e.g. BlackHole) and choose it as Zoom's microphone for return audio. Requires the Screen Recording permission.";
+"capture.refresh" = "Refresh";
+"capture.edit" = "Change Window / Display…";
+"capture.retry" = "Retry Capture";
+"capture.permission" = "Cannot list windows. Allow LiveCore Studio in System Settings › Privacy & Security › Screen Recording, then reopen the app. (%@)";
+"capture.open_settings" = "Open Screen Recording settings";

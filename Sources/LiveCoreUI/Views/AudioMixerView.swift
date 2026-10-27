@@ -107,8 +107,7 @@ struct ChannelStripView: View {
     /// input to follow from a menu.
     @ViewBuilder private var afvButton: some View {
         let link = model.afvLink(vm.id)
-        if vm.isFileChannel {
-            let own = InputID(String(vm.id.dropFirst(5)))
+        if let own = ProductionEngine.inputOfChannel(vm.id) {
             toggle("AFV", Binding(get: { link != nil }, set: { model.setAFV(vm.id, input: $0 ? own : nil) }), Theme.program)
                 .help(L10n.t("afv.help"))
         } else {

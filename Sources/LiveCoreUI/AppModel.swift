@@ -263,6 +263,13 @@ public final class AppModel: ObservableObject {
     }
 
     public func browserSource(_ id: InputID) -> BrowserSource? { engine?.source(id) as? BrowserSource }
+    public func captureSource(_ id: InputID) -> ScreenCaptureSource? { engine?.source(id) as? ScreenCaptureSource }
+    public func addCapture(_ c: ProjectScreenCapture) { engine?.addScreenCapture(c) }
+    public func updateCapture(_ id: InputID, _ c: ProjectScreenCapture) {
+        guard let src = captureSource(id) else { return }
+        if src.name == src.config.displayName { rename(id, c.displayName) }
+        src.reconfigure(c)
+    }
     public func timerSource(_ id: InputID) -> TimerSource? { engine?.source(id) as? TimerSource }
     public func addTimer(_ config: TimerConfig) { engine?.addTimer(config) }
     public func updateTimer(_ id: InputID, _ config: TimerConfig) {
@@ -761,7 +768,8 @@ public final class ChannelVM: ObservableObject, Identifiable {
     @Published public var eqMidHz: Double { didSet { channel.controls.eqMidHz.value = Float(eqMidHz) } }
     @Published public var eqHigh: Double { didSet { channel.controls.eqHighDB.value = Float(eqHigh) } }
     /// Audio of a video-file input (removed together with the input, not from the mixer).
-    public var isFileChannel: Bool { channel.id.hasPrefix("file:") }
+    /// Audio that belongs to an input (video file or window/display capture).
+    public var isFileChannel: Bool { ProductionEngine.inputOfChannel(channel.id) != nil }
     /// Channel of a music input (removed with the music input).
     public var isMusicChannel: Bool { channel.id.hasPrefix(ProductionEngine.musicChannelPrefix) }
 
