@@ -496,7 +496,15 @@ public final class AppModel: ObservableObject {
     /// False when this build does not include the Zoom SDK.
     public var zoomAvailable: Bool { engine?.meeting != nil }
     public var zoomState: MeetingState { engine?.meeting?.state ?? .notAuthorized }
-    public var zoomMessage: String { engine?.meeting?.statusMessage ?? "" }
+    public var zoomMessage: String { Self.zoomText(engine?.meeting?.statusMessage ?? "") }
+    /// Meeting failures arrive as "zoom.meeting_error.<SDK code>"; known codes get an explanation.
+    static func zoomText(_ msg: String) -> String {
+        let prefix = "zoom.meeting_error."
+        guard msg.hasPrefix(prefix) else { return msg }
+        let text = L10n.t(msg)
+        if text != msg { return text }
+        return String(format: L10n.t("zoom.meeting_error.other"), String(msg.dropFirst(prefix.count)))
+    }
     public var zoomParticipants: [MeetingParticipant] { engine?.meeting?.participants ?? [] }
     public var zoomVersion: String { engine?.meeting?.sdkVersion ?? "" }
     public var zoomHasCredentials: Bool { hasKey(account: Self.zoomIDAccount) && hasKey(account: Self.zoomSecretAccount) }
@@ -562,7 +570,7 @@ public final class AppModel: ObservableObject {
             zoomWasInMeeting = false
             e.meetingEnded()
         }
-        if case let .failed(msg) = st, !msg.isEmpty, msg != lastZoomError { lastZoomError = msg; report("Zoom: \(msg)") }
+        if case let .failed(msg) = st, !msg.isEmpty, msg != lastZoomError { lastZoomError = msg; report("Zoom: \(Self.zoomText(msg))") }
         objectWillChange.send()
     }
     private var lastZoomError = ""

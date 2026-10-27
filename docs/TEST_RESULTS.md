@@ -47,6 +47,12 @@ Belum dilaporkan: T-10 (stream+rekam 10 menit), T-11 reconnect, T-12 cabut-colok
 Pengguna melaporkan "sejauh ini belum ada bug" setelah mencoba 0.2.0. Rincian per tes T-17..T-22 belum dilaporkan, jadi
 statusnya tetap Not tested per item.
 
+## Laporan pengguna build 0.11.0 (dev-build-39), 2026-10-27
+Join ke meeting yang di-host akun Zoom orang lain gagal dengan "Meeting failed (error 63)" =
+`ZoomSDKMeetingError_UnableToJoinExternalMeeting`: aplikasi Meeting SDK yang belum dipublikasikan hanya boleh join meeting
+akun sendiri (batasan Zoom, bukan bug). 0.11.1 menampilkan penjelasan untuk kode ini dan kode umum lain. T-49..T-51 perlu
+diulang dengan meeting dari akun Zoom pemilik aplikasi.
+
 ## Laporan pengguna build 0.9.0 (dev-build-31), 2026-10-27
 Pengguna menanggapi 0.9.0 dengan "Lanjutkan build selanjutnya" (fullscreen, bus audio, Tambah Media, T-bar — tanpa rincian per tes T-41..T-44).
 
