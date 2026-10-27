@@ -49,6 +49,16 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## L. Tes manual build 0.11.0 (Zoom Meeting SDK)
+Persiapan: aplikasi "General app" di Zoom Marketplace; salin Client ID & Client Secret (Development) ke Pengaturan › Zoom.
+
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-48 | Otorisasi SDK | Pengaturan › Zoom: isi Client ID/Secret, "Simpan ke Keychain"; panel Zoom › "Masuk ke Zoom SDK" | Status "siap"; secret tidak muncul di file proyek/pengaturan/log; setelah app dibuka ulang, kredensial tetap ada (cukup "Masuk" lagi) |
+| T-49 | Join & input peserta | Panel Zoom: tempel link meeting, "Gabung"; klik "Minta izin rekam ke host", host mengizinkan; "Jadikan input" untuk 2 peserta | Tiap peserta tampil sebagai input terpisah dan bergerak; peserta keluar → input "no signal" tanpa crash |
+| T-50 | Audio meeting | Peserta lain bicara; atur fader channel Zoom | Suara meeting masuk channel `Zoom` dan meter bergerak; tidak ada gema balik ke meeting (mix-minus via Bus A) |
+| T-51 | Program ke meeting | Aktifkan "Kirim Program sebagai kamera saya" (sebelum Gabung), "Mikrofon saya" = Bus A; CUT/AUTO; bicara di mic yang dikirim ke Bus A | Peserta lain melihat Program LiveCore sebagai kamera dan mendengar Bus A; "Keluar" mengakhiri tanpa crash |
+
 ## K. Tes manual build 0.10.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|
