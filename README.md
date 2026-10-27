@@ -19,7 +19,7 @@ scripts/build_macos.sh release    # generate Xcode project + build .app (Univers
 open build/DerivedData/Build/Products/Release/LiveCoreStudio.app
 ```
 Pengembangan di Xcode: `xcodegen generate && open LiveCoreStudio.xcodeproj` → skema *LiveCoreStudio* → ⌘R.
-Kebutuhan: macOS 13 Ventura+, **Xcode 15+ lengkap** (bukan hanya Command Line Tools). Mac Intel (2017+) dan Apple Silicon.
+Kebutuhan: macOS 13 Ventura+, **Xcode 16+ lengkap** (bukan hanya Command Line Tools). Mac Intel (2017+) dan Apple Silicon.
 
 > Jika muncul `xcode-select: error: tool 'xcodebuild' requires Xcode`, pasang Xcode dari App Store, buka sekali, lalu:
 > `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer && sudo xcodebuild -license accept && xcodebuild -runFirstLaunch`.
