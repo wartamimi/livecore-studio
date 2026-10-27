@@ -12,18 +12,27 @@ public final class MixerChannel: @unchecked Sendable {
     public let controls = ChannelControls()
     let ringL: SPSCFloatRingBuffer
     let ringR: SPSCFloatRingBuffer
+    /// Jitter buffer: frames buffered before playback starts, and the most that may queue up
+    /// before the excess is dropped back to 2 × `primeFrames` (bounds latency).
+    let primeFrames: Int
+    let maxBufferedFrames: Int
     // Render-thread-only state:
     var dsp: ChannelStripDSP
     var primed = false
     let underruns = AtomicCounter()
 
-    init(id: String, name: String, sampleRate: Double) {
+    init(id: String, name: String, sampleRate: Double, primeFrames: Int = 1024, maxBufferedFrames: Int = 4800) {
         self.id = id
         self.name = name
+        self.primeFrames = primeFrames
+        self.maxBufferedFrames = max(maxBufferedFrames, primeFrames * 2)
         ringL = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))   // 1 s headroom
         ringR = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))
         dsp = ChannelStripDSP(controls: controls, sampleRate: Float(sampleRate))
     }
+
+    /// A channel that is not part of any mixer (its audio goes nowhere). Used as a safe fallback.
+    static func detached() -> MixerChannel { MixerChannel(id: "detached", name: "", sampleRate: 48_000) }
 }
 
 /// Audio mixer built on AVAudioEngine with a single AVAudioSourceNode that performs all
@@ -127,8 +136,10 @@ public final class AudioMixerEngine {
         if wasRunning { start() }
     }
 
-    public func addChannel(id: String, name: String) -> MixerChannel {
-        let ch = MixerChannel(id: id, name: name, sampleRate: sampleRate)
+    /// Adds a channel. Live devices use the default ~21 ms jitter buffer; sources that deliver
+    /// audio in large bursts (AVPlayer taps hand over up to ~90 ms at once) pass larger values.
+    public func addChannel(id: String, name: String, primeFrames: Int = 1024, maxBufferedFrames: Int = 4800) -> MixerChannel {
+        let ch = MixerChannel(id: id, name: name, sampleRate: sampleRate, primeFrames: primeFrames, maxBufferedFrames: maxBufferedFrames)
         graphLock.withLock { channels.append(ch) }
         return ch
     }
@@ -192,13 +203,13 @@ public final class AudioMixerEngine {
 
     @inline(__always)
     private func mixChannel(_ ch: MixerChannel, frames: Int) {
-        // Jitter buffer: wait for ~21 ms before first read; bound latency at ~100 ms.
+        // Jitter buffer: wait for `primeFrames` before the first read; bound latency at `maxBufferedFrames`.
         let avail = min(ch.ringL.availableToRead, ch.ringR.availableToRead)
         if !ch.primed {
-            if avail >= 1024 { ch.primed = true } else { return }
+            if avail >= ch.primeFrames { ch.primed = true } else { return }
         }
-        if avail > 4800 {
-            let excess = avail - 2048
+        if avail > ch.maxBufferedFrames {
+            let excess = avail - ch.primeFrames * 2
             ch.ringL.skip(excess); ch.ringR.skip(excess)
         }
         let nl = ch.ringL.read(into: chL, count: frames)

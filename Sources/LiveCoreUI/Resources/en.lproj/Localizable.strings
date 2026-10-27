@@ -99,3 +99,27 @@
 "quit.live" = "Streaming or recording is active. Quit anyway?";
 "quit.confirm" = "Quit";
 "perm.camera_denied" = "Camera access is denied. Open System Settings › Privacy & Security › Camera.";
+
+/* Milestone 2 */
+"multiview.title" = "Multiview";
+"multiview.open" = "Open Multiview window";
+"project.new" = "New Project";
+"project.open" = "Open Project…";
+"project.save" = "Save Project";
+"project.save_as" = "Save Project As…";
+"project.new_confirm" = "Remove all inputs and mixer channels and start a new project?";
+"project.warnings" = "Project opened with warnings";
+"project.saved" = "Project saved";
+"key.title" = "Chroma Key";
+"key.menu" = "Chroma Key…";
+"key.enable" = "Enable chroma key";
+"key.color" = "Key colour";
+"key.green" = "Green screen";
+"key.blue" = "Blue screen";
+"key.similarity" = "Similarity";
+"key.smoothness" = "Smoothness";
+"key.spill" = "Spill reduction";
+"key.hint" = "Raise Similarity until the background disappears, then Smoothness to soften edges.";
+"audio.gate" = "Noise Gate";
+"audio.dsp" = "DSP";
+"audio.file" = "Video file audio";

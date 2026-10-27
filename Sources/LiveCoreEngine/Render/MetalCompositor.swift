@@ -19,6 +19,7 @@ public final class MetalCompositor {
     private let layerPipeline: MTLRenderPipelineState
     private let layerPipelineOpaque: MTLRenderPipelineState
     private let transitionPipeline: MTLRenderPipelineState
+    private let keyPipeline: MTLRenderPipelineState
     private var textureCache: CVMetalTextureCache?
     private var intermediateA: MTLTexture?
     private var intermediateB: MTLTexture?
@@ -27,7 +28,8 @@ public final class MetalCompositor {
     private var thumbPool: CVPixelBufferPool?
     public private(set) var outputSize: PixelSize
     public var previewSize: PixelSize { LayoutMath.evenSize(PixelSize(width: outputSize.width / 2, height: outputSize.height / 2)) }
-    public static let thumbnailSize = PixelSize(width: 256, height: 144)
+    /// Input thumbnails, also used by the Multiview window (large enough for a 4-column grid).
+    public static let thumbnailSize = PixelSize(width: 384, height: 216)
 
     public enum CompositorError: Error, LocalizedError {
         case noMetalDevice, pipeline(String)
@@ -65,6 +67,7 @@ public final class MetalCompositor {
             layerPipeline = try pipeline("layer_fragment", blend: true)
             layerPipelineOpaque = try pipeline("layer_fragment", blend: false)
             transitionPipeline = try pipeline("transition_fragment", blend: false)
+            keyPipeline = try pipeline("key_fragment", blend: true)
         } catch {
             throw CompositorError.pipeline(error.localizedDescription)
         }
@@ -77,7 +80,7 @@ public final class MetalCompositor {
         self.outputSize = outputSize
         programPool = PixelBufferFactory.makePool(width: outputSize.width, height: outputSize.height, minimumCount: 6)
         previewPool = PixelBufferFactory.makePool(width: previewSize.width, height: previewSize.height, minimumCount: 4)
-        thumbPool = PixelBufferFactory.makePool(width: Self.thumbnailSize.width, height: Self.thumbnailSize.height, minimumCount: 16)
+        thumbPool = PixelBufferFactory.makePool(width: Self.thumbnailSize.width, height: Self.thumbnailSize.height, minimumCount: 24)
         let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: outputSize.width,
                                                           height: outputSize.height, mipmapped: false)
         td.usage = [.renderTarget, .shaderRead]
@@ -96,7 +99,9 @@ public final class MetalCompositor {
     /// Encodes one frame. `frames` maps input IDs to their current CVPixelBuffer (missing = black).
     /// `completion` runs on a Metal completion thread once the GPU finished; the returned buffers
     /// are safe to read/encode from then on.
+    /// `keys` holds the enabled chroma keys, so thumbnails show the keyed picture too.
     public func render(plan: FramePlan, frames: [InputID: CVPixelBuffer], thumbnailsFor: [InputID],
+                       keys: [InputID: ChromaKey] = [:],
                        completion: @escaping (Result) -> Void) -> Bool {
         guard let cb = queue.makeCommandBuffer(), let programPool, let previewPool,
               let programPB = makeBuffer(programPool), let previewPB = makeBuffer(previewPool),
@@ -139,10 +144,10 @@ public final class MetalCompositor {
         var thumbs: [InputID: CVPixelBuffer] = [:]
         if let thumbPool {
             for id in thumbnailsFor {
-                guard textures[id] != nil, let pb = makeBuffer(thumbPool), let t = texture(for: pb) else { continue }
+                guard textures[id] != nil, let pb = makeBuffer(thumbPool, threshold: 96), let t = texture(for: pb) else { continue }
                 keepAlive.append(t.cv)
                 drawComposition(cb, target: t.tex, size: Self.thumbnailSize,
-                                layers: [DrawCommand(source: id, rect: .full, scaleMode: .fit, opacity: 1)],
+                                layers: [DrawCommand(source: id, rect: .full, scaleMode: .fit, opacity: 1, key: keys[id])],
                                 textures: textures, load: .clear)
                 thumbs[id] = pb
             }
@@ -161,6 +166,11 @@ public final class MetalCompositor {
     // MARK: Helpers
 
     private struct TransitionParamsGPU { var progress: Float; var kind: Int32 }
+    /// Matches `KeyParams` in the shader (float2 members are 8-byte aligned: 4 floats, then 2 + 2).
+    private struct KeyParamsGPU {
+        var opacity: Float, similarity: Float, smoothness: Float, spill: Float
+        var keyCb: Float, keyCr: Float, pad0: Float = 0, pad1: Float = 0
+    }
 
     private func drawComposition(_ cb: MTLCommandBuffer, target: MTLTexture, size: PixelSize, layers: [DrawCommand],
                                  textures: [InputID: (MTLTexture, PixelSize)], load: MTLLoadAction) {
@@ -178,12 +188,22 @@ public final class MetalCompositor {
             let u1 = (dest.x + dest.width - placed.x) / placed.width, v1 = (dest.y + dest.height - placed.y) / placed.height
             // The first layer drawn onto a cleared (opaque black) target is a plain copy when it is
             // fully opaque content; everything else uses premultiplied "over" blending.
-            let opaqueCopy = i == 0 && load == .clear && layer.opacity >= 0.999 && layer.rect == .full && layer.scaleMode != .fit
-            enc.setRenderPipelineState(opaqueCopy ? layerPipelineOpaque : layerPipeline)
+            let opaqueCopy = i == 0 && load == .clear && layer.opacity >= 0.999 && layer.rect == .full
+                && layer.scaleMode != .fit && layer.key == nil
             var verts = quad(dest: dest, uv: (Float(u0), Float(v0), Float(u1), Float(v1)), canvas: size)
             enc.setVertexBytes(&verts, length: MemoryLayout<Float>.stride * verts.count, index: 0)
-            var opacity = Float(layer.opacity)
-            enc.setFragmentBytes(&opacity, length: MemoryLayout<Float>.stride, index: 0)
+            if let key = layer.key {
+                enc.setRenderPipelineState(keyPipeline)
+                let kc = ChromaKey.chroma(r: key.keyColor.r, g: key.keyColor.g, b: key.keyColor.b)
+                var params = KeyParamsGPU(opacity: Float(layer.opacity), similarity: Float(key.similarity),
+                                          smoothness: Float(key.smoothness), spill: Float(key.spill),
+                                          keyCb: Float(kc.cb), keyCr: Float(kc.cr))
+                enc.setFragmentBytes(&params, length: MemoryLayout<KeyParamsGPU>.stride, index: 0)
+            } else {
+                enc.setRenderPipelineState(opaqueCopy ? layerPipelineOpaque : layerPipeline)
+                var opacity = Float(layer.opacity)
+                enc.setFragmentBytes(&opacity, length: MemoryLayout<Float>.stride, index: 0)
+            }
             enc.setFragmentTexture(tex, index: 0)
             enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
         }
@@ -210,11 +230,11 @@ public final class MetalCompositor {
                 x1, y1, uv.2, uv.3]
     }
 
-    private func makeBuffer(_ pool: CVPixelBufferPool) -> CVPixelBuffer? {
+    private func makeBuffer(_ pool: CVPixelBufferPool, threshold: Int = 12) -> CVPixelBuffer? {
         var pb: CVPixelBuffer?
         // Threshold bounds pool growth: if the consumers hold too many buffers we drop a frame
-        // instead of allocating without limit.
-        let aux = [kCVPixelBufferPoolAllocationThresholdKey as String: 12] as CFDictionary
+        // instead of allocating without limit. Thumbnails need more (several per input in flight).
+        let aux = [kCVPixelBufferPoolAllocationThresholdKey as String: threshold] as CFDictionary
         let st = CVPixelBufferPoolCreatePixelBufferWithAuxAttributes(kCFAllocatorDefault, pool, aux, &pb)
         return st == kCVReturnSuccess ? pb : nil
     }

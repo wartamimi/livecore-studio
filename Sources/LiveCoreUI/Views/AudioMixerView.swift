@@ -48,7 +48,11 @@ struct ChannelStripView: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Text(vm.channel.name).font(.system(size: 10, weight: .semibold)).lineLimit(1).frame(width: 84)
+            HStack(spacing: 2) {
+                if vm.isFileChannel { Image(systemName: "film").font(.system(size: 8)).help(L10n.t("audio.file")) }
+                Text(vm.channel.name).font(.system(size: 10, weight: .semibold)).lineLimit(1)
+            }
+            .frame(width: 84)
             HStack(spacing: 4) {
                 MeterView(levelDB: level?.l ?? -120, holdDB: level?.holdL ?? -120)
                 MeterView(levelDB: level?.r ?? -120, holdDB: level?.holdR ?? -120)
@@ -61,14 +65,23 @@ struct ChannelStripView: View {
                 toggle(L10n.t("audio.solo"), $vm.solo, Theme.warning)
                 toggle(L10n.t("audio.pgm"), $vm.toProgram, Theme.accent)
             }
-            Button(vm.compressor ? "\(L10n.t("audio.comp")) ●" : L10n.t("audio.comp")) { showDSP.toggle() }
+            Button(dspLabel) { showDSP.toggle() }
                 .buttonStyle(.borderless).font(.system(size: 10))
-                .popover(isPresented: $showDSP) { DSPPopover(vm: vm, grDB: level?.gr ?? 0) }
-                .contextMenu { Button(L10n.t("inputs.remove"), role: .destructive) { model.removeAudioInput(vm.id) } }
+                .popover(isPresented: $showDSP) { DSPPopover(vm: vm, grDB: level?.gr ?? 0, gateDB: level?.gate ?? 0) }
+                .contextMenu {
+                    // File audio belongs to its video input: remove the input instead.
+                    if !vm.isFileChannel { Button(L10n.t("inputs.remove"), role: .destructive) { model.removeAudioInput(vm.id) } }
+                }
         }
         .padding(4)
         .background(Theme.panelRaised)
         .clipShape(RoundedRectangle(cornerRadius: 5))
+    }
+
+    /// "DSP", with a marker for each active processor (G = gate, C = compressor).
+    private var dspLabel: String {
+        let active = [vm.gate ? "G" : nil, vm.compressor ? "C" : nil].compactMap { $0 }
+        return active.isEmpty ? L10n.t("audio.dsp") : "\(L10n.t("audio.dsp")) " + active.joined(separator: "·")
     }
 
     private var dbLabel: String {
@@ -89,11 +102,20 @@ struct ChannelStripView: View {
 struct DSPPopover: View {
     @ObservedObject var vm: ChannelVM
     let grDB: Float
+    let gateDB: Float
     var body: some View {
         Form {
             Section("Input") {
                 LabeledContent("Gain") { Slider(value: $vm.gainDB, in: -24...24); Text(String(format: "%+.0f dB", vm.gainDB)).monospacedDigit() }
                 LabeledContent("Pan") { Slider(value: $vm.pan, in: -1...1) }
+            }
+            Section(L10n.t("audio.gate")) {
+                Toggle("Enabled", isOn: $vm.gate)
+                LabeledContent("Threshold") { Slider(value: $vm.gateThreshold, in: -80...0); Text(String(format: "%.0f dB", vm.gateThreshold)).monospacedDigit() }
+                LabeledContent("Range") { Slider(value: $vm.gateRange, in: -80...0); Text(String(format: "%.0f dB", vm.gateRange)).monospacedDigit() }
+                LabeledContent("State") {
+                    Text(!vm.gate ? "—" : (gateDB < 1 ? "Open" : String(format: "Closed (−%.0f dB)", gateDB))).monospacedDigit()
+                }
             }
             Section("Compressor") {
                 Toggle("Enabled", isOn: $vm.compressor)
@@ -110,9 +132,6 @@ struct DSPPopover: View {
 struct MasterStripView: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var meters: MeterModel
-    @State private var masterFader = 0.75
-    @State private var monitor = 1.0
-    @State private var limiter = true
 
     var body: some View {
         VStack(spacing: 4) {
@@ -120,18 +139,17 @@ struct MasterStripView: View {
             HStack(spacing: 4) {
                 MeterView(levelDB: meters.master.l, holdDB: meters.master.holdL)
                 MeterView(levelDB: meters.master.r, holdDB: meters.master.holdR)
-                VerticalFader(value: Binding(get: { masterFader }, set: { masterFader = $0
-                    model.engine?.mixer.master.faderDB.value = FaderLaw.db(forPosition: $0) }))
+                VerticalFader(value: $model.masterFader)
             }
             .frame(height: 120)
-            Toggle(L10n.t("audio.limiter"), isOn: Binding(get: { limiter }, set: { limiter = $0; model.engine?.mixer.limiterEnabled.value = $0 }))
+            Toggle(L10n.t("audio.limiter"), isOn: $model.limiterEnabled)
                 .toggleStyle(.checkbox).font(.system(size: 10))
             if meters.master.gr > 0.1 {
                 Text(String(format: "GR %.1f dB", meters.master.gr)).font(.system(size: 9)).foregroundStyle(Theme.warning)
             }
             HStack(spacing: 2) {
                 Image(systemName: "headphones").font(.system(size: 10))
-                Slider(value: Binding(get: { monitor }, set: { monitor = $0; model.engine?.mixer.monitorVolume.value = Float($0) }), in: 0...1)
+                Slider(value: $model.monitorVolume, in: 0...1)
                     .frame(width: 70)
             }
             .help(L10n.t("audio.monitor"))

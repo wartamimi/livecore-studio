@@ -26,6 +26,9 @@ struct TopBarView: View {
             Divider().frame(height: 18)
             StatusPill(text: streamText, color: streamColor, systemImage: "dot.radiowaves.left.and.right")
             StatusPill(text: recordText, color: model.isRecording ? Theme.program : Theme.panelRaised, systemImage: "record.circle")
+            Button { openWindow(id: "multiview") } label: { Image(systemName: "square.grid.3x2") }
+                .help(L10n.t("multiview.open"))
+                .buttonStyle(.borderless)
             Button { openWindow(id: "program-output") } label: { Image(systemName: "rectangle.on.rectangle") }
                 .help("Open Program output window (drag to an external display)")
                 .buttonStyle(.borderless)

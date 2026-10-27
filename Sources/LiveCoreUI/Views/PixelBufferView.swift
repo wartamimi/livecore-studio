@@ -7,7 +7,8 @@ import SwiftUI
 /// monitor does not re-evaluate any SwiftUI body. The IOSurface behind the CVPixelBuffer is
 /// handed to Core Animation directly (no copy).
 public final class FrameFeed {
-    fileprivate weak var view: PixelBufferNSView?
+    /// Every on-screen view showing this feed (main window, Multiview, ...). Weak references.
+    private let views = NSHashTable<PixelBufferNSView>.weakObjects()
     // Keep the last two buffers alive so the pool cannot recycle a surface still on screen.
     private var current: CVPixelBuffer?
     private var previous: CVPixelBuffer?
@@ -17,21 +18,27 @@ public final class FrameFeed {
     public func push(_ pb: CVPixelBuffer) {
         previous = current
         current = pb
-        view?.show(pb)
+        for v in views.allObjects { v.show(pb) }
     }
 
     public func clear() {
         current = nil; previous = nil
-        view?.layer?.contents = nil
+        for v in views.allObjects { v.layer?.contents = nil }
     }
 
     fileprivate func attach(_ v: PixelBufferNSView) {
-        view = v
+        if v.feed !== self {
+            v.feed?.views.remove(v)   // SwiftUI reused the view for another feed
+            v.feed = self
+        }
+        views.add(v)
         if let current { v.show(current) }
     }
 }
 
 final class PixelBufferNSView: NSView {
+    fileprivate weak var feed: FrameFeed?
+
     override init(frame: NSRect) {
         super.init(frame: frame)
         wantsLayer = true
@@ -60,7 +67,7 @@ struct PixelBufferView: NSViewRepresentable {
         return v
     }
     func updateNSView(_ nsView: PixelBufferNSView, context: Context) {
-        if feed.view !== nsView { feed.attach(nsView) }
+        if nsView.feed !== feed { feed.attach(nsView) }
     }
 }
 #endif

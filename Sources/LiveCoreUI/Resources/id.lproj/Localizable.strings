@@ -99,3 +99,27 @@
 "quit.live" = "Stream atau rekaman sedang berjalan. Tetap keluar?";
 "quit.confirm" = "Keluar";
 "perm.camera_denied" = "Akses kamera ditolak. Buka System Settings › Privacy & Security › Camera.";
+
+/* Milestone 2 */
+"multiview.title" = "Multiview";
+"multiview.open" = "Buka jendela Multiview";
+"project.new" = "Proyek Baru";
+"project.open" = "Buka Proyek…";
+"project.save" = "Simpan Proyek";
+"project.save_as" = "Simpan Proyek Sebagai…";
+"project.new_confirm" = "Hapus semua input dan kanal mixer lalu mulai proyek baru?";
+"project.warnings" = "Proyek dibuka dengan peringatan";
+"project.saved" = "Proyek tersimpan";
+"key.title" = "Chroma Key";
+"key.menu" = "Chroma Key…";
+"key.enable" = "Aktifkan chroma key";
+"key.color" = "Warna kunci";
+"key.green" = "Green screen";
+"key.blue" = "Blue screen";
+"key.similarity" = "Kemiripan";
+"key.smoothness" = "Kehalusan tepi";
+"key.spill" = "Reduksi spill";
+"key.hint" = "Naikkan Kemiripan sampai latar hilang, lalu Kehalusan tepi untuk melembutkan pinggiran.";
+"audio.gate" = "Noise Gate";
+"audio.dsp" = "DSP";
+"audio.file" = "Audio file video";

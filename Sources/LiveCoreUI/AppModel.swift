@@ -36,6 +36,12 @@ public final class AppModel: ObservableObject {
     @Published public var audioChannels: [ChannelVM] = []
     public let meters = MeterModel()
     @Published public var syncOffsetMs: Double = 0 { didSet { engine?.audioPump.syncOffsetSeconds.value = Float(syncOffsetMs / 1000) } }
+    @Published public var masterFader: Double = 0.75 { didSet { engine?.mixer.master.faderDB.value = FaderLaw.db(forPosition: masterFader) } }
+    @Published public var limiterEnabled = true { didSet { engine?.mixer.limiterEnabled.value = limiterEnabled } }
+    @Published public var monitorVolume: Double = 1 { didSet { engine?.mixer.monitorVolume.value = Float(monitorVolume) } }
+
+    // Project
+    @Published public private(set) var projectURL: URL?
 
     // Outputs
     @Published public var settings = ProductionSettings()
@@ -109,6 +115,7 @@ public final class AppModel: ObservableObject {
         e.onStreamStats = { [weak self] s in self?.streamStats = s }
         e.onRecordStats = { [weak self] s in self?.recordStats = s }
         e.onError = { [weak self] msg in self?.report(msg) }
+        e.onAudioChannelsChange = { [weak self] in self?.reloadAudioChannels() }
         e.devices.onChange = { [weak self] in self?.refreshDevices() }
     }
 
@@ -146,7 +153,7 @@ public final class AppModel: ObservableObject {
         videoDevices = e.devices.videoDevices
         audioDevices = e.devices.audioDevices
         outputDevices = AudioDevices.outputs()
-        audioChannels = e.audioChannels.map { ChannelVM(channel: $0) }
+        reloadAudioChannels()
     }
 
     // MARK: Inputs
@@ -178,6 +185,11 @@ public final class AppModel: ObservableObject {
     }
 
     public func remove(_ id: InputID) { engine?.removeInput(id) }
+
+    // MARK: Chroma key
+
+    public func chromaKey(_ id: InputID) -> ChromaKey { engine?.chromaKey(of: id) ?? ChromaKey() }
+    public func setChromaKey(_ key: ChromaKey, for id: InputID) { engine?.setChromaKey(key, for: id) }
     public func rename(_ id: InputID, _ name: String) { engine?.renameInput(id, to: name) }
     public func addPiP(source: InputID, preset: LayoutPreset) {
         guard let target = switcher.preview, target != source else { return }
@@ -231,12 +243,30 @@ public final class AppModel: ObservableObject {
 
     public func addAudioInput(_ d: DeviceManager.Device) {
         engine?.addAudioInput(uniqueID: d.id)
-        audioChannels = engine?.audioChannels.map { ChannelVM(channel: $0) } ?? []
+        reloadAudioChannels()
     }
 
     public func removeAudioInput(_ id: String) {
         engine?.removeAudioInput(uniqueID: id)
-        audioChannels = engine?.audioChannels.map { ChannelVM(channel: $0) } ?? []
+        reloadAudioChannels()
+    }
+
+    /// Rebuilds channel view models, keeping existing ones so open popovers stay bound.
+    public func reloadAudioChannels() {
+        let existing = Dictionary(uniqueKeysWithValues: audioChannels.map { ($0.id, $0) })
+        audioChannels = engine?.audioChannels.map { ch in
+            if let vm = existing[ch.id], vm.channel === ch { return vm }
+            return ChannelVM(channel: ch)
+        } ?? []
+    }
+
+    /// Re-reads master/monitor values from the engine (after a project load).
+    private func syncMasterFromEngine() {
+        guard let m = engine?.mixer else { return }
+        masterFader = FaderLaw.position(forDB: m.master.faderDB.value)
+        limiterEnabled = m.limiterEnabled.value
+        monitorVolume = Double(m.monitorVolume.value)
+        syncOffsetMs = Double(engine?.audioPump.syncOffsetSeconds.value ?? 0) * 1000
     }
 
     public func setMonitorDevice(uid: String) {
@@ -305,6 +335,84 @@ public final class AppModel: ObservableObject {
     }
 
     public func saveShortcuts(_ s: ShortcutSettings) { shortcuts = s; s.save() }
+
+    // MARK: Project files (.livecore, JSON)
+
+    public func newProject() {
+        guard let e = engine else { return }
+        let alert = NSAlert()
+        alert.messageText = L10n.t("project.new_confirm")
+        alert.addButton(withTitle: L10n.t("common.ok"))
+        alert.addButton(withTitle: L10n.t("settings.cancel"))
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        var doc = ProjectDocument(settings: settings)
+        doc.audio = ProjectAudio()
+        let warnings = e.loadProject(doc, projectDirectory: nil)
+        warnings.forEach(report)
+        projectURL = nil
+        afterProjectLoad()
+    }
+
+    public func openProject() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [Self.projectType]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        openProject(at: url)
+    }
+
+    public func openProject(at url: URL) {
+        guard let e = engine else { return }
+        do {
+            let data = try Data(contentsOf: url)
+            let doc = try JSONDecoder().decode(ProjectDocument.self, from: data)
+            let warnings = e.loadProject(doc, projectDirectory: url.deletingLastPathComponent())
+            projectURL = url
+            afterProjectLoad()
+            if !warnings.isEmpty { report("\(L10n.t("project.warnings")): " + warnings.joined(separator: " · ")) }
+        } catch {
+            report("Cannot open project: \(error.localizedDescription)")
+        }
+    }
+
+    public func saveProject() {
+        if let url = projectURL { writeProject(to: url) } else { saveProjectAs() }
+    }
+
+    public func saveProjectAs() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [Self.projectType]
+        panel.nameFieldStringValue = projectURL?.lastPathComponent ?? "Untitled.\(ProjectDocument.fileExtension)"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        writeProject(to: url)
+    }
+
+    private func writeProject(to url: URL) {
+        guard let e = engine else { return }
+        let doc = e.exportProject(projectDirectory: url.deletingLastPathComponent())
+        do {
+            let enc = JSONEncoder()
+            enc.outputFormatting = [.prettyPrinted, .sortedKeys]
+            try enc.encode(doc).write(to: url, options: .atomic)
+            projectURL = url
+        } catch {
+            report("Cannot save project: \(error.localizedDescription)")
+        }
+    }
+
+    private func afterProjectLoad() {
+        guard let e = engine else { return }
+        settings = e.settings
+        transitionKind = settings.transition
+        transitionDuration = settings.transitionDuration
+        overlays = e.overlays
+        reloadAudioChannels()
+        syncMasterFromEngine()
+    }
+
+    /// Project files are JSON with their own extension (declared dynamically, no Info.plist UTI needed).
+    static let projectType: UTType = UTType(filenameExtension: ProjectDocument.fileExtension, conformingTo: .json) ?? .json
 }
 
 /// Per-channel view model (controls are lock-free atomics shared with the render thread).
@@ -320,6 +428,11 @@ public final class ChannelVM: ObservableObject, Identifiable {
     @Published public var compressor: Bool { didSet { channel.controls.compressorEnabled.value = compressor } }
     @Published public var compThreshold: Double { didSet { channel.controls.compThresholdDB.value = Float(compThreshold) } }
     @Published public var compRatio: Double { didSet { channel.controls.compRatio.value = Float(compRatio) } }
+    @Published public var gate: Bool { didSet { channel.controls.gateEnabled.value = gate } }
+    @Published public var gateThreshold: Double { didSet { channel.controls.gateThresholdDB.value = Float(gateThreshold) } }
+    @Published public var gateRange: Double { didSet { channel.controls.gateRangeDB.value = Float(gateRange) } }
+    /// Audio of a video-file input (removed together with the input, not from the mixer).
+    public var isFileChannel: Bool { channel.id.hasPrefix("file:") }
 
     public init(channel: MixerChannel) {
         self.channel = channel
@@ -333,12 +446,18 @@ public final class ChannelVM: ObservableObject, Identifiable {
         compressor = c.compressorEnabled.value
         compThreshold = Double(c.compThresholdDB.value)
         compRatio = Double(c.compRatio.value)
+        gate = c.gateEnabled.value
+        gateThreshold = Double(c.gateThresholdDB.value)
+        gateRange = Double(c.gateRangeDB.value)
     }
 }
 
 /// Meter levels refreshed at 30 Hz. Kept separate so only meter views re-render.
 public final class MeterModel: ObservableObject {
-    public struct Level: Equatable { public var l: Float; public var r: Float; public var holdL: Float; public var holdR: Float; public var gr: Float }
+    public struct Level: Equatable {
+        public var l: Float; public var r: Float; public var holdL: Float; public var holdR: Float; public var gr: Float
+        public var gate: Float = 0
+    }
     @Published public var levels: [String: Level] = [:]
     @Published public var master = Level(l: -120, r: -120, holdL: -120, holdR: -120, gr: 0)
     private var ballistics: [String: (MeterBallistics, MeterBallistics)] = [:]
@@ -354,7 +473,8 @@ public final class MeterModel: ObservableObject {
             bl.update(peakLinear: c.peakL.exchange(0), dt: dt, now: now)
             br.update(peakLinear: c.peakR.exchange(0), dt: dt, now: now)
             ballistics[key] = (bl, br)
-            return Level(l: bl.levelDB, r: br.levelDB, holdL: bl.peakHoldDB, holdR: br.peakHoldDB, gr: c.gainReductionDB.value)
+            return Level(l: bl.levelDB, r: br.levelDB, holdL: bl.peakHoldDB, holdR: br.peakHoldDB, gr: c.gainReductionDB.value,
+                         gate: c.gateReductionDB.value)
         }
         for ch in channels { out[ch.id] = step(ch.id, ch.controls) }
         let mm = step("__master", m)
