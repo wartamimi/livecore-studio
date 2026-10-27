@@ -246,3 +246,15 @@
 "afv.help" = "Audio follow video: channel ini hanya terdengar saat inputnya tampil di Program (atau dalam transisi, layer scene, atau overlay yang aktif).";
 "afv.off" = "AFV mati (selalu terdengar)";
 "afv.following" = "Audio mengikuti video: %@";
+"capture.add" = "Tangkap Jendela / Layar (Zoom, Teams…)…";
+"capture.title" = "Tangkap jendela atau layar";
+"capture.windows" = "Jendela";
+"capture.displays" = "Layar";
+"capture.audio" = "Tangkap audio (suara aplikasi untuk jendela, suara sistem untuk layar)";
+"capture.cursor" = "Tampilkan pointer mouse";
+"capture.note" = "Untuk Zoom: pilih jendela meeting dan pakai Speaker View atau pin peserta. Audionya masuk ke channel mixer sendiri; kirim bus Aux mix-minus ke perangkat virtual (mis. BlackHole) dan pilih sebagai mikrofon di Zoom untuk audio balik. Perlu izin Perekaman Layar.";
+"capture.refresh" = "Muat ulang";
+"capture.edit" = "Ganti Jendela / Layar…";
+"capture.retry" = "Coba Tangkap Lagi";
+"capture.permission" = "Tidak bisa membaca daftar jendela. Izinkan LiveCore Studio di Pengaturan Sistem › Privasi & Keamanan › Perekaman Layar, lalu buka ulang aplikasi. (%@)";
+"capture.open_settings" = "Buka pengaturan Perekaman Layar";

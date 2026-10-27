@@ -130,6 +130,8 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case timer(TimerConfig, ProjectColor?)
     /// Several video clips played in order (since 0.8.0).
     case videoPlaylist(tracks: [ProjectMediaRef], loop: Bool)
+    /// Window or display capture with optional app/system audio (since 0.10.0).
+    case screen(ProjectScreenCapture)
 }
 
 public struct ProjectBrowser: Codable, Equatable, Sendable {

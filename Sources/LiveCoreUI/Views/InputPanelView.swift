@@ -16,6 +16,8 @@ struct InputPanelView: View {
     @State private var editingBrowser: InputID?
     @State private var showTimerSheet = false
     @State private var editingTimer: InputID?
+    @State private var showCaptureSheet = false
+    @State private var editingCapture: InputID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -48,6 +50,8 @@ struct InputPanelView: View {
         .sheet(item: $editingBrowser) { id in BrowserSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showTimerSheet) { TimerSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingTimer) { id in TimerSheet(editing: id).environmentObject(model) }
+        .sheet(isPresented: $showCaptureSheet) { CaptureSheet(editing: nil).environmentObject(model) }
+        .sheet(item: $editingCapture) { id in CaptureSheet(editing: id).environmentObject(model) }
         .alert(L10n.t("inputs.rename"), isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("", text: $renameText)
             Button(L10n.t("common.ok")) { if let id = renaming { model.rename(id, renameText) }; renaming = nil }
@@ -65,6 +69,7 @@ struct InputPanelView: View {
             Button(L10n.t("media.add_playlist")) { model.addMediaPlaylist() }
             Button(L10n.t("inputs.image")) { model.addImage() }
             Button(L10n.t("inputs.title_generator")) { showTitleSheet = true }
+            Button(L10n.t("capture.add")) { showCaptureSheet = true }
             Button(L10n.t("browser.add")) { showBrowserSheet = true }
             Button(L10n.t("timer.add")) { showTimerSheet = true }
             Menu(L10n.t("inputs.color")) {
@@ -99,6 +104,10 @@ struct InputPanelView: View {
         if info.kind == .browser {
             Button(L10n.t("browser.edit")) { editingBrowser = info.id }
             Button(L10n.t("browser.reload")) { model.browserSource(info.id)?.reload() }
+        }
+        if info.kind == .screen {
+            Button(L10n.t("capture.edit")) { editingCapture = info.id }
+            Button(L10n.t("capture.retry")) { model.captureSource(info.id)?.start() }
         }
         if info.kind == .timer {
             Button(L10n.t("timer.start")) { model.timerControl(info.id, "play") }
@@ -194,6 +203,98 @@ struct InputTile: View {
         case .text: return "textformat"
         case .browser: return "globe"
         case .timer: return "timer"
+        case .screen: return "macwindow"
+        }
+    }
+}
+
+/// Add or change a window / display capture (Zoom, Teams, Meet, slides...).
+struct CaptureSheet: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    let editing: InputID?
+    @State private var windows: [WindowCandidate] = []
+    @State private var displays: [DisplayInfo] = []
+    @State private var selection: String?       // "w<id>" or "d<id>"
+    @State private var audio = true
+    @State private var cursor = false
+    @State private var fps = 30
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L10n.t("capture.title")).font(.headline)
+            if let error {
+                Text(error).foregroundStyle(Theme.warning).font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
+                Button(L10n.t("capture.open_settings")) {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+                }
+            }
+            List(selection: $selection) {
+                Section(L10n.t("capture.windows")) {
+                    ForEach(windows, id: \.windowID) { w in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(w.appName).font(.system(size: 12, weight: .semibold))
+                            Text(w.title).font(.system(size: 11)).foregroundStyle(Theme.textDim).lineLimit(1)
+                        }.tag("w\(w.windowID)")
+                    }
+                }
+                Section(L10n.t("capture.displays")) {
+                    ForEach(displays, id: \.id) { d in Text(d.name).tag("d\(d.id)") }
+                }
+            }
+            .frame(height: 260)
+            Toggle(L10n.t("capture.audio"), isOn: $audio)
+            Toggle(L10n.t("capture.cursor"), isOn: $cursor)
+            Picker("FPS", selection: $fps) {
+                ForEach([15, 30, 60], id: \.self) { Text("\($0) fps").tag($0) }
+            }
+            Text(L10n.t("capture.note")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Button(L10n.t("capture.refresh")) { load() }
+                Spacer()
+                Button(L10n.t("settings.cancel")) { dismiss() }
+                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                    guard let cfg = config else { return }
+                    if let id = editing { model.updateCapture(id, cfg) } else { model.addCapture(cfg) }
+                    dismiss()
+                }
+                .disabled(config == nil)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(16)
+        .frame(width: 480)
+        .onAppear {
+            if let id = editing, let c = model.captureSource(id)?.config {
+                audio = c.captureAudio; cursor = c.showsCursor; fps = c.fps
+            }
+            load()
+        }
+    }
+
+    private var config: ProjectScreenCapture? {
+        guard let selection else { return nil }
+        if selection.hasPrefix("w"), let id = UInt32(selection.dropFirst()), let w = windows.first(where: { $0.windowID == id }) {
+            return ProjectScreenCapture(target: .window, bundleID: w.bundleID, appName: w.appName, windowTitle: w.title,
+                                        captureAudio: audio, fps: fps, showsCursor: cursor)
+        }
+        if selection.hasPrefix("d"), let id = UInt32(selection.dropFirst()) {
+            return ProjectScreenCapture(target: .display, displayID: id, captureAudio: audio, fps: fps, showsCursor: cursor)
+        }
+        return nil
+    }
+
+    private func load() {
+        ScreenCaptureSource.shareable { result in
+            switch result {
+            case let .success(list):
+                windows = list.windows; displays = list.displays; error = nil
+                if selection == nil, let zoom = windows.first(where: { $0.bundleID == "us.zoom.xos" }) { selection = "w\(zoom.windowID)" }
+            case let .failure(e):
+                error = L10n.f("capture.permission", e.localizedDescription)
+            }
         }
     }
 }
