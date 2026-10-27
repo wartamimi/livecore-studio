@@ -1,6 +1,6 @@
 /// The four extra outputs (vMix "Outputs"): each takes its own picture, Program, Preview or a
 /// single input at full output size, and sends it to a window or full-screen display, to other
-/// apps over Syphon.
+/// apps over Syphon, and over the network (or to NDI Virtual Camera) as an NDI® source.
 
 /// Where an output takes its picture from.
 public enum OutputSource: Codable, Equatable, Hashable, Sendable {
@@ -15,9 +15,22 @@ public struct OutputSlot: Codable, Equatable, Sendable {
     public var source: OutputSource
     /// Publish this output as a Syphon server ("LiveCore Studio – Output N").
     public var syphon: Bool
+    /// Send this output as an NDI source ("<Mac name> (LiveCore Output N)").
+    public var ndi: Bool
 
-    public init(index: Int, source: OutputSource = .program, syphon: Bool = false) {
-        self.index = index; self.source = source; self.syphon = syphon
+    public init(index: Int, source: OutputSource = .program, syphon: Bool = false, ndi: Bool = false) {
+        self.index = index; self.source = source; self.syphon = syphon; self.ndi = ndi
+    }
+
+    private enum CodingKeys: String, CodingKey { case index, source, syphon, ndi }
+
+    /// Projects saved before 0.24.0 have no `ndi` key.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        index = try c.decode(Int.self, forKey: .index)
+        source = try c.decode(OutputSource.self, forKey: .source)
+        syphon = try c.decodeIfPresent(Bool.self, forKey: .syphon) ?? false
+        ndi = try c.decodeIfPresent(Bool.self, forKey: .ndi) ?? false
     }
 }
 
@@ -51,6 +64,11 @@ public struct OutputRouting: Codable, Equatable, Sendable {
         slots[i].syphon = on
     }
 
+    public mutating func setNDI(_ index: Int, _ on: Bool) {
+        guard let i = slots.firstIndex(where: { $0.index == index }) else { return }
+        slots[i].ndi = on
+    }
+
     /// Exactly four slots numbered 1...4, in order. With `existing`, outputs that point at an
     /// input that no longer exists fall back to Program.
     public func normalized(existing: Set<InputID>?) -> OutputRouting {
@@ -80,23 +98,26 @@ public struct OutputRouting: Codable, Equatable, Sendable {
         slots.contains { active.contains($0.index) && $0.source == .preview }
     }
 
-    /// Outputs that have a destination: Syphon on, or shown in `windows`.
+    /// Outputs that have a destination: Syphon or NDI on, or shown in `windows`.
     public func activeOutputs(windows: Set<Int>) -> Set<Int> {
         var a = windows
-        for s in slots where s.syphon { a.insert(s.index) }
+        for s in slots where s.syphon || s.ndi { a.insert(s.index) }
         return a
     }
 
-    /// EXTERNAL turned on with no Syphon output: Output 1 starts sending, so other apps always
-    /// find at least one source.
-    public func withDefaultSyphon() -> OutputRouting {
-        guard !slots.contains(where: \.syphon) else { return self }
+    /// EXTERNAL turned on. With nothing sending, Output 1 starts sending over Syphon, so other
+    /// apps always find at least one source. With `ndi` (the NDI runtime is installed and NDI
+    /// was never offered before), Output 1 also starts sending over NDI unless an output already does.
+    public func withDefaultSending(ndi: Bool) -> OutputRouting {
         var r = self
-        r.setSyphon(1, true)
+        if !slots.contains(where: { $0.syphon || $0.ndi }) { r.setSyphon(1, true) }
+        if ndi, !slots.contains(where: \.ndi) { r.setNDI(1, true) }
         return r
     }
 
     public static func syphonName(_ index: Int) -> String { "Output \(index)" }
+    /// NDI source name; receivers show it as "<Mac name> (LiveCore Output N)".
+    public static func ndiName(_ index: Int) -> String { "LiveCore Output \(index)" }
 }
 
 /// vMix-style "NOT RECORDING" warning that blinks over the Program monitor.

@@ -8,6 +8,7 @@
 | A-03 | E2E FLV writer → ffprobe | (bagian dari A-02) |
 | A-04 | Kegagalan koneksi: server tidak ada, server memutus di tengah stream; stream key tidak bocor di log | (bagian dari A-02) |
 | A-06 | Kompilasi shader Metal offline (sintaks/tipe semua fungsi shader, termasuk `key_fragment`) | `scripts/check_shaders.sh` (Mac) |
+| A-08 | NDI: proses lain menemukan sumber NDI LiveCore dan menerima frame 1280×720 merah (runtime NDI dipasang di CI) | `scripts/install_ndi_runtime.sh && LIVECORE_NDI_REQUIRED=1 swift run livecore-ndi-check` (Mac, di CI) |
 | A-07 | Render Lottie offscreen (fixture: kotak merah kiri-atas, kotak biru kanan-bawah mulai 1 s): terlihat, orientasi benar, beranimasi | `swift run livecore-lottie-check` (Mac, di CI) |
 | A-05 | Build app + Universal binary + Info.plist + codesign verify | `scripts/build_macos.sh release` (Mac) |
 
@@ -49,6 +50,13 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21 | Simpan & buka proyek | Susun 4+ input, layer PiP, overlay, chroma key, setelan mixer; File › Save Project; quit; buka lagi › File › Open Project | Semua input, layer, overlay, key, fader/mute/gate kembali; stream key tidak ada di file `.livecore` |
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
+
+## X. Tes manual build 0.24.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-93 | Sumber NDI | NDI Tools terpasang; buka LiveCore, EXTERNAL ⚙ (centang NDI Output 1 bila belum), nyalakan EXTERNAL; izinkan "Jaringan Lokal" bila diminta; buka NDI Studio Monitor / NDI Video Monitor | Sumber "<Mac> (LiveCore Output 1)" ada dan gambarnya tampil bergerak dengan audio Program; EXTERNAL ⚙ menampilkan "NDI: 1 penerima"; matikan EXTERNAL → sumber hilang |
+| T-94 | Zoom tanpa OBS | NDI Virtual Input (ikon NDI di menu bar) › pilih "<Mac> (LiveCore Output 1)"; di Zoom › Video pilih "NDI Virtual Camera" | Zoom menampilkan Program LiveCore, tidak terbalik, tanpa jeda besar; CUT di LiveCore terlihat di Zoom |
+| T-95 | Tanpa runtime NDI | Di Mac tanpa NDI Tools buka EXTERNAL ⚙ | Pesan "Runtime NDI tidak ditemukan" + link unduh; kotak NDI tidak bisa dicentang; Syphon tetap bekerja; app tidak crash |
 
 ## W. Tes manual build 0.23.0
 | ID | Tes | Langkah | Kriteria lulus |

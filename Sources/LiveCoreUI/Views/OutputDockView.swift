@@ -68,7 +68,7 @@ struct OutputDockView: View {
                 .frame(width: 130)
                 .help(L10n.t("dock.external_help"))
                 gear($showExternal, help: L10n.t("dock.external_settings")) {
-                    ExternalSettingsView().padding(12).frame(width: 520)
+                    ExternalSettingsView().padding(12).frame(width: 640)
                 }
                 status(externalStatus, live: model.externalActive)
             }
@@ -121,10 +121,14 @@ struct OutputDockView: View {
 
     private var externalStatus: String {
         guard model.externalActive else { return L10n.t("dock.external_off") }
-        let running = model.syphonStatus.count
-        guard running > 0 else { return L10n.t("dock.external_nothing") }
-        let connected = model.syphonStatus.values.filter { $0 }.count
-        return L10n.f("dock.external_syphon", running) + (connected > 0 ? " · " + L10n.f("dock.external_clients", connected) : "")
+        let syphon = model.syphonStatus.count, ndi = model.ndiStatus.count
+        guard syphon + ndi > 0 else { return L10n.t("dock.external_nothing") }
+        var parts: [String] = []
+        if syphon > 0 { parts.append(L10n.f("dock.external_syphon", syphon)) }
+        if ndi > 0 { parts.append(L10n.f("dock.external_ndi", ndi)) }
+        let connected = model.syphonStatus.values.filter { $0 }.count + model.ndiStatus.values.reduce(0, +)
+        if connected > 0 { parts.append(L10n.f("dock.external_clients", connected)) }
+        return parts.joined(separator: " · ")
     }
 }
 
@@ -156,7 +160,7 @@ struct OutputChips: View {
                 .menuStyle(.borderlessButton)
                 .fixedSize()
                 .padding(.horizontal, 4).padding(.vertical, 2)
-                .background(slot.syphon && model.externalActive ? Theme.accent.opacity(0.35) : Theme.panelRaised)
+                .background((slot.syphon || slot.ndi) && model.externalActive ? Theme.accent.opacity(0.35) : Theme.panelRaised)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
                 .help(L10n.f("output.help", i))
             }
@@ -182,7 +186,7 @@ struct OutputSourcePicker: View {
     }
 }
 
-/// EXTERNAL ⚙: the four outputs (picture, window, full screen, Syphon).
+/// EXTERNAL ⚙: the four outputs (picture, window, full screen, Syphon, NDI).
 struct ExternalSettingsView: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.openWindow) private var openWindow
@@ -211,7 +215,15 @@ struct ExternalSettingsView: View {
                                                                       set: { model.setOutputSyphon(i, $0) }))
                             .toggleStyle(.checkbox).font(.system(size: 11))
                             .help(L10n.f("output.syphon_help", OutputRouting.syphonName(i)))
-                        syphonState(i)
+                        Toggle(L10n.t("output.ndi"), isOn: Binding(get: { model.outputRouting.slot(i).ndi },
+                                                                   set: { model.setOutputNDI(i, $0) }))
+                            .toggleStyle(.checkbox).font(.system(size: 11))
+                            .disabled(!model.ndiAvailable && !model.outputRouting.slot(i).ndi)
+                            .help(L10n.f("output.ndi_help", OutputRouting.ndiName(i)))
+                        VStack(alignment: .leading, spacing: 1) {
+                            syphonState(i)
+                            ndiState(i)
+                        }
                     }
                 }
             }
@@ -220,10 +232,42 @@ struct ExternalSettingsView: View {
                     .font(.system(size: 11)).foregroundStyle(Theme.warning)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            ndiSection
             Text(L10n.t("output.obs_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .onAppear { model.refreshSyphonStatus() }
+        .onAppear { model.refreshExternalStatus() }
+    }
+
+    /// How to reach Zoom / Meet without OBS, or where to get the NDI runtime.
+    @ViewBuilder private var ndiSection: some View {
+        if model.ndiAvailable {
+            Label(L10n.t("output.ndi_zoom_hint"), systemImage: "video.fill")
+                .font(.system(size: 11)).foregroundStyle(Theme.text)
+                .fixedSize(horizontal: false, vertical: true)
+            if let v = NDIRuntime.version {
+                Text(L10n.f("output.ndi_runtime", v)).font(.system(size: 9)).foregroundStyle(Theme.textDim).lineLimit(1)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 4) {
+                Label(L10n.t("output.ndi_missing"), systemImage: "exclamationmark.triangle.fill")
+                    .font(.system(size: 11)).foregroundStyle(Theme.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+                Link(L10n.t("output.ndi_download"), destination: NDIRuntime.downloadURL).font(.system(size: 11))
+            }
+        }
+        Text(L10n.t("output.ndi_trademark")).font(.system(size: 9)).foregroundStyle(Theme.textDim)
+    }
+
+    /// Whether this output's NDI source is offered, and how many receivers take it.
+    @ViewBuilder private func ndiState(_ i: Int) -> some View {
+        if let n = model.ndiStatus[i] {
+            Text(n > 0 ? L10n.f("output.ndi_connected", n) : L10n.t("output.ndi_waiting"))
+                .font(.system(size: 10)).foregroundStyle(n > 0 ? Theme.preview : Theme.textDim)
+        } else if model.outputRouting.slot(i).ndi {
+            Text(model.ndiAvailable ? L10n.t("output.ndi_off_external") : L10n.t("output.ndi_no_runtime"))
+                .font(.system(size: 10)).foregroundStyle(model.ndiAvailable ? Theme.textDim : Theme.warning)
+        }
     }
 
     /// Whether this output's Syphon source is offered, and whether an app receives it.

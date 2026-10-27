@@ -29,14 +29,16 @@ targets:
       properties:
         CFBundleName: LiveCore Studio
         CFBundleDisplayName: LiveCore Studio
-        CFBundleShortVersionString: "0.23.0"
-        CFBundleVersion: "28"
+        CFBundleShortVersionString: "0.24.0"
+        CFBundleVersion: "29"
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, id]
         LSApplicationCategoryType: public.app-category.video
         LSMinimumSystemVersion: "13.0"
         NSCameraUsageDescription: LiveCore Studio uses cameras and video capture devices as production inputs.
         NSMicrophoneUsageDescription: LiveCore Studio uses microphones and audio interfaces as mixer inputs.
+        NSLocalNetworkUsageDescription: LiveCore Studio sends its outputs as NDI sources to NDI Virtual Camera, OBS, vMix and other computers on your network.
+        NSBonjourServices: [_ndi._tcp]
         NSAppTransportSecurity:
           NSAllowsArbitraryLoadsInWebContent: true
         NSHighResolutionCapable: true
@@ -47,6 +49,8 @@ targets:
       properties:
         com.apple.security.device.camera: true
         com.apple.security.device.audio-input: true
+        # Lets the ad-hoc signed app load the NDI runtime that NDI Tools installed (signed by NDI).
+        com.apple.security.cs.disable-library-validation: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: studio.livecore.LiveCoreStudio

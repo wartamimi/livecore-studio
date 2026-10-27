@@ -137,7 +137,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Kontrol MIDI dengan Learn (CUT, AUTO, T-bar, preview/cut 1–8, overlay 1–4, stream, rekam, snapshot) | Implemented (0.7.0) | L (parser MIDI 1.0/UMP, pemetaan, 6 unit test) + kompilasi CI | Semua sumber CoreMIDI tersambung otomatis; pemetaan disimpan di Mac (bukan proyek). Belum dites dengan controller (T-35) |
 | Input tangkap jendela / layar (Zoom, Teams, Meet, slide) | Implemented (0.10.0) | L (pencocokan jendela, 5 unit test) + kompilasi CI | ScreenCaptureKit; audio aplikasi (jendela) atau sistem (layar) ke channel mixer sendiri; audio & jendela LiveCore sendiri dikecualikan; jendela ditemukan lagi lewat aplikasi + judul saat proyek dibuka. Perlu izin Perekaman Layar. Belum dites (T-46) |
 | Input Zoom via Zoom Meeting SDK (peserta terpisah, seperti vMix) | Ditunda (dihapus dari build publik di 0.10.1) | — | Pernah dibuat di 0.11.x dan dikompilasi dengan SDK, lalu ditarik dari repo & rilis publik atas keputusan pemilik; diarsipkan secara privat. Join meeting akun lain gagal (kode 63) sampai aplikasi SDK lolos review Zoom Marketplace. Untuk sekarang pakai input tangkap jendela |
-| Program sebagai kamera virtual (untuk Zoom) | Lewat OBS | — | EXTERNAL › Syphon → OBS "Syphon Client" → OBS Virtual Camera. Camera Extension sendiri dihapus di 0.23.0 |
+| Program sebagai kamera virtual (untuk Zoom) | Lewat NDI Tools (0.24.0) atau OBS | CI `livecore-ndi-check` | EXTERNAL › NDI → di NDI Tools pilih "LiveCore Output 1" → di Zoom pilih "NDI Virtual Camera" (tanpa OBS). Atau Syphon → OBS Virtual Camera. Kamera bernama "LiveCore" sendiri butuh Camera Extension bertanda tangan Developer ID (dihapus di 0.23.0) |
 | Dock bawah RECORD / STREAM / EXTERNAL dengan ⚙ | Implemented (0.22.0), belum dites | kompilasi CI | Selalu tampil (tidak bisa diperkecil); ⚙ membuka detail & setelan masing-masing; status singkat di sebelahnya; tombol OUT 1–4 (T-83). 0.23.0: satu gembok untuk RECORD + STREAM; tombol foto pindah ke bawah monitor Program (T-90) |
 | 4 output dengan sumber sendiri (Program / Preview / satu input) | Implemented (0.22.0), belum dites | L (routing, render ekstra, proyek; 4 unit test) + kompilasi CI | Tiap output: jendela, layar penuh di monitor pilihan, Syphon. Input dirender penuh resolusi output hanya bila output-nya dipakai. Disimpan di proyek (T-84) |
 | Pengingat NOT RECORDING berkedip (vMix-style) | Implemented (0.22.0), belum dites | L (2 unit test) + kompilasi CI | Di monitor Program saja (bukan di output). Setelan: mati / setiap kali tidak merekam / hanya saat streaming (RECORD ⚙) (T-82). 0.23.0: kedip lebih pelan, siklus 2 detik (T-88) |
@@ -158,6 +158,13 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Shortcut keyboard dapat diubah | Implemented | M |
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
+
+## Output NDI (0.24.0)
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Kirim output 1–4 sebagai sumber NDI® | Implemented (0.24.0), belum dites di Mac pengguna | L (routing, kompatibilitas proyek lama; 4 unit test) + CI `livecore-ndi-check`: proses lain menemukan sumber "LiveCore Output 1 (check)" lewat NDI dan menerima frame 1280×720 merah | Centang NDI per output di EXTERNAL ⚙; Output 1 otomatis NDI saat EXTERNAL pertama kali nyala bila runtime NDI ada. Video BGRX, audio Program stereo. Frame dibuang (bukan menunggu) bila kompresi NDI belum selesai (T-93) |
+| Zoom / Meet tanpa OBS | Implemented lewat NDI Tools, belum dites | — | Di NDI Tools (NDI Virtual Input) pilih "<Mac> (LiveCore Output 1)", di Zoom pilih "NDI Virtual Camera" (T-94) |
+| Runtime NDI | Dimuat saat jalan (dlopen), tidak disertakan | build: entitlement `disable-library-validation` dicek | Dicari di `NDI_RUNTIME_DIR_V6`, `/usr/local/lib`, SDK, Homebrew, dan app NDI di /Applications. Tidak ada → pesan + link unduh NDI Runtime (T-95) |
 
 ## Perubahan tata letak 0.23.0
 | Fitur | Status | Verifikasi | Catatan |

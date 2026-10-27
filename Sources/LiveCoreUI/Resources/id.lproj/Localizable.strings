@@ -448,14 +448,14 @@
 "dock.external" = "EXTERNAL";
 "dock.record_settings" = "Setelan rekaman";
 "dock.stream_settings" = "Setelan streaming";
-"dock.external_settings" = "Output, Syphon dan kamera virtual";
+"dock.external_settings" = "Output, Syphon dan NDI";
 "dock.more_settings" = "Setelan lainnya…";
 "dock.record_off" = "Tidak merekam";
 "dock.stream_ready" = "Mati · %d tujuan siap";
 "dock.external_off" = "Mati";
 "dock.external_syphon" = "Syphon: %d output";
 "dock.external_nothing" = "Nyala · belum ada yang dipilih (lihat ⚙)";
-"dock.external_help" = "Kirim output ke aplikasi lain lewat Syphon (OBS \"Syphon Client\", Resolume, MadMapper…)";
+"dock.external_help" = "Kirim output ke aplikasi lain: Syphon (OBS \"Syphon Client\", Resolume…) dan NDI (NDI Virtual Camera untuk Zoom / Meet, OBS, vMix…)";
 "record.not_recording" = "NOT RECORDING";
 "record.reminder" = "Pengingat NOT RECORDING";
 "record.reminder.off" = "Mati";
@@ -471,14 +471,28 @@
 "output.fullscreen_close" = "Tutup layar penuh";
 "output.syphon" = "Syphon";
 "output.syphon_help" = "Saat EXTERNAL nyala, aplikasi lain menerima output ini sebagai sumber Syphon \"LiveCore Studio – %@\"";
-"output.obs_hint" = "OBS: tambahkan source \"Syphon Client\", pilih LiveCore Studio – Output N, lalu tekan Start Virtual Camera di OBS untuk dipakai di Zoom atau Meet.";
+"output.obs_hint" = "OBS: tambahkan source \"Syphon Client\" (LiveCore Studio – Output N) atau \"NDI Source\" (perlu plugin DistroAV).";
 
 /* 0.23.0 */
 "lock.dock_help" = "Kunci RECORD dan STREAM: selama terkunci keduanya tidak bisa dimulai atau dihentikan";
 "dock.external_clients" = "%d aplikasi menerima";
-"output.external_off_hint" = "EXTERNAL mati: tekan EXTERNAL di dock bawah untuk mulai mengirim output Syphon.";
-"output.syphon_connected" = "Aplikasi tersambung";
-"output.syphon_waiting" = "Mengirim, belum ada aplikasi";
-"output.syphon_off_external" = "Mulai saat EXTERNAL nyala";
+"output.external_off_hint" = "EXTERNAL mati: tekan EXTERNAL di dock bawah untuk mulai mengirim output Syphon dan NDI.";
+"output.syphon_connected" = "Syphon: aplikasi tersambung";
+"output.syphon_waiting" = "Syphon: mengirim, belum ada aplikasi";
+"output.syphon_off_external" = "Syphon mulai saat EXTERNAL nyala";
 "overlay.tile_help" = "Overlay %d dengan input ini (fade, layar penuh). Klik: Preview · Klik kanan / dua jari: Program";
 "snapshot.button" = "Foto Program";
+
+/* 0.24.0: output NDI */
+"dock.external_ndi" = "NDI: %d output";
+"output.ndi" = "NDI";
+"output.ndi_help" = "Saat EXTERNAL nyala, output ini menjadi sumber NDI \"<Mac ini> (%@)\": NDI Virtual Camera (Zoom, Meet, Teams), OBS, vMix dan komputer lain di jaringan bisa menerimanya";
+"output.ndi_connected" = "NDI: %d penerima";
+"output.ndi_waiting" = "NDI: mengirim, belum ada penerima";
+"output.ndi_off_external" = "NDI mulai saat EXTERNAL nyala";
+"output.ndi_no_runtime" = "Runtime NDI belum terpasang";
+"output.ndi_zoom_hint" = "Zoom / Meet tanpa OBS: centang NDI, nyalakan EXTERNAL, lalu di NDI Tools (ikon NDI di menu bar, \"NDI Virtual Input\") pilih \"<Mac ini> (LiveCore Output 1)\". Di Zoom pilih kamera \"NDI Virtual Camera\".";
+"output.ndi_runtime" = "Runtime NDI %@";
+"output.ndi_missing" = "Runtime NDI tidak ditemukan. Pasang NDI Tools atau NDI Runtime, lalu buka ulang LiveCore Studio.";
+"output.ndi_download" = "Unduh NDI Runtime (ndi.link)";
+"output.ndi_trademark" = "NDI® adalah merek dagang terdaftar milik Vizrt NDI AB.";
