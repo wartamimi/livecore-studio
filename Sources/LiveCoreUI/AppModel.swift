@@ -258,8 +258,6 @@ public final class AppModel: ObservableObject {
     }
 
     public func addColor(_ c: NSColor, name: String) { engine?.addColor(c, name: name) }
-    /// Solid colour input used as a shape layer in the scene editor.
-    public func addShapeInput(_ c: NSColor, name: String) -> InputID? { engine?.addColor(c, name: name) }
 
     public func addTitle(_ style: TextSource.Style) { engine?.addTitle(style) }
 
@@ -269,7 +267,48 @@ public final class AppModel: ObservableObject {
         engine?.renameInput(id, to: src.name)
     }
 
-    public func remove(_ id: InputID) { engine?.removeInput(id) }
+    public func remove(_ id: InputID) {
+        guard !isLocked(id) else { report(L10n.t("lock.input_locked")); return }
+        engine?.removeInput(id)
+    }
+
+    // MARK: Locks (protection against accidental changes)
+
+    public func isLocked(_ id: InputID) -> Bool { inputs.first { $0.id == id }?.locked ?? false }
+    public func toggleLock(_ id: InputID) { engine?.setInputLocked(id, !isLocked(id)) }
+    public func lockAllInputs(_ locked: Bool) { for i in inputs { engine?.setInputLocked(i.id, locked) } }
+
+    /// While locked, the stream / recording cannot be started or stopped (buttons, menu, shortcuts).
+    @Published public var streamLocked = false
+    @Published public var recordLocked = false
+
+    /// Stop Streaming / Stop Recording waiting for the operator's confirmation.
+    public enum StopRequest: String, Identifiable { case stream, record; public var id: String { rawValue } }
+    @Published public var pendingStop: StopRequest?
+    /// Start recording automatically when streaming starts (and stop it with the stream).
+    @Published public var recordWithStream = UserDefaults.standard.bool(forKey: "recordWithStream") {
+        didSet { UserDefaults.standard.set(recordWithStream, forKey: "recordWithStream") }
+    }
+    private var recordingStartedWithStream = false
+
+    /// Button / menu / shortcut entry points: starting is immediate, stopping asks first.
+    public func requestToggleStream() {
+        guard !streamLocked else { report(L10n.t("lock.stream_locked")); return }
+        if isStreamingActive { pendingStop = .stream } else { toggleStream() }
+    }
+
+    public func requestToggleRecord() {
+        guard !recordLocked else { report(L10n.t("lock.record_locked")); return }
+        if isRecording { pendingStop = .record } else { toggleRecord() }
+    }
+
+    public func confirmStop(_ r: StopRequest) {
+        pendingStop = nil
+        switch r {
+        case .stream: if isStreamingActive { toggleStream() }
+        case .record: if isRecording { toggleRecord() }
+        }
+    }
 
     // MARK: Browser & timer inputs
 
@@ -340,7 +379,10 @@ public final class AppModel: ObservableObject {
 
     public func chromaKey(_ id: InputID) -> ChromaKey { engine?.chromaKey(of: id) ?? ChromaKey() }
     public func setChromaKey(_ key: ChromaKey, for id: InputID) { engine?.setChromaKey(key, for: id) }
-    public func rename(_ id: InputID, _ name: String) { engine?.renameInput(id, to: name) }
+    public func rename(_ id: InputID, _ name: String) {
+        guard !isLocked(id) else { report(L10n.t("lock.input_locked")); return }
+        engine?.renameInput(id, to: name)
+    }
     public func layers(of id: InputID) -> [Layer] { engine?.layers(of: id) ?? [] }
     public func setLayers(_ layers: [Layer], of id: InputID) { engine?.setLayers(layers, of: id) }
     public func frameSize(_ id: InputID) -> PixelSize? { engine?.frameSize(of: id) }
@@ -480,8 +522,8 @@ public final class AppModel: ObservableObject {
         case .cut: cut()
         case .auto: auto()
         case .tbar: break
-        case .streamToggle: toggleStream()
-        case .recordToggle: toggleRecord()
+        case .streamToggle: requestToggleStream()
+        case .recordToggle: requestToggleRecord()
         case .snapshot: saveSnapshot()
         case .fullscreenToggle: fullscreen.toggle()
         case let .replay(sec): replayLast(Double(sec))
@@ -712,7 +754,13 @@ public final class AppModel: ObservableObject {
 
     public func toggleStream() {
         guard let e = engine else { return }
-        if isStreamingActive { e.stopStreaming(); return }
+        guard !streamLocked else { report(L10n.t("lock.stream_locked")); return }
+        if isStreamingActive {
+            e.stopStreaming()
+            if recordingStartedWithStream, isRecording, !recordLocked { e.stopRecording() }
+            recordingStartedWithStream = false
+            return
+        }
         var targets: [ProductionEngine.StreamTarget] = []
         let st = settings.stream
         var candidates: [(id: String, name: String, url: String, account: String, bus: OutputBus)] = []
@@ -737,6 +785,10 @@ public final class AppModel: ObservableObject {
         streamTargets = targets.map { ($0.id, $0.name) }
         do {
             try e.startStreaming(to: targets)
+            if recordWithStream, !isRecording, !recordLocked {
+                e.startRecording()
+                recordingStartedWithStream = true
+            }
         } catch {
             streamTargets = []
             report(error.localizedDescription)
@@ -754,6 +806,8 @@ public final class AppModel: ObservableObject {
 
     public func toggleRecord() {
         guard let e = engine else { return }
+        guard !recordLocked else { report(L10n.t("lock.record_locked")); return }
+        recordingStartedWithStream = false
         if isRecording { e.stopRecording() } else { e.startRecording() }
     }
 

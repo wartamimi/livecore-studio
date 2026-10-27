@@ -272,7 +272,6 @@
 "transition.custom.folder" = "Folder";
 "transition.custom.fallback" = "AUTO/T-bar uses Dissolve until the shader compiles.";
 "scene.add_layer" = "Add Layer";
-"scene.add_shape" = "Add Shape";
 "scene.no_inputs" = "No other inputs yet";
 "scene.style" = "Style: crop, corners, shape, border";
 "scene.shape" = "Shape";
@@ -287,9 +286,24 @@
 "scene.crop.top" = "Top";
 "scene.crop.bottom" = "Bottom";
 "scene.style_reset" = "Reset style";
-"scene.shape.box" = "Box";
-"scene.shape.rounded" = "Rounded box";
-"scene.shape.circle" = "Circle";
-"scene.shape.input_name" = "Shape";
 "overlay.help" = "Click: show on Preview (orange); CUT/AUTO takes it to Program. Two-finger / right click: straight to Program (green).";
 "lottie.add" = "Lottie (.json / .lottie)…";
+
+"inputs.close" = "Close source";
+"inputs.close_confirm" = "Close \"%@\"?";
+"inputs.close_message" = "The source is removed from the input list, scenes and overlays. Lock a source (padlock) to protect it.";
+"lock.lock_input" = "Lock source";
+"lock.unlock_input" = "Unlock source";
+"lock.lock_all" = "Lock all sources";
+"lock.unlock_all" = "Unlock all sources";
+"lock.input_locked" = "This source is locked. Unlock it (padlock) first.";
+"lock.stream_help" = "Lock streaming: while locked, Start/Stop Streaming does nothing (button, menu and shortcut).";
+"lock.record_help" = "Lock recording: while locked, Start/Stop Recording does nothing (button, menu and shortcut).";
+"lock.stream_locked" = "Streaming is locked. Unlock it (padlock next to the button) first.";
+"lock.record_locked" = "Recording is locked. Unlock it (padlock next to the button) first.";
+"stream.stop_confirm" = "Stop streaming?";
+"stream.stop_message" = "Every destination goes offline.";
+"record.stop_confirm" = "Stop recording?";
+"record.stop_message" = "The file is finalized; a new recording starts a new file.";
+"record.with_stream" = "Record automatically while streaming";
+"record.with_stream_help" = "Starting the stream also starts a recording; stopping the stream stops that recording.";

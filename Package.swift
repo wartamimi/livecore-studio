@@ -46,6 +46,8 @@ let package = Package(
         .executableTarget(name: "LiveCoreStudio", dependencies: ["LiveCoreUI"], path: "App"),
         .executableTarget(name: "livecore-rtmp-push", dependencies: ["LiveCoreCore"]),
         .executableTarget(name: "livecore-transition-dump", dependencies: ["LiveCoreCore"]),
+        // Renders a Lottie animation offscreen and checks the pixels (macOS CI).
+        .executableTarget(name: "livecore-lottie-check", dependencies: ["LiveCoreEngine", "LiveCoreCore"]),
         .testTarget(name: "LiveCoreCoreTests", dependencies: ["LiveCoreCore"]),
     ]
 )

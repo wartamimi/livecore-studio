@@ -27,8 +27,8 @@ public enum LiveCoreScenes {
                 Button(L10n.t("transition.cut")) { model.cut() }
                 Button(L10n.t("transition.auto")) { model.auto() }
                 Divider()
-                Button(model.isStreamingActive ? L10n.t("stream.stop") : L10n.t("stream.start")) { model.toggleStream() }
-                Button(model.isRecording ? L10n.t("record.stop") : L10n.t("record.start")) { model.toggleRecord() }
+                Button(model.isStreamingActive ? L10n.t("stream.stop") : L10n.t("stream.start")) { model.requestToggleStream() }.disabled(model.streamLocked)
+                Button(model.isRecording ? L10n.t("record.stop") : L10n.t("record.start")) { model.requestToggleRecord() }.disabled(model.recordLocked)
                 Divider()
                 Button(L10n.t("fullscreen.button")) { model.fullscreen.toggle() }.keyboardShortcut("f", modifiers: [.command, .shift])
             }

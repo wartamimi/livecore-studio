@@ -80,6 +80,14 @@ struct MainView: View {
         .foregroundStyle(Theme.text)
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(model) }
         .background(KeyboardShortcuts())
+        .alert(model.pendingStop == .record ? L10n.t("record.stop_confirm") : L10n.t("stream.stop_confirm"),
+               isPresented: Binding(get: { model.pendingStop != nil }, set: { if !$0 { model.pendingStop = nil } }),
+               presenting: model.pendingStop) { r in
+            Button(r == .record ? L10n.t("record.stop") : L10n.t("stream.stop"), role: .destructive) { model.confirmStop(r) }
+            Button(L10n.t("settings.cancel"), role: .cancel) { model.pendingStop = nil }
+        } message: { r in
+            Text(r == .record ? L10n.t("record.stop_message") : L10n.t("stream.stop_message"))
+        }
     }
 }
 
@@ -152,8 +160,8 @@ struct KeyboardShortcuts: View {
         ZStack {
             Button("") { model.cut() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.cut), modifiers: [])
             Button("") { model.auto() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.auto), modifiers: [])
-            Button("") { model.toggleStream() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.stream), modifiers: [.command])
-            Button("") { model.toggleRecord() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.record), modifiers: [.command])
+            Button("") { model.requestToggleStream() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.stream), modifiers: [.command])
+            Button("") { model.requestToggleRecord() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.record), modifiers: [.command])
             ForEach(1..<10) { n in
                 Button("") { model.previewNumber(n) }.keyboardShortcut(KeyEquivalent(Character("\(n)")), modifiers: [])
             }

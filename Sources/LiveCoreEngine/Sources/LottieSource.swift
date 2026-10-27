@@ -72,6 +72,16 @@ public final class LottieSource: VideoSource {
         canvas = PixelSize(width: max(2, Int((Double(size.width) * scale).rounded())),
                            height: max(2, Int((Double(size.height) * scale).rounded())))
         layer.bounds = CGRect(origin: .zero, size: size)
+        layer.position = .zero
+        layer.anchorPoint = .zero
+        // Lottie's data is top-left based; LottieAnimationView gets this from its flipped NSView.
+        layer.isGeometryFlipped = true
+        // LottieAnimationLayer does not lay out its composition layer by itself (the view does):
+        // without this the composition sits centred on the origin, mostly outside the frame.
+        for sub in layer.sublayers ?? [] {
+            sub.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+            sub.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        }
         layer.mainThreadRenderingEngineShouldForceDisplayUpdateOnEachFrame = true
         animation = anim
         animationLayer = layer
@@ -107,6 +117,8 @@ public final class LottieSource: VideoSource {
     public func restart() { position = 0; play(); render() }
     /// Back to the first frame, paused (what auto play does when the input leaves air).
     public func cue() { isPlaying = false; position = 0; render() }
+    /// Jumps to `seconds` (clamped to the animation) and draws that frame.
+    public func seek(to seconds: Double) { position = min(max(seconds, 0), duration); render() }
 
     private func tick() {
         let now = HostClock.now()
@@ -129,18 +141,26 @@ public final class LottieSource: VideoSource {
         layer.currentFrame = anim.startFrame + total * progress
         layer.forceDisplayUpdate()
         CATransaction.commit()
+        // Offscreen layers are never displayed by a window: draw the custom-drawn ones (gradients,
+        // text, mattes) ourselves before rendering the tree.
+        Self.displayTree(layer)
         let w = canvas.width, h = canvas.height
         let size = anim.size
         let pb = PixelBufferFactory.draw(width: w, height: h) { ctx in
+            // Bottom-left context; the geometry-flipped root puts Lottie's top-left origin at the top.
             ctx.scaleBy(x: CGFloat(w) / size.width, y: CGFloat(h) / size.height)
-            // CALayer draws with a top-left origin; the bitmap context is bottom-left.
-            ctx.translateBy(x: 0, y: size.height)
-            ctx.scaleBy(x: 1, y: -1)
             layer.render(in: ctx)
         }
         if let pb { lock.withLock { frame = pb } }
     }
 
     public func currentFrame() -> CVPixelBuffer? { lock.withLock { frame } }
+
+    private static func displayTree(_ l: CALayer) {
+        l.layoutIfNeeded()
+        l.displayIfNeeded()
+        if let m = l.mask { displayTree(m) }
+        for s in l.sublayers ?? [] { displayTree(s) }
+    }
 }
 #endif
