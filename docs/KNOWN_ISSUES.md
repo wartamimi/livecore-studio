@@ -62,3 +62,11 @@
     akan senyap. Tiap bus berbeda pada stream menambah satu encode AAC (ringan).
 35. **Playlist media campuran**: klip audio di dalam playlist video tampil hitam (belum ada gambar sampul/visualizer).
     Pilihan "Tambah Media" memisahkan audio vs video menurut jenis file; file .mp4 berisi audio saja dianggap video.
+36. **AFV** membuka/menutup audio dengan ramp pendek (bukan crossfade mengikuti durasi transisi); selama transisi kedua
+    sisi terdengar penuh.
+37. **Tangkap jendela**: jendela yang diminimalkan atau di Space lain bisa berhenti mengirim frame (perilaku macOS);
+    bila Zoom membuka jendela baru (mis. pindah ke breakout room) pilih ulang lewat "Ganti Jendela". Audio tangkapan
+    tidak dikoreksi drift clock (selisih kecil dalam sesi sangat panjang bisa memberi klik). Tidak ada input per peserta
+    (butuh Zoom SDK).
+38. **Instant replay**: video saja (tanpa audio); buffer 30 detik tetap; satu klip replay sekaligus; mengganti resolusi
+    output menghapus buffer. Buffer memakai satu encode H.264 tambahan (hardware) dan ~40 MB disk sementara pada 1080p30.

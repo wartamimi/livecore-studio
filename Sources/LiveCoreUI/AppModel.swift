@@ -23,6 +23,9 @@ public final class AppModel: ObservableObject {
     @Published public private(set) var stinger = StingerConfig()
     @Published public var transitionDuration: Double = 1.0
     @Published public var tbar: Double = 0
+    /// Instant replay: seconds buffered, and the speed new replays play at.
+    @Published public var replayAvailable: Double = 0
+    @Published public var replaySpeed: Double = 0.5 { didSet { engine?.replaySource?.speed = replaySpeed } }
     @Published public var overlays: [OverlayChannel] = []
     public let programFeed = FrameFeed()
     public let previewFeed = FrameFeed()
@@ -136,6 +139,8 @@ public final class AppModel: ObservableObject {
         e.onRecordStats = { [weak self] s in self?.recordStats = s }
         e.onError = { [weak self] msg in self?.report(msg) }
         e.onAudioChannelsChange = { [weak self] in self?.reloadAudioChannels() }
+        e.replay.onAvailableChange = { [weak self] a in self?.replayAvailable = a }
+        e.onReplayChange = { [weak self] in self?.objectWillChange.send() }
         e.onMusicChange = { [weak self] in
             self?.objectWillChange.send()
             if let err = e.musicPlayers.compactMap(\.error).first, self?.lastMusicError != err { self?.lastMusicError = err; self?.report(err) }
@@ -409,6 +414,7 @@ public final class AppModel: ObservableObject {
         case .recordToggle: toggleRecord()
         case .snapshot: saveSnapshot()
         case .fullscreenToggle: fullscreen.toggle()
+        case let .replay(sec): replayLast(Double(sec))
         case let .preview(n): previewNumber(n)
         case let .cutDirect(n): if n >= 1, n <= inputs.count { cutDirect(inputs[n - 1].id) }
         case let .overlay(i): toggleOverlay(i)
@@ -424,6 +430,7 @@ public final class AppModel: ObservableObject {
         case .recordToggle: return L10n.t("midi.record")
         case .snapshot: return "Snapshot"
         case .fullscreenToggle: return L10n.t("midi.fullscreen")
+        case let .replay(sec): return L10n.f("replay.last", sec)
         case let .preview(n): return L10n.f("midi.preview", n)
         case let .cutDirect(n): return L10n.f("midi.cut_direct", n)
         case let .overlay(i): return "Overlay \(i)"
@@ -474,6 +481,25 @@ public final class AppModel: ObservableObject {
         let urls = pickAudioFiles()
         guard !urls.isEmpty else { return }
         m.setTracks(m.tracks + urls)
+    }
+
+    // MARK: Instant replay
+
+    public var replayEnabled: Bool { engine?.replaySource != nil }
+    public var replaySource: ReplaySource? { engine?.replaySource }
+
+    public func setReplayEnabled(_ on: Bool) {
+        engine?.setReplayEnabled(on)
+        engine?.replaySource?.speed = replaySpeed
+        if !on { replayAvailable = 0 }
+    }
+
+    /// Loads the last `seconds` into the Replay input and puts it on Preview.
+    public func replayLast(_ seconds: Double) {
+        guard let e = engine else { return }
+        if !replayEnabled { setReplayEnabled(true); report(L10n.t("replay.started")); return }
+        e.replaySource?.speed = replaySpeed
+        e.replayLast(seconds) { [weak self] ok in if !ok { self?.report(L10n.t("replay.empty")) } }
     }
 
     // MARK: Audio follow video

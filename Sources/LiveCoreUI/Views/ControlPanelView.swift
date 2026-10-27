@@ -17,10 +17,53 @@ struct ControlPanelView: View {
                 StreamSection(showSettings: $showSettings)
                 Divider()
                 RecordSection()
+                Divider()
+                ReplaySection()
             }
             .padding(8)
         }
         .panel()
+    }
+}
+
+/// Instant replay: buffer on/off, replay the last 5/10/20 s, speed, transport.
+struct ReplaySection: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                SectionHeader(title: L10n.t("replay.title"))
+                Spacer()
+                Toggle(L10n.t("replay.buffer"), isOn: Binding(get: { model.replayEnabled }, set: { model.setReplayEnabled($0) }))
+                    .toggleStyle(.switch).controlSize(.mini)
+                    .help(L10n.t("replay.help"))
+            }
+            if model.replayEnabled {
+                HStack(spacing: 6) {
+                    ForEach(ReplayIndex.lengths, id: \.self) { sec in
+                        Button(L10n.f("replay.last", Int(sec))) { model.replayLast(sec) }
+                            .buttonStyle(StudioButtonStyle(color: Theme.preview, active: false))
+                            .disabled(model.replayAvailable < 1)
+                    }
+                }
+                HStack(spacing: 6) {
+                    Picker(L10n.t("replay.speed"), selection: $model.replaySpeed) {
+                        ForEach(ReplayIndex.speeds, id: \.self) { Text("\(Int($0 * 100))%").tag($0) }
+                    }
+                    .pickerStyle(.segmented).frame(width: 170)
+                    if let r = model.replaySource, r.hasClip {
+                        Button { r.isPlaying ? r.pause() : r.play() } label: { Image(systemName: r.isPlaying ? "pause.fill" : "play.fill") }
+                            .buttonStyle(.borderless)
+                        Button { r.cue() } label: { Image(systemName: "backward.end.fill") }
+                            .buttonStyle(.borderless)
+                    }
+                    Spacer()
+                    Text(L10n.f("replay.available", Int(model.replayAvailable)))
+                        .font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.textDim)
+                }
+            }
+        }
     }
 }
 

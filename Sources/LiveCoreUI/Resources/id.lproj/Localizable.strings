@@ -258,3 +258,11 @@
 "capture.retry" = "Coba Tangkap Lagi";
 "capture.permission" = "Tidak bisa membaca daftar jendela. Izinkan LiveCore Studio di Pengaturan Sistem › Privasi & Keamanan › Perekaman Layar, lalu buka ulang aplikasi. (%@)";
 "capture.open_settings" = "Buka pengaturan Perekaman Layar";
+"replay.title" = "Instant Replay";
+"replay.buffer" = "Buffer";
+"replay.help" = "Menyimpan 30 detik terakhir Program di disk (video saja) dan menambah input Replay.";
+"replay.last" = "%ld dtk terakhir";
+"replay.speed" = "Kecepatan";
+"replay.available" = "%ld dtk tersimpan";
+"replay.started" = "Buffer replay dimulai; replay tersedia setelah beberapa detik.";
+"replay.empty" = "Belum ada yang tersimpan.";

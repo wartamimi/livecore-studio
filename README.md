@@ -4,7 +4,9 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.9.0 — Milestone 3 berjalan.** 0.9.0 menambah tombol Fullscreen output ke layar pilihan, pilihan bus audio
+> **Status: 0.10.0 — Milestone 3 berjalan.** 0.10.0 menambah audio follow video (AFV), input tangkap jendela/layar
+> dengan audio aplikasi (untuk Zoom/Teams/Meet; Zoom SDK resmi masih terblokir), dan instant replay 5/10/20 detik
+> dengan slow motion — menunggu tes T-45..T-47. 0.9.0 menambah tombol Fullscreen output ke layar pilihan, pilihan bus audio
 > (Master/Bus A/Bus B) untuk rekaman dan tiap tujuan stream, serta satu menu "Tambah Media" / "Tambah Media Playlist"
 > untuk video dan audio, plus perbaikan glitch T-bar di ujung — menunggu tes T-41..T-44. 0.8.0 menambah input playlist video, auto play saat masuk Program, dan
 > transport media (seekbar, play/pause, prev/next; media dimuat dalam keadaan jeda).

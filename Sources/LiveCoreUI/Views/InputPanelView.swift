@@ -204,6 +204,7 @@ struct InputTile: View {
         case .browser: return "globe"
         case .timer: return "timer"
         case .screen: return "macwindow"
+        case .replay: return "gobackward"
         }
     }
 }

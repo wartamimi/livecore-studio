@@ -47,6 +47,9 @@ Belum dilaporkan: T-10 (stream+rekam 10 menit), T-11 reconnect, T-12 cabut-colok
 Pengguna melaporkan "sejauh ini belum ada bug" setelah mencoba 0.2.0. Rincian per tes T-17..T-22 belum dilaporkan, jadi
 statusnya tetap Not tested per item.
 
+## Laporan pengguna build 0.9.0 (dev-build-31), 2026-10-27
+Pengguna menanggapi 0.9.0 dengan "Lanjutkan build selanjutnya" (fullscreen, bus audio, Tambah Media, T-bar — tanpa rincian per tes T-41..T-44).
+
 ## Laporan pengguna build 0.8.0 (dev-build-29), 2026-10-27
 Pengguna menanggapi 0.8.0 dengan "Lanjutkan fitur selanjutnya" (playlist video, auto play, transport — tanpa rincian per tes T-38..T-40).
 
