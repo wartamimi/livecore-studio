@@ -49,6 +49,13 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## K. Tes manual build 0.10.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-45 | Audio follow video | Dua video dengan suara; tombol AFV di kedua channel; CUT bolak-balik; mic: AFV › pilih input kamera | Hanya audio input yang tampil di Program terdengar; saat transisi keduanya terdengar; mic hanya terdengar saat kamera di Program; simpan & buka proyek mempertahankan AFV |
+| T-46 | Tangkap jendela Zoom | Input › Tangkap Jendela / Layar; beri izin Perekaman Layar; pilih jendela Zoom meeting, audio aktif | Jendela Zoom tampil sebagai input; suara peserta masuk channel mixer sendiri; suara LiveCore tidak ikut tertangkap; tutup Zoom → status "no signal" tanpa crash; "Coba Tangkap Lagi" menyambung kembali |
+| T-47 | Instant replay | Kontrol › Instant Replay › Buffer aktif; tunggu 15 dtk; "10 dtk terakhir"; pilih 50%; AUTO ke Replay | Input Replay di Preview menampilkan frame awal; masuk Program langsung berputar lambat tanpa patah; berhenti di frame terakhir; keluar Program kembali ke awal |
+
 ## J. Tes manual build 0.9.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

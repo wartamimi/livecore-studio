@@ -51,6 +51,10 @@ public final class ProductionEngine {
     public private(set) var streamers: [String: StreamingEngine] = [:]
     private var streamTerminal: [String: Bool] = [:]
     public let recorder = RecordingEngine()
+    /// Instant replay buffer and its input (nil while replay is off).
+    public let replay = ReplayRecorder()
+    public private(set) var replaySource: ReplaySource?
+    public var onReplayChange: (() -> Void)?
     /// Music inputs (audio-file playlists), each with its own mixer channel. Main thread.
     public private(set) var musicPlayers: [MusicInput] = []
     public var onMusicChange: (() -> Void)?
@@ -82,6 +86,7 @@ public final class ProductionEngine {
     private struct Outputs {
         var streamEncoder: H264Encoder?
         var recording = false
+        var replay = false
     }
     private let outputs = Locked(Outputs())
     private var aacEncoders: [AACEncoder] = []
@@ -185,6 +190,7 @@ public final class ProductionEngine {
             let outs = self.outputs.current
             outs.streamEncoder?.encode(program, pts: pts)
             if outs.recording { self.recorder.append(video: program, pts: pts) }
+            if outs.replay { self.replay.append(program, hostTime: pts.seconds) }
             let preview = result.preview
             let thumbs = result.thumbnails
             DispatchQueue.main.async {
@@ -383,6 +389,7 @@ public final class ProductionEngine {
             return st.sources.removeValue(forKey: id)
         }
         removed?.stop()
+        if let r = removed, r === replaySource { replayRemoved() }
         if removed is VideoFileSource || removed is ScreenCaptureSource {
             mixer.removeChannel(id: Self.fileChannelID(id))
             mixer.removeChannel(id: Self.screenChannelID(id))
@@ -533,6 +540,12 @@ public final class ProductionEngine {
         let visible = OnAir.visibleInputs(switcher: sw, layers: layers, overlays: overlays)
         onAirInputs = visible
         applyAFV()
+        // The replay input plays when it goes on air and returns to its start when it leaves.
+        if let r = replaySource {
+            let was = autoPlayOnAir.contains(r.id), now = visible.contains(r.id)
+            if now && !was && r.hasClip { r.play() }
+            if !now && was { r.cue() }
+        }
         for (id, src) in sources {
             guard let v = src as? VideoFileSource, v.autoPlay != .off, id != stingerID else { continue }
             let was = autoPlayOnAir.contains(id), now = visible.contains(id)
@@ -549,6 +562,44 @@ public final class ProductionEngine {
         autoPlayOnAir.remove(id)
         if mode != .off { v.pause() }
         applyAutoPlay()
+    }
+
+    // MARK: Instant replay
+
+    /// Turns the replay buffer on (adds the "Replay" input) or off (removes it, deletes the buffer).
+    public func setReplayEnabled(_ on: Bool) {
+        if on {
+            guard replaySource == nil else { return }
+            let src = ReplaySource(id: InputID("replay"))
+            src.onChange = { [weak self] in self?.onReplayChange?() }
+            replaySource = src
+            add(src)
+            replay.start(output: settings.output)
+            outputs.mutate { $0.replay = true }
+        } else if let src = replaySource {
+            removeInput(src.id)   // also stops the buffer
+        }
+        onReplayChange?()
+    }
+
+    private func replayRemoved() {
+        outputs.mutate { $0.replay = false }
+        replay.stop()
+        replaySource = nil
+        onReplayChange?()
+    }
+
+    /// Loads the last `seconds` of Program into the Replay input and puts it on Preview, ready
+    /// for CUT/AUTO (it starts playing when it goes on air). `completion(false)` if the buffer
+    /// is still empty.
+    public func replayLast(_ seconds: Double, completion: @escaping (Bool) -> Void = { _ in }) {
+        guard let src = replaySource else { return completion(false) }
+        replay.clip(lastSeconds: seconds) { [weak self] clip in
+            guard let self, let clip, self.replaySource === src else { return completion(false) }
+            src.load(clip)
+            if self.switcherState.program != src.id { self.setPreview(src.id) }
+            completion(true)
+        }
     }
 
     // MARK: Stinger
@@ -639,6 +690,8 @@ public final class ProductionEngine {
         if formatChanged {
             renderQueue.sync { compositor.configure(outputSize: new.output.size) }
             startRenderLoop()
+            // The replay buffer restarts at the new size (older replays are discarded).
+            if replaySource != nil { replay.stop(); replay.start(output: new.output) }
         }
         return []
     }

@@ -258,3 +258,11 @@
 "capture.retry" = "Retry Capture";
 "capture.permission" = "Cannot list windows. Allow LiveCore Studio in System Settings › Privacy & Security › Screen Recording, then reopen the app. (%@)";
 "capture.open_settings" = "Open Screen Recording settings";
+"replay.title" = "Instant Replay";
+"replay.buffer" = "Buffer";
+"replay.help" = "Keeps the last 30 seconds of Program on disk (video only) and adds the Replay input.";
+"replay.last" = "Last %ld s";
+"replay.speed" = "Speed";
+"replay.available" = "%ld s buffered";
+"replay.started" = "Replay buffer started; replays are available after a few seconds.";
+"replay.empty" = "Nothing buffered yet.";
