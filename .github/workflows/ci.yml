@@ -32,6 +32,13 @@ jobs:
         with:
           name: LiveCoreStudio-dmg
           path: build/LiveCoreStudio-0.1.0-unsigned.dmg
+      - name: Publish DMG as pre-release (main only)
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          TAG="build-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" build/LiveCoreStudio-0.1.0-unsigned.dmg \
+            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio M1 build ${GITHUB_RUN_NUMBER} (unsigned)" \
+            --notes "Automated CI build from ${GITHUB_SHA}. Unsigned and not notarized: right-click the app and choose Open the first time. Milestone 1 not yet verified on hardware; see docs/TEST_PLAN.md."
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
