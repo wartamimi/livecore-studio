@@ -101,3 +101,25 @@ final class PlaylistTests: XCTestCase {
         XCTAssertEqual(back.audio.music, doc.audio.music)
     }
 }
+
+final class VideoPlaylistProjectTests: XCTestCase {
+    func testPlaylistAndAutoPlayRoundTrip() throws {
+        var doc = ProjectDocument()
+        var pi = ProjectInput(id: InputID("v"), name: "Clips",
+                              source: .videoPlaylist(tracks: [ProjectMediaRef(path: "/a.mov"), ProjectMediaRef(path: "/b.mp4", relativePath: "b.mp4")], loop: false))
+        pi.autoPlay = "restartPause"
+        doc.inputs = [pi]
+        let back = try JSONDecoder().decode(ProjectDocument.self, from: JSONEncoder().encode(doc))
+        XCTAssertEqual(back, doc)
+    }
+
+    func testOldInputsHaveNoAutoPlay() throws {
+        let doc = ProjectDocument(inputs: [ProjectInput(id: InputID("v"), name: "Clip", source: .videoFile(path: "/a.mov", relativePath: nil, loop: true))])
+        var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(doc)) as! [String: Any]
+        var inputs = json["inputs"] as! [[String: Any]]
+        inputs[0].removeValue(forKey: "autoPlay")
+        json["inputs"] = inputs
+        let back = try JSONDecoder().decode(ProjectDocument.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertNil(back.inputs[0].autoPlay)
+    }
+}

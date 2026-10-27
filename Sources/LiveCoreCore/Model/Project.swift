@@ -83,6 +83,8 @@ public struct ProjectInput: Codable, Equatable, Sendable {
     /// Scene layers; layer 0 is the input itself.
     public var layers: [Layer]
     public var chromaKey: ChromaKey?
+    /// Video inputs: "off", "playPause" or "restartPause" (absent before 0.8.0 = off).
+    public var autoPlay: String?
 
     public init(id: InputID, name: String, source: ProjectSource, layers: [Layer] = [], chromaKey: ChromaKey? = nil) {
         self.id = id; self.name = name; self.source = source
@@ -126,6 +128,8 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case browser(ProjectBrowser)
     /// Clock / countdown / count-up generator (since 0.6.0).
     case timer(TimerConfig, ProjectColor?)
+    /// Several video clips played in order (since 0.8.0).
+    case videoPlaylist(tracks: [ProjectMediaRef], loop: Bool)
 }
 
 public struct ProjectBrowser: Codable, Equatable, Sendable {

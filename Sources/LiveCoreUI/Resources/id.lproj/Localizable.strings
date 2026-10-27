@@ -222,3 +222,15 @@
 "dock.controls" = "Kontrol";
 "dock.minimize" = "Kecilkan panel ini (klik bilahnya untuk membuka lagi)";
 "dock.restore" = "Buka %@";
+
+"playlist.add" = "Playlist video (beberapa klip)…";
+"playlist.next" = "Klip berikutnya";
+"playlist.previous" = "Klip sebelumnya";
+"playlist.clips" = "Daftar klip";
+"playlist.add_clips" = "Tambah klip…";
+"playlist.loop" = "Ulangi playlist";
+"video.loop" = "Ulangi";
+"autoplay.title" = "Auto play";
+"autoplay.off" = "Mati";
+"autoplay.playPause" = "Putar saat di Program, jeda saat keluar";
+"autoplay.restartPause" = "Mulai dari awal saat di Program, jeda saat keluar";

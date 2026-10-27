@@ -4,7 +4,9 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.7.0 — Milestone 3 berjalan.** 0.7.0 menambah kontrol MIDI dengan Learn, input musik (playlist file audio
+> **Status: 0.8.0 — Milestone 3 berjalan.** 0.8.0 menambah input playlist video, auto play saat masuk Program, dan
+> transport media (seekbar, play/pause, prev/next; media dimuat dalam keadaan jeda) — menunggu tes T-38..T-40.
+> 0.7.0 menambah kontrol MIDI dengan Learn, input musik (playlist file audio
 > ke mixer), dan panel dock yang bisa dikecilkan — dikompilasi & diuji unit, menunggu tes T-35..T-36. 0.6.0 (dilaporkan berfungsi) menambah browser source,
 > input jam / hitung mundur / stopwatch, dan snapshot Program ke PNG.
 > 0.5.0 (dilaporkan berfungsi) menambah transisi stinger dan aux bus A/B dengan output ke perangkat terpisah (mix-minus).

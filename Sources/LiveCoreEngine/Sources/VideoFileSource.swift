@@ -13,15 +13,29 @@ import LiveCoreCore
 /// a mixer channel (resampled to 48 kHz when needed) and then silences the player's own
 /// output, so file audio is heard only through the mixer (fader, mute, routing, meters).
 public final class VideoFileSource: NSObject, VideoSource {
+    /// What happens when the input goes on/off Program (vMix "auto play").
+    public enum AutoPlay: String, Codable, CaseIterable, Sendable {
+        case off            // play/pause only by hand
+        case playPause      // play when on Program, pause when it leaves
+        case restartPause   // like playPause, but start the clip (or playlist) from the beginning
+    }
+
     public let id: InputID
     public let kind: InputKind = .videoFile
     public var name: String
-    public let url: URL
+    /// Clips played in order (a single clip for a plain video input).
+    public private(set) var urls: [URL]
+    public private(set) var index = 0
+    /// The clip currently loaded.
+    public var url: URL { urls[min(index, urls.count - 1)] }
+    public var isPlaylist: Bool { urls.count > 1 }
     public private(set) var status: SourceStatus = .starting {
         didSet { if status != oldValue { let s = status; DispatchQueue.main.async { self.onStatusChange?(s) } } }
     }
     public var onStatusChange: ((SourceStatus) -> Void)?
+    /// Single clip: repeat it. Playlist: go back to the first clip after the last.
     public var loop = true
+    public var autoPlay: AutoPlay = .off
     /// Clip length in seconds once the file is ready (main thread).
     public private(set) var duration: Double?
     /// Called on the main thread once the file turns out to contain audio; must return the
@@ -38,9 +52,16 @@ public final class VideoFileSource: NSObject, VideoSource {
     private var endObserver: NSObjectProtocol?
     private var item: AVPlayerItem?
     private var tapContext: FileAudioTapContext?
+    private var loadToken = 0
+    private var started = false
+    private var wantsPlay = true
 
-    public init(id: InputID, url: URL) {
-        self.id = id; self.url = url; self.name = url.deletingPathExtension().lastPathComponent
+    public convenience init(id: InputID, url: URL) { self.init(id: id, urls: [url]) }
+
+    public init(id: InputID, urls: [URL]) {
+        precondition(!urls.isEmpty)
+        self.id = id; self.urls = urls
+        self.name = urls.count > 1 ? "Playlist" : urls[0].deletingPathExtension().lastPathComponent
         output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
             kCVPixelBufferIOSurfacePropertiesKey as String: [String: Any](),
@@ -60,42 +81,81 @@ public final class VideoFileSource: NSObject, VideoSource {
     }
 
     public func start() {
-        if item != nil { player.play(); return }
-        let asset = AVURLAsset(url: url)
+        if started { return }
+        started = true
+        // New media inputs load paused on their first frame; the operator (or auto play) starts them.
+        load(0, play: false)
+    }
+
+    /// Loads clip `i`. The audio track is looked up first so the tap is in place before the
+    /// first sample plays (file audio never reaches the speakers outside the mixer).
+    private func load(_ i: Int, play: Bool) {
+        guard urls.indices.contains(i) else { return }
+        index = i
+        wantsPlay = play
+        loadToken += 1
+        let token = loadToken
+        let asset = AVURLAsset(url: urls[i])
+        asset.loadTracks(withMediaType: .audio) { [weak self] tracks, _ in
+            DispatchQueue.main.async {
+                guard let self, token == self.loadToken else { return }
+                self.install(asset: asset, audioTrack: tracks?.first)
+            }
+        }
+    }
+
+    private func install(asset: AVURLAsset, audioTrack: AVAssetTrack?) {
+        if let old = item {
+            old.remove(output)
+            if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+        }
+        tapContext?.active.value = false
+        tapContext = nil
         let newItem = AVPlayerItem(asset: asset)
         newItem.add(output)
+        if let audioTrack { attachAudioTap(track: audioTrack, item: newItem) }
         item = newItem
+        duration = nil
         statusObservation = newItem.observe(\.status, options: [.initial, .new]) { [weak self] it, _ in
             switch it.status {
             case .readyToPlay:
                 // Duration first, so the input-list update triggered by `.live` already sees it.
                 let d = it.duration.seconds
                 DispatchQueue.main.async {
+                    guard it === self?.item else { return }
                     self?.duration = d.isFinite && d > 0 ? d : nil
                     self?.status = .live
+                    // Paused clips: a precise seek makes the video output deliver the poster frame.
+                    if let self, !self.isPlaying {
+                        self.player.seek(to: self.player.currentTime(), toleranceBefore: .zero, toleranceAfter: .zero)
+                    }
                 }
             case .failed: self?.status = .error(it.error?.localizedDescription ?? "cannot play file")
             default: break
             }
         }
         endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: newItem,
-                                                             queue: .main) { [weak self] _ in
-            guard let self, self.loop else { return }
-            self.player.seek(to: .zero)
-            self.player.play()
-        }
+                                                             queue: .main) { [weak self] _ in self?.clipEnded() }
         player.replaceCurrentItem(with: newItem)
-        player.play()
-        asset.loadTracks(withMediaType: .audio) { [weak self] tracks, _ in
-            guard let track = tracks?.first else { return }
-            DispatchQueue.main.async { self?.attachAudioTap(track: track, item: newItem) }
+        if wantsPlay { player.play() }
+        onClipChange?()
+    }
+
+    /// Called on the main thread when another clip of the playlist is loaded.
+    public var onClipChange: (() -> Void)?
+
+    private func clipEnded() {
+        if let n = PlaylistMath.next(index: index, count: urls.count, loop: loop, shuffle: false, random: { $0.lowerBound }) {
+            if n == index { player.seek(to: .zero); player.play() } else { load(n, play: true) }
         }
+        // Otherwise the last clip stays paused on its last frame.
     }
 
     private func attachAudioTap(track: AVAssetTrack, item: AVPlayerItem) {
-        guard tapContext == nil, item === self.item, let provider = audioChannelProvider else { return }
-        let channel = provider()
-        audioChannel = channel
+        let channel: MixerChannel
+        if let existing = audioChannel { channel = existing }
+        else if let provider = audioChannelProvider { channel = provider(); audioChannel = channel }
+        else { return }
         let ctx = FileAudioTapContext(channel: channel)
         guard let tap = FileAudioTapContext.makeTap(ctx) else {
             status = .error("Cannot attach audio tap; file audio unavailable")
@@ -113,12 +173,46 @@ public final class VideoFileSource: NSObject, VideoSource {
         player.pause()
         tapContext?.active.value = false
     }
-    public func play() { tapContext?.active.value = true; player.play() }
-    public func pause() { player.pause() }
-    public func restart() { tapContext?.active.value = true; player.seek(to: .zero); player.play() }
+    public func play() { wantsPlay = true; tapContext?.active.value = true; player.play() }
+    public func pause() { wantsPlay = false; player.pause() }
+    /// From the beginning: first clip of a playlist, or the start of a single clip.
+    public func restart() {
+        tapContext?.active.value = true
+        if index != 0 { load(0, play: true); return }
+        wantsPlay = true
+        player.seek(to: .zero); player.play()
+    }
     public var isPlaying: Bool { player.rate != 0 }
     /// Pauses on the first frame, ready to start instantly (stinger clips).
-    public func cue() { tapContext?.active.value = true; player.pause(); player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) }
+    public func cue() { wantsPlay = false; tapContext?.active.value = true; player.pause(); player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) }
+
+    // Playlist navigation (main thread). Keeps the current play/pause state.
+    public func nextClip() {
+        guard urls.count > 1 else { return }
+        load(PlaylistMath.next(index: index, count: urls.count, loop: true, shuffle: false, random: { $0.lowerBound }) ?? 0, play: isPlaying)
+    }
+    public func previousClip() {
+        guard urls.count > 1 else { player.seek(to: .zero); return }
+        load(PlaylistMath.previous(index: index, count: urls.count), play: isPlaying)
+    }
+    public func selectClip(_ i: Int) { load(i, play: isPlaying || wantsPlay) }
+    public func setURLs(_ new: [URL]) {
+        guard !new.isEmpty else { return }
+        urls = new
+        load(min(index, new.count - 1), play: isPlaying)
+    }
+
+    /// Jumps to `seconds` in the current clip (frame-accurate when paused, for scrubbing).
+    public func seek(to seconds: Double) {
+        let t = CMTime(seconds: max(seconds, 0), preferredTimescale: 600)
+        if isPlaying { player.seek(to: t) } else { player.seek(to: t, toleranceBefore: .zero, toleranceAfter: .zero) }
+    }
+
+    /// Seconds into the current clip.
+    public var position: Double {
+        let t = player.currentTime().seconds
+        return t.isFinite ? max(t, 0) : 0
+    }
 
     /// Most recent decoded frame without pulling a new one (safe from any thread).
     public func lastFrame() -> CVPixelBuffer? { slot.get() }

@@ -62,6 +62,7 @@ struct InputPanelView: View {
                 ForEach(model.videoDevices) { d in Button(d.name) { model.addCamera(d) } }
             }
             Button(L10n.t("inputs.video")) { model.addVideo() }
+            Button(L10n.t("playlist.add")) { model.addVideoPlaylist() }
             Button(L10n.t("inputs.image")) { model.addImage() }
             Button(L10n.t("inputs.title_generator")) { showTitleSheet = true }
             Button(L10n.t("browser.add")) { showBrowserSheet = true }
@@ -109,6 +110,23 @@ struct InputPanelView: View {
             Button("Play") { v.play() }
             Button("Pause") { v.pause() }
             Button("Restart") { v.restart() }
+            if v.isPlaylist {
+                Button(L10n.t("playlist.next")) { v.nextClip() }
+                Button(L10n.t("playlist.previous")) { v.previousClip() }
+                Menu(L10n.t("playlist.clips")) {
+                    ForEach(Array(v.urls.enumerated()), id: \.offset) { i, u in
+                        Button((i == v.index ? "▶ " : "") + u.deletingPathExtension().lastPathComponent) { v.selectClip(i) }
+                    }
+                }
+            }
+            Button(L10n.t("playlist.add_clips")) { model.addClips(to: info.id) }
+            Toggle(v.isPlaylist ? L10n.t("playlist.loop") : L10n.t("video.loop"),
+                   isOn: Binding(get: { v.loop }, set: { v.loop = $0; model.objectWillChange.send() }))
+            Menu(L10n.t("autoplay.title")) {
+                ForEach(VideoFileSource.AutoPlay.allCases, id: \.self) { m in
+                    Button((v.autoPlay == m ? "✓ " : "") + L10n.t("autoplay." + m.rawValue)) { model.setAutoPlay(m, for: info.id) }
+                }
+            }
         }
         Divider()
         Button(L10n.t("inputs.rename")) { renameText = info.name; renaming = info.id }
@@ -143,6 +161,7 @@ struct InputTile: View {
                 Spacer(minLength: 0)
                 Image(systemName: icon).font(.system(size: 10)).foregroundStyle(Theme.textDim)
             }
+            if info.kind == .videoFile, let v = model.videoFile(info.id) { MediaClock(video: v) }
             if !info.status.isHealthy, info.status != .starting {
                 Text(info.status.label).font(.system(size: 9)).foregroundStyle(Theme.warning).lineLimit(2)
             }
@@ -280,6 +299,42 @@ struct TimerSheet: View {
             if let id = editing, let t = model.timerSource(id) {
                 config = t.config
                 minutes = Int(t.config.durationSeconds) / 60; seconds = Int(t.config.durationSeconds) % 60
+            }
+        }
+    }
+}
+
+/// Transport of a video input: seekbar (drag to scrub), position / length, previous, play/pause,
+/// next (clips of a playlist; for a single clip previous goes back to the start).
+struct MediaClock: View {
+    let video: VideoFileSource
+    @State private var scrub: Double?
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+            VStack(spacing: 2) {
+                if let d = video.duration {
+                    Slider(value: Binding(get: { scrub ?? min(video.position, d) },
+                                          set: { scrub = $0; video.seek(to: $0) }),
+                           in: 0...d, onEditingChanged: { editing in if !editing { scrub = nil } })
+                        .controlSize(.mini)
+                }
+                HStack(spacing: 6) {
+                    Button { video.previousClip() } label: { Image(systemName: "backward.end.fill") }
+                    Button { video.isPlaying ? video.pause() : video.play() } label: {
+                        Image(systemName: video.isPlaying ? "pause.fill" : "play.fill")
+                    }
+                    Button { video.nextClip() } label: { Image(systemName: "forward.end.fill") }
+                        .disabled(!video.isPlaylist)
+                    Text("\(TimerMath.duration(scrub ?? video.position)) / \(video.duration.map { TimerMath.duration($0) } ?? "--:--")")
+                    if video.isPlaylist { Text("\(video.index + 1)/\(video.urls.count)") }
+                    if video.autoPlay != .off { Text("AUTO").font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.accent) }
+                    Spacer(minLength: 0)
+                }
+                .buttonStyle(.borderless)
+                .font(.system(size: 9).monospacedDigit())
+                .foregroundStyle(Theme.textDim)
+                .lineLimit(1)
             }
         }
     }
