@@ -7,6 +7,23 @@ cd "$(dirname "$0")/.."
 CONFIG="${1:-release}"
 XC_CONFIG=$([ "$CONFIG" = "release" ] && echo Release || echo Debug)
 
+# Full Xcode is required (xcodebuild, macOS SDK with Metal/AVFoundation, XCTest).
+# Command Line Tools alone are not enough.
+DEV_DIR="$(xcode-select -p 2>/dev/null || true)"
+if ! xcodebuild -version >/dev/null 2>&1; then
+  echo "ERROR: full Xcode is not active (current developer dir: ${DEV_DIR:-none})."
+  if [ -d /Applications/Xcode.app ]; then
+    echo "Xcode is installed. Activate it with:"
+    echo "  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
+    echo "  sudo xcodebuild -license accept && xcodebuild -runFirstLaunch"
+  else
+    echo "Install Xcode 15 or newer from the Mac App Store (or developer.apple.com/download), open it once, then run:"
+    echo "  sudo xcode-select -s /Applications/Xcode.app/Contents/Developer"
+    echo "  sudo xcodebuild -license accept && xcodebuild -runFirstLaunch"
+  fi
+  exit 1
+fi
+
 echo "== Environment"
 sw_vers; uname -m; xcodebuild -version; swift --version
 
