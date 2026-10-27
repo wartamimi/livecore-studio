@@ -186,6 +186,8 @@ public struct ProjectAudioChannel: Codable, Equatable, Sendable {
     public var gateThresholdDB: Float = -50
     /// Added in 0.3.0 (optional so 0.2.0 projects still decode).
     public var eq: ProjectEQ?
+    /// Audio follow video: the input this channel follows (added in 0.10.0).
+    public var afvInput: InputID?
     public init(deviceUniqueID: String? = nil, inputID: InputID? = nil, name: String) {
         self.deviceUniqueID = deviceUniqueID; self.inputID = inputID; self.name = name
     }

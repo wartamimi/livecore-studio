@@ -243,3 +243,6 @@
 "midi.fullscreen" = "Fullscreen output";
 "media.add" = "Add Media (video or audio)…";
 "media.add_playlist" = "Add Media Playlist…";
+"afv.help" = "Audio follow video: hear this channel only while its input is on Program (or in a transition, scene layer or on-air overlay).";
+"afv.off" = "AFV off (always heard)";
+"afv.following" = "Audio follows video: %@";
