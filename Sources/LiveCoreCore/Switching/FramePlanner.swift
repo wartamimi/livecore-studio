@@ -7,8 +7,11 @@ public struct DrawCommand: Equatable, Sendable {
     public var opacity: Double
     /// Enabled chroma key of the source, nil when the source is drawn unkeyed.
     public var key: ChromaKey?
-    public init(source: InputID, rect: NormRect, scaleMode: ScaleMode, opacity: Double, key: ChromaKey? = nil) {
+    /// The source has straight (non-premultiplied) alpha; the compositor premultiplies it.
+    public var premultiply: Bool
+    public init(source: InputID, rect: NormRect, scaleMode: ScaleMode, opacity: Double, key: ChromaKey? = nil, premultiply: Bool = false) {
         self.source = source; self.rect = rect; self.scaleMode = scaleMode; self.opacity = opacity; self.key = key
+        self.premultiply = premultiply
     }
 }
 
@@ -26,6 +29,8 @@ public struct FramePlan: Equatable, Sendable {
     public var preview: [DrawCommand]
     public var programInput: InputID?
     public var previewInput: InputID?
+    /// Stinger clip drawn full screen on top of program and overlays while a stinger runs.
+    public var stinger: DrawCommand? = nil
 }
 
 public enum FramePlanner {
@@ -52,7 +57,15 @@ public enum FramePlanner {
 
         var plan = FramePlan(program: [], transition: nil, overlays: [], preview: [],
                              programInput: snapshot.program, previewInput: snapshot.preview)
-        if let t = snapshot.transition {
+        if let t = snapshot.transition, t.kind == .stinger, let s = t.stinger {
+            // Hard cut at the cut point, hidden behind the clip.
+            let past = t.progress(at: now) >= s.cutFraction
+            plan.program = composition(past ? t.to : t.from)
+            plan.programInput = past ? t.to : t.from
+            if layersFor(s.source) != nil {
+                plan.stinger = DrawCommand(source: s.source, rect: .full, scaleMode: .fit, opacity: 1)
+            }
+        } else if let t = snapshot.transition {
             plan.program = composition(t.from)
             plan.transition = TransitionPlan(kind: t.kind, progress: t.progress(at: now), incoming: composition(t.to))
             plan.programInput = t.from

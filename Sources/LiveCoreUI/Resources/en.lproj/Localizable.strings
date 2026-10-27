@@ -161,3 +161,9 @@
 "stream.dest_no_url" = "%@: no server URL, skipped.";
 "stream.dest_no_key" = "%@: no stream key saved, skipped.";
 "stream.no_destination" = "No destination is ready. Enable one and enter its server URL and stream key in Settings › Stream.";
+
+"stinger.none" = "No stinger clip";
+"stinger.cut_point" = "Cut point";
+"stinger.add_clip" = "Add the stinger as a video file input first (ProRes 4444 or HEVC with alpha).";
+"stinger.choose" = "Choose the stinger clip.";
+"stinger.help" = "AUTO plays the clip over Program and cuts to Preview at the cut point. The clip's audio goes through its mixer channel. The T-bar uses a dissolve for stingers.";

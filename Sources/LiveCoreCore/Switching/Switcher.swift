@@ -56,12 +56,19 @@ public final class Switcher {
     }
 
     /// Starts an automatic transition of `duration` seconds. `.cut` or duration <= 0 behaves like `cut()`.
+    /// A `.stinger` transition runs for the clip's length and needs `stinger`; without it, it cuts.
     @discardableResult
-    public func auto(kind: TransitionKind, duration: Double, now: Double) -> [SwitcherEvent] {
+    public func auto(kind: TransitionKind, duration: Double, now: Double, stinger: StingerParams? = nil) -> [SwitcherEvent] {
         if state.transition != nil { return [] } // AUTO while running is ignored (press CUT to finish)
+        var duration = duration
+        if kind == .stinger {
+            guard let stinger else { return cut() }
+            duration = stinger.clipDuration
+        }
         if kind == .cut || duration <= 0 { return cut() }
         state.transition = ActiveTransition(kind: kind, from: state.program, to: state.preview,
-                                            startTime: now, duration: duration, manualPosition: nil)
+                                            startTime: now, duration: duration, manualPosition: nil,
+                                            stinger: kind == .stinger ? stinger : nil)
         return [.transitionStarted(kind)]
     }
 
@@ -72,7 +79,8 @@ public final class Switcher {
         var events: [SwitcherEvent] = []
         if state.transition == nil {
             guard p > 0 else { return [] }
-            let k = kind == .cut ? .dissolve : kind
+            // The T-bar cannot scrub a stinger clip: it dissolves instead.
+            let k: TransitionKind = kind == .cut || kind == .stinger ? .dissolve : kind
             state.transition = ActiveTransition(kind: k, from: state.program, to: state.preview,
                                                 startTime: now, duration: 0, manualPosition: p)
             events.append(.transitionStarted(k))

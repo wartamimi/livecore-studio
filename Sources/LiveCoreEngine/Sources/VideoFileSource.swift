@@ -22,6 +22,8 @@ public final class VideoFileSource: NSObject, VideoSource {
     }
     public var onStatusChange: ((SourceStatus) -> Void)?
     public var loop = true
+    /// Clip length in seconds once the file is ready (main thread).
+    public private(set) var duration: Double?
     /// Called on the main thread once the file turns out to contain audio; must return the
     /// mixer channel the audio is delivered to.
     public var audioChannelProvider: (() -> MixerChannel)?
@@ -65,7 +67,13 @@ public final class VideoFileSource: NSObject, VideoSource {
         item = newItem
         statusObservation = newItem.observe(\.status, options: [.initial, .new]) { [weak self] it, _ in
             switch it.status {
-            case .readyToPlay: self?.status = .live
+            case .readyToPlay:
+                // Duration first, so the input-list update triggered by `.live` already sees it.
+                let d = it.duration.seconds
+                DispatchQueue.main.async {
+                    self?.duration = d.isFinite && d > 0 ? d : nil
+                    self?.status = .live
+                }
             case .failed: self?.status = .error(it.error?.localizedDescription ?? "cannot play file")
             default: break
             }
@@ -109,6 +117,8 @@ public final class VideoFileSource: NSObject, VideoSource {
     public func pause() { player.pause() }
     public func restart() { tapContext?.active.value = true; player.seek(to: .zero); player.play() }
     public var isPlaying: Bool { player.rate != 0 }
+    /// Pauses on the first frame, ready to start instantly (stinger clips).
+    public func cue() { tapContext?.active.value = true; player.pause(); player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) }
 
     /// Most recent decoded frame without pulling a new one (safe from any thread).
     public func lastFrame() -> CVPixelBuffer? { slot.get() }

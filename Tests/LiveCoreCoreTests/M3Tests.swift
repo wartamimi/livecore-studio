@@ -54,7 +54,7 @@ final class TransitionMathTests: XCTestCase {
     }
 
     func testRawValuesAreStableForTheShader() {
-        XCTAssertEqual(TransitionKind.allCases.map(\.rawValue), Array(0...11))
+        XCTAssertEqual(TransitionKind.allCases.map(\.rawValue), Array(0...12))
     }
 }
 

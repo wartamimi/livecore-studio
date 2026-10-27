@@ -24,6 +24,14 @@ enum ShaderSource {
         return tex.sample(s, in.uv) * opacity;
     }
 
+    // Straight (non-premultiplied) alpha source, e.g. a stinger clip: premultiply, then "over".
+    fragment float4 straight_fragment(VOut in [[stage_in]], texture2d<float> tex [[texture(0)]],
+                                      constant float &opacity [[buffer(0)]]) {
+        constexpr sampler s(address::clamp_to_edge, filter::linear);
+        float4 c = tex.sample(s, in.uv);
+        return float4(c.rgb * c.a, c.a) * opacity;
+    }
+
     // Chroma key (see LiveCoreCore.ChromaKey for the reference maths and parameter ranges).
     struct KeyParams { float opacity; float similarity; float smoothness; float spill; float2 keyChroma; float2 pad; };
 

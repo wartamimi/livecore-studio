@@ -14,6 +14,9 @@ public enum TransitionKind: Int, Codable, Sendable, CaseIterable {
     case slideLeft = 9    // B slides in from the right over a still A
     case slideRight = 10  // B slides in from the left over a still A
     case iris = 11        // B revealed by a growing circle from the centre
+    /// A video clip (normally with alpha) plays over the program; A cuts to B at the clip's cut
+    /// point, hidden behind the clip. Not a shader transition: see `FramePlanner` / `StingerParams`.
+    case stinger = 12
 
     public var displayName: String {
         switch self {
@@ -29,6 +32,7 @@ public enum TransitionKind: Int, Codable, Sendable, CaseIterable {
         case .slideLeft: return "Slide ←"
         case .slideRight: return "Slide →"
         case .iris: return "Iris"
+        case .stinger: return "Stinger"
         }
     }
 }
@@ -63,6 +67,7 @@ public enum TransitionMath {
         }
         switch kind {
         case .cut: return t < 1 ? .a(u: u, v: v) : .b(u: u, v: v)
+        case .stinger: return t < 0.5 ? .a(u: u, v: v) : .b(u: u, v: v)   // real cut point: StingerParams
         case .dissolve: return t <= 0 ? .a(u: u, v: v) : (t >= 1 ? .b(u: u, v: v) : .mix(weightB: t))
         case .fadeToBlack:
             if t == 0.5 { return .black }
@@ -96,6 +101,8 @@ public struct ActiveTransition: Equatable, Sendable {
     public var duration: Double
     /// Non-nil while the operator drives the transition manually (T-bar).
     public var manualPosition: Double?
+    /// Set for `.stinger` transitions.
+    public var stinger: StingerParams? = nil
 
     public func progress(at now: Double) -> Double {
         if let manual = manualPosition { return min(max(manual, 0), 1) }
