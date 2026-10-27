@@ -8,6 +8,7 @@
 | A-03 | E2E FLV writer → ffprobe | (bagian dari A-02) |
 | A-04 | Kegagalan koneksi: server tidak ada, server memutus di tengah stream; stream key tidak bocor di log | (bagian dari A-02) |
 | A-06 | Kompilasi shader Metal offline (sintaks/tipe semua fungsi shader, termasuk `key_fragment`) | `scripts/check_shaders.sh` (Mac) |
+| A-07 | Render Lottie offscreen (fixture: kotak merah kiri-atas, kotak biru kanan-bawah mulai 1 s): terlihat, orientasi benar, beranimasi | `swift run livecore-lottie-check` (Mac, di CI) |
 | A-05 | Build app + Universal binary + Info.plist + codesign verify | `scripts/build_macos.sh release` (Mac) |
 
 ## B. Tes manual di Mac (wajib sebelum M1 dinyatakan selesai)
@@ -48,6 +49,14 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21 | Simpan & buka proyek | Susun 4+ input, layer PiP, overlay, chroma key, setelan mixer; File › Save Project; quit; buka lagi › File › Open Project | Semua input, layer, overlay, key, fader/mute/gate kembali; stream key tidak ada di file `.livecore` |
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
+
+## N. Tes manual build 0.14.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-57 | Lottie .json tampil | Tambah Input › Lottie… › file .json (dan .lottie) yang di 0.13.x tidak tampil; lihat tile, Preview, Program | Animasi terlihat utuh (tidak terpotong), tidak terbalik, bergerak, latar transparan |
+| T-58 | Tutup source dengan "x" | Arahkan kursor ke tile; klik "x"; pilih Batal, lalu ulangi dan pilih Tutup | Batal: tidak ada perubahan. Tutup: source hilang dari daftar, scene dan overlay; app tidak crash bila source sedang di Program |
+| T-59 | Kunci source | Klik gembok di tile (jadi kuning, tertutup); coba "x", klik kanan › Ganti Nama / Edit Scene / Hapus; simpan proyek, buka lagi; gembok di header panel Input (kunci/buka semua) | Saat terkunci: "x" tidak muncul, menu edit nonaktif; Preview/CUT tetap bisa. Kunci tersimpan di proyek |
+| T-60 | Kunci & konfirmasi stream/rekam | Klik gembok di samping Mulai Streaming dan Rekam; coba tombol, menu Production, shortcut ⌘; buka gembok lalu Stop; centang "Rekam otomatis saat streaming" lalu mulai/stop stream | Saat terkunci tidak ada yang mulai/berhenti (muncul pesan). Stop meminta konfirmasi. Rekaman ikut mulai/berhenti bersama stream |
 
 ## M. Tes manual build 0.13.0
 | ID | Tes | Langkah | Kriteria lulus |

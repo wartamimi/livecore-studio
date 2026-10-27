@@ -31,8 +31,8 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Overlay 4 kanal dengan fade | Implemented | L + M | |
 | Overlay ke Preview (klik, oranye) / ke Program (klik dua jari / kanan, hijau) | Implemented (0.13.0), belum dites | L (planner + take, unit test) + kompilasi CI | Overlay di Preview ikut ke Program saat CUT/AUTO/T-bar. MIDI dan shortcut overlay tetap langsung ke Program. Belum dites (T-55) |
 | Gaya layer: crop 4 sisi, sudut bulat, elips/lingkaran, border + warna | Implemented (0.13.0), belum dites | L (geometri crop/mask, 5 unit test) + kompilasi shader CI | Di editor scene › Gaya. Crop juga berlaku untuk layer chroma key; sudut/elips/border tidak (dilewati bila chroma key aktif). Belum dites (T-54) |
-| Bentuk (kotak, kotak bulat, lingkaran) di editor scene | Implemented (0.13.0), belum dites | kompilasi CI | Dibuat sebagai input warna baru (muncul juga di daftar input) dengan gaya bentuk; warnanya diubah lewat input itu |
-| Input Lottie (.json / .lottie) | Implemented (0.13.0), belum dites | L (proyek) + kompilasi CI dengan Lottie 4.6.1 | Transparan; Play/Pause/Restart, Loop, Auto play seperti video; tersimpan di proyek. Dirender di CPU (thread utama) maks. 30 fps. Belum dites (T-56) |
+| Bentuk (kotak, kotak bulat, lingkaran) di editor scene | Dihapus (0.14.0) | — | Atas permintaan pengguna. Gaya layer (crop, sudut bulat, elips, border) tetap ada |
+| Input Lottie (.json / .lottie) | Implemented (0.13.0), diperbaiki 0.14.0 | L (proyek) + render piksel di CI macOS (`livecore-lottie-check`) + M | 0.13.x tidak menampilkan apa pun: layer komposisi tidak diposisikan dan orientasinya salah. Transparan; Play/Pause/Restart, Loop, Auto play |
 | Picture-in-Picture (layer pada input / overlay preset PiP) | Implemented | L + M | Preset posisi + editor scene (drag, resize). 0.13.0: tombol "Tambah Layer" diperbaiki (dulu menu tidak terbuka) |
 | Scene composition / editor layer visual | Implemented (0.3.0) | L (geometri) + M | Seret untuk pindah, sudut untuk resize (kunci rasio), snap ke tengah/safe area, urutan, opasitas, skala, preset |
 | Scaling fit/fill/stretch & aspect ratio | Implemented | L + M | `LayoutMath` teruji |
@@ -45,6 +45,15 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Jam / hitung mundur / stopwatch | Implemented (0.6.0) | L (`TimerMath`, 5 unit test) + kompilasi CI | Input generator, keterangan opsional, merah saat hitung mundur habis; kontrol lewat klik kanan. Belum dites (T-33) |
 | Transisi stinger (klip video, idealnya dengan alpha) | Implemented (0.5.0) | L (`Switcher`/`FramePlanner`, 6 unit test) + kompilasi CI | Klip = input file video; titik potong diatur; durasi = panjang klip; audio klip lewat mixer. T-bar memakai dissolve. Belum dites di Mac (T-30) |
 | Transisi custom (shader pengguna) | Implemented (0.12.0), belum dites | L (validasi, pembungkus, ID file, 5 unit test) + kompilasi offline 6 contoh bawaan & template di CI Mac | Satu fungsi Metal `transition(uv, progress, ratio, from, to, s)` per file `.metal`; 6 contoh bawaan (Wipe Diagonal, Clock Wipe, Doors Open, Blinds, Zoom Dissolve, Pixelate); Baru/Impor/Muat Ulang/Folder di panel transisi; dikompilasi saat dipilih, error kompilasi ditampilkan dan AUTO/T-bar memakai Dissolve sampai shader berhasil. Belum dites (T-52, T-53) |
+
+## Proteksi operator (0.14.0)
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Tutup source dengan tombol "x" (dengan konfirmasi) | Implemented (0.14.0), belum dites | kompilasi CI | Muncul saat kursor di atas tile; juga menu klik kanan › Hapus |
+| Kunci (gembok) per source + kunci/buka semua | Implemented (0.14.0), belum dites | L (model proyek) + kompilasi CI | Source terkunci tidak bisa ditutup, diganti nama, atau diedit (scene, key, judul, browser, timer, kontrol putar). Preview/CUT tetap bisa. Disimpan di proyek |
+| Kunci streaming dan kunci rekaman | Implemented (0.14.0), belum dites | kompilasi CI | Saat terkunci, mulai/stop tidak berfungsi dari tombol, menu, shortcut, maupun MIDI. Tidak disimpan (kembali terbuka saat app dibuka ulang) |
+| Konfirmasi sebelum Stop Streaming / Stop Rekam | Implemented (0.14.0), belum dites | kompilasi CI | Berlaku untuk tombol, menu, shortcut dan MIDI; quit tetap memakai konfirmasi quit yang sudah ada |
+| Rekam otomatis saat streaming | Implemented (0.14.0), belum dites | kompilasi CI | Opsi di panel Rekam; rekaman yang dimulai otomatis ikut berhenti saat stream dihentikan |
 
 ## Audio
 | Fitur | Status | Verifikasi | Catatan |
