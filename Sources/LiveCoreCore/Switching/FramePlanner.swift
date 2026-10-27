@@ -25,6 +25,13 @@ public struct TransitionPlan: Equatable, Sendable {
     public var incoming: [DrawCommand]
 }
 
+/// One flattened input (Layer.flatten): its layers drawn into one full-size transparent image,
+/// which then stands in for the input's own picture for the rest of the frame.
+public struct FlattenPass: Equatable, Sendable {
+    public var input: InputID
+    public var layers: [DrawCommand]
+}
+
 public struct FramePlan: Equatable, Sendable {
     public var program: [DrawCommand]          // empty = black
     public var transition: TransitionPlan?
@@ -43,6 +50,21 @@ public struct FramePlan: Equatable, Sendable {
     public var extra: [InputID: [DrawCommand]] = [:]
     /// Preview at full output size, for an extra output that shows Preview (nil when none does).
     public var fullPreview: [DrawCommand]? = nil
+    /// Flattened inputs used this frame, in drawing order (an input before those that contain it).
+    public var flatten: [FlattenPass] = []
+
+    /// Every list of draw commands in the plan (to find the sources a frame needs).
+    public var allCommandLists: [[DrawCommand]] {
+        var lists: [[DrawCommand]] = [program, overlays, preview]
+        lists.append(transition?.incoming ?? [])
+        lists.append(detail ?? [])
+        lists.append(fullPreview ?? [])
+        lists.append(contentsOf: extra.values)
+        lists.append(contentsOf: thumbnails.values)
+        lists.append(contentsOf: flatten.map(\.layers))
+        if let stinger { lists.append([stinger]) }
+        return lists
+    }
 }
 
 public enum FramePlanner {
@@ -59,18 +81,32 @@ public enum FramePlanner {
                             detailInput: InputID? = nil,
                             extraInputs: [InputID] = [],
                             fullPreview: Bool = false) -> FramePlan {
-        func key(_ id: InputID) -> ChromaKey? {
+        /// Flattened inputs draw as their one pre-composed picture (see `FlattenPass`).
+        func isFlat(_ id: InputID) -> Bool {
+            guard let l = layersFor(id), l.count > 1 else { return false }
+            return l.first?.flatten == true
+        }
+        func rawKey(_ id: InputID) -> ChromaKey? {
             guard let k = keyFor(id), k.enabled else { return nil }
             return k.clamped
         }
-        func composition(_ id: InputID?) -> [DrawCommand] {
-            guard let id, let layers = layersFor(id) else { return [] }
+        /// A flattened input is already keyed inside its own image.
+        func key(_ id: InputID) -> ChromaKey? { isFlat(id) ? nil : rawKey(id) }
+        /// The input's visible layers, back to front.
+        func layered(_ id: InputID) -> [DrawCommand] {
+            guard let layers = layersFor(id) else { return [] }
             return layers.compactMap { l in
                 // Guard against a scene layer that points at a removed input.
-                guard l.source == id || layersFor(l.source) != nil else { return nil }
-                return DrawCommand(source: l.source, rect: l.rect, scaleMode: l.scaleMode, opacity: l.opacity, key: key(l.source),
+                guard !l.isHidden, l.source == id || layersFor(l.source) != nil else { return nil }
+                return DrawCommand(source: l.source, rect: l.rect, scaleMode: l.scaleMode, opacity: l.opacity,
+                                   key: l.source == id ? rawKey(id) : key(l.source),
                                    style: l.style?.clamped)
             }
+        }
+        func composition(_ id: InputID?) -> [DrawCommand] {
+            guard let id, layersFor(id) != nil else { return [] }
+            if isFlat(id) { return [DrawCommand(source: id, rect: .full, scaleMode: .stretch, opacity: 1)] }
+            return layered(id)
         }
 
         var plan = FramePlan(program: [], transition: nil, overlays: [], preview: [],
@@ -116,6 +152,19 @@ public enum FramePlanner {
         if let d = detailInput, layersFor(d) != nil { plan.detail = composition(d) }
         for id in extraInputs where layersFor(id) != nil { plan.extra[id] = composition(id) }
         if fullPreview { plan.fullPreview = plan.preview }
+
+        // Flatten passes for every flattened input this frame draws, contained inputs first.
+        var done = Set<InputID>(), visiting = Set<InputID>()
+        func addPass(_ id: InputID) {
+            guard isFlat(id), !done.contains(id), !visiting.contains(id) else { return }   // cycles: drawn once
+            visiting.insert(id)
+            let layers = layered(id)
+            for c in layers where c.source != id { addPass(c.source) }
+            visiting.remove(id)
+            done.insert(id)
+            plan.flatten.append(FlattenPass(input: id, layers: layers))
+        }
+        for list in plan.allCommandLists { for c in list { addPass(c.source) } }
         return plan
     }
 }

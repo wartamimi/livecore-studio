@@ -34,8 +34,10 @@ public final class AppModel: ObservableObject {
     public let programFeed = FrameFeed()
     public let previewFeed = FrameFeed()
     public let programOutputFeed = FrameFeed()   // external-display window
-    /// vMix-style fullscreen Program output on a chosen display.
-    public private(set) lazy var fullscreen = FullscreenOutput(feed: programOutputFeed)
+    /// Layer Designer › saved layouts.
+    @Published public internal(set) var layoutTemplates: [LayoutTemplate] = AppModel.loadLayoutTemplates()
+    /// Outputs the top-bar FULLSCREEN button opens on their displays (Output 1 by default).
+    @Published public internal(set) var fullscreenOutputs: Set<Int> = [1]
     public private(set) var thumbnailFeeds: [InputID: FrameFeed] = [:]
     /// The four extra outputs: one feed per output window / full-screen display.
     public let outputFeeds: [Int: FrameFeed] = Dictionary(uniqueKeysWithValues: (1...OutputRouting.count).map { ($0, FrameFeed()) })
@@ -99,7 +101,9 @@ public final class AppModel: ObservableObject {
            let s = try? JSONDecoder().decode(ProductionSettings.self, from: data) {
             settings = s
         }
-        transitionKind = settings.transition
+        // Every launch starts on Dissolve (a project file can still bring its own transition).
+        settings.transition = .dissolve
+        transitionKind = .dissolve
         transitionDuration = settings.transitionDuration
         customTransitionID = settings.customTransition
         customTransitions = CustomTransitionLibrary.entries()
@@ -639,7 +643,7 @@ public final class AppModel: ObservableObject {
         case .streamToggle: requestToggleStream()
         case .recordToggle: requestToggleRecord()
         case .snapshot: saveSnapshot()
-        case .fullscreenToggle: fullscreen.toggle()
+        case .fullscreenToggle: toggleFullscreen()
         case let .replay(sec): replayLast(Double(sec))
         case let .preview(n): previewNumber(n)
         case let .cutDirect(n): if n >= 1, n <= inputs.count { cutDirect(inputs[n - 1].id) }

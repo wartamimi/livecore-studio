@@ -51,6 +51,15 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## Y. Tes manual build 0.25.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-96 | Layer Designer: geser, ukuran, snapping, crop | Buat Scene dengan 2 kamera; taruh di Preview; klik LAYER; tarik layer ke tengah dan ke tepi layer lain; tarik sudut dan sisi; mode Crop: tarik tepi kiri, lalu Shift + tepi atas | Kotak mengikuti mouse; garis bantu biru muncul dan layer menempel; Preview menampilkan hasilnya langsung; crop memotong tanpa menggeser gambar; Shift memotong dua sisi sama besar |
+| T-97 | Bingkai, sudut, hide/lock, template | Tombol bingkai: lebar, warna, sudut; ikon mata dan gembok; Simpan tata letak sebagai template; buka Scene lain dan terapkan | Bingkai/sudut tampil di Preview & Program; layer tersembunyi hilang dari gambar; layer terkunci tidak bisa digeser; template menerapkan posisi & gaya |
+| T-98 | Flatten Layers | Scene A (2 layer) dengan Flatten; jadikan Scene A layer PiP di input B (Layer Designer di B) beri crop & bingkai; juga pakai Scene A sebagai overlay | Seluruh isi Scene A ikut terpotong/berbingkai sebagai satu gambar; tanpa Flatten hanya kanvas kosongnya yang tampil |
+| T-99 | FULLSCREEN | Sambungkan layar kedua (dan ketiga bila ada); ⚙ FULLSCREEN: Output 1 = Program di layar 2, Output 2 = satu kamera di layar 3, centang keduanya; tekan FULLSCREEN, lalu tekan lagi | Kedua layar menampilkan gambarnya penuh tanpa bingkai; tombol menyala merah; tekan lagi menutup semuanya; layar utama tetap bisa dipakai |
+| T-100 | Tata letak kecil | Buka app baru tanpa input musik/video; tambah input video; lihat tombol FOTO; lihat jenis transisi | Dock Playlist baru muncul setelah input video/musik ditambahkan; FOTO sebesar tombol RECORD; transisi = Dissolve |
+
 ## X. Tes manual build 0.24.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

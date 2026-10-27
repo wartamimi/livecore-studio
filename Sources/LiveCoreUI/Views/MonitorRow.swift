@@ -6,11 +6,14 @@ import LiveCoreCore
 struct MonitorRow: View {
     @EnvironmentObject var model: AppModel
     @AppStorage(RecordReminderMode.storageKey) private var reminder = RecordReminderMode.always.rawValue
+    @StateObject private var designer = LayerDesignerState()
 
     var body: some View {
         HStack(spacing: 6) {
             MonitorView(title: L10n.t("monitor.preview"), color: Theme.preview, feed: model.previewFeed,
-                        inputName: name(model.switcher.preview), live: false)
+                        inputName: name(model.switcher.preview), live: false, designer: designer)
+                .onChange(of: model.switcher.preview) { id in if designer.active { designer.load(model, input: id) } }
+                .onChange(of: designer.active) { on in if on { designer.load(model, input: model.switcher.preview) } }
             TransitionControls().frame(width: 170)
             MonitorView(title: L10n.t("monitor.program"), color: Theme.program, feed: model.programFeed,
                         inputName: name(model.switcher.transition?.to ?? model.switcher.program),
@@ -36,6 +39,8 @@ struct MonitorView: View {
     var notRecording = false
     /// Program only: camera button under the picture, at the right, that saves a PNG.
     var snapshot: (() -> Void)? = nil
+    /// Preview only: the Layer Designer (button in the header, tools under the picture).
+    var designer: LayerDesignerState? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -43,6 +48,7 @@ struct MonitorView: View {
                 Text(title).font(.system(size: 11, weight: .heavy)).foregroundStyle(color)
                 Text(inputName).font(.system(size: 11)).foregroundStyle(Theme.textDim).lineLimit(1)
                 Spacer()
+                if let designer { DesignerToggle(state: designer) }
                 if live {
                     Text("ON AIR").font(.system(size: 10, weight: .heavy))
                         .padding(.horizontal, 6).padding(.vertical, 1)
@@ -54,14 +60,18 @@ struct MonitorView: View {
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .overlay(Rectangle().stroke(color, lineWidth: 2))
                 .overlay(alignment: .top) { if notRecording { NotRecordingBadge().padding(.top, 8) } }
+                .overlay { if let designer { DesignerCanvasIfActive(state: designer) } }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if let designer { DesignerBarIfActive(state: designer) }
             if let snapshot {
                 HStack {
                     Spacer()
+                    // Same size and style as RECORD / STREAM / FULLSCREEN.
                     Button(action: snapshot) {
-                        Label(L10n.t("snapshot.button"), systemImage: "camera").font(.system(size: 10, weight: .semibold))
+                        Label(L10n.t("snapshot.button_big"), systemImage: "camera.fill")
                     }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(StudioButtonStyle(color: Theme.accent))
+                    .frame(width: StudioButtonStyle.mainWidth)
                     .help(L10n.t("snapshot.help"))
                 }
                 .padding(.top, 3).padding(.horizontal, 4)
@@ -70,6 +80,34 @@ struct MonitorView: View {
         .padding(4)
         .panel()
     }
+}
+
+/// Header button of the Preview monitor that opens / closes the Layer Designer.
+private struct DesignerToggle: View {
+    @EnvironmentObject var model: AppModel
+    @ObservedObject var state: LayerDesignerState
+    var body: some View {
+        Button { state.active.toggle() } label: {
+            Label(L10n.t("designer.button"), systemImage: "square.on.square.dashed")
+                .font(.system(size: 10, weight: .bold))
+                .padding(.horizontal, 6).padding(.vertical, 1)
+                .background(state.active ? Theme.accent : Theme.panelRaised)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+        }
+        .buttonStyle(.plain)
+        .disabled(model.switcher.preview == nil)
+        .help(L10n.t("designer.help"))
+    }
+}
+
+private struct DesignerCanvasIfActive: View {
+    @ObservedObject var state: LayerDesignerState
+    var body: some View { if state.active { LayerDesignerCanvas(state: state) } }
+}
+
+private struct DesignerBarIfActive: View {
+    @ObservedObject var state: LayerDesignerState
+    var body: some View { if state.active { LayerDesignerBar(state: state) } }
 }
 
 struct TransitionControls: View {

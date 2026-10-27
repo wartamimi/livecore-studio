@@ -134,3 +134,11 @@
     nyalakan lagi NDI). Kompresi NDI memakai CPU; bila komputer berat, frame NDI dibuang (bukan memperlambat render).
     Nama kamera di Zoom tetap "NDI Virtual Camera"; kamera bernama "LiveCore" butuh Camera Extension bertanda tangan
     Developer ID.
+59. **Layer Designer (0.25.0)**: crop dengan menarik tepi menjaga gambar tetap di tempat secara tepat untuk mode Stretch,
+    atau Fit/Fill bila kotak layer seaspek gambar (mis. setelah "Sesuaikan dengan sumber"); di luar itu gambar bisa sedikit
+    bergeser. Kotak di Layer Designer adalah garis bantu; gambar di bawahnya adalah hasil GPU yang sebenarnya. Pada input
+    Scene, layer 0 (kanvas kosong) tidak bisa dipilih. Template tata letak disimpan di Mac ini, tidak ikut file proyek.
+    Flatten Layers menambah satu render ukuran output per input yang di-flatten selama input itu tampil di mana pun.
+60. **FULLSCREEN (0.25.0)**: tombol fullscreen Program lama diganti; FULLSCREEN memakai Output 1–4 (default Output 1 =
+    Program di layar eksternal pertama). Bila hanya satu layar, fullscreen menutupi layar operator (Esc menutup).
+    Transisi selalu mulai dari Dissolve setiap app dibuka (file proyek tetap membawa transisinya sendiri).

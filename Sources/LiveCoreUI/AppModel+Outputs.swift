@@ -10,8 +10,11 @@ extension AppModel {
     func makeOutputFullscreens() -> [Int: FullscreenOutput] {
         var d: [Int: FullscreenOutput] = [:]
         for i in 1...OutputRouting.count {
-            let f = FullscreenOutput(feed: outputFeeds[i]!, keyPrefix: "output\(i).fullscreen")
-            f.onActiveChange = { [weak self] _ in self?.updateOutputWindow(i) }
+            let f = FullscreenOutput(feed: outputFeeds[i]!, keyPrefix: "output\(i).fullscreen", extraIndex: i - 1)
+            f.onActiveChange = { [weak self] _ in
+                self?.updateOutputWindow(i)
+                self?.objectWillChange.send()
+            }
             d[i] = f
         }
         return d
@@ -23,6 +26,9 @@ extension AppModel {
         router.onError = { [weak self] msg in self?.report(msg) }
         outputRouter = router
         ndiAvailable = NDIRuntime.isAvailable
+        if let saved = UserDefaults.standard.array(forKey: Self.fullscreenSetKey) as? [Int] {
+            fullscreenOutputs = Set(saved.filter { (1...OutputRouting.count).contains($0) })
+        }
         if let data = UserDefaults.standard.data(forKey: Self.routingKey),
            let r = try? JSONDecoder().decode(OutputRouting.self, from: data) {
             outputRouting = r
@@ -84,6 +90,28 @@ extension AppModel {
         let showing = outputWindows.contains(index) || outputFullscreens[index]?.isActive == true
         outputRouter?.setWindow(index, open: showing)
         if !showing { outputFeeds[index]?.clear() }
+    }
+
+    // MARK: FULLSCREEN (top bar)
+
+    private static let fullscreenSetKey = "fullscreen.outputs"
+
+    /// Whether output N is opened full screen by the FULLSCREEN button.
+    public func setFullscreenUse(_ index: Int, _ on: Bool) {
+        if on { fullscreenOutputs.insert(index) } else { fullscreenOutputs.remove(index) }
+        UserDefaults.standard.set(fullscreenOutputs.sorted(), forKey: Self.fullscreenSetKey)
+    }
+
+    /// Any output is full screen on a display right now.
+    public var isFullscreenActive: Bool { outputFullscreens.values.contains { $0.isActive } }
+
+    /// vMix FULLSCREEN: opens the chosen outputs on their displays, or closes every full-screen output.
+    public func toggleFullscreen() {
+        if isFullscreenActive {
+            outputFullscreens.values.filter(\.isActive).forEach { $0.close() }
+        } else {
+            for i in fullscreenOutputs.sorted() { outputFullscreens[i]?.open() }
+        }
     }
 
     // MARK: EXTERNAL

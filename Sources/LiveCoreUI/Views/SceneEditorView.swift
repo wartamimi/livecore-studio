@@ -91,7 +91,7 @@ struct SceneEditorSheet: View {
                     }
                     .onEnded { _ in dragStart = nil })
             if isSel {
-                ForEach(LayerEditing.Handle.allCases, id: \.self) { h in
+                ForEach(LayerEditing.Handle.corners, id: \.self) { h in
                     handle(h, index: i, frame: frame, canvas: canvas)
                 }
             }

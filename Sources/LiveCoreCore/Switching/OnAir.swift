@@ -7,7 +7,13 @@ public enum OnAir {
         var visible = Set<InputID>()
         for id in [switcher.program, switcher.transition?.from, switcher.transition?.to].compactMap({ $0 }) {
             visible.insert(id)
-            for l in layers[id] ?? [] { visible.insert(l.source) }
+            for l in layers[id] ?? [] where !l.isHidden {
+                visible.insert(l.source)
+                // A flattened input shows its own layers wherever it is drawn.
+                if l.source != id, let sub = layers[l.source], sub.first?.flatten == true {
+                    for s in sub where !s.isHidden { visible.insert(s.source) }
+                }
+            }
         }
         for o in overlays where o.isOn { if let s = o.source { visible.insert(s) } }
         return visible
