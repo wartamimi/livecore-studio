@@ -39,7 +39,7 @@ jobs:
           if [ "$GITHUB_REF" = "refs/heads/main" ]; then TAG="build-${GITHUB_RUN_NUMBER}"; else TAG="dev-build-${GITHUB_RUN_NUMBER}"; fi
           gh release create "$TAG" build/LiveCoreStudio-0.7.0-unsigned.dmg \
             --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.7.0 build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
-            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. New features are compiled and unit-tested but need hardware verification; see docs/TEST_PLAN.md (T-35 onwards for 0.7.0: MIDI control and music input)."
+            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. New features are compiled and unit-tested but need hardware verification; see docs/TEST_PLAN.md (T-35 onwards for 0.7.0: MIDI control, music input, minimizable docks)."
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

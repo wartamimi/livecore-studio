@@ -217,3 +217,8 @@
 "music.shuffle" = "Acak";
 "music.tracks" = "Daftar lagu";
 "music.remove" = "Hapus input musik";
+
+"dock.monitors" = "Preview / Program";
+"dock.controls" = "Kontrol";
+"dock.minimize" = "Kecilkan panel ini (klik bilahnya untuk membuka lagi)";
+"dock.restore" = "Buka %@";
