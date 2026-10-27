@@ -51,7 +51,7 @@ statusnya tetap Not tested per item.
 | ID | Tes | Hasil |
 |---|---|---|
 | A-01 | 73/73 unit test di Linux (Swift 6.0.3) | Passed |
-| M-01..M-04, A-06 | Kompilasi macOS, shader, app, DMG | Lihat run CI berikutnya di branch `claude/project-thread-ba7wg0` |
+| M-01..M-04, A-06 | Kompilasi macOS, 73/73 test, shader, app, DMG (`dev-build-9`) | Passed — https://github.com/wartamimi/livecore-studio/actions/runs/40447703986 (commit 9175d5b), lulus pada percobaan pertama |
 
 ## Milestone 2 (0.2.0) — otomatis
 | ID | Tes | Hasil |
