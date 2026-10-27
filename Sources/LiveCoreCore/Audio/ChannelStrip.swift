@@ -11,15 +11,19 @@ public final class ChannelControls: @unchecked Sendable {
     public let compThresholdDB = AtomicFloat(-18)
     public let compRatio = AtomicFloat(3)
     public let compMakeupDB = AtomicFloat(0)
+    public let gateEnabled = AtomicBool(false)
+    public let gateThresholdDB = AtomicFloat(-50)
+    public let gateRangeDB = AtomicFloat(-80)
     // Meters (post-fader), consumed with `exchange(0)` by the UI.
     public let peakL = AtomicFloat(0)
     public let peakR = AtomicFloat(0)
     public let gainReductionDB = AtomicFloat(0)
+    public let gateReductionDB = AtomicFloat(0)
 
     public init() {}
 }
 
-/// Real-time DSP for one stereo channel: trim -> compressor -> fader/pan (ramped) -> meter.
+/// Real-time DSP for one stereo channel: trim -> noise gate -> compressor -> fader/pan (ramped) -> meter.
 /// Owned by the render thread; `ChannelControls` is the only shared state.
 public struct ChannelStripDSP: Sendable {
     public let controls: ChannelControls
@@ -27,26 +31,44 @@ public struct ChannelStripDSP: Sendable {
     private var panRampL = GainRamp(initial: 1)
     private var panRampR = GainRamp(initial: 1)
     private var compressor: Compressor
+    private var gate: NoiseGate
 
     public init(controls: ChannelControls, sampleRate: Float) {
         self.controls = controls
         self.compressor = Compressor(sampleRate: sampleRate)
+        self.gate = NoiseGate(sampleRate: sampleRate)
     }
 
     /// Processes in place. Returns false when the channel is muted (buffers are zeroed).
     public mutating func process(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>, frames: Int) {
         let muted = controls.muted.value
         let trim = AudioMath.dbToLinear(controls.gainDB.value)
-        if controls.compressorEnabled.value {
+        let gateOn = controls.gateEnabled.value
+        let compOn = controls.compressorEnabled.value
+        if gateOn || compOn {
+            // Dynamics see the trimmed signal, so thresholds are independent of the fader.
             if trim != 1 { for i in 0..<frames { left[i] *= trim; right[i] *= trim } }
-            compressor.thresholdDB = controls.compThresholdDB.value
-            compressor.ratio = max(1, controls.compRatio.value)
-            compressor.makeupDB = controls.compMakeupDB.value
-            compressor.process(left: left, right: right, frames: frames)
-            controls.gainReductionDB.value = compressor.gainReductionDB
+            if gateOn {
+                gate.thresholdDB = controls.gateThresholdDB.value
+                gate.rangeDB = controls.gateRangeDB.value
+                gate.process(left: left, right: right, frames: frames)
+                controls.gateReductionDB.value = gate.gainReductionDB
+            } else {
+                controls.gateReductionDB.value = 0
+            }
+            if compOn {
+                compressor.thresholdDB = controls.compThresholdDB.value
+                compressor.ratio = max(1, controls.compRatio.value)
+                compressor.makeupDB = controls.compMakeupDB.value
+                compressor.process(left: left, right: right, frames: frames)
+                controls.gainReductionDB.value = compressor.gainReductionDB
+            } else {
+                controls.gainReductionDB.value = 0
+            }
             ramp.apply(target: muted ? 0 : AudioMath.dbToLinear(controls.faderDB.value), left: left, right: right, frames: frames)
         } else {
             controls.gainReductionDB.value = 0
+            controls.gateReductionDB.value = 0
             ramp.apply(target: muted ? 0 : trim * AudioMath.dbToLinear(controls.faderDB.value), left: left, right: right, frames: frames)
         }
         // Balance-style pan (linear): centre = unity on both sides, hard left mutes right.

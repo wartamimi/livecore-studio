@@ -15,7 +15,14 @@ public enum LiveCoreScenes {
         }
         .windowStyle(.hiddenTitleBar)
         .commands {
-            CommandGroup(replacing: .newItem) {}
+            CommandGroup(replacing: .newItem) {
+                Button(L10n.t("project.new")) { model.newProject() }
+                Button(L10n.t("project.open")) { model.openProject() }.keyboardShortcut("o", modifiers: [.command])
+            }
+            CommandGroup(replacing: .saveItem) {
+                Button(L10n.t("project.save")) { model.saveProject() }.keyboardShortcut("s", modifiers: [.command])
+                Button(L10n.t("project.save_as")) { model.saveProjectAs() }.keyboardShortcut("s", modifiers: [.command, .shift])
+            }
             CommandMenu("Production") {
                 Button(L10n.t("transition.cut")) { model.cut() }
                 Button(L10n.t("transition.auto")) { model.auto() }
@@ -23,6 +30,13 @@ public enum LiveCoreScenes {
                 Button(model.isStreamingActive ? L10n.t("stream.stop") : L10n.t("stream.start")) { model.toggleStream() }
                 Button(model.isRecording ? L10n.t("record.stop") : L10n.t("record.start")) { model.toggleRecord() }
             }
+        }
+
+        Window(L10n.t("multiview.title"), id: "multiview") {
+            MultiviewView()
+                .environmentObject(model)
+                .frame(minWidth: 640, minHeight: 400)
+                .preferredColorScheme(.dark)
         }
 
         Window("Program Output", id: "program-output") {

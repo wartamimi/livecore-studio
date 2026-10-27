@@ -38,6 +38,8 @@ public final class ProductionEngine {
     public var onStreamStats: ((StreamingEngine.Stats) -> Void)?
     public var onRecordStats: ((RecordingEngine.Stats) -> Void)?
     public var onError: ((String) -> Void)?
+    /// Mixer channels were added or removed by the engine itself (e.g. a video file's audio).
+    public var onAudioChannelsChange: (() -> Void)?
 
     public private(set) var settings: ProductionSettings
     public let compositor: MetalCompositor
@@ -54,6 +56,7 @@ public final class ProductionEngine {
         var sources: [InputID: VideoSource] = [:]
         var order: [InputID] = []
         var layers: [InputID: [Layer]] = [:]
+        var keys: [InputID: ChromaKey] = [:]
     }
     private let control = Locked(ControlState())
 
@@ -76,6 +79,9 @@ public final class ProductionEngine {
     private var aacEncoder: AACEncoder?
     private var audioInputs: [String: AudioCaptureInput] = [:]
     private var lastSwitcher = SwitcherSnapshot()
+    /// Mixer settings from a loaded project for video-file channels that appear once the file's
+    /// audio track has loaded.
+    private var pendingFileChannelSettings: [InputID: ProjectAudioChannel] = [:]
 
     public init(settings: ProductionSettings = ProductionSettings()) throws {
         self.settings = settings
@@ -139,12 +145,13 @@ public final class ProductionEngine {
 
         // Snapshot control state and advance transitions.
         var events: [SwitcherEvent] = []
-        let (plan, sources, order, snapshot) = control.mutate { st -> (FramePlan, [InputID: VideoSource], [InputID], SwitcherSnapshot) in
+        let (plan, sources, order, snapshot, keys) = control.mutate { st -> (FramePlan, [InputID: VideoSource], [InputID], SwitcherSnapshot, [InputID: ChromaKey]) in
             events = st.switcher.update(now: now)
             let layers = st.layers
+            let keys = st.keys.filter { $0.value.enabled }.mapValues { $0.clamped }
             let plan = FramePlanner.plan(snapshot: st.switcher.state, overlays: st.overlays, now: now,
-                                         layersFor: { layers[$0] })
-            return (plan, st.sources, st.order, st.switcher.state)
+                                         layersFor: { layers[$0] }, keyFor: { keys[$0] })
+            return (plan, st.sources, st.order, st.switcher.state, keys)
         }
         if !events.isEmpty || snapshot != lastSwitcher {
             lastSwitcher = snapshot
@@ -157,14 +164,14 @@ public final class ProductionEngine {
         }
 
         frameCounter += 1
-        let thumbs: [InputID] = frameCounter % Int64(max(1, Int(fps / 5))) == 0 ? order : []   // ~5 fps thumbnails
+        let thumbs: [InputID] = frameCounter % Int64(max(1, Int(fps / 10))) == 0 ? order : []   // ~10 fps thumbnails (inputs panel + multiview)
         var needed = Set<InputID>(thumbs)
         for c in plan.program + plan.overlays + plan.preview + (plan.transition?.incoming ?? []) { needed.insert(c.source) }
         var frames: [InputID: CVPixelBuffer] = [:]
         for id in needed { if let pb = sources[id]?.currentFrame() { frames[id] = pb } }
 
         let pts = CMTime(seconds: frameHost, preferredTimescale: 90_000)
-        let ok = compositor.render(plan: plan, frames: frames, thumbnailsFor: thumbs) { [weak self] result in
+        let ok = compositor.render(plan: plan, frames: frames, thumbnailsFor: thumbs, keys: keys) { [weak self] result in
             guard let self else { return }
             self.inFlight.mutate { $0 -= 1 }
             self.renderedFrames.add()
@@ -201,9 +208,9 @@ public final class ProductionEngine {
     }
 
     @discardableResult
-    public func addCamera(uniqueID: String) -> InputID? {
+    public func addCamera(uniqueID: String, id: InputID? = nil) -> InputID? {
         guard let dev = DeviceManager.device(uniqueID: uniqueID) else { onError?("Camera not found"); return nil }
-        let id = InputID(UUID().uuidString)
+        let id = id ?? InputID(UUID().uuidString)
         let src = CameraSource(id: id, device: dev, target: settings.output)
         DeviceManager.requestAccess(.video) { [weak self] ok in
             if !ok { self?.onError?("Camera access denied. Enable it in System Settings › Privacy & Security › Camera.") }
@@ -214,31 +221,46 @@ public final class ProductionEngine {
     }
 
     @discardableResult
-    public func addImage(url: URL) -> InputID {
-        let src = ImageSource(id: InputID(UUID().uuidString), url: url)
+    public func addImage(url: URL, id: InputID? = nil) -> InputID {
+        let src = ImageSource(id: id ?? InputID(UUID().uuidString), url: url)
         src.start()
         add(src)
         return src.id
     }
 
     @discardableResult
-    public func addVideoFile(url: URL) -> InputID {
-        let src = VideoFileSource(id: InputID(UUID().uuidString), url: url)
+    public func addVideoFile(url: URL, id: InputID? = nil, loop: Bool = true) -> InputID {
+        let src = VideoFileSource(id: id ?? InputID(UUID().uuidString), url: url)
+        src.loop = loop
+        let srcID = src.id
+        // The file's audio gets its own mixer channel once AVFoundation reports an audio track.
+        // AVPlayer taps deliver blocks of up to ~90 ms, so this channel buffers more than a mic.
+        src.audioChannelProvider = { [weak self, weak src] in
+            guard let self else { return MixerChannel.detached() }
+            let ch = self.mixer.addChannel(id: Self.fileChannelID(srcID), name: src?.name ?? "Video",
+                                           primeFrames: 4096, maxBufferedFrames: 14_400)
+            if let saved = self.pendingFileChannelSettings.removeValue(forKey: srcID) { Self.apply(saved, to: ch.controls) }
+            self.onAudioChannelsChange?()
+            return ch
+        }
         src.start()
         add(src)
         return src.id
     }
 
+    /// Mixer channel id used for the audio of a video-file input.
+    public static func fileChannelID(_ id: InputID) -> String { "file:\(id.raw)" }
+
     @discardableResult
-    public func addColor(_ color: NSColor, name: String) -> InputID {
-        let src = ColorSource(id: InputID(UUID().uuidString), color: color, name: name)
+    public func addColor(_ color: NSColor, name: String, id: InputID? = nil) -> InputID {
+        let src = ColorSource(id: id ?? InputID(UUID().uuidString), color: color, name: name)
         add(src)
         return src.id
     }
 
     @discardableResult
-    public func addTitle(_ style: TextSource.Style) -> InputID {
-        let src = TextSource(id: InputID(UUID().uuidString), style: style, outputSize: settings.output.size)
+    public func addTitle(_ style: TextSource.Style, id: InputID? = nil) -> InputID {
+        let src = TextSource(id: id ?? InputID(UUID().uuidString), style: style, outputSize: settings.output.size)
         add(src)
         // Titles default to the lower-third area when used as a layer or overlay.
         control.mutate { $0.layers[src.id] = [Layer(source: src.id, rect: LayoutPreset.lowerThird.rect, scaleMode: .fit)] }
@@ -264,10 +286,15 @@ public final class ProductionEngine {
             for i in st.overlays.indices where st.overlays[i].source == id { st.overlays[i].source = nil }
             for key in st.layers.keys { st.layers[key]?.removeAll { $0.source == id && key != id } }
             st.layers[id] = nil
+            st.keys[id] = nil
             st.order.removeAll { $0 == id }
             return st.sources.removeValue(forKey: id)
         }
         removed?.stop()
+        if removed is VideoFileSource {
+            mixer.removeChannel(id: Self.fileChannelID(id))
+            onAudioChannelsChange?()
+        }
         publishInputs()
     }
 
@@ -308,6 +335,17 @@ public final class ProductionEngine {
             guard var l = st.layers[id], index > 0, index < l.count else { return } // layer 0 = the input itself
             l.remove(at: index)
             st.layers[id] = l
+        }
+    }
+
+    // MARK: Chroma key
+
+    public func chromaKey(of id: InputID) -> ChromaKey { control.read { $0.keys[id] } ?? ChromaKey() }
+
+    public func setChromaKey(_ key: ChromaKey, for id: InputID) {
+        control.mutate { st in
+            guard st.sources[id] != nil else { return }
+            st.keys[id] = key.clamped
         }
     }
 
@@ -485,6 +523,171 @@ public final class ProductionEngine {
         let fps = lastFPSSample.time > 0 ? Double(frames - lastFPSSample.frames) / max(now - lastFPSSample.time, 0.001) : 0
         lastFPSSample = (now, frames)
         return performance.sample(gpuFrameMs: Double(gpuMsAverage.value), renderFPS: fps, dropped: droppedRenderFrames.value)
+    }
+}
+
+// MARK: - Project save / load
+
+extension ProductionEngine {
+    /// Snapshot of the current production as a project document. Media paths are also stored
+    /// relative to `projectDirectory` so a copied project folder still finds its files.
+    public func exportProject(projectDirectory: URL?) -> ProjectDocument {
+        let (order, sources, layers, keys, overlays, sw) = control.read { st in
+            (st.order, st.sources, st.layers, st.keys, st.overlays, st.switcher.state)
+        }
+        var doc = ProjectDocument(settings: settings)
+        func rel(_ url: URL) -> String? {
+            guard let dir = projectDirectory else { return nil }
+            return ProjectPaths.relative(file: url.standardizedFileURL.path, toDirectory: dir.standardizedFileURL.path)
+        }
+        for id in order {
+            guard let src = sources[id] else { continue }
+            let ps: ProjectSource
+            switch src {
+            case let c as CameraSource: ps = .camera(uniqueID: c.deviceUniqueID, deviceName: c.name)
+            case let v as VideoFileSource: ps = .videoFile(path: v.url.path, relativePath: rel(v.url), loop: v.loop)
+            case let i as ImageSource: ps = .image(path: i.url.path, relativePath: rel(i.url))
+            case let c as ColorSource: ps = .color(ProjectColor(c.color))
+            case let t as TextSource: ps = .title(ProjectTitleStyle(t.style))
+            default: continue
+            }
+            let key = keys[id]
+            doc.inputs.append(ProjectInput(id: id, name: src.name, source: ps, layers: layers[id] ?? [],
+                                           chromaKey: key == ChromaKey() ? nil : key))
+        }
+        doc.overlays = overlays.map { ProjectOverlay(index: $0.index, source: $0.source, preset: $0.preset, fadeDuration: $0.fadeDuration) }
+        doc.previewInput = sw.transition == nil ? sw.preview : sw.transition?.from
+        doc.programInput = sw.transition?.to ?? sw.program
+        doc.audio.masterFaderDB = mixer.master.faderDB.value
+        doc.audio.limiterEnabled = mixer.limiterEnabled.value
+        doc.audio.monitorVolume = mixer.monitorVolume.value
+        doc.audio.syncOffsetMs = Double(audioPump.syncOffsetSeconds.value) * 1000
+        for ch in mixer.channelList {
+            let isFile = ch.id.hasPrefix("file:")
+            var p = ProjectAudioChannel(deviceUniqueID: isFile ? nil : ch.id,
+                                        inputID: isFile ? InputID(String(ch.id.dropFirst(5))) : nil, name: ch.name)
+            let c = ch.controls
+            p.faderDB = c.faderDB.value; p.gainDB = c.gainDB.value; p.pan = c.pan.value
+            p.muted = c.muted.value; p.toProgram = c.toProgram.value
+            p.compressorEnabled = c.compressorEnabled.value; p.compThresholdDB = c.compThresholdDB.value; p.compRatio = c.compRatio.value
+            p.gateEnabled = c.gateEnabled.value; p.gateThresholdDB = c.gateThresholdDB.value
+            doc.audio.channels.append(p)
+        }
+        return doc
+    }
+
+    /// Replaces the current production with `document`. Returns warnings for anything that could
+    /// not be restored (camera or audio device not connected, missing media file, format locked
+    /// while an output is running...). Never throws away the stream key: it is not in projects.
+    @discardableResult
+    public func loadProject(_ document: ProjectDocument, projectDirectory: URL?) -> [String] {
+        var warnings = document.validationIssues()
+        let doc = document.sanitized()
+
+        for info in inputs { removeInput(info.id) }
+        for uid in Array(audioInputs.keys) { removeAudioInput(uniqueID: uid) }
+        pendingFileChannelSettings = [:]
+
+        warnings += apply(doc.settings)
+
+        func mediaURL(_ path: String, _ relative: String?) -> URL {
+            let fm = FileManager.default
+            if fm.fileExists(atPath: path) { return URL(fileURLWithPath: path) }
+            if let relative, let dir = projectDirectory {
+                let candidate = ProjectPaths.resolve(relative, againstDirectory: dir.standardizedFileURL.path)
+                if fm.fileExists(atPath: candidate) { return URL(fileURLWithPath: candidate) }
+            }
+            warnings.append("Media file not found: \(path)")
+            return URL(fileURLWithPath: path)
+        }
+
+        var created = Set<InputID>()
+        for pi in doc.inputs {
+            switch pi.source {
+            case let .camera(uid, deviceName):
+                guard DeviceManager.device(uniqueID: uid) != nil, addCamera(uniqueID: uid, id: pi.id) != nil else {
+                    warnings.append("Camera \"\(deviceName)\" is not connected; input \"\(pi.name)\" was skipped.")
+                    continue
+                }
+            case let .videoFile(path, relative, loop):
+                addVideoFile(url: mediaURL(path, relative), id: pi.id, loop: loop)
+            case let .image(path, relative):
+                addImage(url: mediaURL(path, relative), id: pi.id)
+            case let .color(c):
+                addColor(c.nsColor, name: pi.name, id: pi.id)
+            case let .title(t):
+                addTitle(t.textStyle, id: pi.id)
+            }
+            created.insert(pi.id)
+            renameInput(pi.id, to: pi.name)
+        }
+
+        control.mutate { st in
+            for pi in doc.inputs where created.contains(pi.id) {
+                let layers = pi.layers.filter { created.contains($0.source) }
+                st.layers[pi.id] = layers.isEmpty ? [Layer(source: pi.id)] : layers
+                if let k = pi.chromaKey { st.keys[pi.id] = k.clamped }
+            }
+            st.overlays = (1...4).map { OverlayChannel(index: $0) }
+            for o in doc.overlays {
+                guard let i = st.overlays.firstIndex(where: { $0.index == o.index }) else { continue }
+                let src = o.source.flatMap { created.contains($0) ? $0 : nil }
+                st.overlays[i] = OverlayChannel(index: o.index, source: src, preset: o.preset, fadeDuration: o.fadeDuration)
+            }
+            st.switcher = Switcher()
+            if let p = doc.programInput, created.contains(p) { st.switcher.setPreview(p); st.switcher.cut() }
+            st.switcher.setPreview(doc.previewInput.flatMap { created.contains($0) ? $0 : nil })
+        }
+
+        mixer.master.faderDB.value = doc.audio.masterFaderDB
+        mixer.limiterEnabled.value = doc.audio.limiterEnabled
+        mixer.monitorVolume.value = doc.audio.monitorVolume
+        audioPump.syncOffsetSeconds.value = Float(doc.audio.syncOffsetMs / 1000)
+        for ch in doc.audio.channels {
+            if let uid = ch.deviceUniqueID {
+                guard DeviceManager.device(uniqueID: uid) != nil else {
+                    warnings.append("Audio device \"\(ch.name)\" is not connected; its mixer channel was skipped.")
+                    continue
+                }
+                addAudioInput(uniqueID: uid)
+                if let mc = mixer.channelList.first(where: { $0.id == uid }) { Self.apply(ch, to: mc.controls) }
+            } else if let iid = ch.inputID, created.contains(iid) {
+                if let mc = mixer.channelList.first(where: { $0.id == Self.fileChannelID(iid) }) { Self.apply(ch, to: mc.controls) }
+                else { pendingFileChannelSettings[iid] = ch }
+            }
+        }
+        onAudioChannelsChange?()
+        publishInputs()
+        return warnings
+    }
+
+    static func apply(_ p: ProjectAudioChannel, to c: ChannelControls) {
+        c.faderDB.value = p.faderDB; c.gainDB.value = p.gainDB; c.pan.value = p.pan
+        c.muted.value = p.muted; c.toProgram.value = p.toProgram
+        c.compressorEnabled.value = p.compressorEnabled; c.compThresholdDB.value = p.compThresholdDB; c.compRatio.value = p.compRatio
+        c.gateEnabled.value = p.gateEnabled; c.gateThresholdDB.value = p.gateThresholdDB
+    }
+}
+
+extension ProjectColor {
+    public init(_ color: NSColor) {
+        let c = color.usingColorSpace(.sRGB) ?? color
+        self.init(r: Double(c.redComponent), g: Double(c.greenComponent), b: Double(c.blueComponent), a: Double(c.alphaComponent))
+    }
+    public var nsColor: NSColor { NSColor(srgbRed: CGFloat(r), green: CGFloat(g), blue: CGFloat(b), alpha: CGFloat(a)) }
+}
+
+extension ProjectTitleStyle {
+    public init(_ s: TextSource.Style) {
+        self.init(title: s.title, subtitle: s.subtitle, showBar: s.showBar,
+                  textColor: ProjectColor(s.textColor), barColor: ProjectColor(s.barColor))
+    }
+    public var textStyle: TextSource.Style {
+        var s = TextSource.Style(title: title, subtitle: subtitle)
+        s.showBar = showBar
+        s.textColor = textColor.nsColor
+        s.barColor = barColor.nsColor
+        return s
     }
 }
 

@@ -5,8 +5,10 @@ public struct DrawCommand: Equatable, Sendable {
     public var rect: NormRect
     public var scaleMode: ScaleMode
     public var opacity: Double
-    public init(source: InputID, rect: NormRect, scaleMode: ScaleMode, opacity: Double) {
-        self.source = source; self.rect = rect; self.scaleMode = scaleMode; self.opacity = opacity
+    /// Enabled chroma key of the source, nil when the source is drawn unkeyed.
+    public var key: ChromaKey?
+    public init(source: InputID, rect: NormRect, scaleMode: ScaleMode, opacity: Double, key: ChromaKey? = nil) {
+        self.source = source; self.rect = rect; self.scaleMode = scaleMode; self.opacity = opacity; self.key = key
     }
 }
 
@@ -29,16 +31,22 @@ public struct FramePlan: Equatable, Sendable {
 public enum FramePlanner {
     /// - Parameter layersFor: returns the scene layers of an input (the input itself first, plus any
     ///   layers the operator added). Return nil if the input no longer exists.
+    /// - Parameter keyFor: the chroma key configured on a source (only enabled keys are applied).
     public static func plan(snapshot: SwitcherSnapshot,
                             overlays: [OverlayChannel],
                             now: Double,
-                            layersFor: (InputID) -> [Layer]?) -> FramePlan {
+                            layersFor: (InputID) -> [Layer]?,
+                            keyFor: (InputID) -> ChromaKey? = { _ in nil }) -> FramePlan {
+        func key(_ id: InputID) -> ChromaKey? {
+            guard let k = keyFor(id), k.enabled else { return nil }
+            return k.clamped
+        }
         func composition(_ id: InputID?) -> [DrawCommand] {
             guard let id, let layers = layersFor(id) else { return [] }
             return layers.compactMap { l in
                 // Guard against a scene layer that points at a removed input.
                 guard l.source == id || layersFor(l.source) != nil else { return nil }
-                return DrawCommand(source: l.source, rect: l.rect, scaleMode: l.scaleMode, opacity: l.opacity)
+                return DrawCommand(source: l.source, rect: l.rect, scaleMode: l.scaleMode, opacity: l.opacity, key: key(l.source))
             }
         }
 
@@ -56,7 +64,8 @@ public enum FramePlanner {
             guard let src = ch.source, layersFor(src) != nil else { continue }
             let a = ch.opacity(at: now)
             guard a > 0.001 else { continue }
-            plan.overlays.append(DrawCommand(source: src, rect: ch.preset.rect, scaleMode: ch.preset == .fullScreen || ch.preset == .lowerThird ? .fit : .fill, opacity: a))
+            plan.overlays.append(DrawCommand(source: src, rect: ch.preset.rect, scaleMode: ch.preset == .fullScreen || ch.preset == .lowerThird ? .fit : .fill,
+                                             opacity: a, key: key(src)))
         }
         return plan
     }

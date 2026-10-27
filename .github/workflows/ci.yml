@@ -25,20 +25,21 @@ jobs:
       - run: xcodebuild -version && xcodegen --version
       - run: scripts/ci_run.sh macos-swift-build swift build --build-tests
       - run: scripts/ci_run.sh macos-swift-test swift test
+      - run: scripts/ci_run.sh macos-metal-shaders scripts/check_shaders.sh
       - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
       - run: scripts/ci_run.sh macos-app-build scripts/build_macos.sh release
       - run: scripts/ci_run.sh macos-dmg scripts/make_dmg.sh
       - uses: actions/upload-artifact@v4
         with:
           name: LiveCoreStudio-dmg
-          path: build/LiveCoreStudio-0.1.0-unsigned.dmg
-      - name: Publish DMG as pre-release (main only)
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+          path: build/LiveCoreStudio-0.2.0-unsigned.dmg
+      - name: Publish DMG as pre-release (main and claude/* development branches)
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/claude/'))
         run: |
-          TAG="build-${GITHUB_RUN_NUMBER}"
-          gh release create "$TAG" build/LiveCoreStudio-0.1.0-unsigned.dmg \
-            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio M1 build ${GITHUB_RUN_NUMBER} (unsigned)" \
-            --notes "Automated CI build from ${GITHUB_SHA}. Unsigned and not notarized: right-click the app and choose Open the first time. Milestone 1 not yet verified on hardware; see docs/TEST_PLAN.md."
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then TAG="build-${GITHUB_RUN_NUMBER}"; else TAG="dev-build-${GITHUB_RUN_NUMBER}"; fi
+          gh release create "$TAG" build/LiveCoreStudio-0.2.0-unsigned.dmg \
+            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.2.0 (M2) build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
+            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. Milestone 2 features are compiled and unit-tested but need hardware verification; see docs/TEST_PLAN.md (T-17 onwards)."
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

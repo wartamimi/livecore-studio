@@ -7,6 +7,7 @@ struct InputPanelView: View {
     @EnvironmentObject var model: AppModel
     @State private var showTitleSheet = false
     @State private var editingTitle: InputID?
+    @State private var keying: InputID?
     @State private var renaming: InputID?
     @State private var renameText = ""
 
@@ -35,6 +36,7 @@ struct InputPanelView: View {
         .panel()
         .sheet(isPresented: $showTitleSheet) { TitleSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingTitle) { id in TitleSheet(editing: id).environmentObject(model) }
+        .sheet(item: $keying) { id in ChromaKeySheet(input: id).environmentObject(model) }
         .alert(L10n.t("inputs.rename"), isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("", text: $renameText)
             Button(L10n.t("common.ok")) { if let id = renaming { model.rename(id, renameText) }; renaming = nil }
@@ -74,6 +76,9 @@ struct InputPanelView: View {
             ForEach([LayoutPreset.pipTopRight, .pipTopLeft, .pipBottomRight, .pipBottomLeft, .sideBySideLeft, .sideBySideRight], id: \.self) { p in
                 Button(p.rawValue) { model.addPiP(source: info.id, preset: p) }
             }
+        }
+        if info.kind == .camera || info.kind == .videoFile || info.kind == .image {
+            Button(L10n.t("key.menu")) { keying = info.id }
         }
         if info.kind == .text { Button("Edit Title…") { editingTitle = info.id } }
         if info.kind == .videoFile, let v = model.videoFile(info.id) {
@@ -180,6 +185,59 @@ struct TitleSheet: View {
                 title = t.style.title; subtitle = t.style.subtitle; bar = t.style.showBar
             }
         }
+    }
+}
+
+/// Live chroma-key editor: every change is applied to the engine immediately so the operator
+/// sees the result in Preview/Program/Multiview while adjusting.
+struct ChromaKeySheet: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    let input: InputID
+    @State private var key = ChromaKey()
+    @State private var loaded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("\(L10n.t("key.title")) — \(model.inputs.first { $0.id == input }?.name ?? "")").font(.headline)
+            Toggle(L10n.t("key.enable"), isOn: $key.enabled)
+            HStack {
+                Text(L10n.t("key.color"))
+                Spacer()
+                Button(L10n.t("key.green")) { key.keyColor = .green }
+                Button(L10n.t("key.blue")) { key.keyColor = .blue }
+                ColorPicker("", selection: colorBinding, supportsOpacity: false).labelsHidden()
+            }
+            slider(L10n.t("key.similarity"), $key.similarity, 0.01...0.6)
+            slider(L10n.t("key.smoothness"), $key.smoothness, 0.001...0.5)
+            slider(L10n.t("key.spill"), $key.spill, 0.001...0.5)
+            Text(L10n.t("key.hint")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
+            HStack {
+                Button("Reset") { key = ChromaKey(enabled: key.enabled) }
+                Spacer()
+                Button(L10n.t("common.ok")) { dismiss() }.keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(16)
+        .frame(width: 420)
+        .onAppear { key = model.chromaKey(input); loaded = true }
+        .onChange(of: key) { k in if loaded { model.setChromaKey(k, for: input) } }
+    }
+
+    private func slider(_ label: String, _ value: Binding<Double>, _ range: ClosedRange<Double>) -> some View {
+        HStack {
+            Text(label).frame(width: 110, alignment: .leading)
+            Slider(value: value, in: range)
+            Text(String(format: "%.3f", value.wrappedValue)).font(.system(size: 11).monospacedDigit()).frame(width: 44)
+        }
+    }
+
+    private var colorBinding: Binding<Color> {
+        Binding(get: { Color(.sRGB, red: key.keyColor.r, green: key.keyColor.g, blue: key.keyColor.b) },
+                set: { c in
+                    let ns = NSColor(c).usingColorSpace(.sRGB) ?? .green
+                    key.keyColor = ChromaKey.RGB(r: Double(ns.redComponent), g: Double(ns.greenComponent), b: Double(ns.blueComponent))
+                })
     }
 }
 #endif
