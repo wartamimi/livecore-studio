@@ -26,8 +26,9 @@ let package = Package(
         .library(name: "LiveCoreUI", targets: ["LiveCoreUI"]),
     ],
     dependencies: [
-        // Lottie animation player (Apache-2.0), precompiled XCFramework; macOS only.
-        .package(url: "https://github.com/airbnb/lottie-spm.git", exact: "4.6.1"),
+        // Lottie animation player (Apache-2.0), built from source and linked statically: an embedded
+        // dynamic framework cannot load in an ad-hoc signed app with the hardened runtime.
+        .package(url: "https://github.com/airbnb/lottie-ios.git", exact: "4.6.1"),
     ],
     targets: [
         .target(name: "CAtomics"),
@@ -35,7 +36,7 @@ let package = Package(
         .target(name: "LiveCoreCore", dependencies: ["CAtomics"]),
         .target(name: "LiveCoreEngine", dependencies: [
             "LiveCoreCore", "CAtomics", "CObjCSupport",
-            .product(name: "Lottie", package: "lottie-spm", condition: .when(platforms: [.macOS])),
+            .product(name: "Lottie", package: "lottie-ios", condition: .when(platforms: [.macOS])),
         ]),
         .target(
             name: "LiveCoreUI",

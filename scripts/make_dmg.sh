@@ -4,10 +4,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 APP="${1:-build/DerivedData/Build/Products/Release/LiveCoreStudio.app}"
-OUT="${2:-build/LiveCoreStudio-0.13.1-unsigned.dmg}"
+OUT="${2:-build/LiveCoreStudio-0.13.2-unsigned.dmg}"
 [ -d "$APP" ] || { echo "App not found: $APP (run scripts/build_macos.sh release first)"; exit 1; }
 STAGE="$(mktemp -d)"
 cp -R "$APP" "$STAGE/"
+# Check the exact copy that goes into the DMG.
+"$(dirname "$0")/check_app_loadable.sh" "$STAGE/$(basename "$APP")"
 ln -s /Applications "$STAGE/Applications"
 # hdiutil on CI runners sometimes fails transiently ("Resource temporarily unavailable"): retry.
 ok=0
