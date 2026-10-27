@@ -16,13 +16,26 @@ Hasil di bawah tidak dipalsukan; log mentah: `docs/unit_tests_linux.log`, `docs/
 Selama pengujian ditemukan dan diperbaiki 2 bug nyata: (1) kebijakan antrean kongesti mempertahankan keyframe lama sehingga
 antrean tidak pernah turun di bawah batas; (2) tes ring buffer memiliki logika wrap yang salah. Keduanya kini teruji.
 
+## Passed di Mac sungguhan (GitHub Actions, runner macos-15, Xcode 16)
+Run: https://github.com/wartamimi/livecore-studio/actions/runs/40437817495 (commit f1b73a7, 2026-10-27).
+| ID | Tes | Hasil |
+|---|---|---|
+| M-01 | `swift build --build-tests` seluruh target (termasuk LiveCoreEngine/LiveCoreUI khusus macOS) | Lulus, 0 error |
+| M-02 | `swift test` di macOS | 47/47 lulus |
+| M-03 | RTMP E2E (`scripts/rtmp_e2e_test.sh`) di macOS dengan ffmpeg | Lulus |
+| A-05 / T-01 | Build app Release via XcodeGen + xcodebuild | Lulus, `LiveCoreStudio.app` terbentuk |
+| M-04 | Pembuatan DMG (`scripts/make_dmg.sh`) | Lulus, `LiveCoreStudio-0.1.0-unsigned.dmg` ±2,1 MB |
+
+Catatan: runner CI tidak punya kamera, mikrofon, atau layar interaktif, jadi T-02..T-16 tetap harus dijalankan manual di Mac.
+Putaran CI sebelumnya menemukan dan memperbaiki: initializer `DrawCommand`/`Stats` yang tidak `public`, dan format project
+XcodeGen yang butuh Xcode 16 (Xcode 15.4 gagal membaca project).
+
 ## Failed
 Tidak ada tes yang gagal pada putaran terakhir.
 
 ## Blocked by environment
 | ID | Tes | Alasan |
 |---|---|---|
-| A-05 / T-01 | Build app macOS | Tidak ada macOS/Xcode/SDK di Linux |
 | T-02 | App dapat dibuka | Butuh macOS |
 | T-03 | Input video ditambahkan | Butuh macOS + kamera |
 | T-04 | Preview menampilkan sumber | Butuh macOS + Metal (logika Preview/Program sudah lulus unit test) |
