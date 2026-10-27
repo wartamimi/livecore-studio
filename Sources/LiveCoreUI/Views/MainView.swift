@@ -6,6 +6,11 @@ import LiveCoreEngine
 struct MainView: View {
     @EnvironmentObject var model: AppModel
     @State private var showSettings = false
+    // Docked panels that are minimized to a slim bar (remembered between launches).
+    @AppStorage("dock.inputs.minimized") private var inputsMin = false
+    @AppStorage("dock.mixer.minimized") private var mixerMin = false
+    @AppStorage("dock.controls.minimized") private var controlsMin = false
+    @AppStorage("dock.monitors.minimized") private var monitorsMin = false
 
     var body: some View {
         Group {
@@ -20,18 +25,51 @@ struct MainView: View {
                 VStack(spacing: 6) {
                     TopBarView(showSettings: $showSettings)
                     ErrorBanner()
-                    HSplitView {
-                        InputPanelView()
-                            .frame(minWidth: 220, idealWidth: 260, maxWidth: 360)
-                        VSplitView {
-                            MonitorRow()
-                                .frame(minHeight: 300)
-                            HStack(alignment: .top, spacing: 6) {
-                                AudioMixerView()
-                                ControlPanelView(showSettings: $showSettings)
-                                    .frame(width: 330)
+                    HStack(spacing: 6) {
+                        if inputsMin {
+                            DockBar(title: L10n.t("inputs.title"), axis: .vertical) { inputsMin = false }
+                        }
+                        HSplitView {
+                            if !inputsMin {
+                                InputPanelView()
+                                    .dockHandle { inputsMin = true }
+                                    .frame(minWidth: 220, idealWidth: 260, maxWidth: 360)
                             }
-                            .frame(minHeight: 230, idealHeight: 280)
+                            VStack(spacing: 6) {
+                                if monitorsMin {
+                                    DockBar(title: L10n.t("dock.monitors"), axis: .horizontal) { monitorsMin = false }
+                                }
+                                VSplitView {
+                                    if !monitorsMin {
+                                        MonitorRow()
+                                            .dockHandle { monitorsMin = true }
+                                            .frame(minHeight: 300)
+                                    }
+                                    if !(mixerMin && controlsMin) {
+                                        HStack(alignment: .top, spacing: 6) {
+                                            if mixerMin {
+                                                DockBar(title: L10n.t("audio.title"), axis: .vertical) { mixerMin = false }
+                                            } else {
+                                                AudioMixerView().dockHandle { mixerMin = true }
+                                            }
+                                            if controlsMin {
+                                                DockBar(title: L10n.t("dock.controls"), axis: .vertical) { controlsMin = false }
+                                            } else {
+                                                ControlPanelView(showSettings: $showSettings)
+                                                    .dockHandle { controlsMin = true }
+                                                    .frame(width: 330)
+                                            }
+                                        }
+                                        .frame(minHeight: 230, idealHeight: 280)
+                                    }
+                                }
+                                if mixerMin && controlsMin {
+                                    HStack(spacing: 6) {
+                                        DockBar(title: L10n.t("audio.title"), axis: .horizontal) { mixerMin = false }
+                                        DockBar(title: L10n.t("dock.controls"), axis: .horizontal) { controlsMin = false }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -42,6 +80,68 @@ struct MainView: View {
         .foregroundStyle(Theme.text)
         .sheet(isPresented: $showSettings) { SettingsView().environmentObject(model) }
         .background(KeyboardShortcuts())
+    }
+}
+
+/// Slim bar shown in place of a minimized panel; click to restore it (like vMix's collapsed docks).
+struct DockBar: View {
+    let title: String
+    let axis: Axis
+    let restore: () -> Void
+
+    var body: some View {
+        Button(action: restore) {
+            Group {
+                if axis == .vertical {
+                    VStack(spacing: 8) {
+                        Image(systemName: "chevron.right.2").font(.system(size: 9, weight: .bold))
+                        Text(title.uppercased())
+                            .font(.system(size: 10, weight: .semibold)).tracking(0.8)
+                            .fixedSize()
+                            .rotationEffect(.degrees(90))
+                            .frame(width: 14, height: 120)
+                        Spacer()
+                    }
+                    .padding(.top, 8)
+                    .frame(width: 26)
+                    .frame(maxHeight: .infinity)
+                } else {
+                    HStack(spacing: 8) {
+                        Image(systemName: "chevron.down.2").font(.system(size: 9, weight: .bold))
+                        Text(title.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(0.8)
+                        Spacer()
+                    }
+                    .padding(.horizontal, 8)
+                    .frame(height: 24)
+                    .frame(maxWidth: .infinity)
+                }
+            }
+            .foregroundStyle(Theme.textDim)
+            .background(Theme.panel)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(L10n.f("dock.restore", title))
+    }
+}
+
+extension View {
+    /// Small handle at the top centre of a docked panel that minimizes it.
+    func dockHandle(_ minimize: @escaping () -> Void) -> some View {
+        overlay(alignment: .top) {
+            Button(action: minimize) {
+                Image(systemName: "minus")
+                    .font(.system(size: 8, weight: .bold))
+                    .frame(width: 30, height: 11)
+                    .background(Theme.panelRaised)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Theme.textDim)
+            .padding(.top, 1)
+            .help(L10n.t("dock.minimize"))
+        }
     }
 }
 
