@@ -9,8 +9,13 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 jobs:
+  # Foundation-free core logic and protocol tests on Linux (fast, about 2 min). It does not block the
+  # DMG: the macos-app job builds and publishes it on its own.
   linux-core:
+    # A pull request from a branch of this repository already runs on push; skip the duplicate run.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: swift-actions/setup-swift@v2
@@ -18,7 +23,9 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: scripts/ci_run.sh linux-validate scripts/validate_linux.sh
   macos-app:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: macos-15
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - run: brew install xcodegen ffmpeg
