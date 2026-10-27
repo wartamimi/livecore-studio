@@ -12,6 +12,12 @@ struct AudioMixerView: View {
             HStack {
                 SectionHeader(title: L10n.t("audio.title"))
                 Spacer()
+                if !model.audioChannels.isEmpty {
+                    let allLocked = model.audioChannels.allSatisfy(\.locked)
+                    Button { model.lockAllAudio(!allLocked) } label: { Image(systemName: allLocked ? "lock.fill" : "lock.open") }
+                        .buttonStyle(.borderless)
+                        .help(allLocked ? L10n.t("lock.unlock_all_audio") : L10n.t("lock.lock_all_audio"))
+                }
                 Menu {
                     ForEach(model.audioDevices) { d in Button(d.name) { model.addAudioInput(d) } }
                     Divider()
@@ -51,6 +57,8 @@ struct ChannelStripView: View {
     @ObservedObject var vm: ChannelVM
     let level: MeterModel.Level?
     @State private var showDSP = false
+    @State private var hovering = false
+    @State private var confirmClose = false
 
     var body: some View {
         VStack(spacing: 4) {
@@ -59,6 +67,20 @@ struct ChannelStripView: View {
                 if vm.isMusicChannel { Image(systemName: "music.note").font(.system(size: 8)).help(L10n.t("music.title")) }
                 if model.tone(vm.id) != nil { Image(systemName: "waveform").font(.system(size: 8)).help(L10n.t("tone.name")) }
                 Text(vm.name).font(.system(size: 10, weight: .semibold)).lineLimit(1)
+                Spacer(minLength: 0)
+                Button { vm.locked.toggle() } label: {
+                    Image(systemName: vm.locked ? "lock.fill" : "lock.open").font(.system(size: 8))
+                        .foregroundStyle(vm.locked ? Theme.warning : Theme.textDim)
+                }
+                .buttonStyle(.plain)
+                .help(vm.locked ? L10n.t("lock.unlock_audio") : L10n.t("lock.lock_audio"))
+                if hovering && !vm.locked {
+                    Button { confirmClose = true } label: {
+                        Image(systemName: "xmark.circle.fill").font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                    }
+                    .buttonStyle(.plain)
+                    .help(L10n.t("audio.close"))
+                }
             }
             .frame(width: 84)
             HStack(spacing: 4) {
@@ -107,15 +129,29 @@ struct ChannelStripView: View {
                                 Button((i == m.index ? "▶ " : "") + u.deletingPathExtension().lastPathComponent) { m.select(i) }
                             }
                         }
-                        Button(L10n.t("music.remove"), role: .destructive) { model.removeMusic(vm.id) }
                     }
-                    // File audio belongs to its video input: remove the input instead.
-                    if !vm.isFileChannel && !vm.isMusicChannel { Button(L10n.t("inputs.remove"), role: .destructive) { model.removeAudioInput(vm.id) } }
+                    Divider()
+                    Button(L10n.t("audio.close"), role: .destructive) { confirmClose = true }.disabled(vm.locked)
                 }
         }
         .padding(4)
         .background(Theme.panelRaised)
         .clipShape(RoundedRectangle(cornerRadius: 5))
+        .onHover { hovering = $0 }
+        .alert(L10n.f("audio.close_confirm", vm.name), isPresented: $confirmClose) {
+            Button(L10n.t("audio.close"), role: .destructive) { model.closeAudioChannel(vm.id) }
+            Button(L10n.t("settings.cancel"), role: .cancel) {}
+        } message: {
+            Text(closeMessage)
+        }
+    }
+
+    /// What closing removes: the input the audio belongs to, the music input, or the channel.
+    private var closeMessage: String {
+        if let input = ProductionEngine.inputOfChannel(vm.id) {
+            return L10n.f("audio.close_input_message", model.inputs.first { $0.id == input }?.name ?? "")
+        }
+        return vm.isMusicChannel ? L10n.t("audio.close_music_message") : L10n.t("audio.close_message")
     }
 
     /// AFV: a video file's own audio follows its input with one click; other channels pick the

@@ -273,3 +273,27 @@ final class MusicFadeTests: XCTestCase {
         XCTAssertNil(try JSONDecoder().decode(ProjectMusic.self, from: Data(old.utf8)).fadeSeconds)
     }
 }
+
+final class PlaylistEditTests: XCTestCase {
+    func testRemovingAndMovingKeepTheSongThatPlays() {
+        XCTAssertEqual(PlaylistEdit.remove(at: 0, current: 2, count: 4).current, 1)
+        XCTAssertFalse(PlaylistEdit.remove(at: 3, current: 2, count: 4).removedCurrent)
+        let r = PlaylistEdit.remove(at: 3, current: 3, count: 4)
+        XCTAssertTrue(r.removedCurrent); XCTAssertEqual(r.current, 2, "the last song removed: the one before plays")
+        let list = ["a", "b", "c", "d"]
+        for from in 0..<4 { for to in 0..<4 { for cur in 0..<4 {
+            let m = PlaylistEdit.moved(list, from: from, to: to)
+            XCTAssertEqual(m[PlaylistEdit.move(from: from, to: to, current: cur)], list[cur], "from \(from) to \(to) playing \(cur)")
+        } } }
+    }
+}
+
+final class M3UTests: XCTestCase {
+    func testParseAndWrite() {
+        let text = "\u{FEFF}#EXTM3U\r\n#EXTINF:215,Artist - Song\r\n/Music/a song.mp3\r\n\r\nrelative/b.m4a\nfile:///Users/x/Lagu%20Saya.mp3\n"
+        XCTAssertEqual(M3U.parse(text), ["/Music/a song.mp3", "relative/b.m4a", "/Users/x/Lagu Saya.mp3"])
+        let w = M3U.write(paths: ["/Music/a.b.mp3"])
+        XCTAssertEqual(w, "#EXTM3U\n#EXTINF:-1,a.b\n/Music/a.b.mp3\n")
+        XCTAssertEqual(M3U.parse(w), ["/Music/a.b.mp3"])
+    }
+}

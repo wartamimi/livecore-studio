@@ -204,6 +204,29 @@ public final class VideoFileSource: NSObject, VideoSource {
         load(PlaylistMath.previous(index: index, count: urls.count), play: isPlaying)
     }
     public func selectClip(_ i: Int) { load(i, play: isPlaying || wantsPlay) }
+    /// Removes one clip (a video input keeps at least one); the clip that plays keeps playing.
+    public func removeClip(at i: Int) {
+        guard urls.indices.contains(i), urls.count > 1 else { return }
+        let r = PlaylistEdit.remove(at: i, current: index, count: urls.count)
+        urls.remove(at: i)
+        if r.removedCurrent { load(r.current, play: isPlaying || wantsPlay) } else { index = r.current; onClipChange?() }
+    }
+
+    /// Reorders the clips without interrupting the one that plays.
+    public func moveClip(from: Int, to: Int) {
+        guard urls.indices.contains(from), urls.indices.contains(to), from != to else { return }
+        index = PlaylistEdit.move(from: from, to: to, current: index)
+        urls = PlaylistEdit.moved(urls, from: from, to: to)
+        onClipChange?()
+    }
+
+    /// Adds clips at the end without interrupting the one that plays.
+    public func appendClips(_ new: [URL]) {
+        guard !new.isEmpty else { return }
+        urls += new
+        onClipChange?()
+    }
+
     public func setURLs(_ new: [URL]) {
         guard !new.isEmpty else { return }
         urls = new

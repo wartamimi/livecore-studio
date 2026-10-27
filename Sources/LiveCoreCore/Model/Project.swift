@@ -219,6 +219,8 @@ public struct ProjectAudioChannel: Codable, Equatable, Sendable {
     public var channelMode: Int?
     public var invertPhase: Bool?
     public var delayMs: Float?
+    /// Locked against closing from the mixer (since 0.21.0).
+    public var locked: Bool?
     public init(deviceUniqueID: String? = nil, inputID: InputID? = nil, name: String) {
         self.deviceUniqueID = deviceUniqueID; self.inputID = inputID; self.name = name
     }

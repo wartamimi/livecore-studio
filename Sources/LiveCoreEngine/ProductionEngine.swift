@@ -1244,6 +1244,7 @@ extension ProductionEngine {
     /// Applies saved channel settings, including the AFV link.
     private func restore(_ p: ProjectAudioChannel, to ch: MixerChannel) {
         Self.apply(p, to: ch.controls)
+        ch.locked = p.locked ?? false
         if !p.name.isEmpty { ch.name = p.name }
         afvLinks[ch.id] = p.afvInput.flatMap { source($0) != nil ? $0 : nil }
         applyAFV()
@@ -1263,6 +1264,7 @@ extension ProductionEngine {
         if c.mode != .stereo { p.channelMode = c.mode.rawValue }
         if c.invertPhase.value { p.invertPhase = true }
         if c.delayMs.value > 0 { p.delayMs = c.delayMs.value }
+        if ch.locked { p.locked = true }
         var eq = ProjectEQ()
         eq.highPassEnabled = c.highPassEnabled.value; eq.highPassHz = c.highPassHz.value
         eq.eqEnabled = c.eqEnabled.value
