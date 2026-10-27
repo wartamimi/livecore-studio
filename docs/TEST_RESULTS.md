@@ -47,7 +47,11 @@ Belum dilaporkan: T-10 (stream+rekam 10 menit), T-11 reconnect, T-12 cabut-colok
 | ID | Tes | Hasil |
 |---|---|---|
 | A-01 | 61/61 unit test di Linux (Swift 6.0.3), termasuk 14 tes baru M2 | Passed |
-| A-06, M-01..M-04 | Kompilasi macOS, shader Metal offline, build app, DMG | Lihat run CI pada branch `claude/project-thread-ba7wg0` |
+
+Putaran CI pertama M2 menemukan 1 error kompilasi (tipe out-parameter `MTAudioProcessingTapCreate` adalah `Unmanaged` di SDK macOS) — diperbaiki di 7c69d6a.
+| M-01..M-03 | `swift build`, 61/61 `swift test`, RTMP E2E di macos-15 / Xcode 16.4 | Passed — run https://github.com/wartamimi/livecore-studio/actions/runs/40443040329 (commit 7c69d6a) |
+| A-06 | Kompilasi shader Metal offline (`scripts/check_shaders.sh`) termasuk `key_fragment` | Passed (run yang sama) |
+| A-05 / M-04 | Build app 0.2.0 + DMG, dipublikasikan sebagai pre-release `dev-build-8` | Passed |
 | T-17..T-22 | Tes manual M2 | Not tested (butuh Mac + perangkat) |
 
 ## Failed
