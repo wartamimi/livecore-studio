@@ -1,0 +1,53 @@
+# Run: 2026-10-27T01:24:59Z on Linux 6.18.44-fc-v165 x86_64, Swift version 6.0.3 (swift-6.0.3-RELEASE), ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers
+work dir: /tmp/claude-0/e2e
+== RTMP publish to ffmpeg listener on port 19350
+video: 300 access units, 5 keyframes, SPS size 1280x720
+audio: 470 AAC frames, 48000 Hz, 2 ch
+connecting to rtmp://127.0.0.1:19350/live (key e2••••••23)
+state: handshaking
+state: connecting
+state: creatingStream
+state: startingPublish
+state: publishing
+server: NetStream.Publish.Start
+sent 772 packets, 3294115 bytes in 10.0 s
+state: closed
+== ffprobe RTMP-received stream
+codec_name=h264
+profile=High
+width=1280
+height=720
+codec_name=aac
+profile=LC
+sample_rate=48000
+channels=2
+format_name=flv
+duration=10.026000
+decoded video frames: 300, audio frames: 470
+decode errors: 0
+stream key not present in client log: OK
+== FLV file writer
+video: 300 access units, 5 keyframes, SPS size 1280x720
+audio: 470 AAC frames, 48000 Hz, 2 ch
+wrote /tmp/claude-0/e2e/written.flv (3296131 bytes)
+== ffprobe FLV writer output
+codec_name=h264
+profile=High
+width=1280
+height=720
+codec_name=aac
+profile=LC
+sample_rate=48000
+channels=2
+format_name=flv
+duration=10.005000
+decoded video frames: 300, audio frames: 470
+decode errors: 0
+== Failure handling: no server listening
+error: cannot connect to 127.0.0.1:19351 (errno 111)
+video: 300 access units, 5 keyframes, SPS size 1280x720
+== Failure handling: server drops the connection mid-stream
+error: connection closed by server
+connection errors detected and reported without leaking the key: OK
+E2E PASSED
+exit=0
