@@ -32,14 +32,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: LiveCoreStudio-dmg
-          path: build/LiveCoreStudio-0.13.0-unsigned.dmg
+          path: build/LiveCoreStudio-0.13.1-unsigned.dmg
       - name: Publish DMG as pre-release (main and claude/* development branches)
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/claude/'))
         run: |
           if [ "$GITHUB_REF" = "refs/heads/main" ]; then TAG="build-${GITHUB_RUN_NUMBER}"; else TAG="dev-build-${GITHUB_RUN_NUMBER}"; fi
-          gh release create "$TAG" build/LiveCoreStudio-0.13.0-unsigned.dmg \
-            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.13.0 build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
-            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. New features are compiled and unit-tested but need hardware verification; see docs/TEST_PLAN.md (T-54 onwards for 0.13.0: Lottie, layer style tools, overlay to Preview, Add Layer fix)."
+          gh release create "$TAG" build/LiveCoreStudio-0.13.1-unsigned.dmg \
+            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.13.1 build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
+            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. New features are compiled and unit-tested but need hardware verification; see docs/TEST_PLAN.md (T-54 onwards for 0.13.x: Lottie, layer style tools, overlay to Preview, Add Layer fix)."
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
