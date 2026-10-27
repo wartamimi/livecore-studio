@@ -38,3 +38,8 @@
     terpisah per platform). Upload yang dibutuhkan = jumlah tujuan × (bitrate video + audio). Jika upload kurang, semua tujuan
     ikut terpengaruh karena encoder dibagi. Maksimal 3 tujuan. Setelan stream dikunci selama siaran.
 25. **Transisi Push/Slide/Iris** belum punya pengaturan arah/lebar tepi sendiri; tepi wipe/iris memakai kelembutan tetap.
+26. **Stinger** memakai pemutar file video biasa: mulai klip bisa terlambat beberapa frame setelah AUTO (waktu seek), dan
+    titik potong mengikuti jam transisi, bukan frame klip. T-bar tidak bisa menggeser klip, jadi T-bar memakai dissolve.
+    Klip tanpa alpha (mis. H.264 biasa) menutupi seluruh layar selama transisi. Klip stinger tidak berulang (loop dimatikan).
+27. **Aux bus** hanya 2 (A dan B) dan selalu post-fader. Bus tidak ikut ke stream/rekaman (itu tetap Master). Bila perangkat
+    output aux dicabut, bus berhenti diputar; pilih ulang perangkatnya. Latensi output aux ≈ 45–60 ms (buffer koreksi drift).

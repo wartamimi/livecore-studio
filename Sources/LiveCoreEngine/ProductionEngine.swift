@@ -658,6 +658,9 @@ extension ProductionEngine {
         doc.audio.limiterEnabled = mixer.limiterEnabled.value
         doc.audio.monitorVolume = mixer.monitorVolume.value
         doc.audio.syncOffsetMs = Double(audioPump.syncOffsetSeconds.value) * 1000
+        doc.audio.aux = mixer.aux.indices.map { i in
+            ProjectAuxBus(faderDB: mixer.aux[i].faderDB.value, muted: mixer.aux[i].muted.value, outputDeviceUID: auxOutputUID(i))
+        }
         for ch in mixer.channelList {
             let isFile = ch.id.hasPrefix("file:")
             var p = ProjectAudioChannel(deviceUniqueID: isFile ? nil : ch.id,
@@ -665,6 +668,7 @@ extension ProductionEngine {
             let c = ch.controls
             p.faderDB = c.faderDB.value; p.gainDB = c.gainDB.value; p.pan = c.pan.value
             p.muted = c.muted.value; p.toProgram = c.toProgram.value
+            p.toBusA = c.toBusA.value; p.toBusB = c.toBusB.value
             p.compressorEnabled = c.compressorEnabled.value; p.compThresholdDB = c.compThresholdDB.value; p.compRatio = c.compRatio.value
             p.gateEnabled = c.gateEnabled.value; p.gateThresholdDB = c.gateThresholdDB.value
             var eq = ProjectEQ()
@@ -744,6 +748,12 @@ extension ProductionEngine {
         mixer.limiterEnabled.value = doc.audio.limiterEnabled
         mixer.monitorVolume.value = doc.audio.monitorVolume
         audioPump.syncOffsetSeconds.value = Float(doc.audio.syncOffsetMs / 1000)
+        for i in mixer.aux.indices {
+            let bus = doc.audio.aux.flatMap { i < $0.count ? $0[i] : nil } ?? ProjectAuxBus()
+            mixer.aux[i].faderDB.value = bus.faderDB
+            mixer.aux[i].muted.value = bus.muted
+            if let msg = setAuxOutput(i, uid: bus.outputDeviceUID) { warnings.append(msg) }
+        }
         for ch in doc.audio.channels {
             if let uid = ch.deviceUniqueID {
                 guard DeviceManager.device(uniqueID: uid) != nil else {
@@ -766,9 +776,27 @@ extension ProductionEngine {
         return warnings
     }
 
+    /// Core Audio UID of the device aux bus `index` plays on, nil if none.
+    public func auxOutputUID(_ index: Int) -> String? {
+        guard mixer.auxDeviceIDs.indices.contains(index), let id = mixer.auxDeviceIDs[index] else { return nil }
+        return AudioDevices.info(id)?.uid
+    }
+
+    /// Plays aux bus `index` on the output device with this UID (nil = off). Returns a warning.
+    @discardableResult
+    public func setAuxOutput(_ index: Int, uid: String?) -> String? {
+        guard let uid, !uid.isEmpty else { return mixer.setAuxOutput(index, deviceID: nil) }
+        guard let dev = AudioDevices.outputs().first(where: { $0.uid == uid }) else {
+            mixer.setAuxOutput(index, deviceID: nil)
+            return "Aux \(index == 0 ? "A" : "B") output device is not connected; the bus is not played anywhere."
+        }
+        return mixer.setAuxOutput(index, deviceID: dev.id)
+    }
+
     static func apply(_ p: ProjectAudioChannel, to c: ChannelControls) {
         c.faderDB.value = p.faderDB; c.gainDB.value = p.gainDB; c.pan.value = p.pan
         c.muted.value = p.muted; c.toProgram.value = p.toProgram
+        c.toBusA.value = p.toBusA ?? false; c.toBusB.value = p.toBusB ?? false
         c.compressorEnabled.value = p.compressorEnabled; c.compThresholdDB.value = p.compThresholdDB; c.compRatio.value = p.compRatio
         c.gateEnabled.value = p.gateEnabled; c.gateThresholdDB.value = p.gateThresholdDB
         if let eq = p.eq {

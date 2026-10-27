@@ -167,3 +167,8 @@
 "stinger.add_clip" = "Tambahkan dulu stinger sebagai input file video (ProRes 4444 atau HEVC dengan alpha).";
 "stinger.choose" = "Pilih klip stinger.";
 "stinger.help" = "AUTO memutar klip di atas Program lalu memotong ke Preview pada titik potong. Audio klip lewat channel mixer-nya. T-bar memakai dissolve untuk stinger.";
+
+"aux.send_a" = "Kirim ke aux bus A (setelah fader)";
+"aux.send_b" = "Kirim ke aux bus B (setelah fader)";
+"aux.mix_minus" = "Mix-minus di bus %@ (semua kecuali channel ini)";
+"aux.no_output" = "Tanpa perangkat output (hanya meter)";

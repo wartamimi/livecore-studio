@@ -142,6 +142,8 @@ public struct ProjectAudio: Codable, Equatable, Sendable {
     public var monitorVolume: Float = 1
     public var syncOffsetMs: Double = 0
     public var channels: [ProjectAudioChannel] = []
+    /// Aux buses A and B (absent in projects from before 0.5.0).
+    public var aux: [ProjectAuxBus]?
     public init() {}
 }
 
@@ -154,6 +156,8 @@ public struct ProjectAudioChannel: Codable, Equatable, Sendable {
     public var pan: Float = 0
     public var muted = false
     public var toProgram = true
+    public var toBusA: Bool?
+    public var toBusB: Bool?
     public var compressorEnabled = false
     public var compThresholdDB: Float = -18
     public var compRatio: Float = 3
@@ -200,4 +204,22 @@ public struct ProjectEQ: Codable, Equatable, Sendable {
     public var midHz: Float = 1000
     public var highDB: Float = 0
     public init() {}
+}
+
+/// An aux bus (A or B): its level and the output device it plays on (nil = not sent anywhere,
+/// metering only). Devices are matched by Core Audio UID.
+public struct ProjectAuxBus: Codable, Equatable, Sendable {
+    public var faderDB: Float = 0
+    public var muted = false
+    public var outputDeviceUID: String?
+    public init(faderDB: Float = 0, muted: Bool = false, outputDeviceUID: String? = nil) {
+        self.faderDB = faderDB; self.muted = muted; self.outputDeviceUID = outputDeviceUID
+    }
+    private enum CodingKeys: String, CodingKey { case faderDB, muted, outputDeviceUID }
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        faderDB = try c.decodeIfPresent(Float.self, forKey: .faderDB) ?? 0
+        muted = try c.decodeIfPresent(Bool.self, forKey: .muted) ?? false
+        outputDeviceUID = try c.decodeIfPresent(String.self, forKey: .outputDeviceUID)
+    }
 }

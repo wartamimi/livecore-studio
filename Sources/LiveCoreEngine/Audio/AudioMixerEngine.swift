@@ -46,6 +46,7 @@ public final class MixerChannel: @unchecked Sendable {
 ///   input rings -> per-channel DSP (trim, comp, fader, pan, meter)
 ///               -> Program bus -> master fader -> limiter -> meters -> program ring (encoders)
 ///               -> Monitor bus (solo or program) * monitor volume -> output device
+///               -> Aux A / Aux B (post-fader sends) -> bus fader -> optional own output device
 ///
 /// Format: 48 kHz, 2 ch, Float32, non-interleaved everywhere inside the mixer. The output
 /// device may run at another rate; AVAudioEngine's mainMixer converts.
@@ -58,6 +59,11 @@ public final class AudioMixerEngine {
     public let master = ChannelControls()
     public let monitorVolume = AtomicFloat(1)
     public let limiterEnabled = AtomicBool(true)
+    /// Aux buses A and B: fader, mute and meters (same control block as a channel).
+    public static let auxCount = 2
+    public let aux: [ChannelControls] = (0..<AudioMixerEngine.auxCount).map { _ in ChannelControls() }
+    /// Device each aux bus plays on (nil = none). Main thread.
+    public private(set) var auxDeviceIDs: [AudioDeviceID?] = Array(repeating: nil, count: AudioMixerEngine.auxCount)
     /// Program audio for the encoders. Single consumer: `ProgramAudioPump`.
     public let programRingL: SPSCFloatRingBuffer
     public let programRingR: SPSCFloatRingBuffer
@@ -74,9 +80,16 @@ public final class AudioMixerEngine {
     private var masterRamp = GainRamp(initial: 1)
     private var monitorRamp = GainRamp(initial: 1)
     private var configObserver: NSObjectProtocol?
+    private var auxRamps = Array(repeating: GainRamp(initial: 1), count: AudioMixerEngine.auxCount)
+    private let auxRingsL: [SPSCFloatRingBuffer]
+    private let auxRingsR: [SPSCFloatRingBuffer]
+    /// The render thread writes an aux ring only while an output consumes it.
+    private let auxRingActive: [AtomicBool]
+    private var auxOutputs: [AuxOutput?] = Array(repeating: nil, count: AudioMixerEngine.auxCount)
 
     // Pre-allocated scratch (render thread only)
     private let chL, chR, progL, progR, monL, monR: UnsafeMutablePointer<Float>
+    private let auxL, auxR: [UnsafeMutablePointer<Float>]
 
     public init() {
         programRingL = SPSCFloatRingBuffer(minimumCapacity: 48_000 * 2)
@@ -88,6 +101,11 @@ public final class AudioMixerEngine {
             return p
         }
         chL = alloc(); chR = alloc(); progL = alloc(); progR = alloc(); monL = alloc(); monR = alloc()
+        auxL = (0..<Self.auxCount).map { _ in alloc() }
+        auxR = (0..<Self.auxCount).map { _ in alloc() }
+        auxRingsL = (0..<Self.auxCount).map { _ in SPSCFloatRingBuffer(minimumCapacity: 48_000) }
+        auxRingsR = (0..<Self.auxCount).map { _ in SPSCFloatRingBuffer(minimumCapacity: 48_000) }
+        auxRingActive = (0..<Self.auxCount).map { _ in AtomicBool(false) }
 
         let format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 2)!
         sourceNode = AVAudioSourceNode(format: format) { [unowned self] _, timestamp, frameCount, abl in
@@ -108,7 +126,8 @@ public final class AudioMixerEngine {
     deinit {
         if let configObserver { NotificationCenter.default.removeObserver(configObserver) }
         engine.stop()
-        [chL, chR, progL, progR, monL, monR].forEach { $0.deallocate() }
+        auxOutputs.forEach { $0?.stop() }
+        ([chL, chR, progL, progR, monL, monR] + auxL + auxR).forEach { $0.deallocate() }
     }
 
     public func start() {
@@ -141,6 +160,29 @@ public final class AudioMixerEngine {
         if wasRunning { start() }
     }
 
+    /// Plays aux bus `index` on an output device, or stops it (nil). Returns an error message.
+    @discardableResult
+    public func setAuxOutput(_ index: Int, deviceID: AudioDeviceID?) -> String? {
+        guard auxDeviceIDs.indices.contains(index) else { return nil }
+        auxRingActive[index].value = false
+        auxOutputs[index]?.stop()
+        auxOutputs[index] = nil
+        auxDeviceIDs[index] = nil
+        guard let deviceID else { return nil }
+        do {
+            // The new output flushes stale samples before it starts reading.
+            auxOutputs[index] = try AuxOutput(deviceID: deviceID, ringL: auxRingsL[index], ringR: auxRingsR[index])
+            auxDeviceIDs[index] = deviceID
+            auxRingActive[index].value = true
+            return nil
+        } catch {
+            return "Aux \(index == 0 ? "A" : "B"): \(error.localizedDescription)"
+        }
+    }
+
+    /// Underruns of an aux output (its device asked for audio faster than the mixer produced it).
+    public func auxUnderruns(_ index: Int) -> UInt64 { auxOutputs.indices.contains(index) ? auxOutputs[index]?.underruns.value ?? 0 : 0 }
+
     /// Adds a channel. Live devices use the default ~21 ms jitter buffer; sources that deliver
     /// audio in large bursts (AVPlayer taps hand over up to ~90 ms at once) pass larger values.
     public func addChannel(id: String, name: String, primeFrames: Int = 1024, maxBufferedFrames: Int = 4800) -> MixerChannel {
@@ -165,6 +207,7 @@ public final class AudioMixerEngine {
 
         progL.update(repeating: 0, count: frames); progR.update(repeating: 0, count: frames)
         monL.update(repeating: 0, count: frames); monR.update(repeating: 0, count: frames)
+        for b in 0..<Self.auxCount { auxL[b].update(repeating: 0, count: frames); auxR[b].update(repeating: 0, count: frames) }
 
         // Host time of this block's first sample: prefer the timestamp's host time.
         let ts = timestamp.pointee
@@ -194,6 +237,18 @@ public final class AudioMixerEngine {
         let wl = programRingL.write(progL, count: frames)
         let wr = programRingR.write(progR, count: frames)
         if wl < frames || wr < frames { programOverflows.add() }
+
+        // Aux buses: fader/mute, meters, and the ring of the bus's own output device.
+        for b in 0..<Self.auxCount {
+            let c = aux[b]
+            auxRamps[b].apply(target: c.muted.value ? 0 : AudioMath.dbToLinear(c.faderDB.value), left: auxL[b], right: auxR[b], frames: frames)
+            c.peakL.storeMax(AudioMath.peak(auxL[b], count: frames))
+            c.peakR.storeMax(AudioMath.peak(auxR[b], count: frames))
+            if auxRingActive[b].value {
+                _ = auxRingsL[b].write(auxL[b], count: frames)
+                _ = auxRingsR[b].write(auxR[b], count: frames)
+            }
+        }
 
         // Monitor output.
         let srcL = soloActive ? monL : progL
@@ -228,6 +283,8 @@ public final class AudioMixerEngine {
         if ch.controls.toProgram.value {
             for i in 0..<frames { progL[i] += chL[i]; progR[i] += chR[i] }
         }
+        if ch.controls.toBusA.value { let l = auxL[0], r = auxR[0]; for i in 0..<frames { l[i] += chL[i]; r[i] += chR[i] } }
+        if ch.controls.toBusB.value { let l = auxL[1], r = auxR[1]; for i in 0..<frames { l[i] += chL[i]; r[i] += chR[i] } }
         if ch.controls.solo.value {
             soloFlag = true
             for i in 0..<frames { monL[i] += chL[i]; monR[i] += chR[i] }

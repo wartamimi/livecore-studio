@@ -49,6 +49,14 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## F. Tes manual build 0.5.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-30 | Stinger | Tambah input file video stinger (ProRes 4444 / HEVC alpha, 1–2 s); Transisi › Stinger, pilih klip, atur titik potong; AUTO beberapa kali | Klip tampil di atas Program dengan latar transparan; Program berpindah tepat saat klip menutupi layar; suara whoosh terdengar lewat mixer; tidak ada kedip di awal/akhir |
+| T-30b | Stinger dalam proyek | Simpan proyek, buka lagi | Klip & titik potong stinger kembali |
+| T-31 | Aux bus | Kirim mic 1 ke A, mic 2 ke B; geser fader & mute bus | Meter AUX A/B bergerak sesuai; stream/rekaman tidak berubah |
+| T-31b | Mix-minus | Pilih perangkat output untuk AUX A (headphone kedua atau perangkat virtual); klik kanan DSP kanal tamu › Mix-minus di bus A | Tamu mendengar semua kecuali dirinya; 30 menit tanpa klik/putus (cek underrun) |
+
 ## E. Tes manual build 0.4.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|
