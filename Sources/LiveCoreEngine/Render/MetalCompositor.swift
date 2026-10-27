@@ -21,6 +21,10 @@ public final class MetalCompositor {
     private let transitionPipeline: MTLRenderPipelineState
     private let keyPipeline: MTLRenderPipelineState
     private let straightPipeline: MTLRenderPipelineState
+    private let quadVertex: MTLFunction
+    /// User shader for `TransitionKind.custom`; swapped from the main thread, read on the render queue.
+    private let customLock = NSLock()
+    private var customPipeline: MTLRenderPipelineState?
     private var textureCache: CVMetalTextureCache?
     private var intermediateA: MTLTexture?
     private var intermediateB: MTLTexture?
@@ -51,6 +55,8 @@ public final class MetalCompositor {
         self.outputSize = outputSize
         do {
             let lib = try device.makeLibrary(source: ShaderSource.code, options: nil)
+            guard let vertex = lib.makeFunction(name: "quad_vertex") else { throw CompositorError.pipeline("quad_vertex missing") }
+            quadVertex = vertex
             func pipeline(_ fragment: String, blend: Bool) throws -> MTLRenderPipelineState {
                 let d = MTLRenderPipelineDescriptor()
                 d.vertexFunction = lib.makeFunction(name: "quad_vertex")
@@ -75,6 +81,47 @@ public final class MetalCompositor {
         }
         CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, device, nil, &textureCache)
         configure(outputSize: outputSize)
+    }
+
+    /// Compiles a user transition (`CustomTransitionSource`) and makes it the one `.custom` uses.
+    /// Returns the compiler's message on failure (nothing is changed then).
+    /// Compiling takes a few hundred milliseconds: call it off the render queue.
+    public func loadCustomTransition(code: String) -> String? {
+        if let problem = CustomTransitionSource.validate(code) { return Self.describe(problem) }
+        do {
+            let lib = try device.makeLibrary(source: CustomTransitionSource.wrap(code), options: nil)
+            guard let fn = lib.makeFunction(name: CustomTransitionSource.entryPoint) else { return "Entry point missing." }
+            let d = MTLRenderPipelineDescriptor()
+            d.vertexFunction = quadVertex
+            d.fragmentFunction = fn
+            d.colorAttachments[0].pixelFormat = .bgra8Unorm
+            let state = try device.makeRenderPipelineState(descriptor: d)
+            customLock.lock(); customPipeline = state; customLock.unlock()
+            return nil
+        } catch {
+            // Keep only the user's lines of the compiler output; they are numbered like the user's file.
+            let text = (error as NSError).localizedDescription
+            let lines = text.split(separator: "\n").filter { $0.contains("transition:") && $0.contains("error") }
+            return lines.isEmpty ? text : lines.prefix(5).joined(separator: "\n")
+        }
+    }
+
+    public func clearCustomTransition() {
+        customLock.lock(); customPipeline = nil; customLock.unlock()
+    }
+
+    private func currentCustomPipeline() -> MTLRenderPipelineState? {
+        customLock.lock(); defer { customLock.unlock() }
+        return customPipeline
+    }
+
+    static func describe(_ p: CustomTransitionSource.Problem) -> String {
+        switch p {
+        case .empty: return "The shader file is empty."
+        case .tooLarge: return "The shader file is larger than 64 KB."
+        case .missingFunction: return "The file must define: float4 transition(float2 uv, float progress, float ratio, texture2d<float> from, texture2d<float> to, sampler s)."
+        case let .forbidden(w): return "\"\(w)\" is not allowed in a transition shader."
+        }
     }
 
     /// Changing resolution re-creates pools; only allowed while no output is running.
@@ -132,13 +179,22 @@ public final class MetalCompositor {
             drawComposition(cb, target: b, size: outputSize, layers: t.incoming, textures: textures, load: .clear)
             let rp = passDescriptor(programTex.tex, load: .dontCare)
             if let enc = cb.makeRenderCommandEncoder(descriptor: rp) {
-                enc.setRenderPipelineState(transitionPipeline)
                 var verts = quad(dest: PixelRect(x: 0, y: 0, width: Double(outputSize.width), height: Double(outputSize.height)),
                                  uv: (0, 0, 1, 1), canvas: outputSize)
                 enc.setVertexBytes(&verts, length: MemoryLayout<Float>.stride * verts.count, index: 0)
-                var params = TransitionParamsGPU(progress: Float(t.progress), kind: Int32(t.kind.rawValue),
-                                                 aspect: Float(outputSize.aspect))
-                enc.setFragmentBytes(&params, length: MemoryLayout<TransitionParamsGPU>.stride, index: 0)
+                if t.kind == .custom, let custom = currentCustomPipeline() {
+                    enc.setRenderPipelineState(custom)
+                    var params = CustomParamsGPU(progress: Float(t.progress), ratio: Float(outputSize.aspect),
+                                                 time: Float(HostClock.now().truncatingRemainder(dividingBy: 3600)))
+                    enc.setFragmentBytes(&params, length: MemoryLayout<CustomParamsGPU>.stride, index: 0)
+                } else {
+                    // A custom transition without a compiled shader falls back to a dissolve.
+                    enc.setRenderPipelineState(transitionPipeline)
+                    let kind = t.kind == .custom ? TransitionKind.dissolve : t.kind
+                    var params = TransitionParamsGPU(progress: Float(t.progress), kind: Int32(kind.rawValue),
+                                                     aspect: Float(outputSize.aspect))
+                    enc.setFragmentBytes(&params, length: MemoryLayout<TransitionParamsGPU>.stride, index: 0)
+                }
                 enc.setFragmentTexture(a, index: 0)
                 enc.setFragmentTexture(b, index: 1)
                 enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
@@ -181,6 +237,7 @@ public final class MetalCompositor {
         return mode != (kCVImageBufferAlphaChannelMode_PremultipliedAlpha as String)
     }
 
+    private struct CustomParamsGPU { var progress: Float; var ratio: Float; var time: Float; var pad: Float = 0 }
     private struct TransitionParamsGPU { var progress: Float; var kind: Int32; var aspect: Float; var pad: Float = 0 }
     /// Matches `KeyParams` in the shader (float2 members are 8-byte aligned: 4 floats, then 2 + 2).
     private struct KeyParamsGPU {

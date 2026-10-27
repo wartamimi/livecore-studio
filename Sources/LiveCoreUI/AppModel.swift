@@ -22,6 +22,10 @@ public final class AppModel: ObservableObject {
     @Published public var transitionKind: TransitionKind = .dissolve
     @Published public private(set) var stinger = StingerConfig()
     @Published public var transitionDuration: Double = 1.0
+    /// Custom shader transitions: available shaders, the selected one, and its last compile problem.
+    @Published public private(set) var customTransitions: [CustomTransitionLibrary.Entry] = []
+    @Published public private(set) var customTransitionID: String?
+    @Published public private(set) var customTransitionError: String?
     @Published public var tbar: Double = 0
     /// Instant replay: seconds buffered, and the speed new replays play at.
     @Published public var replayAvailable: Double = 0
@@ -83,6 +87,8 @@ public final class AppModel: ObservableObject {
         }
         transitionKind = settings.transition
         transitionDuration = settings.transitionDuration
+        customTransitionID = settings.customTransition
+        customTransitions = CustomTransitionLibrary.entries()
         do {
             let e = try ProductionEngine(settings: settings)
             engine = e
@@ -356,6 +362,57 @@ public final class AppModel: ObservableObject {
         engine?.setTBar(v)
     }
     public func cutDirect(_ id: InputID) { engine?.cutDirect(id) }
+
+    // MARK: Custom transitions
+
+    /// Uses the shader `id` for AUTO / T-bar (compiles it now; problems show under the picker).
+    public func selectCustomTransition(_ id: String) {
+        transitionKind = .custom
+        customTransitionID = id
+        customTransitionError = engine?.setCustomTransition(id)
+        settings.customTransition = id
+        settings.transition = .custom
+        if let d = try? JSONEncoder().encode(settings) { UserDefaults.standard.set(d, forKey: "settings") }
+    }
+
+    /// Re-reads the folder and recompiles the selected shader (after editing a file).
+    public func reloadCustomTransitions() {
+        customTransitions = CustomTransitionLibrary.entries()
+        if let id = customTransitionID { selectCustomTransition(id) }
+    }
+
+    public func importCustomTransition() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        if let metal = UTType(filenameExtension: "metal") { panel.allowedContentTypes = [metal, .plainText] }
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            let id = try CustomTransitionLibrary.importFile(url)
+            customTransitions = CustomTransitionLibrary.entries()
+            selectCustomTransition(id)
+        } catch {
+            report("Cannot import transition: \(error.localizedDescription)")
+        }
+    }
+
+    /// Creates a new shader file from the template and opens it in the default editor.
+    public func newCustomTransition() {
+        do {
+            let url = try CustomTransitionLibrary.createFromTemplate()
+            customTransitions = CustomTransitionLibrary.entries()
+            selectCustomTransition(CustomTransitionSource.fileID(url.lastPathComponent))
+            if !NSWorkspace.shared.open(url) { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+        } catch {
+            report("Cannot create transition: \(error.localizedDescription)")
+        }
+    }
+
+    public func revealCustomTransitionsFolder() {
+        let dir = CustomTransitionLibrary.folder
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(dir)
+    }
 
     public func setStinger(source: InputID?, cutPoint: Double?) {
         let cfg = StingerConfig(source: source, cutPoint: cutPoint)
@@ -758,6 +815,8 @@ public final class AppModel: ObservableObject {
         settings = e.settings
         transitionKind = settings.transition
         transitionDuration = settings.transitionDuration
+        customTransitionID = settings.customTransition
+        customTransitions = CustomTransitionLibrary.entries()
         overlays = e.overlays
         stinger = e.stinger
         reloadAudioChannels()

@@ -133,6 +133,8 @@ public struct ProductionSettings: Codable, Equatable, Sendable {
     public var recording = RecordingSettings()
     public var transition: TransitionKind = .dissolve
     public var transitionDuration: Double = 1.0
+    /// Shader used when `transition == .custom` (`CustomTransitionSource` id); added in 0.12.0.
+    public var customTransition: String?
     public init() {}
 
     /// Validation used before starting outputs. Returns human-readable problems (empty = OK).

@@ -56,13 +56,38 @@ struct MonitorView: View {
 struct TransitionControls: View {
     @EnvironmentObject var model: AppModel
 
+    /// Built-in kinds are tagged "kind:<raw value>"; custom shaders by their library id.
+    private var choice: Binding<String> {
+        Binding(
+            get: {
+                if model.transitionKind == .custom, let id = model.customTransitionID { return id }
+                return "kind:\(model.transitionKind.rawValue)"
+            },
+            set: { tag in
+                if tag.hasPrefix("kind:"), let raw = Int(tag.dropFirst(5)), let k = TransitionKind(rawValue: raw) {
+                    model.transitionKind = k
+                } else {
+                    model.selectCustomTransition(tag)
+                }
+            })
+    }
+
     var body: some View {
         VStack(spacing: 8) {
             SectionHeader(title: L10n.t("transition.type"))
-            Picker("", selection: $model.transitionKind) {
-                ForEach(TransitionKind.allCases.filter { $0 != .cut }, id: \.self) { k in Text(k.displayName).tag(k) }
+            Picker("", selection: choice) {
+                ForEach(TransitionKind.allCases.filter { $0 != .cut && $0 != .custom }, id: \.self) { k in
+                    Text(k.displayName).tag("kind:\(k.rawValue)")
+                }
+                if !model.customTransitions.isEmpty {
+                    Divider()
+                    ForEach(model.customTransitions) { t in Text(t.isBuiltIn ? t.name : "\(t.name) ✎").tag(t.id) }
+                }
             }
             .labelsHidden()
+            if model.transitionKind == .custom {
+                CustomTransitionControls()
+            }
             if model.transitionKind == .stinger {
                 StingerControls()
             } else {
@@ -124,3 +149,31 @@ struct StingerControls: View {
     }
 }
 #endif
+
+/// Shader file actions and the compiler message for custom transitions.
+struct CustomTransitionControls: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let err = model.customTransitionError {
+                Text(err)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(Theme.program)
+                    .lineLimit(6)
+                    .textSelection(.enabled)
+                Text(L10n.t("transition.custom.fallback")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+            }
+            HStack(spacing: 4) {
+                Button(L10n.t("transition.custom.new")) { model.newCustomTransition() }
+                Button(L10n.t("transition.custom.import")) { model.importCustomTransition() }
+            }
+            HStack(spacing: 4) {
+                Button(L10n.t("transition.custom.reload")) { model.reloadCustomTransitions() }
+                Button(L10n.t("transition.custom.folder")) { model.revealCustomTransitionsFolder() }
+            }
+        }
+        .controlSize(.small)
+        .font(.system(size: 10))
+    }
+}

@@ -17,6 +17,8 @@ public enum TransitionKind: Int, Codable, Sendable, CaseIterable {
     /// A video clip (normally with alpha) plays over the program; A cuts to B at the clip's cut
     /// point, hidden behind the clip. Not a shader transition: see `FramePlanner` / `StingerParams`.
     case stinger = 12
+    /// User-written Metal shader (`CustomTransitionSource`); which one is `ProductionSettings.customTransition`.
+    case custom = 13
 
     public var displayName: String {
         switch self {
@@ -33,6 +35,7 @@ public enum TransitionKind: Int, Codable, Sendable, CaseIterable {
         case .slideRight: return "Slide →"
         case .iris: return "Iris"
         case .stinger: return "Stinger"
+        case .custom: return "Custom"
         }
     }
 }
@@ -68,7 +71,8 @@ public enum TransitionMath {
         switch kind {
         case .cut: return t < 1 ? .a(u: u, v: v) : .b(u: u, v: v)
         case .stinger: return t < 0.5 ? .a(u: u, v: v) : .b(u: u, v: v)   // real cut point: StingerParams
-        case .dissolve: return t <= 0 ? .a(u: u, v: v) : (t >= 1 ? .b(u: u, v: v) : .mix(weightB: t))
+        // Custom shaders run only on the GPU; the CPU reference treats them as a dissolve.
+        case .dissolve, .custom: return t <= 0 ? .a(u: u, v: v) : (t >= 1 ? .b(u: u, v: v) : .mix(weightB: t))
         case .fadeToBlack:
             if t == 0.5 { return .black }
             return t < 0.5 ? .a(u: u, v: v) : .b(u: u, v: v)
