@@ -250,7 +250,8 @@ public final class ProductionEngine {
             guard let self else { return MixerChannel.detached() }
             let ch = self.mixer.addChannel(id: Self.fileChannelID(srcID), name: src?.name ?? "Video",
                                            primeFrames: 4096, maxBufferedFrames: 14_400)
-            if let saved = self.pendingFileChannelSettings.removeValue(forKey: srcID) { Self.apply(saved, to: ch.controls) }
+            if let saved = self.pendingFileChannelSettings.removeValue(forKey: srcID) { self.restore(saved, to: ch) }
+            self.applyAFV()
             self.onAudioChannelsChange?()
             return ch
         }
@@ -356,6 +357,9 @@ public final class ProductionEngine {
             mixer.removeChannel(id: Self.fileChannelID(id))
             onAudioChannelsChange?()
         }
+        // Channels that followed this input are no longer gated.
+        afvLinks = afvLinks.filter { $0.value != id && $0.key != Self.fileChannelID(id) }
+        applyAFV()
         publishInputs()
     }
 
@@ -467,6 +471,26 @@ public final class ProductionEngine {
     // MARK: Auto play (vMix-style)
 
     private var autoPlayOnAir = Set<InputID>()
+    private var onAirInputs = Set<InputID>()
+
+    // MARK: Audio follow video (vMix AFV)
+
+    /// Mixer channel id -> the input it follows. Main thread.
+    public private(set) var afvLinks: [String: InputID] = [:]
+
+    /// Links a mixer channel to an input (nil = off): the channel is heard only while that
+    /// input is on air (Program, transition, scene layer or on-air overlay).
+    public func setAudioFollowVideo(channelID: String, input: InputID?) {
+        afvLinks[channelID] = input
+        applyAutoPlay()   // recomputes what is on air, then applies AFV
+    }
+
+    private func applyAFV() {
+        for ch in mixer.channelList {
+            let open = OnAir.audioOpen(link: afvLinks[ch.id], visible: onAirInputs)
+            if ch.controls.afvClosed.value == open { ch.controls.afvClosed.value = !open }
+        }
+    }
 
     /// Starts video inputs set to auto play when they become visible on Program (directly, as a
     /// scene layer, as an on-air overlay or as either side of a transition) and pauses them when
@@ -475,12 +499,9 @@ public final class ProductionEngine {
         let (sw, layers, overlays, sources, stingerID) = control.read { st in
             (st.switcher.state, st.layers, st.overlays, st.sources, st.stinger.source)
         }
-        var visible = Set<InputID>()
-        for id in [sw.program, sw.transition?.from, sw.transition?.to].compactMap({ $0 }) {
-            visible.insert(id)
-            for l in layers[id] ?? [] { visible.insert(l.source) }
-        }
-        for o in overlays where o.isOn { if let s = o.source { visible.insert(s) } }
+        let visible = OnAir.visibleInputs(switcher: sw, layers: layers, overlays: overlays)
+        onAirInputs = visible
+        applyAFV()
         for (id, src) in sources {
             guard let v = src as? VideoFileSource, v.autoPlay != .off, id != stingerID else { continue }
             let was = autoPlayOnAir.contains(id), now = visible.contains(id)
@@ -783,14 +804,17 @@ extension ProductionEngine {
         }
         for ch in mixer.channelList where !ch.id.hasPrefix(Self.musicChannelPrefix) {
             let isFile = ch.id.hasPrefix("file:")
-            doc.audio.channels.append(Self.projectChannel(ch, deviceUniqueID: isFile ? nil : ch.id,
-                                                          inputID: isFile ? InputID(String(ch.id.dropFirst(5))) : nil))
+            var pc = Self.projectChannel(ch, deviceUniqueID: isFile ? nil : ch.id,
+                                         inputID: isFile ? InputID(String(ch.id.dropFirst(5))) : nil)
+            pc.afvInput = afvLinks[ch.id]
+            doc.audio.channels.append(pc)
         }
         doc.audio.music = musicPlayers.isEmpty ? nil : musicPlayers.map { m in
             ProjectMusic(id: m.id, name: m.name,
                          tracks: m.tracks.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) },
                          loop: m.loopPlaylist, shuffle: m.shuffle,
-                         channel: Self.projectChannel(m.channel, deviceUniqueID: nil, inputID: nil))
+                         channel: { var pc = Self.projectChannel(m.channel, deviceUniqueID: nil, inputID: nil)
+                                    pc.afvInput = afvLinks[m.channel.id]; return pc }())
         }
         return doc
     }
@@ -806,6 +830,7 @@ extension ProductionEngine {
         for info in inputs { removeInput(info.id) }
         for uid in Array(audioInputs.keys) { removeAudioInput(uniqueID: uid) }
         pendingFileChannelSettings = [:]
+        afvLinks = [:]
 
         warnings += apply(doc.settings)
 
@@ -883,7 +908,7 @@ extension ProductionEngine {
             let m = addMusic(urls: urls, name: pm.name, id: pm.id)
             m.loopPlaylist = pm.loop
             m.shuffle = pm.shuffle
-            if let ch = pm.channel { Self.apply(ch, to: m.channel.controls) }
+            if let ch = pm.channel { restore(ch, to: m.channel) }
         }
         for ch in doc.audio.channels {
             if let uid = ch.deviceUniqueID {
@@ -892,9 +917,9 @@ extension ProductionEngine {
                     continue
                 }
                 addAudioInput(uniqueID: uid)
-                if let mc = mixer.channelList.first(where: { $0.id == uid }) { Self.apply(ch, to: mc.controls) }
+                if let mc = mixer.channelList.first(where: { $0.id == uid }) { restore(ch, to: mc) }
             } else if let iid = ch.inputID, created.contains(iid) {
-                if let mc = mixer.channelList.first(where: { $0.id == Self.fileChannelID(iid) }) { Self.apply(ch, to: mc.controls) }
+                if let mc = mixer.channelList.first(where: { $0.id == Self.fileChannelID(iid) }) { restore(ch, to: mc) }
                 else { pendingFileChannelSettings[iid] = ch }
             }
         }
@@ -905,6 +930,13 @@ extension ProductionEngine {
         onAudioChannelsChange?()
         publishInputs()
         return warnings
+    }
+
+    /// Applies saved channel settings, including the AFV link.
+    private func restore(_ p: ProjectAudioChannel, to ch: MixerChannel) {
+        Self.apply(p, to: ch.controls)
+        afvLinks[ch.id] = p.afvInput.flatMap { source($0) != nil ? $0 : nil }
+        applyAFV()
     }
 
     /// Mixer settings of a channel as stored in projects.

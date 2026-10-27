@@ -243,3 +243,6 @@
 "midi.fullscreen" = "Output fullscreen";
 "media.add" = "Tambah Media (video atau audio)…";
 "media.add_playlist" = "Tambah Media Playlist…";
+"afv.help" = "Audio follow video: channel ini hanya terdengar saat inputnya tampil di Program (atau dalam transisi, layer scene, atau overlay yang aktif).";
+"afv.off" = "AFV mati (selalu terdengar)";
+"afv.following" = "Audio mengikuti video: %@";

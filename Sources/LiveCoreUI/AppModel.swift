@@ -469,6 +469,15 @@ public final class AppModel: ObservableObject {
         m.setTracks(m.tracks + urls)
     }
 
+    // MARK: Audio follow video
+
+    public func afvLink(_ channelID: String) -> InputID? { engine?.afvLinks[channelID] }
+
+    public func setAFV(_ channelID: String, input: InputID?) {
+        engine?.setAudioFollowVideo(channelID: channelID, input: input)
+        objectWillChange.send()
+    }
+
     public func musicPlayer(_ channelID: String) -> MusicInput? { engine?.musicPlayer(channelID: channelID) }
 
     public func removeMusic(_ channelID: String) {

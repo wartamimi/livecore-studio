@@ -5,6 +5,9 @@ public final class ChannelControls: @unchecked Sendable {
     public let faderDB = AtomicFloat(0)         // fader, -inf...+10 dB
     public let pan = AtomicFloat(0)             // -1 ... +1 (balance)
     public let muted = AtomicBool(false)
+    /// Audio-follow-video gate: true while the linked input is off air (engine-controlled,
+    /// independent of the operator's mute).
+    public let afvClosed = AtomicBool(false)
     public let solo = AtomicBool(false)         // affects the monitor bus only
     public let toProgram = AtomicBool(true)     // routed to the Program (stream/record) bus
     public let toBusA = AtomicBool(false)       // routed (post-fader) to aux bus A
@@ -53,7 +56,7 @@ public struct ChannelStripDSP: Sendable {
 
     /// Processes in place. Returns false when the channel is muted (buffers are zeroed).
     public mutating func process(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>, frames: Int) {
-        let muted = controls.muted.value
+        let muted = controls.muted.value || controls.afvClosed.value
         let trim = AudioMath.dbToLinear(controls.gainDB.value)
         let gateOn = controls.gateEnabled.value
         let compOn = controls.compressorEnabled.value

@@ -74,6 +74,7 @@ struct ChannelStripView: View {
             HStack(spacing: 3) {
                 toggle("A", $vm.toBusA, Theme.preview).help(L10n.t("aux.send_a"))
                 toggle("B", $vm.toBusB, Theme.preview).help(L10n.t("aux.send_b"))
+                afvButton
             }
             Button(dspLabel) { showDSP.toggle() }
                 .buttonStyle(.borderless).font(.system(size: 10))
@@ -100,6 +101,32 @@ struct ChannelStripView: View {
         .padding(4)
         .background(Theme.panelRaised)
         .clipShape(RoundedRectangle(cornerRadius: 5))
+    }
+
+    /// AFV: a video file's own audio follows its input with one click; other channels pick the
+    /// input to follow from a menu.
+    @ViewBuilder private var afvButton: some View {
+        let link = model.afvLink(vm.id)
+        if vm.isFileChannel {
+            let own = InputID(String(vm.id.dropFirst(5)))
+            toggle("AFV", Binding(get: { link != nil }, set: { model.setAFV(vm.id, input: $0 ? own : nil) }), Theme.program)
+                .help(L10n.t("afv.help"))
+        } else {
+            Menu {
+                Button(L10n.t("afv.off")) { model.setAFV(vm.id, input: nil) }
+                Divider()
+                ForEach(model.inputs) { info in
+                    Button((link == info.id ? "✓ " : "") + info.name) { model.setAFV(vm.id, input: info.id) }
+                }
+            } label: {
+                Text("AFV").font(.system(size: 9, weight: .bold))
+                    .frame(width: 26, height: 18)
+                    .background(link != nil ? Theme.program : Theme.panel)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+            }
+            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+            .help(link.flatMap { id in model.inputs.first { $0.id == id }?.name }.map { L10n.f("afv.following", $0) } ?? L10n.t("afv.help"))
+        }
     }
 
     /// "DSP", with a marker for each active processor (G = gate, C = compressor).
