@@ -13,6 +13,9 @@ enum Theme {
     static let preview = Color(red: 0.16, green: 0.75, blue: 0.35)
     static let accent = Color(red: 0.25, green: 0.55, blue: 1.0)
     static let warning = Color(red: 1.0, green: 0.72, blue: 0.15)
+    /// Overlay buttons: waiting on Preview (orange) / on Program (green).
+    static let overlayPreview = Color(red: 1.0, green: 0.55, blue: 0.10)
+    static let overlayProgram = Color(red: 0.16, green: 0.75, blue: 0.35)
     static let meterGreen = Color(red: 0.2, green: 0.85, blue: 0.35)
     static let meterYellow = Color(red: 0.95, green: 0.82, blue: 0.2)
     static let meterRed = Color(red: 0.95, green: 0.2, blue: 0.2)

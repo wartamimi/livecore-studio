@@ -75,10 +75,15 @@ struct OverlaySection: View {
             SectionHeader(title: L10n.t("overlay.title"))
             ForEach(model.overlays, id: \.index) { ch in
                 HStack(spacing: 6) {
-                    Button("\(ch.index)") { model.toggleOverlay(ch.index) }
-                        .buttonStyle(StudioButtonStyle(color: Theme.program, active: ch.isOn))
+                    // Click = Preview (orange), secondary / two-finger click = Program (green).
+                    Button("\(ch.index)") {}
+                        .buttonStyle(StudioButtonStyle(color: ch.isOn ? Theme.overlayProgram : Theme.overlayPreview,
+                                                       active: ch.isOn || ch.onPreview))
                         .frame(width: 44)
+                        .overlay(TwoClickArea(primary: { model.toggleOverlayPreview(ch.index) },
+                                              secondary: { model.toggleOverlay(ch.index) }))
                         .disabled(ch.source == nil)
+                        .help(L10n.t("overlay.help"))
                     Picker("", selection: Binding(get: { ch.source }, set: { model.configureOverlay(ch.index, source: $0, preset: ch.preset) })) {
                         Text(L10n.t("overlay.none")).tag(InputID?.none)
                         ForEach(model.inputs) { i in Text("\(i.number) \(i.name)").tag(Optional(i.id)) }
@@ -233,6 +238,32 @@ struct RecordSection: View {
 
     private var folderLabel: String {
         model.settings.recording.folderPath.isEmpty ? RecordingEngine.defaultFolder().path : model.settings.recording.folderPath
+    }
+}
+/// Transparent click target that tells a primary click from a secondary one (two-finger click
+/// on a trackpad, right click, or control-click). SwiftUI has no secondary-click action on macOS 13.
+struct TwoClickArea: NSViewRepresentable {
+    let primary: () -> Void
+    let secondary: () -> Void
+
+    final class ClickView: NSView {
+        var primary: () -> Void = {}
+        var secondary: () -> Void = {}
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+        override func mouseDown(with event: NSEvent) {
+            if event.modifierFlags.contains(.control) { secondary() } else { primary() }
+        }
+        override func rightMouseDown(with event: NSEvent) { secondary() }
+    }
+
+    func makeNSView(context: Context) -> ClickView {
+        let v = ClickView()
+        v.primary = primary; v.secondary = secondary
+        return v
+    }
+
+    func updateNSView(_ v: ClickView, context: Context) {
+        v.primary = primary; v.secondary = secondary
     }
 }
 #endif

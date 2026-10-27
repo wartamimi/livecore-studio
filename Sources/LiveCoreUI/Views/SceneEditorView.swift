@@ -1,4 +1,5 @@
 #if os(macOS)
+import AppKit
 import SwiftUI
 import LiveCoreCore
 import LiveCoreEngine
@@ -66,6 +67,9 @@ struct SceneEditorSheet: View {
             PixelBufferView(feed: model.feed(for: layer.source))
                 .opacity(layer.opacity)
                 .frame(width: frame.width, height: frame.height)
+                .clipShape(EditorShape(style: layer.style))
+                .overlay(EditorShape(style: layer.style).stroke(borderColor(layer.style),
+                                                                lineWidth: (layer.style?.borderWidth ?? 0) * canvas.height))
                 .overlay(Rectangle().stroke(isSel ? Theme.accent : Color.white.opacity(0.35), lineWidth: isSel ? 2 : 1))
                 .overlay(alignment: .topLeading) {
                     Text("\(i + 1) \(name(layer.source))").font(.system(size: 9, weight: .bold))
@@ -116,12 +120,10 @@ struct SceneEditorSheet: View {
             HStack {
                 Text(L10n.t("scene.layers")).font(.system(size: 11, weight: .bold))
                 Spacer()
-                Menu {
-                    ForEach(model.inputs.filter { $0.id != input }) { info in
-                        Button("\(info.number) \(info.name)") { addLayer(info.id) }
-                    }
-                } label: { Image(systemName: "plus") }
-                .menuStyle(.borderlessButton).fixedSize()
+                // An AppKit menu built on click: a SwiftUI Menu here did not open reliably while the
+                // sheet re-renders with the live thumbnails.
+                Button { showAddMenu() } label: { Label(L10n.t("scene.add_layer"), systemImage: "plus") }
+                    .font(.system(size: 11))
             }
             List(selection: Binding(get: { selected }, set: { if let v = $0 { selected = v } })) {
                 ForEach(Array(layers.enumerated()).reversed(), id: \.offset) { i, l in
@@ -150,12 +152,106 @@ struct SceneEditorSheet: View {
                     Slider(value: Binding(get: { l.opacity }, set: { v in update(selected) { $0.opacity = v } }), in: 0...1)
                 }
                 Toggle(L10n.t("scene.lock"), isOn: $lockAspect).font(.system(size: 11))
+                styleEditor(l)
                 Button(L10n.t("scene.fit_source")) { fitToSource(selected) }.font(.system(size: 11))
                 Text(String(format: "x %.2f  y %.2f  w %.2f  h %.2f", l.rect.x, l.rect.y, l.rect.width, l.rect.height))
                     .font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.textDim)
             }
             Spacer(minLength: 0)
         }
+    }
+
+    // MARK: Style (crop, corners, shape, border)
+
+    @ViewBuilder
+    private func styleEditor(_ l: Layer) -> some View {
+        let st = l.style ?? LayerStyle()
+        DisclosureGroup(L10n.t("scene.style")) {
+            VStack(alignment: .leading, spacing: 4) {
+                Picker(L10n.t("scene.shape"), selection: styleBinding(\.shape)) {
+                    Text(L10n.t("scene.shape.rectangle")).tag(LayerStyle.Shape.rectangle)
+                    Text(L10n.t("scene.shape.ellipse")).tag(LayerStyle.Shape.ellipse)
+                }
+                if st.shape == .rectangle {
+                    slider(L10n.t("scene.corner"), styleBinding(\.cornerRadius), 0...0.5)
+                }
+                slider(L10n.t("scene.border"), styleBinding(\.borderWidth), 0...0.03)
+                if st.borderWidth > 0 {
+                    ColorPicker(L10n.t("scene.border_color"), selection: Binding(
+                        get: { Color(red: st.borderColor.r, green: st.borderColor.g, blue: st.borderColor.b) },
+                        set: { c in
+                            let ns = NSColor(c).usingColorSpace(.sRGB) ?? .white
+                            updateStyle { $0.borderColor = ChromaKey.RGB(r: Double(ns.redComponent), g: Double(ns.greenComponent), b: Double(ns.blueComponent)) }
+                        }), supportsOpacity: false)
+                }
+                Text(L10n.t("scene.crop")).font(.system(size: 10, weight: .bold)).padding(.top, 2)
+                slider(L10n.t("scene.crop.left"), styleBinding(\.crop.left), 0...0.45)
+                slider(L10n.t("scene.crop.right"), styleBinding(\.crop.right), 0...0.45)
+                slider(L10n.t("scene.crop.top"), styleBinding(\.crop.top), 0...0.45)
+                slider(L10n.t("scene.crop.bottom"), styleBinding(\.crop.bottom), 0...0.45)
+                Button(L10n.t("scene.style_reset")) { update(selected) { $0.style = nil } }
+                    .disabled(l.style == nil)
+            }
+            .font(.system(size: 11))
+        }
+        .font(.system(size: 11))
+    }
+
+    private func slider(_ title: String, _ value: Binding<Double>, _ range: ClosedRange<Double>) -> some View {
+        HStack(spacing: 4) {
+            Text(title).frame(width: 70, alignment: .leading)
+            Slider(value: value, in: range)
+            Text("\(Int((value.wrappedValue * 100).rounded()))%").font(.system(size: 10).monospacedDigit()).frame(width: 34, alignment: .trailing)
+        }
+    }
+
+    private func styleBinding<T>(_ path: WritableKeyPath<LayerStyle, T>) -> Binding<T> {
+        Binding(
+            get: { (layers.indices.contains(selected) ? layers[selected].style : nil)?[keyPath: path] ?? LayerStyle()[keyPath: path] },
+            set: { v in updateStyle { $0[keyPath: path] = v } })
+    }
+
+    private func updateStyle(_ change: (inout LayerStyle) -> Void) {
+        update(selected) { l in
+            var s = l.style ?? LayerStyle()
+            change(&s)
+            l.style = s.clamped
+        }
+    }
+
+    // MARK: Add menu
+
+    private func showAddMenu() {
+        let menu = NSMenu()
+        let others = model.inputs.filter { $0.id != input }
+        if others.isEmpty {
+            let none = NSMenuItem(title: L10n.t("scene.no_inputs"), action: nil, keyEquivalent: "")
+            none.isEnabled = false
+            menu.addItem(none)
+        }
+        for info in others {
+            let id = info.id
+            menu.addItem(ClosureMenuItem(title: "\(info.number) \(info.name)") { addLayer(id) })
+        }
+        menu.addItem(.separator())
+        let shapes = NSMenuItem(title: L10n.t("scene.add_shape"), action: nil, keyEquivalent: "")
+        let sub = NSMenu()
+        sub.addItem(ClosureMenuItem(title: L10n.t("scene.shape.box")) { addShape(LayerStyle(), rect: NormRect(x: 0.05, y: 0.70, width: 0.5, height: 0.2)) })
+        sub.addItem(ClosureMenuItem(title: L10n.t("scene.shape.rounded")) { addShape(LayerStyle(cornerRadius: 0.25), rect: NormRect(x: 0.05, y: 0.70, width: 0.5, height: 0.2)) })
+        sub.addItem(ClosureMenuItem(title: L10n.t("scene.shape.circle")) {
+            // Square in pixels on a 16:9 canvas.
+            addShape(LayerStyle(shape: .ellipse), rect: NormRect(x: 0.40, y: 0.30, width: 0.225, height: 0.4))
+        })
+        shapes.submenu = sub
+        menu.addItem(shapes)
+        menu.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
+    }
+
+    private func addShape(_ style: LayerStyle, rect: NormRect) {
+        guard let id = model.addShapeInput(NSColor(red: 0.0, green: 0.45, blue: 0.85, alpha: 1), name: L10n.t("scene.shape.input_name")) else { return }
+        layers.append(Layer(source: id, rect: rect, scaleMode: .stretch, style: style))
+        selected = layers.count - 1
+        model.setLayers(layers, of: input)
     }
 
     // MARK: Edits
@@ -196,5 +292,32 @@ struct SceneEditorSheet: View {
     }
 
     private func name(_ id: InputID) -> String { model.inputs.first { $0.id == id }?.name ?? "?" }
+}
+/// The layer's mask as the editor draws it (the Preview monitor shows the exact GPU result).
+private struct EditorShape: Shape {
+    let style: LayerStyle?
+    func path(in rect: CGRect) -> Path {
+        guard let s = style else { return Path(rect) }
+        if s.shape == .ellipse { return Path(ellipseIn: rect) }
+        let r = s.cornerRadius * min(rect.width, rect.height)
+        return Path(roundedRect: rect, cornerRadius: r)
+    }
+}
+
+private func borderColor(_ s: LayerStyle?) -> Color {
+    guard let c = s?.borderColor else { return .clear }
+    return Color(red: c.r, green: c.g, blue: c.b)
+}
+
+/// NSMenuItem that runs a closure (for menus built in code).
+final class ClosureMenuItem: NSMenuItem {
+    private let handler: () -> Void
+    init(title: String, handler: @escaping () -> Void) {
+        self.handler = handler
+        super.init(title: title, action: #selector(run), keyEquivalent: "")
+        target = self
+    }
+    @available(*, unavailable) required init(coder: NSCoder) { fatalError("not used") }
+    @objc private func run() { handler() }
 }
 #endif

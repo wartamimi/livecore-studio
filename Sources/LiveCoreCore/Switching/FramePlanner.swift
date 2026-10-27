@@ -9,9 +9,12 @@ public struct DrawCommand: Equatable, Sendable {
     public var key: ChromaKey?
     /// The source has straight (non-premultiplied) alpha; the compositor premultiplies it.
     public var premultiply: Bool
-    public init(source: InputID, rect: NormRect, scaleMode: ScaleMode, opacity: Double, key: ChromaKey? = nil, premultiply: Bool = false) {
+    /// Crop / mask / border of a scene layer (clamped); nil = plain.
+    public var style: LayerStyle?
+    public init(source: InputID, rect: NormRect, scaleMode: ScaleMode, opacity: Double, key: ChromaKey? = nil,
+                premultiply: Bool = false, style: LayerStyle? = nil) {
         self.source = source; self.rect = rect; self.scaleMode = scaleMode; self.opacity = opacity; self.key = key
-        self.premultiply = premultiply
+        self.premultiply = premultiply; self.style = style
     }
 }
 
@@ -51,7 +54,8 @@ public enum FramePlanner {
             return layers.compactMap { l in
                 // Guard against a scene layer that points at a removed input.
                 guard l.source == id || layersFor(l.source) != nil else { return nil }
-                return DrawCommand(source: l.source, rect: l.rect, scaleMode: l.scaleMode, opacity: l.opacity, key: key(l.source))
+                return DrawCommand(source: l.source, rect: l.rect, scaleMode: l.scaleMode, opacity: l.opacity, key: key(l.source),
+                                   style: l.style?.clamped)
             }
         }
 
@@ -73,6 +77,13 @@ public enum FramePlanner {
             plan.program = composition(snapshot.program)
         }
         plan.preview = composition(snapshot.preview)
+        // Overlays waiting on Preview are drawn over the preview picture at full opacity.
+        for ch in overlays.sorted(by: { $0.index < $1.index }) where ch.onPreview {
+            guard let src = ch.source, layersFor(src) != nil else { continue }
+            plan.preview.append(DrawCommand(source: src, rect: ch.preset.rect,
+                                            scaleMode: ch.preset == .fullScreen || ch.preset == .lowerThird ? .fit : .fill,
+                                            opacity: 1, key: key(src)))
+        }
         for ch in overlays.sorted(by: { $0.index < $1.index }) {
             guard let src = ch.source, layersFor(src) != nil else { continue }
             let a = ch.opacity(at: now)

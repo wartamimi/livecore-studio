@@ -247,6 +247,8 @@ public final class AppModel: ObservableObject {
     }
 
     public func addColor(_ c: NSColor, name: String) { engine?.addColor(c, name: name) }
+    /// Solid colour input used as a shape layer in the scene editor.
+    public func addShapeInput(_ c: NSColor, name: String) -> InputID? { engine?.addColor(c, name: name) }
 
     public func addTitle(_ style: TextSource.Style) { engine?.addTitle(style) }
 
@@ -510,6 +512,19 @@ public final class AppModel: ObservableObject {
         overlays = engine?.overlays ?? []
     }
 
+    /// Click (one finger): show / hide the overlay on Preview only; CUT/AUTO takes it to Program.
+    public func toggleOverlayPreview(_ index: Int) {
+        guard let e = engine, let ch = e.overlays.first(where: { $0.index == index }) else { return }
+        if ch.isOn {
+            // Already on Program: a click takes it off air (same as vMix's overlay button).
+            e.setOverlay(index, on: false)
+        } else {
+            e.setOverlayPreview(index, on: !ch.onPreview)
+        }
+        overlays = e.overlays
+    }
+
+    /// Secondary click (two fingers): straight to / off Program.
     public func toggleOverlay(_ index: Int) {
         guard let e = engine, let ch = e.overlays.first(where: { $0.index == index }) else { return }
         e.setOverlay(index, on: !ch.isOn)

@@ -41,8 +41,11 @@ public struct Layer: Equatable, Codable, Sendable {
     public var rect: NormRect
     public var scaleMode: ScaleMode
     public var opacity: Double
-    public init(source: InputID, rect: NormRect = .full, scaleMode: ScaleMode = .fit, opacity: Double = 1) {
-        self.source = source; self.rect = rect; self.scaleMode = scaleMode; self.opacity = opacity
+    /// Crop, rounded corners / ellipse and border (absent before 0.13.0 = plain).
+    public var style: LayerStyle?
+    public init(source: InputID, rect: NormRect = .full, scaleMode: ScaleMode = .fit, opacity: Double = 1,
+                style: LayerStyle? = nil) {
+        self.source = source; self.rect = rect; self.scaleMode = scaleMode; self.opacity = opacity; self.style = style
     }
 }
 

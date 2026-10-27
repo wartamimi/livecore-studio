@@ -480,7 +480,14 @@ public final class ProductionEngine {
     public var switcherState: SwitcherSnapshot { control.read { $0.switcher.state } }
 
     public func setPreview(_ id: InputID?) { control.mutate { _ = $0.switcher.setPreview(id) } }
-    public func cut() { control.mutate { _ = $0.switcher.cut() } }
+    public func cut() {
+        let now = HostClock.now()
+        control.mutate { st in
+            _ = st.switcher.cut()
+            for i in st.overlays.indices { st.overlays[i].takeToProgram(now: now) }
+        }
+        applyAutoPlay()
+    }
     public func auto() {
         let kind = settings.transition, dur = settings.transitionDuration
         var stinger: StingerParams?
@@ -498,11 +505,21 @@ public final class ProductionEngine {
             stinger = p
             clip.restart()
         }
-        control.mutate { _ = $0.switcher.auto(kind: kind, duration: dur, now: HostClock.now(), stinger: stinger) }
+        let now = HostClock.now()
+        control.mutate { st in
+            _ = st.switcher.auto(kind: kind, duration: dur, now: now, stinger: stinger)
+            // Overlays waiting on Preview go to Program together with the transition.
+            if st.switcher.isTransitioning { for i in st.overlays.indices { st.overlays[i].takeToProgram(now: now) } }
+        }
+        applyAutoPlay()
     }
     public func setTBar(_ position: Double) {
         let kind = settings.transition
-        control.mutate { _ = $0.switcher.setTBar(position, kind: kind, now: HostClock.now()) }
+        let now = HostClock.now()
+        control.mutate { st in
+            _ = st.switcher.setTBar(position, kind: kind, now: now)
+            if st.switcher.isTransitioning { for i in st.overlays.indices { st.overlays[i].takeToProgram(now: now) } }
+        }
     }
     /// "Quick play": cut a specific input straight to program.
     public func cutDirect(_ id: InputID) {
@@ -662,8 +679,17 @@ public final class ProductionEngine {
         control.mutate { st in
             guard let i = st.overlays.firstIndex(where: { $0.index == index }), st.overlays[i].source != nil else { return }
             st.overlays[i].set(on: on, now: now)
+            if on { st.overlays[i].onPreview = false }
         }
         applyAutoPlay()
+    }
+
+    /// Shows or hides an overlay on Preview only; CUT/AUTO then takes it to Program.
+    public func setOverlayPreview(_ index: Int, on: Bool) {
+        control.mutate { st in
+            guard let i = st.overlays.firstIndex(where: { $0.index == index }), st.overlays[i].source != nil else { return }
+            st.overlays[i].onPreview = on
+        }
     }
 
     // MARK: Audio inputs

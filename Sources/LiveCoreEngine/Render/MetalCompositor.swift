@@ -21,6 +21,7 @@ public final class MetalCompositor {
     private let transitionPipeline: MTLRenderPipelineState
     private let keyPipeline: MTLRenderPipelineState
     private let straightPipeline: MTLRenderPipelineState
+    private let styledPipeline: MTLRenderPipelineState
     private let quadVertex: MTLFunction
     /// User shader for `TransitionKind.custom`; swapped from the main thread, read on the render queue.
     private let customLock = NSLock()
@@ -76,6 +77,7 @@ public final class MetalCompositor {
             transitionPipeline = try pipeline("transition_fragment", blend: false)
             keyPipeline = try pipeline("key_fragment", blend: true)
             straightPipeline = try pipeline("straight_fragment", blend: true)
+            styledPipeline = try pipeline("styled_fragment", blend: true)
         } catch {
             throw CompositorError.pipeline(error.localizedDescription)
         }
@@ -240,6 +242,16 @@ public final class MetalCompositor {
     private struct CustomParamsGPU { var progress: Float; var ratio: Float; var time: Float; var pad: Float = 0 }
     private struct TransitionParamsGPU { var progress: Float; var kind: Int32; var aspect: Float; var pad: Float = 0 }
     /// Matches `KeyParams` in the shader (float2 members are 8-byte aligned: 4 floats, then 2 + 2).
+    /// Matches `StyleParams` in the shader (float4, float4, 3 floats, 2 ints; 64-byte stride both sides).
+    private struct StyleParamsGPU {
+        var maskRect: SIMD4<Float>
+        var borderColor: SIMD4<Float>
+        var opacity: Float
+        var radius: Float
+        var border: Float
+        var ellipse: Int32
+        var premultiply: Int32
+    }
     private struct KeyParamsGPU {
         var opacity: Float, similarity: Float, smoothness: Float, spill: Float
         var keyCb: Float, keyCr: Float, pad0: Float = 0, pad1: Float = 0
@@ -253,17 +265,16 @@ public final class MetalCompositor {
         for (i, layer) in layers.enumerated() {
             guard let entry = textures[layer.source], layer.opacity > 0.001 else { continue }
             let (tex, srcSize) = entry
-            let box = LayoutMath.toPixels(layer.rect, canvas: size)
-            let placed = LayoutMath.place(source: srcSize, in: box, mode: layer.scaleMode)
-            // Clip to the layer box (crop for .fill) and to the canvas; derive matching UVs.
-            guard let clipBox = LayoutMath.intersect(placed, box), let dest = LayoutMath.intersect(clipBox, canvas) else { continue }
-            let u0 = (dest.x - placed.x) / placed.width, v0 = (dest.y - placed.y) / placed.height
-            let u1 = (dest.x + dest.width - placed.x) / placed.width, v1 = (dest.y + dest.height - placed.y) / placed.height
+            // Clip to the layer box (crop for .fill, plus the layer's own crop) and to the canvas.
+            guard let draw = LayerDraw.compute(rect: layer.rect, source: srcSize, mode: layer.scaleMode,
+                                               crop: layer.style?.crop ?? .none, canvas: size) else { continue }
+            let dest = draw.dest
+            let masked = layer.key == nil && (layer.style?.needsMask ?? false)
             // The first layer drawn onto a cleared (opaque black) target is a plain copy when it is
             // fully opaque content; everything else uses premultiplied "over" blending.
             let opaqueCopy = i == 0 && load == .clear && layer.opacity >= 0.999 && layer.rect == .full
-                && layer.scaleMode != .fit && layer.key == nil
-            var verts = quad(dest: dest, uv: (Float(u0), Float(v0), Float(u1), Float(v1)), canvas: size)
+                && layer.scaleMode != .fit && layer.key == nil && !masked && (layer.style?.crop.isNone ?? true)
+            var verts = quad(dest: dest, uv: (Float(draw.uv.0), Float(draw.uv.1), Float(draw.uv.2), Float(draw.uv.3)), canvas: size)
             enc.setVertexBytes(&verts, length: MemoryLayout<Float>.stride * verts.count, index: 0)
             if let key = layer.key {
                 enc.setRenderPipelineState(keyPipeline)
@@ -272,6 +283,18 @@ public final class MetalCompositor {
                                           smoothness: Float(key.smoothness), spill: Float(key.spill),
                                           keyCb: Float(kc.cb), keyCr: Float(kc.cr))
                 enc.setFragmentBytes(&params, length: MemoryLayout<KeyParamsGPU>.stride, index: 0)
+            } else if masked, let style = layer.style {
+                enc.setRenderPipelineState(styledPipeline)
+                let m = draw.maskRect
+                let bc = style.borderColor
+                var params = StyleParamsGPU(maskRect: SIMD4(Float(m.x), Float(m.y), Float(m.width), Float(m.height)),
+                                            borderColor: SIMD4(Float(bc.r), Float(bc.g), Float(bc.b), 1),
+                                            opacity: Float(layer.opacity),
+                                            radius: Float(style.cornerRadius * min(m.width, m.height)),
+                                            border: Float(style.borderWidth * Double(size.height)),
+                                            ellipse: style.shape == .ellipse ? 1 : 0,
+                                            premultiply: layer.premultiply ? 1 : 0)
+                enc.setFragmentBytes(&params, length: MemoryLayout<StyleParamsGPU>.stride, index: 0)
             } else {
                 enc.setRenderPipelineState(layer.premultiply ? straightPipeline : (opaqueCopy ? layerPipelineOpaque : layerPipeline))
                 var opacity = Float(layer.opacity)
