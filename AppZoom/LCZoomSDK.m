@@ -180,7 +180,8 @@
         case ZoomSDKMeetingStatus_Failed:
             [self teardownRaw];
             self.state = LCZoomStateFailed;
-            self.errorMessage = [NSString stringWithFormat:@"Meeting failed (error %d).", (int)error];
+            // A localization key; the UI turns it into a readable explanation (see zoom.meeting_error.* strings).
+            self.errorMessage = [NSString stringWithFormat:@"zoom.meeting_error.%d", (int)error];
             break;
         case ZoomSDKMeetingStatus_Ended:
         case ZoomSDKMeetingStatus_Idle:
