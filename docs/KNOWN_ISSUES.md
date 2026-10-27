@@ -70,9 +70,3 @@
     (butuh Zoom SDK).
 38. **Instant replay**: video saja (tanpa audio); buffer 30 detik tetap; satu klip replay sekaligus; mengganti resolusi
     output menghapus buffer. Buffer memakai satu encode H.264 tambahan (hardware) dan ~40 MB disk sementara pada 1080p30.
-39. **Input Zoom (SDK)**: video/audio peserta hanya mengalir setelah host memberi izin rekam lokal ("Minta izin rekam ke host"
-    di panel Zoom); tanpa itu join berhasil tetapi input hitam. Meeting di luar akun Zoom pemilik aplikasi bisa ditolak sampai
-    aplikasi lolos review Zoom (SDK melaporkan kode 63; dikonfirmasi pengguna 2026-10-27 saat join meeting akun lain). Rotasi video peserta diabaikan; resolusi maksimal 720p. Input peserta dan status join
-    tidak disimpan di file proyek (join ulang setiap sesi). Build dengan SDK berjalan tanpa hardened runtime (agar framework
-    bertanda tangan Zoom bisa dimuat di app ad-hoc) dan DMG jauh lebih besar (~300 MB). Build tanpa secret
-    `ZOOM_SDK_TOKEN` (mis. fork) tidak berisi SDK dan panel Zoom tidak tampil.
