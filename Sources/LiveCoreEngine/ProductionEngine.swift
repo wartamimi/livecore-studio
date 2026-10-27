@@ -87,8 +87,13 @@ public final class ProductionEngine {
         var streamEncoder: H264Encoder?
         var recording = false
         var replay = false
+        var meetingVideo = false
     }
     private let outputs = Locked(Outputs())
+    /// Program -> meeting camera (converted and sent off the render queue).
+    let meetingOut = MeetingVideoSender()
+    let meetingState = MeetingRuntime()
+    func setMeetingVideoOutput(_ on: Bool) { outputs.mutate { $0.meetingVideo = on } }
     private var aacEncoders: [AACEncoder] = []
     private var audioInputs: [String: AudioCaptureInput] = [:]
     private var lastSwitcher = SwitcherSnapshot()
@@ -191,6 +196,7 @@ public final class ProductionEngine {
             outs.streamEncoder?.encode(program, pts: pts)
             if outs.recording { self.recorder.append(video: program, pts: pts) }
             if outs.replay { self.replay.append(program, hostTime: pts.seconds) }
+            if outs.meetingVideo { self.meetingOut.offer(program) }
             let preview = result.preview
             let thumbs = result.thumbnails
             DispatchQueue.main.async {
@@ -366,7 +372,7 @@ public final class ProductionEngine {
 
     public func source(_ id: InputID) -> VideoSource? { control.read { $0.sources[id] } }
 
-    private func add(_ src: VideoSource) {
+    func add(_ src: VideoSource) {
         src.onStatusChange = { [weak self] _ in self?.publishInputs() }
         control.mutate { st in
             st.sources[src.id] = src
@@ -390,6 +396,7 @@ public final class ProductionEngine {
         }
         removed?.stop()
         if let r = removed, r === replaySource { replayRemoved() }
+        if let m = removed as? MeetingParticipantSource { meetingParticipantRemoved(m) }
         if removed is VideoFileSource || removed is ScreenCaptureSource {
             mixer.removeChannel(id: Self.fileChannelID(id))
             mixer.removeChannel(id: Self.screenChannelID(id))

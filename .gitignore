@@ -5,3 +5,4 @@ DerivedData/
 .swiftpm/
 *.xcuserstate
 .DS_Store
+ThirdParty/

@@ -23,6 +23,7 @@ struct SettingsView: View {
                 audioTab.tabItem { Text(L10n.t("audio.title")) }.tag(3)
                 shortcutTab.tabItem { Text(L10n.t("settings.shortcuts")) }.tag(4)
                 MIDISettingsView().tabItem { Text("MIDI") }.tag(5)
+                ZoomSettingsView().tabItem { Text("Zoom") }.tag(6)
             }
             .padding()
             if !errors.isEmpty {
@@ -248,6 +249,40 @@ struct OutputBusPicker: View {
             Text("Bus A").tag(OutputBus.busA)
             Text("Bus B").tag(OutputBus.busB)
         }
+    }
+}
+/// Zoom Meeting SDK credentials. Kept in the Keychain only; the SDK token (JWT) is made on
+/// this Mac from them each time the app signs in.
+struct ZoomSettingsView: View {
+    @EnvironmentObject var model: AppModel
+    @State private var clientID = ""
+    @State private var secret = ""
+
+    var body: some View {
+        Form {
+            if !model.zoomAvailable {
+                Text(L10n.t("zoom.unavailable")).foregroundStyle(Theme.warning)
+            }
+            Section(L10n.t("zoom.credentials")) {
+                TextField("Client ID", text: $clientID, prompt: Text(model.hasKey(account: "zoom-client-id") ? "•••••••• (\(L10n.t("stream.key_saved")))" : ""))
+                SecureField("Client Secret", text: $secret, prompt: Text(model.hasKey(account: "zoom-client-secret") ? "•••••••• (\(L10n.t("stream.key_saved")))" : ""))
+                HStack {
+                    Button(L10n.t("zoom.save")) {
+                        model.saveZoomCredentials(clientID: clientID, secret: secret)
+                        clientID = ""; secret = ""
+                    }
+                    .disabled(clientID.isEmpty && secret.isEmpty)
+                    if model.zoomHasCredentials {
+                        Button(L10n.t("zoom.delete"), role: .destructive) { model.deleteZoomCredentials() }
+                    }
+                }
+            }
+            Text(L10n.t("zoom.credentials_note")).font(.caption).foregroundStyle(Theme.textDim)
+            if !model.zoomVersion.isEmpty {
+                LabeledContent("Zoom Meeting SDK", value: model.zoomVersion)
+            }
+        }
+        .formStyle(.grouped)
     }
 }
 #endif
