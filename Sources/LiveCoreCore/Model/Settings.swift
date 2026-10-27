@@ -32,6 +32,17 @@ public struct AudioEncoderSettings: Codable, Equatable, Sendable {
     public init() {}
 }
 
+/// Which mixer bus feeds an output (recording or a stream destination), like vMix's output
+/// bus selection: Master (Program mix) or one of the aux buses, e.g. a mix without the music
+/// for the recording, or a commentary mix for one platform.
+public enum OutputBus: String, Codable, Sendable, CaseIterable, Hashable {
+    case master, busA, busB
+    /// Index into the mixer's aux buses, nil for Master.
+    public var auxIndex: Int? {
+        switch self { case .master: return nil; case .busA: return 0; case .busB: return 1 }
+    }
+}
+
 /// An additional RTMP/RTMPS destination streamed simultaneously with the primary one (same
 /// encoded stream, so no extra encoding cost). Its key lives in the Keychain under `keychainAccount`.
 public struct StreamDestination: Codable, Equatable, Sendable, Identifiable {
@@ -40,6 +51,9 @@ public struct StreamDestination: Codable, Equatable, Sendable, Identifiable {
     public var serverURL: String
     public var keychainAccount: String
     public var enabled: Bool
+    /// Added in 0.9.0; nil (older settings) = Master.
+    public var audioBus: OutputBus?
+    public var bus: OutputBus { audioBus ?? .master }
     public init(id: String, name: String, serverURL: String = "", enabled: Bool = true) {
         self.id = id; self.name = name; self.serverURL = serverURL
         self.keychainAccount = "dest-\(id)"; self.enabled = enabled
@@ -57,10 +71,12 @@ public struct StreamSettings: Codable, Equatable, Sendable {
     public var reconnect = ExponentialBackoff()
     /// Added in 0.4.0.
     public var additional: [StreamDestination] = []
+    /// Added in 0.9.0.
+    public var primaryAudioBus: OutputBus = .master
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case serverURL, keychainAccount, primaryName, primaryEnabled, autoReconnect, reconnect, additional
+        case serverURL, keychainAccount, primaryName, primaryEnabled, autoReconnect, reconnect, additional, primaryAudioBus
     }
 
     // Tolerant decoding: settings saved by older versions lack the newer keys.
@@ -74,6 +90,7 @@ public struct StreamSettings: Codable, Equatable, Sendable {
         autoReconnect = try c.decodeIfPresent(Bool.self, forKey: .autoReconnect) ?? d.autoReconnect
         reconnect = try c.decodeIfPresent(ExponentialBackoff.self, forKey: .reconnect) ?? d.reconnect
         additional = try c.decodeIfPresent([StreamDestination].self, forKey: .additional) ?? []
+        primaryAudioBus = try c.decodeIfPresent(OutputBus.self, forKey: .primaryAudioBus) ?? .master
     }
 
     /// Problems with the destination list (empty = OK). Keys are checked by the app (Keychain).
@@ -101,6 +118,9 @@ public struct RecordingSettings: Codable, Equatable, Sendable {
     public var container: RecordingContainer = .mp4
     public var bitrateKbps: Int = 12000
     public var minimumFreeBytes: Int64 = 2_000_000_000   // stop safely below 2 GB free
+    /// Added in 0.9.0; nil (older settings) = Master.
+    public var audioBus: OutputBus?
+    public var bus: OutputBus { audioBus ?? .master }
     public init() {}
 }
 

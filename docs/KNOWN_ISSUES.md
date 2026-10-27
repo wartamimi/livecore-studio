@@ -55,3 +55,10 @@
     singkat (~100 ms) saat file baru dibuka.
 32. **Playlist video**: perpindahan antarklip butuh beberapa frame (klip baru dibuka saat klip lama selesai), tidak ada
     transisi otomatis antarklip. Seekbar hanya untuk klip yang sedang dimuat.
+33. **Fullscreen output**: di layar eksternal jendela tidak mengambil fokus keyboard (agar shortcut di jendela utama tetap
+    jalan), jadi Esc hanya menutup bila fullscreen ada di layar utama; untuk layar eksternal pakai tombol Fullscreen atau ⌘⇧F.
+    Output mengikuti resolusi layar dengan skala aspect-fit (bilah hitam bila rasio berbeda); tidak ada pengaturan refresh rate.
+34. **Bus audio per output**: bus A/B dikirim post-fader seperti di mixer; bila bus A/B kosong, rekaman/stream di bus itu
+    akan senyap. Tiap bus berbeda pada stream menambah satu encode AAC (ringan).
+35. **Playlist media campuran**: klip audio di dalam playlist video tampil hitam (belum ada gambar sampul/visualizer).
+    Pilihan "Tambah Media" memisahkan audio vs video menurut jenis file; file .mp4 berisi audio saja dianggap video.

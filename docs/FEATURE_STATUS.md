@@ -78,6 +78,8 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Statistik bitrate, dropped frames, antrean, durasi, HW/SW | Implemented | M | |
 | Multi-destination (hingga 3 tujuan, mis. YouTube + Facebook) | Implemented (0.4.0) | L (validasi setelan) + kompilasi CI | Satu encode H.264/AAC dibagi ke semua tujuan; reconnect per tujuan; key tiap tujuan di Keychain. Belum dites di Mac (T-28) |
 
+| Bus audio per tujuan stream (Master / Bus A / Bus B) | Implemented (0.9.0) | L (model) + kompilasi CI | Pengaturan › Stream, per tujuan. Satu encode H.264 tetap dibagi; satu encode AAC per bus yang dipakai. Belum dites (T-42) |
+
 ## Recording
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|
@@ -88,6 +90,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Finalisasi benar saat stop / quit | Implemented | M | Konfirmasi quit saat aktif |
 | Rekam + stream bersamaan dari satu pipeline | Implemented | M | |
 | MOV tahan crash (movie fragments 10 s) | Implemented | M | |
+| Pilih bus audio untuk rekaman (Master / Bus A / Bus B) | Implemented (0.9.0) | L (model, kompatibel setelan lama) + kompilasi CI | Pengaturan › Rekam › Bus audio. Ring encoder bus A/B ditulis bersamaan dengan Program sehingga sinkron sampel. Belum dites (T-42) |
 | Snapshot Program ke PNG | Implemented (0.6.0) | kompilasi CI | Tombol kamera di panel Rekam; disimpan di folder rekaman. Belum dites (T-34) |
 
 ## Perangkat broadcast
@@ -106,6 +109,9 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Input playlist video | Implemented (0.8.0) | L (urutan, model proyek) + kompilasi CI | Satu input memutar beberapa klip berurutan; next/previous/pilih klip; ulangi playlist; tersimpan di proyek. Belum dites (T-38) |
 | Auto play saat masuk Program (vMix-style) | Implemented (0.8.0) | kompilasi CI | Mati / putar-jeda / mulai dari awal-jeda; berlaku juga untuk layer scene, overlay aktif, dan transisi. Belum dites (T-39) |
 | Transport media: seekbar, play/pause, prev/next; media dimuat dalam keadaan jeda | Implemented (0.8.0) | kompilasi CI | Di tile input video dan strip musik. Belum dites (T-40) |
+| Perbaikan T-bar di ujung (glitch) | Fixed (0.9.0) | L (3 unit test regresi) | Bar tetap di ujung setelah transisi selesai dan transisi berikutnya berjalan ke arah sebaliknya (vMix); getaran ±0,5% di ujung diabaikan; T-bar tidak lagi mengambil alih AUTO yang sedang berjalan. Belum dites (T-44) |
+| Tombol Fullscreen output (vMix-style) | Implemented (0.9.0) | L (pemilihan layar, 4 unit test) + kompilasi CI | Tombol di bilah atas, ⌘⇧F, atau aksi MIDI. Klik kanan memilih layar (diingat). Program penuh layar tanpa UI; tutup otomatis bila layar dicabut. Belum dites (T-41) |
+| Satu menu "Tambah Media" dan "Tambah Media Playlist" | Implemented (0.9.0) | kompilasi CI | File audio jadi input musik (mixer), file video jadi input video; playlist campuran audio+video jadi playlist video (klip audio tampil hitam). Belum dites (T-43) |
 | Panel dock yang bisa dikecilkan (Input, Preview/Program, Mixer, Kontrol) | Implemented (0.7.0) | kompilasi CI | Pegangan "–" di atas panel mengecilkan jadi bilah tipis; klik bilah untuk membuka; diingat antar peluncuran. Belum dites (T-37) |
 
 ## Sistem

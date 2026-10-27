@@ -29,6 +29,7 @@ struct TopBarView: View {
             Button { openWindow(id: "multiview") } label: { Image(systemName: "square.grid.3x2") }
                 .help(L10n.t("multiview.open"))
                 .buttonStyle(.borderless)
+            FullscreenButton(output: model.fullscreen)
             Button { openWindow(id: "program-output") } label: { Image(systemName: "rectangle.on.rectangle") }
                 .help("Open Program output window (drag to an external display)")
                 .buttonStyle(.borderless)
@@ -69,6 +70,32 @@ struct TopBarView: View {
 
     private var recordText: String {
         model.isRecording ? "\(L10n.t("top.record")) \(formatDuration(model.recordStats.duration))" : L10n.t("top.record")
+    }
+}
+
+/// vMix-style Fullscreen button: click toggles, the menu picks the display.
+struct FullscreenButton: View {
+    @ObservedObject var output: FullscreenOutput
+    var body: some View {
+        Button { output.toggle() } label: {
+            Label(L10n.t("fullscreen.button"), systemImage: output.isActive ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                .font(.system(size: 11, weight: .bold))
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(output.isActive ? Theme.program : Theme.panelRaised)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(L10n.t("fullscreen.help"))
+        .contextMenu {
+            Section(L10n.t("fullscreen.display")) {
+                if output.displays.isEmpty { Text(L10n.t("fullscreen.none")) }
+                ForEach(output.displays, id: \.id) { d in
+                    Button { output.select(d) } label: {
+                        if output.target?.id == d.id { Label(d.name, systemImage: "checkmark") } else { Text(d.name) }
+                    }
+                }
+            }
+        }
     }
 }
 

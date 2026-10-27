@@ -84,7 +84,7 @@ public final class ProductionEngine {
         var recording = false
     }
     private let outputs = Locked(Outputs())
-    private var aacEncoder: AACEncoder?
+    private var aacEncoders: [AACEncoder] = []
     private var audioInputs: [String: AudioCaptureInput] = [:]
     private var lastSwitcher = SwitcherSnapshot()
     /// Mixer settings from a loaded project for video-file channels that appear once the file's
@@ -598,7 +598,10 @@ public final class ProductionEngine {
         public var id: String
         public var name: String
         public var url: RTMPURL
-        public init(id: String, name: String, url: RTMPURL) { self.id = id; self.name = name; self.url = url }
+        public var audioBus: OutputBus
+        public init(id: String, name: String, url: RTMPURL, audioBus: OutputBus = .master) {
+            self.id = id; self.name = name; self.url = url; self.audioBus = audioBus
+        }
     }
 
     /// Starts streaming to every target at once. One H.264 and one AAC encode are shared by all
@@ -611,9 +614,13 @@ public final class ProductionEngine {
         let errs = settings.validationErrors()
         if !errs.isEmpty { throw NSError(domain: "LiveCore", code: 10, userInfo: [NSLocalizedDescriptionKey: errs.joined(separator: "\n")]) }
         let enc = try H264Encoder(size: settings.output.size, frameRate: settings.output.frameRate, settings: settings.video)
-        let aac = try AACEncoder(sampleRate: Double(settings.audio.sampleRate), channels: settings.audio.channels,
-                                 bitrateKbps: settings.audio.bitrateKbps)
-        aacEncoder = aac
+        // One AAC encode per bus in use (destinations on the same bus share it).
+        var aacByBus: [OutputBus: AACEncoder] = [:]
+        for bus in Set(targets.map(\.audioBus)) {
+            aacByBus[bus] = try AACEncoder(sampleRate: Double(settings.audio.sampleRate), channels: settings.audio.channels,
+                                           bitrateKbps: settings.audio.bitrateKbps)
+        }
+        aacEncoders = Array(aacByBus.values)
         streamers.values.forEach { $0.stop() }
         streamers = [:]
         streamTerminal = [:]
@@ -637,17 +644,23 @@ public final class ProductionEngine {
         var firstHost: Double?
         var packetIndex: Int64 = 0
         let sr = Double(settings.audio.sampleRate)
+        let groups: [(bus: OutputBus, aac: AACEncoder, engines: [StreamingEngine])] = aacByBus.map { bus, aac in
+            (bus, aac, zip(engines, targets).filter { $0.1.audioBus == bus }.map(\.0))
+        }
         audioPump.addSink("stream") { chunk in
             if firstHost == nil { firstHost = chunk.hostTime }
-            guard let data = try? aac.encode(chunk), let base = firstHost else { return }
+            guard let base = firstHost else { return }
             let t = base + (Double(packetIndex) * 1024 - Double(AACEncoder.primingFrames)) / sr
             packetIndex += 1
             let pts = CMTime(seconds: t, preferredTimescale: 48_000)
-            for s in engines { s.send(audio: data, pts: pts) }
+            for g in groups {
+                guard let data = try? g.aac.encode(chunk.bus(g.bus)) else { continue }
+                for s in g.engines { s.send(audio: data, pts: pts) }
+            }
         }
         outputs.mutate { $0.streamEncoder = enc }
         for (s, t) in zip(engines, targets) {
-            s.start(url: t.url, settings: settings, audioSpecificConfig: aac.audioSpecificConfig)
+            s.start(url: t.url, settings: settings, audioSpecificConfig: aacByBus[t.audioBus]!.audioSpecificConfig)
         }
     }
 
@@ -671,7 +684,7 @@ public final class ProductionEngine {
         let enc: H264Encoder? = outputs.mutate { o in let e = o.streamEncoder; o.streamEncoder = nil; return e }
         enc?.onFrame = nil
         renderQueue.async { enc?.invalidate() }
-        aacEncoder = nil
+        aacEncoders = []
     }
 
     /// Called when every destination failed permanently (not while reconnecting) to release the encoder.
@@ -689,7 +702,8 @@ public final class ProductionEngine {
         recorder.start(settings: settings.recording, output: settings.output, audio: settings.audio)
         outputs.mutate { $0.recording = true }
         let recorder = self.recorder
-        audioPump.addSink("record") { [weak recorder] chunk in recorder?.append(audio: chunk) }
+        let bus = settings.recording.bus
+        audioPump.addSink("record") { [weak recorder] chunk in recorder?.append(audio: chunk.bus(bus)) }
     }
 
     public func stopRecording() {

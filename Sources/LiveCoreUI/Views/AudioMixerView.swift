@@ -14,8 +14,6 @@ struct AudioMixerView: View {
                 Spacer()
                 Menu {
                     ForEach(model.audioDevices) { d in Button(d.name) { model.addAudioInput(d) } }
-                    Divider()
-                    Button(L10n.t("music.add")) { model.addMusic() }
                 } label: { Image(systemName: "plus.circle.fill") }
                 .menuStyle(.borderlessButton).fixedSize()
                 .help(L10n.t("audio.add"))

@@ -234,3 +234,12 @@
 "autoplay.off" = "Off";
 "autoplay.playPause" = "Play on Program, pause when off";
 "autoplay.restartPause" = "Restart on Program, pause when off";
+"bus.output" = "Audio bus";
+"bus.note" = "Master is the Program mix. Bus A/B are the aux buses from the mixer (use the A/B send buttons on each channel), e.g. a recording without music or a different mix per platform.";
+"fullscreen.button" = "Fullscreen output";
+"fullscreen.help" = "Show Program fullscreen on the chosen display (Esc to exit). Right-click to choose the display.";
+"fullscreen.display" = "Output display";
+"fullscreen.none" = "No display found";
+"midi.fullscreen" = "Fullscreen output";
+"media.add" = "Add Media (video or audio)…";
+"media.add_playlist" = "Add Media Playlist…";
