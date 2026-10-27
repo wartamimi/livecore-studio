@@ -148,7 +148,6 @@ struct StingerControls: View {
         .help(L10n.t("stinger.help"))
     }
 }
-#endif
 
 /// Shader file actions and the compiler message for custom transitions.
 struct CustomTransitionControls: View {
@@ -177,3 +176,4 @@ struct CustomTransitionControls: View {
         .font(.system(size: 10))
     }
 }
+#endif
