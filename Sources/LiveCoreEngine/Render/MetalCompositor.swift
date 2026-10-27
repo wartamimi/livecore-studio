@@ -36,6 +36,8 @@ public final class MetalCompositor {
     private var previewPool: CVPixelBufferPool?
     private var thumbPool: CVPixelBufferPool?
     private var detailPool: CVPixelBufferPool?
+    /// Full-size pictures for the extra outputs (single inputs, full-size Preview).
+    private var extraPool: CVPixelBufferPool?
     public private(set) var outputSize: PixelSize
     public var previewSize: PixelSize { LayoutMath.evenSize(PixelSize(width: outputSize.width / 2, height: outputSize.height / 2)) }
     /// Input thumbnails, also used by the Multiview window (large enough for a 4-column grid).
@@ -138,6 +140,7 @@ public final class MetalCompositor {
         previewPool = PixelBufferFactory.makePool(width: previewSize.width, height: previewSize.height, minimumCount: 4)
         thumbPool = PixelBufferFactory.makePool(width: Self.thumbnailSize.width, height: Self.thumbnailSize.height, minimumCount: 24)
         detailPool = PixelBufferFactory.makePool(width: outputSize.width, height: outputSize.height, minimumCount: 3)
+        extraPool = PixelBufferFactory.makePool(width: outputSize.width, height: outputSize.height, minimumCount: 8)
         let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: outputSize.width,
                                                           height: outputSize.height, mipmapped: false)
         td.usage = [.renderTarget, .shaderRead]
@@ -152,6 +155,10 @@ public final class MetalCompositor {
         public var thumbnails: [InputID: CVPixelBuffer]
         /// Full-size picture of `FramePlan.detail` (transparent background), nil when not requested.
         public var detail: CVPixelBuffer? = nil
+        /// Full-size pictures of `FramePlan.extra` (black background).
+        public var extra: [InputID: CVPixelBuffer] = [:]
+        /// `FramePlan.fullPreview` at output size.
+        public var fullPreview: CVPixelBuffer? = nil
         public var gpuMs: Double
     }
 
@@ -274,13 +281,32 @@ public final class MetalCompositor {
                             load: .clear, transparent: true, straight: straightSources)
             detailPB = pb
         }
+        // Extra outputs: single inputs and Preview at full size, on black like Program.
+        var extraPBs: [InputID: CVPixelBuffer] = [:]
+        var fullPreviewPB: CVPixelBuffer?
+        if let extraPool {
+            for (id, layers) in plan.extra {
+                guard let pb = makeBuffer(extraPool, threshold: 24), let t = texture(for: pb) else { continue }
+                keepAlive.append(t.cv)
+                drawComposition(cb, target: t.tex, size: outputSize, layers: layers, textures: textures,
+                                load: .clear, straight: straightSources)
+                extraPBs[id] = pb
+            }
+            if let layers = plan.fullPreview, let pb = makeBuffer(extraPool, threshold: 24), let t = texture(for: pb) {
+                keepAlive.append(t.cv)
+                drawComposition(cb, target: t.tex, size: outputSize, layers: layers, textures: textures,
+                                load: .clear, straight: straightSources)
+                fullPreviewPB = pb
+            }
+        }
 
         cb.addCompletedHandler { buffer in
             _ = keepAlive // CVMetalTextures must outlive GPU use
             let gpuMs = (buffer.gpuEndTime - buffer.gpuStartTime) * 1000
             let ok = buffer.status == .completed
             completion(Result(program: ok ? programPB : nil, preview: ok ? previewPB : nil, thumbnails: ok ? thumbs : [:],
-                              detail: ok ? detailPB : nil, gpuMs: gpuMs))
+                              detail: ok ? detailPB : nil, extra: ok ? extraPBs : [:], fullPreview: ok ? fullPreviewPB : nil,
+                              gpuMs: gpuMs))
         }
         cb.commit()
         return true

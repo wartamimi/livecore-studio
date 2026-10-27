@@ -13,6 +13,10 @@ struct SettingsView: View {
     @State private var shortcuts = ShortcutSettings()
     @State private var errors: [String] = []
     @State private var tab = 0
+    /// Tab shown first (0 Output, 1 Stream, 2 Record, ...).
+    var initialTab = 0
+
+    init(initialTab: Int = 0) { self.initialTab = initialTab }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -39,6 +43,7 @@ struct SettingsView: View {
         .frame(width: 560, height: 520)
         .onAppear {
             draft = model.settings
+            tab = initialTab
             shortcuts = model.shortcuts
             keyField = ""
             destKeys = [:]

@@ -37,6 +37,16 @@ public final class AppModel: ObservableObject {
     /// vMix-style fullscreen Program output on a chosen display.
     public private(set) lazy var fullscreen = FullscreenOutput(feed: programOutputFeed)
     public private(set) var thumbnailFeeds: [InputID: FrameFeed] = [:]
+    /// The four extra outputs: one feed per output window / full-screen display.
+    public let outputFeeds: [Int: FrameFeed] = Dictionary(uniqueKeysWithValues: (1...OutputRouting.count).map { ($0, FrameFeed()) })
+    public private(set) lazy var outputFullscreens: [Int: FullscreenOutput] = makeOutputFullscreens()
+    @Published public internal(set) var outputRouting = OutputRouting()
+    /// EXTERNAL button: Syphon and the virtual camera are sending.
+    @Published public internal(set) var externalActive = false
+    @Published public internal(set) var virtualCamera = VirtualCameraStatus.unknown
+    public internal(set) var outputRouter: OutputRouter?
+    let virtualCameraInstaller = VirtualCameraInstaller()
+    var outputWindows: Set<Int> = []
 
     // Devices
     @Published public var videoDevices: [DeviceManager.Device] = []
@@ -93,6 +103,7 @@ public final class AppModel: ObservableObject {
             let e = try ProductionEngine(settings: settings)
             engine = e
             wire(e)
+            startOutputs(e)
             e.start()
             refreshDevices()
             hasStreamKey = ((try? KeychainStore.load(account: settings.stream.keychainAccount)) ?? nil)?.isEmpty == false
@@ -108,6 +119,7 @@ public final class AppModel: ObservableObject {
 
     public func shutdown() {
         statsTimer?.invalidate()
+        outputRouter?.stopAll()
         midi.stop()
         engine?.shutdown()
     }
@@ -143,6 +155,7 @@ public final class AppModel: ObservableObject {
             self.inputs = list
             let ids = Set(list.map(\.id))
             self.thumbnailFeeds = self.thumbnailFeeds.filter { ids.contains($0.key) }
+            self.outputInputsChanged()
             self.overlays = e.overlays
         }
         e.onStreamStats = { [weak self] id, s in self?.destinationStats[id] = s }
@@ -994,6 +1007,7 @@ public final class AppModel: ObservableObject {
         warnings.forEach(report)
         projectURL = nil
         afterProjectLoad()
+        setOutputRouting(OutputRouting())
     }
 
     public func openProject() {
@@ -1013,6 +1027,7 @@ public final class AppModel: ObservableObject {
             let warnings = e.loadProject(doc, projectDirectory: url.deletingLastPathComponent())
             projectURL = url
             afterProjectLoad()
+            setOutputRouting(doc.sanitized().outputs ?? OutputRouting())
             if !warnings.isEmpty { report("\(L10n.t("project.warnings")): " + warnings.joined(separator: " · ")) }
         } catch {
             report("Cannot open project: \(error.localizedDescription)")
@@ -1033,7 +1048,8 @@ public final class AppModel: ObservableObject {
 
     private func writeProject(to url: URL) {
         guard let e = engine else { return }
-        let doc = e.exportProject(projectDirectory: url.deletingLastPathComponent())
+        var doc = e.exportProject(projectDirectory: url.deletingLastPathComponent())
+        doc.outputs = outputRouting
         do {
             let enc = JSONEncoder()
             enc.outputFormatting = [.prettyPrinted, .sortedKeys]

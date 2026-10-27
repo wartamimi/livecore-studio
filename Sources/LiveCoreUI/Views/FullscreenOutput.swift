@@ -7,7 +7,11 @@ import LiveCoreCore
 /// the MIDI action closes it. If the display is unplugged the output closes by itself.
 /// Main thread only.
 public final class FullscreenOutput: ObservableObject {
-    @Published public private(set) var isActive = false
+    @Published public private(set) var isActive = false {
+        didSet { if isActive != oldValue { onActiveChange?(isActive) } }
+    }
+    /// Opened or closed (main thread).
+    public var onActiveChange: ((Bool) -> Void)?
     @Published public private(set) var displays: [DisplayInfo] = []
     @Published public private(set) var current: DisplayInfo?
 
@@ -16,11 +20,14 @@ public final class FullscreenOutput: ObservableObject {
     private var observer: NSObjectProtocol?
     private var cursorHidden = false
 
-    private static let idKey = "fullscreen.displayID"
-    private static let nameKey = "fullscreen.displayName"
+    private let idKey: String
+    private let nameKey: String
 
-    public init(feed: FrameFeed) {
+    /// `keyPrefix` keeps each output's chosen display apart ("fullscreen" = the Program output).
+    public init(feed: FrameFeed, keyPrefix: String = "fullscreen") {
         self.feed = feed
+        idKey = keyPrefix + ".displayID"
+        nameKey = keyPrefix + ".displayName"
         refreshDisplays()
         observer = NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                           object: nil, queue: .main) { [weak self] _ in
@@ -33,14 +40,14 @@ public final class FullscreenOutput: ObservableObject {
     /// The display the next "Fullscreen" press will use.
     public var target: DisplayInfo? {
         let d = UserDefaults.standard
-        let savedID = d.object(forKey: Self.idKey) as? Int
+        let savedID = d.object(forKey: idKey) as? Int
         return OutputDisplayPicker.choose(savedID: savedID.map { UInt32(truncatingIfNeeded: $0) },
-                                          savedName: d.string(forKey: Self.nameKey), displays: displays)
+                                          savedName: d.string(forKey: nameKey), displays: displays)
     }
 
     public func select(_ display: DisplayInfo) {
-        UserDefaults.standard.set(Int(display.id), forKey: Self.idKey)
-        UserDefaults.standard.set(display.name, forKey: Self.nameKey)
+        UserDefaults.standard.set(Int(display.id), forKey: idKey)
+        UserDefaults.standard.set(display.name, forKey: nameKey)
         objectWillChange.send()
         if isActive { open(on: display) }
     }

@@ -4,6 +4,7 @@
 // Targets:
 //   CAtomics          C11 atomics shim (lock-free primitives for real-time threads). Portable.
 //   CObjCSupport      Objective-C @try/@catch shim so a misbehaving capture driver cannot crash the app.
+//   CSyphon           Vendored Syphon server (BSD) for sending outputs to other apps (OBS, Resolume...).
 //   LiveCoreCore      Platform-independent logic: switcher state, transitions, layout math,
 //                     audio DSP, FLV/AMF0/RTMP protocol (sans-IO). Builds & tests on Linux + macOS.
 //   LiveCoreEngine    macOS-only engines: AVFoundation capture, Metal compositor, Core Audio mixer,
@@ -28,9 +29,13 @@ let package = Package(
     targets: [
         .target(name: "CAtomics"),
         .target(name: "CObjCSupport"),   // NSException guard for capture-driver calls (Apple only)
+        .target(name: "CSyphon", exclude: ["README.md", "License.txt"],
+                linkerSettings: [.linkedFramework("Metal", .when(platforms: [.macOS])),
+                                 .linkedFramework("IOSurface", .when(platforms: [.macOS])),
+                                 .linkedFramework("AppKit", .when(platforms: [.macOS]))]),
         .target(name: "LiveCoreCore", dependencies: ["CAtomics"]),
         .target(name: "LiveCoreEngine", dependencies: [
-            "LiveCoreCore", "CAtomics", "CObjCSupport",
+            "LiveCoreCore", "CAtomics", "CObjCSupport", "CSyphon",
         ]),
         .target(
             name: "LiveCoreUI",
