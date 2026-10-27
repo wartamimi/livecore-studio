@@ -123,3 +123,29 @@
 "audio.gate" = "Noise Gate";
 "audio.dsp" = "DSP";
 "audio.file" = "Video file audio";
+
+/* Build 0.3.0 */
+"scene.title" = "Scene Editor";
+"scene.edit" = "Edit Scene Layers…";
+"scene.hint" = "Drag a layer to move it, drag a corner to resize. The input is on Preview so you can see the exact result there.";
+"scene.layers" = "Layers (top first)";
+"scene.base" = "base";
+"scene.preset" = "Position preset";
+"scene.scale" = "Scaling";
+"scene.opacity" = "Opacity";
+"scene.lock" = "Lock aspect ratio while resizing";
+"scene.fit_source" = "Match box to source aspect";
+"title.layout" = "Layout";
+"title.layout.bar" = "Box behind text";
+"title.layout.full" = "Full-width bar";
+"title.layout.centered" = "Centred caption";
+"title.size" = "Title size";
+"title.subsize" = "Subtitle size";
+"title.text_color" = "Text";
+"title.bar_color" = "Bar";
+"audio.eq" = "EQ";
+"audio.hpf" = "High-pass filter";
+"audio.eq_enable" = "3-band EQ";
+"audio.clock" = "Clock";
+"audio.drift" = "Drift correction";
+"audio.underruns" = "Buffer underruns";

@@ -170,17 +170,11 @@ public final class AppModel: ObservableObject {
 
     public func addColor(_ c: NSColor, name: String) { engine?.addColor(c, name: name) }
 
-    public func addTitle(title: String, subtitle: String, bar: Bool) {
-        var style = TextSource.Style(title: title, subtitle: subtitle)
-        style.showBar = bar
-        engine?.addTitle(style)
-    }
+    public func addTitle(_ style: TextSource.Style) { engine?.addTitle(style) }
 
-    public func updateTitle(_ id: InputID, title: String, subtitle: String, bar: Bool) {
+    public func updateTitle(_ id: InputID, style: TextSource.Style) {
         guard let src = engine?.source(id) as? TextSource else { return }
-        var st = src.style
-        st.title = title; st.subtitle = subtitle; st.showBar = bar
-        src.update(st)
+        src.update(style)
         engine?.renameInput(id, to: src.name)
     }
 
@@ -191,6 +185,10 @@ public final class AppModel: ObservableObject {
     public func chromaKey(_ id: InputID) -> ChromaKey { engine?.chromaKey(of: id) ?? ChromaKey() }
     public func setChromaKey(_ key: ChromaKey, for id: InputID) { engine?.setChromaKey(key, for: id) }
     public func rename(_ id: InputID, _ name: String) { engine?.renameInput(id, to: name) }
+    public func layers(of id: InputID) -> [Layer] { engine?.layers(of: id) ?? [] }
+    public func setLayers(_ layers: [Layer], of id: InputID) { engine?.setLayers(layers, of: id) }
+    public func frameSize(_ id: InputID) -> PixelSize? { engine?.frameSize(of: id) }
+
     public func addPiP(source: InputID, preset: LayoutPreset) {
         guard let target = switcher.preview, target != source else { return }
         engine?.addLayer(to: target, source: source, preset: preset)
@@ -431,6 +429,13 @@ public final class ChannelVM: ObservableObject, Identifiable {
     @Published public var gate: Bool { didSet { channel.controls.gateEnabled.value = gate } }
     @Published public var gateThreshold: Double { didSet { channel.controls.gateThresholdDB.value = Float(gateThreshold) } }
     @Published public var gateRange: Double { didSet { channel.controls.gateRangeDB.value = Float(gateRange) } }
+    @Published public var highPass: Bool { didSet { channel.controls.highPassEnabled.value = highPass } }
+    @Published public var highPassHz: Double { didSet { channel.controls.highPassHz.value = Float(highPassHz) } }
+    @Published public var eq: Bool { didSet { channel.controls.eqEnabled.value = eq } }
+    @Published public var eqLow: Double { didSet { channel.controls.eqLowDB.value = Float(eqLow) } }
+    @Published public var eqMid: Double { didSet { channel.controls.eqMidDB.value = Float(eqMid) } }
+    @Published public var eqMidHz: Double { didSet { channel.controls.eqMidHz.value = Float(eqMidHz) } }
+    @Published public var eqHigh: Double { didSet { channel.controls.eqHighDB.value = Float(eqHigh) } }
     /// Audio of a video-file input (removed together with the input, not from the mixer).
     public var isFileChannel: Bool { channel.id.hasPrefix("file:") }
 
@@ -449,6 +454,13 @@ public final class ChannelVM: ObservableObject, Identifiable {
         gate = c.gateEnabled.value
         gateThreshold = Double(c.gateThresholdDB.value)
         gateRange = Double(c.gateRangeDB.value)
+        highPass = c.highPassEnabled.value
+        highPassHz = Double(c.highPassHz.value)
+        eq = c.eqEnabled.value
+        eqLow = Double(c.eqLowDB.value)
+        eqMid = Double(c.eqMidDB.value)
+        eqMidHz = Double(c.eqMidHz.value)
+        eqHigh = Double(c.eqHighDB.value)
     }
 }
 

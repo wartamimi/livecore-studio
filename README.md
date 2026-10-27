@@ -4,7 +4,8 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: Milestone 2 (0.2.0) dalam pengembangan.** Fungsi inti M1 (kamera, CUT/AUTO, meter, rekam, stream) dilaporkan
+> **Status: 0.3.0 — Milestone 2 hampir lengkap.** 0.3.0 menambah editor scene visual, lower third yang dapat diatur,
+> EQ/high-pass, dan koreksi drift clock audio. Fungsi inti M1 (kamera, CUT/AUTO, meter, rekam, stream) dilaporkan
 > berfungsi di Mac pengguna. M2 menambah audio file video ke mixer, noise gate, chroma key, Multiview, dan simpan/muat
 > proyek — dikompilasi & diuji unit, menunggu tes perangkat T-17..T-22.
 >
@@ -17,7 +18,7 @@ tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 ## Mulai cepat (di Mac)
 ```bash
 brew install xcodegen ffmpeg
-swift test                        # 61 unit test inti
+swift test                        # 73 unit test inti
 scripts/rtmp_e2e_test.sh          # uji RTMP end-to-end ke server ffmpeg lokal
 scripts/build_macos.sh release    # generate Xcode project + build .app (Universal)
 open build/DerivedData/Build/Products/Release/LiveCoreStudio.app
@@ -39,6 +40,7 @@ Kebutuhan: macOS 13 Ventura+, **Xcode 16+ lengkap** (bukan hanya Command Line To
 7. **Multiview** (ikon grid): Preview, Program, dan semua input dengan tally — cocok untuk monitor kedua.
 8. **Chroma key**: klik kanan input kamera/file/gambar → Chroma Key…; lalu jadikan layer PiP atau overlay di atas latar.
 9. **File video dengan suara** otomatis mendapat kanal mixer (ikon film). **Noise gate**: tombol DSP di kanal.
+11. **Editor scene**: klik kanan input → Edit Scene Layers… (seret/ubah ukuran PiP). **EQ/HPF** dan status clock: tombol DSP.
 10. **Proyek**: File › Save Project (⌘S) / Open Project (⌘O) menyimpan input, layer, overlay, key, mixer (tanpa stream key).
 
 ## Struktur proyek
@@ -76,7 +78,7 @@ docs/                         Dokumentasi (lihat di bawah)
 - **M1 Working MVP** (kode selesai, menunggu verifikasi Mac): input kamera/file/gambar/teks/warna, Preview/Program,
   CUT/Dissolve/Fade/Wipe/T-bar, overlay & PiP dasar, mixer + compressor/limiter + meter, RTMP/RTMPS + reconnect, rekaman MP4/MOV.
 - **M2 Production Workflow** — selesai di kode (0.2.0, menunggu tes perangkat): audio file video ke mixer, noise gate,
-  multiview, simpan/muat proyek, chroma key. Masih planned di M2: koreksi drift clock (resampler adaptif), EQ,
-  editor scene visual (drag-resize), browser source (evaluasi keamanan), capture 4:2:0, optimasi performa.
+  multiview, simpan/muat proyek, chroma key. 0.3.0: koreksi drift clock, EQ/HPF, editor scene visual,
+  lower third yang dapat diatur. Masih planned: browser source (evaluasi keamanan), capture 4:2:0, optimasi performa.
 - **M3 Broadcast Expansion**: Blackmagic DeckLink, AJA/Magewell SDK, NDI, stinger & transisi lanjutan, output SDI/HDMI,
   routing audio lanjutan (aux/mix-minus), multi-destination streaming, profil operator.

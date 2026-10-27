@@ -3,7 +3,7 @@
 ## A. Tes otomatis (dapat dijalankan di Linux dan macOS)
 | ID | Tes | Perintah |
 |---|---|---|
-| A-01 | Unit test LiveCoreCore (61 tes; M2 menambah resampler, noise gate, chroma key, file proyek; M1: switcher, transisi, overlay, layout, DSP, ring buffer lock-free, clock anchor, AMF0, AVC/AAC, FLV, RTMP URL/chunk/sesi, antrean kongesti, settings) | `swift test` |
+| A-01 | Unit test LiveCoreCore (73 tes; 0.3.0 menambah drift compensator, EQ/biquad, editor layer, kompatibilitas proyek 0.2.0; M2 menambah resampler, noise gate, chroma key, file proyek; M1: switcher, transisi, overlay, layout, DSP, ring buffer lock-free, clock anchor, AMF0, AVC/AAC, FLV, RTMP URL/chunk/sesi, antrean kongesti, settings) | `swift test` |
 | A-02 | E2E RTMP: publish H.264 High 720p30 + AAC 48k selama 10 s ke server RTMP ffmpeg, verifikasi ffprobe + decode semua frame | `scripts/rtmp_e2e_test.sh` |
 | A-03 | E2E FLV writer → ffprobe | (bagian dari A-02) |
 | A-04 | Kegagalan koneksi: server tidak ada, server memutus di tengah stream; stream key tidak bocor di log | (bagian dari A-02) |
@@ -48,3 +48,12 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21 | Simpan & buka proyek | Susun 4+ input, layer PiP, overlay, chroma key, setelan mixer; File › Save Project; quit; buka lagi › File › Open Project | Semua input, layer, overlay, key, fader/mute/gate kembali; stream key tidak ada di file `.livecore` |
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
+
+## D. Tes manual build 0.3.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-23 | Editor scene | Klik kanan input → Edit Scene Layers…; + tambah kamera 2; seret & ubah ukuran; ubah urutan & opasitas | Preview mengikuti setiap perubahan; Program tidak berubah sampai CUT; tersimpan di proyek |
+| T-24 | Lower third | Title → layout "Bar selebar layar" dan "Teks di tengah", ubah ukuran & warna | Tampilan sesuai di Preview/Program/rekaman; teks tidak terpotong |
+| T-25 | Drift jangka panjang | Mic USB + output headphone berbeda, siaran/rekam ≥ 1 jam; buka DSP › Clock | Tanpa klik berkala; ppm stabil (umumnya < ±100); underrun tidak terus bertambah |
+| T-26 | EQ & HPF | Mic: HPF 100 Hz, Low −6 dB, High +3 dB | Suara berubah sesuai; tanpa distorsi/klik saat menggeser slider |
+| T-27 | Proyek lama | Buka file `.livecore` dari 0.2.0 | Terbuka tanpa error; EQ default off |

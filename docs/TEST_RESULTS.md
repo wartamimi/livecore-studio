@@ -43,6 +43,16 @@ Dilaporkan oleh pengguna di MacBook miliknya (model/chip belum dicatat). Bukti: 
 
 Belum dilaporkan: T-10 (stream+rekam 10 menit), T-11 reconnect, T-12 cabut-colok, T-13 beban, T-14 disk penuh, T-15 izin ditolak, T-16 bahasa.
 
+## Laporan pengguna build 0.2.0 (dev-build-8), 2026-10-27
+Pengguna melaporkan "sejauh ini belum ada bug" setelah mencoba 0.2.0. Rincian per tes T-17..T-22 belum dilaporkan, jadi
+statusnya tetap Not tested per item.
+
+## Build 0.3.0 — otomatis
+| ID | Tes | Hasil |
+|---|---|---|
+| A-01 | 73/73 unit test di Linux (Swift 6.0.3) | Passed |
+| M-01..M-04, A-06 | Kompilasi macOS, shader, app, DMG | Lihat run CI berikutnya di branch `claude/project-thread-ba7wg0` |
+
 ## Milestone 2 (0.2.0) — otomatis
 | ID | Tes | Hasil |
 |---|---|---|

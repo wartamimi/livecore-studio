@@ -22,14 +22,14 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Input file video (loop, play/pause/restart) | Implemented | U (video) + M (audio) | M2: audio file masuk kanal mixer sendiri via MTAudioProcessingTap, resample ke 48 kHz |
 | Input gambar (PNG alpha, JPEG, HEIC…) | Implemented | M | |
 | Input warna | Implemented | M | |
-| Text / lower third (CoreText) | Implemented | M | Editor dasar: judul, subjudul, bar |
+| Text / lower third (CoreText) | Implemented | M | 0.3.0: 3 layout (kotak, bar penuh, caption tengah), ukuran font, warna teks & bar; animasi masuk = fade overlay |
 | Preview/Program terpisah | Implemented | L (logika) + M (render) | `Switcher`, `FramePlanner` teruji |
 | CUT | Implemented | L + U | |
 | AUTO: Dissolve, Fade (dip to black), Wipe | Implemented | L + U | |
 | T-bar manual | Implemented | L + M | |
 | Overlay 4 kanal dengan fade | Implemented | L + M | |
 | Picture-in-Picture (layer pada input / overlay preset PiP) | Implemented | L + M | Preset posisi; belum ada drag-resize |
-| Scene composition dasar (layer per input) | Partially implemented | L + M | Tambah/hapus layer via menu; layer disimpan di proyek; editor visual drag-resize masih planned |
+| Scene composition / editor layer visual | Implemented (0.3.0) | L (geometri) + M | Seret untuk pindah, sudut untuk resize (kunci rasio), snap ke tengah/safe area, urutan, opasitas, skala, preset |
 | Scaling fit/fill/stretch & aspect ratio | Implemented | L + M | `LayoutMath` teruji |
 | Resolusi/frame rate output (720p30/60, 1080p25/30/60) | Implemented | M | Terkunci saat output aktif |
 | Thumbnail input live (≈5 fps) | Implemented | M | |
@@ -51,9 +51,10 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Compressor per kanal | Implemented | L + M | Feed-forward, stereo-linked |
 | Limiter master | Implemented | L + M | Tanpa look-ahead (lihat known issues) |
 | Noise gate | Implemented (M2) | L + M | Per kanal: threshold, range, hysteresis 4 dB, hold 60 ms |
+| High-pass filter + EQ 3-band | Implemented (0.3.0) | L + M | HPF 40–300 Hz; low shelf 120 Hz, mid peak 200–6000 Hz, high shelf 8 kHz, ±12 dB |
 | Monitoring + pemilihan perangkat output | Implemented | M | |
 | Sinkronisasi A/V (host clock + offset manual) | Implemented | L (anchor) + M | Butuh kalibrasi per kamera |
-| Koreksi drift clock (resampling adaptif) | Planned (M2) | — | M1: jitter buffer |
+| Koreksi drift clock (resampling adaptif) | Implemented (0.3.0) | L (simulasi ±300 ppm, 10 menit) + M | Per kanal, maks ±0,5 %; ppm & underrun tampil di popover DSP |
 | Audio dari file video | Implemented (M2) | M | Lihat Known issue: sinkronisasi audio file belum diukur |
 | Audio NDI | Planned (M3) | — | |
 

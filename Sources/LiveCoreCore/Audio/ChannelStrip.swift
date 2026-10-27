@@ -14,6 +14,13 @@ public final class ChannelControls: @unchecked Sendable {
     public let gateEnabled = AtomicBool(false)
     public let gateThresholdDB = AtomicFloat(-50)
     public let gateRangeDB = AtomicFloat(-80)
+    public let highPassEnabled = AtomicBool(false)
+    public let highPassHz = AtomicFloat(80)
+    public let eqEnabled = AtomicBool(false)
+    public let eqLowDB = AtomicFloat(0)
+    public let eqMidDB = AtomicFloat(0)
+    public let eqMidHz = AtomicFloat(1000)
+    public let eqHighDB = AtomicFloat(0)
     // Meters (post-fader), consumed with `exchange(0)` by the UI.
     public let peakL = AtomicFloat(0)
     public let peakR = AtomicFloat(0)
@@ -23,7 +30,8 @@ public final class ChannelControls: @unchecked Sendable {
     public init() {}
 }
 
-/// Real-time DSP for one stereo channel: trim -> noise gate -> compressor -> fader/pan (ramped) -> meter.
+/// Real-time DSP for one stereo channel:
+/// trim -> high-pass -> noise gate -> EQ -> compressor -> fader/pan (ramped) -> meter.
 /// Owned by the render thread; `ChannelControls` is the only shared state.
 public struct ChannelStripDSP: Sendable {
     public let controls: ChannelControls
@@ -32,11 +40,13 @@ public struct ChannelStripDSP: Sendable {
     private var panRampR = GainRamp(initial: 1)
     private var compressor: Compressor
     private var gate: NoiseGate
+    private var eq: ChannelEQ
 
     public init(controls: ChannelControls, sampleRate: Float) {
         self.controls = controls
         self.compressor = Compressor(sampleRate: sampleRate)
         self.gate = NoiseGate(sampleRate: sampleRate)
+        self.eq = ChannelEQ(sampleRate: Double(sampleRate))
     }
 
     /// Processes in place. Returns false when the channel is muted (buffers are zeroed).
@@ -45,9 +55,19 @@ public struct ChannelStripDSP: Sendable {
         let trim = AudioMath.dbToLinear(controls.gainDB.value)
         let gateOn = controls.gateEnabled.value
         let compOn = controls.compressorEnabled.value
-        if gateOn || compOn {
-            // Dynamics see the trimmed signal, so thresholds are independent of the fader.
+        var eqp = ChannelEQ.Params()
+        eqp.highPassEnabled = controls.highPassEnabled.value
+        eqp.highPassHz = Double(controls.highPassHz.value)
+        eqp.eqEnabled = controls.eqEnabled.value
+        eqp.lowGainDB = Double(controls.eqLowDB.value)
+        eqp.midGainDB = Double(controls.eqMidDB.value)
+        eqp.midHz = Double(controls.eqMidHz.value)
+        eqp.highGainDB = Double(controls.eqHighDB.value)
+        eq.update(eqp)
+        if gateOn || compOn || eqp.highPassEnabled || eqp.eqEnabled {
+            // Processing sees the trimmed signal, so thresholds are independent of the fader.
             if trim != 1 { for i in 0..<frames { left[i] *= trim; right[i] *= trim } }
+            eq.processHighPass(left: left, right: right, frames: frames)
             if gateOn {
                 gate.thresholdDB = controls.gateThresholdDB.value
                 gate.rangeDB = controls.gateRangeDB.value
@@ -56,6 +76,7 @@ public struct ChannelStripDSP: Sendable {
             } else {
                 controls.gateReductionDB.value = 0
             }
+            eq.processEQ(left: left, right: right, frames: frames)
             if compOn {
                 compressor.thresholdDB = controls.compThresholdDB.value
                 compressor.ratio = max(1, controls.compRatio.value)

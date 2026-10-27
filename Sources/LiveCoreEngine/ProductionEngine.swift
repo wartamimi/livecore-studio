@@ -330,6 +330,26 @@ public final class ProductionEngine {
         }
     }
 
+    /// Replaces the scene layers of an input (scene editor). Layer 0 must remain the input itself;
+    /// layers pointing at unknown inputs are dropped.
+    public func setLayers(_ layers: [Layer], of id: InputID) {
+        control.mutate { st in
+            guard st.sources[id] != nil else { return }
+            var l = layers.filter { $0.source != id && st.sources[$0.source] != nil }
+            let base = layers.first(where: { $0.source == id }) ?? Layer(source: id)
+            l.insert(base, at: 0)
+            st.layers[id] = l
+        }
+    }
+
+    /// Pixel size of an input's current frame (nil until it has produced one).
+    public func frameSize(of id: InputID) -> PixelSize? {
+        guard let src = source(id) else { return nil }
+        // Video files: read the cached frame; pulling from AVPlayerItemVideoOutput is the render queue's job.
+        guard let pb = (src as? VideoFileSource)?.lastFrame() ?? src.currentFrame() else { return nil }
+        return PixelSize(width: CVPixelBufferGetWidth(pb), height: CVPixelBufferGetHeight(pb))
+    }
+
     public func removeLayer(from id: InputID, at index: Int) {
         control.mutate { st in
             guard var l = st.layers[id], index > 0, index < l.count else { return } // layer 0 = the input itself
@@ -571,6 +591,11 @@ extension ProductionEngine {
             p.muted = c.muted.value; p.toProgram = c.toProgram.value
             p.compressorEnabled = c.compressorEnabled.value; p.compThresholdDB = c.compThresholdDB.value; p.compRatio = c.compRatio.value
             p.gateEnabled = c.gateEnabled.value; p.gateThresholdDB = c.gateThresholdDB.value
+            var eq = ProjectEQ()
+            eq.highPassEnabled = c.highPassEnabled.value; eq.highPassHz = c.highPassHz.value
+            eq.eqEnabled = c.eqEnabled.value
+            eq.lowDB = c.eqLowDB.value; eq.midDB = c.eqMidDB.value; eq.midHz = c.eqMidHz.value; eq.highDB = c.eqHighDB.value
+            p.eq = eq
             doc.audio.channels.append(p)
         }
         return doc
@@ -666,6 +691,11 @@ extension ProductionEngine {
         c.muted.value = p.muted; c.toProgram.value = p.toProgram
         c.compressorEnabled.value = p.compressorEnabled; c.compThresholdDB.value = p.compThresholdDB; c.compRatio.value = p.compRatio
         c.gateEnabled.value = p.gateEnabled; c.gateThresholdDB.value = p.gateThresholdDB
+        if let eq = p.eq {
+            c.highPassEnabled.value = eq.highPassEnabled; c.highPassHz.value = eq.highPassHz
+            c.eqEnabled.value = eq.eqEnabled
+            c.eqLowDB.value = eq.lowDB; c.eqMidDB.value = eq.midDB; c.eqMidHz.value = eq.midHz; c.eqHighDB.value = eq.highDB
+        }
     }
 }
 
@@ -681,12 +711,18 @@ extension ProjectTitleStyle {
     public init(_ s: TextSource.Style) {
         self.init(title: s.title, subtitle: s.subtitle, showBar: s.showBar,
                   textColor: ProjectColor(s.textColor), barColor: ProjectColor(s.barColor))
+        titleSize = Double(s.titleSize)
+        subtitleSize = Double(s.subtitleSize)
+        layout = s.layout.rawValue
     }
     public var textStyle: TextSource.Style {
         var s = TextSource.Style(title: title, subtitle: subtitle)
         s.showBar = showBar
         s.textColor = textColor.nsColor
         s.barColor = barColor.nsColor
+        if let titleSize { s.titleSize = CGFloat(titleSize) }
+        if let subtitleSize { s.subtitleSize = CGFloat(subtitleSize) }
+        if let layout, let l = TextSource.Layout(rawValue: layout) { s.layout = l }
         return s
     }
 }
