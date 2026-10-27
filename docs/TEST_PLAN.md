@@ -49,6 +49,13 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## H. Tes manual build 0.7.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-35 | MIDI | Sambungkan controller MIDI USB; Pengaturan › MIDI: Learn CUT (pad), AUTO (pad), T-bar (fader), Preview 1–2 | Perangkat terdeteksi; tiap pad/fader menjalankan aksinya; pemetaan tetap ada setelah app dibuka ulang |
+| T-36 | Input musik | Mixer › + › Musik: pilih 3 lagu (MP3/M4A/WAV); Play, Next, Previous, Acak; geser fader | Lagu terdengar lewat mixer (meter bergerak, ikut stream/rekaman), lanjut otomatis ke lagu berikut, tidak ada suara yang lolos di luar mixer |
+| T-36b | Musik di proyek | Simpan proyek, buka lagi | Playlist, ulangi/acak, dan setelan fader kembali |
+
 ## G. Tes manual build 0.6.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

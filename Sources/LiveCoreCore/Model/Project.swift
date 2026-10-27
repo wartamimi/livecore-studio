@@ -159,6 +159,8 @@ public struct ProjectAudio: Codable, Equatable, Sendable {
     public var channels: [ProjectAudioChannel] = []
     /// Aux buses A and B (absent in projects from before 0.5.0).
     public var aux: [ProjectAuxBus]?
+    /// Music players (absent in projects from before 0.7.0). Their mixer settings are in `channel`.
+    public var music: [ProjectMusic]?
     public init() {}
 }
 
@@ -236,5 +238,26 @@ public struct ProjectAuxBus: Codable, Equatable, Sendable {
         faderDB = try c.decodeIfPresent(Float.self, forKey: .faderDB) ?? 0
         muted = try c.decodeIfPresent(Bool.self, forKey: .muted) ?? false
         outputDeviceUID = try c.decodeIfPresent(String.self, forKey: .outputDeviceUID)
+    }
+}
+
+/// A media file reference: absolute path plus the path relative to the project file.
+public struct ProjectMediaRef: Codable, Equatable, Sendable {
+    public var path: String
+    public var relativePath: String?
+    public init(path: String, relativePath: String? = nil) { self.path = path; self.relativePath = relativePath }
+}
+
+/// Music input: playlist and options, with the settings of its mixer channel.
+public struct ProjectMusic: Codable, Equatable, Sendable {
+    public var id: String
+    public var name: String
+    public var tracks: [ProjectMediaRef]
+    public var loop: Bool
+    public var shuffle: Bool
+    public var channel: ProjectAudioChannel?
+    public init(id: String, name: String, tracks: [ProjectMediaRef], loop: Bool = true, shuffle: Bool = false,
+                channel: ProjectAudioChannel? = nil) {
+        self.id = id; self.name = name; self.tracks = tracks; self.loop = loop; self.shuffle = shuffle; self.channel = channel
     }
 }

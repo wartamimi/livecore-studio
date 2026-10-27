@@ -198,3 +198,22 @@
 "timer.edit" = "Ubah timer…";
 "snapshot.help" = "Simpan frame Program saat ini sebagai PNG di folder rekaman";
 "snapshot.saved" = "Tersimpan %@";
+
+"midi.stream" = "Mulai/hentikan stream";
+"midi.record" = "Mulai/hentikan rekaman";
+"midi.preview" = "Preview input %ld";
+"midi.cut_direct" = "Cut input %ld ke Program";
+"midi.no_devices" = "Belum ada perangkat MIDI. Sambungkan controller; akan terdeteksi otomatis.";
+"midi.devices" = "Perangkat MIDI: %@";
+"midi.last" = "Pesan terakhir: %@";
+"midi.waiting" = "Tekan pad atau geser fader…";
+"midi.learn" = "Learn";
+"midi.hint" = "Tombol aktif saat ditekan (note atau CC ≥ 64). Pasang fader/knob (CC) ke T-bar. Pemetaan disimpan di Mac ini.";
+
+"music.add" = "Musik (file audio)…";
+"music.title" = "Musik";
+"music.add_tracks" = "Tambah lagu…";
+"music.loop" = "Ulangi playlist";
+"music.shuffle" = "Acak";
+"music.tracks" = "Daftar lagu";
+"music.remove" = "Hapus input musik";

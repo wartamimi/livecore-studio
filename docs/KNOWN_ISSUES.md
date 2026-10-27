@@ -49,3 +49,7 @@
     Tidak ada interaksi mouse/keyboard ke halaman. Untuk alamat http (bukan https), app mengizinkan konten web tanpa TLS
     (`NSAllowsArbitraryLoadsInWebContent`).
 29. **Timer** memakai jam sistem; hitung mundur tidak tersimpan berjalan di file proyek (dimuat dalam keadaan reset).
+30. **MIDI**: hanya note dan control change (MIDI 1.0) yang dipakai; tidak ada feedback lampu ke controller, tidak ada
+    pemetaan per perangkat (pesan yang sama dari dua controller dianggap sama). Fader T-bar mengikuti nilai CC langsung.
+31. **Input musik** tidak punya crossfade antarlagu dan belum menampilkan posisi/durasi lagu; pindah lagu bisa memberi jeda
+    singkat (~100 ms) saat file baru dibuka.

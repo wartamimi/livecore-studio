@@ -22,6 +22,7 @@ struct SettingsView: View {
                 recordTab.tabItem { Text(L10n.t("record.title")) }.tag(2)
                 audioTab.tabItem { Text(L10n.t("audio.title")) }.tag(3)
                 shortcutTab.tabItem { Text(L10n.t("settings.shortcuts")) }.tag(4)
+                MIDISettingsView().tabItem { Text("MIDI") }.tag(5)
             }
             .padding()
             if !errors.isEmpty {
@@ -193,6 +194,45 @@ struct SettingsView: View {
         model.saveShortcuts(shortcuts)
         errors = errs
         if errs.isEmpty { dismiss() }
+    }
+}
+/// MIDI controller mapping with Learn: click Learn, then press a pad/key or move a fader.
+/// Mappings apply immediately and are stored in user preferences (not in projects).
+struct MIDISettingsView: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(model.midiSources.isEmpty ? L10n.t("midi.no_devices") : L10n.f("midi.devices", model.midiSources.joined(separator: ", ")))
+                .font(.caption).foregroundStyle(Theme.textDim)
+            if !model.lastMIDI.isEmpty {
+                Text(L10n.f("midi.last", model.lastMIDI)).font(.caption.monospacedDigit()).foregroundStyle(Theme.textDim)
+            }
+            List {
+                ForEach(ControlAction.catalog, id: \.self) { a in
+                    HStack {
+                        Text(AppModel.actionName(a))
+                        Spacer()
+                        if model.midiLearning == a {
+                            Text(L10n.t("midi.waiting")).foregroundStyle(Theme.warning)
+                            Button(L10n.t("settings.cancel")) { model.midiLearning = nil }
+                        } else {
+                            Text(model.midiMap.trigger(for: a)?.description ?? "—")
+                                .font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.textDim)
+                            Button(L10n.t("midi.learn")) { model.midiLearning = a }
+                            Button {
+                                model.midiMap.clear(a)
+                            } label: { Image(systemName: "xmark.circle") }
+                            .buttonStyle(.borderless)
+                            .disabled(model.midiMap.trigger(for: a) == nil)
+                        }
+                    }
+                }
+            }
+            Text(L10n.t("midi.hint")).font(.caption).foregroundStyle(Theme.textDim)
+        }
+        .padding(8)
+        .onDisappear { model.midiLearning = nil }
     }
 }
 #endif

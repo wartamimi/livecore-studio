@@ -61,6 +61,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Audio dari file video | Implemented (M2) | M | Lihat Known issue: sinkronisasi audio file belum diukur |
 | Aux bus A/B (send post-fader per channel, fader/mute/meter bus) | Implemented (0.5.0) | L (model proyek) + kompilasi CI | Belum dites di Mac (T-31) |
 | Output aux ke perangkat terpisah + mix-minus | Implemented (0.5.0) | kompilasi CI | Tiap bus bisa diputar di perangkat output lain (koreksi drift clock); menu kanal "Mix-minus" mengirim semua kanal kecuali kanal itu. Belum dites (T-31b) |
+| Input musik (playlist file audio: MP3/AAC/M4A/WAV/AIFF...) | Implemented (0.7.0) | L (urutan playlist/acak, model proyek) + kompilasi CI | Channel mixer sendiri; play/pause/next/previous di strip; ulangi & acak; tersimpan di proyek. Belum dites di Mac (T-36) |
 | Audio NDI | Planned (M3) | — | |
 
 ## Streaming
@@ -96,6 +97,13 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Blackmagic DeckLink (Desktop Video SDK) | Blocked → Planned M3 | Perlu SDK (EULA, registrasi) + perangkat uji |
 | AJA / Magewell Pro | Planned M3 | Perlu SDK vendor |
 | NDI | Blocked → Planned M3 | Perlu NDI SDK + kepatuhan lisensi |
+
+## Kontrol
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Shortcut keyboard yang bisa diatur | Implemented | M | |
+| Kontrol MIDI dengan Learn (CUT, AUTO, T-bar, preview/cut 1–8, overlay 1–4, stream, rekam, snapshot) | Implemented (0.7.0) | L (parser MIDI 1.0/UMP, pemetaan, 6 unit test) + kompilasi CI | Semua sumber CoreMIDI tersambung otomatis; pemetaan disimpan di Mac (bukan proyek). Belum dites dengan controller (T-35) |
+| Input playlist video | Planned | — | Setelah 0.7.0 |
 
 ## Sistem
 | Fitur | Status | Verifikasi |
