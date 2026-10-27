@@ -50,6 +50,13 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## T. Tes manual build 0.20.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-77 | Animasi overlay | Overlay 1 = judul, preset lowerThird; tombol tongkat › Geser dari kiri, 1 s; nyalakan/matikan ke Program; ulangi dengan Geser dari bawah dan Zoom; simpan & buka proyek | Judul meluncur masuk dari kiri dan keluar ke kiri dengan halus (melambat di ujung); bawah/zoom sesuai; setelan kembali setelah proyek dibuka |
+| T-78 | Eyedropper chroma key | Kamera di depan green screen › Chroma Key… › tombol pipet › klik latar hijau di gambar | Warna kunci berubah ke hijau latar; kunci otomatis aktif; latar hilang lebih bersih dibanding preset Hijau; Ambil gambar baru memperbarui gambar |
+| T-79 | Fade antarlagu | Input musik 2 lagu › menu strip › Fade antarlagu 3 s; putar, geser seekbar ke 10 s sebelum akhir | Lagu pertama mengecil pelan 3 s terakhir, lagu berikut mulai pelan dan naik dalam 3 s, tanpa klik; Mati = langsung seperti sebelumnya |
+
 ## S. Tes manual build 0.19.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

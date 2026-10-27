@@ -22,7 +22,7 @@
 15. **Capture card non-UVC** (DeckLink, AJA, Magewell Pro) tidak didukung di M1.
 16. **Tidak di-sandbox** (App Sandbox) agar folder rekaman bebas dipilih tanpa security-scoped bookmarks; hardened runtime aktif.
 17. **GPU utilisation** tidak tersedia lewat API publik; yang ditampilkan adalah waktu GPU per frame.
-18. **Chroma key** bekerja per input dengan satu warna kunci; belum ada pemilih warna dari gambar (eyedropper), garbage matte,
+18. **Chroma key** bekerja per input dengan satu warna kunci; eyedropper ada sejak 0.20.0 (mengambil dari gambar sebelum koreksi warna input); belum ada garbage matte,
     atau light wrap. Hasil sangat bergantung pada pencahayaan green screen.
 19. **Multiview** memakai thumbnail 10 fps 384×216 untuk tile input (Preview/Program tetap penuh). Tidak ada meter audio
     atau jam di Multiview dan bukan output SDI/HDMI terpisah (gunakan jendela di monitor kedua).
@@ -30,7 +30,8 @@
     tidak terpasang dilewati dengan peringatan. Overlay dimuat dalam keadaan OFF. Gaya teks (ukuran font) memakai default.
 21. **Editor scene** menggambar layer dari thumbnail 10 fps dengan skala "fit"; hasil persis (fill/crop) terlihat di Preview.
     Belum ada crop per layer, rotasi, atau border/bayangan.
-22. **Lower third** belum punya animasi slide/wipe sendiri (masuk/keluar memakai fade overlay) dan belum ada pilihan font.
+22. **Lower third**: animasi overlay (geser/zoom/fade) sejak 0.20.0 berlaku per kanal overlay, bukan per judul; belum ada
+    wipe dan pilihan font.
 23. **Capture card UVC generik** kadang melaporkan rentang frame rate yang tidak benar-benar diterima driver. Sejak 0.3.1
     app tidak crash lagi; bila driver menolak, kartu berjalan pada frame rate bawaannya (mis. 60 fps) dan render loop
     mengambil frame terbaru. Detailnya tercatat di log (Console.app, subsystem `studio.livecore.LiveCoreStudio`, kategori `devices`).
@@ -51,8 +52,8 @@
 29. **Timer** memakai jam sistem; hitung mundur tidak tersimpan berjalan di file proyek (dimuat dalam keadaan reset).
 30. **MIDI**: hanya note dan control change (MIDI 1.0) yang dipakai; tidak ada feedback lampu ke controller, tidak ada
     pemetaan per perangkat (pesan yang sama dari dua controller dianggap sama). Fader T-bar mengikuti nilai CC langsung.
-31. **Input musik** tidak punya crossfade antarlagu (posisi lagu tampil sebagai seekbar sejak 0.8.0); pindah lagu bisa memberi jeda
-    singkat (~100 ms) saat file baru dibuka.
+31. **Input musik**: fade antarlagu sejak 0.20.0 berupa fade-out lalu fade-in (lagu tidak tumpang tindih, bukan crossfade
+    DJ). Pindah lagu bisa memberi jeda singkat (~100 ms) saat file baru dibuka.
 32. **Playlist video**: perpindahan antarklip butuh beberapa frame (klip baru dibuka saat klip lama selesai), tidak ada
     transisi otomatis antarklip. Seekbar hanya untuk klip yang sedang dimuat.
 33. **Fullscreen output**: di layar eksternal jendela tidak mengambil fokus keyboard (agar shortcut di jendela utama tetap

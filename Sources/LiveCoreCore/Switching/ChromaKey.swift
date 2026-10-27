@@ -52,3 +52,27 @@ public struct ChromaKey: Codable, Equatable, Sendable {
         return x * x * (3 - 2 * x)   // smoothstep, identical to the shader
     }
 }
+
+extension ChromaKey {
+    /// Average colour of the square of side `2 * radius + 1` around (x, y) in an 8-bit BGRA
+    /// picture (the key-colour eyedropper; averaging hides camera noise). Premultiplied alpha is
+    /// undone; fully transparent pixels are skipped. Nil when nothing usable is under the cursor.
+    public static func sampleColor(bgra: UnsafePointer<UInt8>, width: Int, height: Int, bytesPerRow: Int,
+                                   x: Int, y: Int, radius: Int = 4) -> RGB? {
+        guard width > 0, height > 0 else { return nil }
+        let cx = min(max(x, 0), width - 1), cy = min(max(y, 0), height - 1)
+        var r = 0.0, g = 0.0, b = 0.0, n = 0.0
+        for yy in max(0, cy - radius)...min(height - 1, cy + radius) {
+            let row = bgra + yy * bytesPerRow
+            for xx in max(0, cx - radius)...min(width - 1, cx + radius) {
+                let p = row + xx * 4
+                let a = Double(p[3]) / 255
+                guard a > 0.01 else { continue }
+                b += Double(p[0]) / 255 / a; g += Double(p[1]) / 255 / a; r += Double(p[2]) / 255 / a
+                n += 1
+            }
+        }
+        guard n > 0 else { return nil }
+        return RGB(r: min(r / n, 1), g: min(g / n, 1), b: min(b / n, 1))
+    }
+}

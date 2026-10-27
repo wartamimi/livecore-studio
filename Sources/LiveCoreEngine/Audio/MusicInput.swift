@@ -17,6 +17,9 @@ public final class MusicInput {
     public var loopPlaylist = true
     public var shuffle = false
     public private(set) var isPlaying = false
+    /// Fade-out at the end and fade-in at the start of each song, in seconds (0 = off).
+    public var fadeSeconds: Double = 0 { didSet { fadeSeconds = min(max(fadeSeconds, MusicFade.range.lowerBound), MusicFade.range.upperBound) } }
+    private var fadeTimer: Timer?
     public private(set) var error: String?
     /// Something visible changed (track, play state, error).
     public var onChange: (() -> Void)?
@@ -33,10 +36,21 @@ public final class MusicInput {
         player.volume = 1
         player.actionAtItemEnd = .pause
         if !tracks.isEmpty { load(0, autoplay: false) }
+        // 20 Hz fade envelope; the tap ramps between updates so steps are not audible.
+        let t = Timer(timeInterval: 0.05, repeats: true) { [weak self] _ in self?.updateFade() }
+        RunLoop.main.add(t, forMode: .common)
+        fadeTimer = t
+    }
+
+    private func updateFade() {
+        guard let ctx = tapContext else { return }
+        let g = Float(MusicFade.gain(position: position, duration: duration, fade: fadeSeconds))
+        if ctx.gain.value != g { ctx.gain.value = g }
     }
 
     deinit {
         if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+        fadeTimer?.invalidate()
         tapContext?.active.value = false
         player.pause()
     }
@@ -126,7 +140,8 @@ public final class MusicInput {
     private func install(asset: AVURLAsset, track: AVAssetTrack, autoplay: Bool) {
         failures = 0
         tapContext?.active.value = false
-        let ctx = FileAudioTapContext(channel: channel)
+        // With fades on, a new song starts silent and fades in (no click at the start).
+        let ctx = FileAudioTapContext(channel: channel, initialGain: fadeSeconds > 0 ? 0 : 1)
         guard let tap = FileAudioTapContext.makeTap(ctx) else {
             error = "Cannot attach audio tap"
             onChange?()
