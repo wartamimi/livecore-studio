@@ -356,3 +356,17 @@
 "audio.state" = "Status";
 "audio.gain_reduction" = "Pengurangan gain";
 "audio.route_program" = "Ke Program (stream / rekaman)";
+"adjust.menu" = "Warna & Orientasi…";
+"adjust.title" = "Warna & Orientasi";
+"adjust.brightness" = "Kecerahan";
+"adjust.contrast" = "Kontras";
+"adjust.saturation" = "Saturasi";
+"adjust.gamma" = "Gamma";
+"adjust.flip_h" = "Balik horizontal (cermin)";
+"adjust.flip_v" = "Balik vertikal";
+"adjust.rotate_hint" = "Kedua balik bersamaan = putar 180° (kamera dipasang terbalik). Berlaku di semua tempat input dipakai.";
+"adjust.reset" = "Reset";
+"tone.add" = "Nada Tes (1 kHz)";
+"tone.name" = "Nada";
+"tone.frequency" = "Frekuensi";
+"tone.level" = "Level";

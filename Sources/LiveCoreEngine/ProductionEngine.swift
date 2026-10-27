@@ -61,6 +61,8 @@ public final class ProductionEngine {
     public var onReplayChange: (() -> Void)?
     /// Music inputs (audio-file playlists), each with its own mixer channel. Main thread.
     public private(set) var musicPlayers: [MusicInput] = []
+    public private(set) var tones: [TestTone] = []
+    public static let toneChannelPrefix = "tone:"
     public var onMusicChange: (() -> Void)?
     public static let musicChannelPrefix = "music:"
     public let performance = PerformanceMonitor()
@@ -73,6 +75,8 @@ public final class ProductionEngine {
         var layers: [InputID: [Layer]] = [:]
         var keys: [InputID: ChromaKey] = [:]
         var locked: Set<InputID> = []
+        /// Colour correction / flips per input (identity entries are not stored).
+        var adjusts: [InputID: InputAdjust] = [:]
         /// Input shown in the per-input viewer window, rendered at full size every frame.
         var detail: InputID?
         var stinger = StingerConfig()
@@ -130,6 +134,7 @@ public final class ProductionEngine {
         renderTimer = nil
         control.read { $0.sources.values.forEach { $0.stop() } }
         musicPlayers.forEach { $0.stop() }
+        tones.forEach { $0.stop() }
         audioInputs.values.forEach { $0.stop() }
         mixer.stop()
     }
@@ -162,7 +167,7 @@ public final class ProductionEngine {
         var events: [SwitcherEvent] = []
         frameCounter += 1
         let thumbTick = frameCounter % Int64(max(1, Int(fps / 10))) == 0   // ~10 fps thumbnails (inputs panel + multiview)
-        let (plan, sources, snapshot) = control.mutate { st -> (FramePlan, [InputID: VideoSource], SwitcherSnapshot) in
+        let (plan, sources, snapshot, adjusts) = control.mutate { st -> (FramePlan, [InputID: VideoSource], SwitcherSnapshot, [InputID: InputAdjust]) in
             events = st.switcher.update(now: now)
             let layers = st.layers
             let keys = st.keys.filter { $0.value.enabled }.mapValues { $0.clamped }
@@ -171,7 +176,7 @@ public final class ProductionEngine {
                                          thumbnailsFor: thumbTick ? st.order : [],
                                          composedThumbnails: thumbTick ? Set(st.sources.filter { $0.value is SceneSource }.keys) : [],
                                          detailInput: st.detail)
-            return (plan, st.sources, st.switcher.state)
+            return (plan, st.sources, st.switcher.state, st.adjusts)
         }
         if !events.isEmpty || snapshot != lastSwitcher {
             lastSwitcher = snapshot
@@ -195,7 +200,7 @@ public final class ProductionEngine {
 
         let pts = CMTime(seconds: frameHost, preferredTimescale: 90_000)
         let detailID = plan.detail == nil ? nil : control.read { $0.detail }
-        let ok = compositor.render(plan: plan, frames: frames) { [weak self] result in
+        let ok = compositor.render(plan: plan, frames: frames, adjusts: adjusts) { [weak self] result in
             guard let self else { return }
             self.inFlight.mutate { $0 -= 1 }
             self.renderedFrames.add()
@@ -282,6 +287,31 @@ public final class ProductionEngine {
         src.start()
         add(src)
         return src.id
+    }
+
+    /// Adds a test tone generator (1 kHz, -18 dBFS by default) in its own mixer channel.
+    @discardableResult
+    public func addTone(frequency: Double = 1000, levelDB: Double = -18, id: String? = nil, name: String = "Tone") -> TestTone {
+        let tid = id ?? String(UUID().uuidString.prefix(8)).lowercased()
+        let ch = mixer.addChannel(id: Self.toneChannelPrefix + tid, name: name)
+        let t = TestTone(id: tid, channel: ch, frequency: frequency, levelDB: levelDB)
+        t.start()
+        tones.append(t)
+        onAudioChannelsChange?()
+        return t
+    }
+
+    public func removeTone(id: String) {
+        guard let i = tones.firstIndex(where: { $0.id == id }) else { return }
+        tones.remove(at: i).stop()
+        mixer.removeChannel(id: Self.toneChannelPrefix + id)
+        afvLinks[Self.toneChannelPrefix + id] = nil
+        onAudioChannelsChange?()
+    }
+
+    public func tone(channelID: String) -> TestTone? {
+        guard channelID.hasPrefix(Self.toneChannelPrefix) else { return nil }
+        return tones.first { Self.toneChannelPrefix + $0.id == channelID }
     }
 
     /// Adds a music input playing `urls` into a new mixer channel (paused until Play).
@@ -418,6 +448,7 @@ public final class ProductionEngine {
             st.layers[id] = nil
             st.keys[id] = nil
             st.locked.remove(id)
+            st.adjusts[id] = nil
             if st.detail == id { st.detail = nil }
             if st.stinger.source == id { st.stinger.source = nil }
             st.order.removeAll { $0 == id }
@@ -448,6 +479,12 @@ public final class ProductionEngine {
         }
         publishInputs()
     }
+
+    /// Colour correction and flips of an input (applied live).
+    public func setAdjust(_ id: InputID, _ adjust: InputAdjust) {
+        control.mutate { st in st.adjusts[id] = adjust.isIdentity ? nil : adjust.clamped }
+    }
+    public func adjust(of id: InputID) -> InputAdjust { control.read { $0.adjusts[id] } ?? InputAdjust() }
 
     /// Input rendered at full size for the per-input viewer (nil = none).
     public func setDetailInput(_ id: InputID?) { control.mutate { $0.detail = id } }
@@ -947,6 +984,7 @@ extension ProductionEngine {
         let (order, sources, layers, keys, overlays, sw, locked) = control.read { st in
             (st.order, st.sources, st.layers, st.keys, st.overlays, st.switcher.state, st.locked)
         }
+        let adjusts = control.read { $0.adjusts }
         var doc = ProjectDocument(settings: settings)
         func rel(_ url: URL) -> String? {
             guard let dir = projectDirectory else { return nil }
@@ -976,6 +1014,7 @@ extension ProductionEngine {
             if let v = src as? VideoFileSource, v.autoPlay != .off { pi.autoPlay = v.autoPlay.rawValue }
             if locked.contains(id) { pi.locked = true }
             if let c = src as? CameraSource, c.config != CaptureConfig() { pi.capture = c.config }
+            pi.adjust = adjusts[id]
             doc.inputs.append(pi)
         }
         doc.stinger = control.read { $0.stinger.source == nil && $0.stinger.cutPoint == nil ? nil : $0.stinger }
@@ -989,7 +1028,12 @@ extension ProductionEngine {
         doc.audio.aux = mixer.aux.indices.map { i in
             ProjectAuxBus(faderDB: mixer.aux[i].faderDB.value, muted: mixer.aux[i].muted.value, outputDeviceUID: auxOutputUID(i))
         }
-        for ch in mixer.channelList where !ch.id.hasPrefix(Self.musicChannelPrefix) {
+        doc.audio.tones = tones.isEmpty ? nil : tones.map { t in
+            var pc = Self.projectChannel(t.channel, deviceUniqueID: nil, inputID: nil)
+            pc.afvInput = afvLinks[t.channel.id]
+            return ProjectTone(id: t.id, frequency: t.frequency, levelDB: t.levelDB, channel: pc)
+        }
+        for ch in mixer.channelList where !ch.id.hasPrefix(Self.musicChannelPrefix) && !ch.id.hasPrefix(Self.toneChannelPrefix) {
             let owner = Self.inputOfChannel(ch.id)
             var pc = Self.projectChannel(ch, deviceUniqueID: owner == nil ? ch.id : nil, inputID: owner)
             pc.afvInput = afvLinks[ch.id]
@@ -1078,6 +1122,7 @@ extension ProductionEngine {
                 st.layers[pi.id] = layers.isEmpty ? [Layer(source: pi.id)] : layers
                 if let k = pi.chromaKey { st.keys[pi.id] = k.clamped }
                 if pi.locked == true { st.locked.insert(pi.id) }
+                if let a = pi.adjust, !a.isIdentity { st.adjusts[pi.id] = a.clamped }
             }
             st.overlays = (1...4).map { OverlayChannel(index: $0) }
             for o in doc.overlays {
@@ -1107,6 +1152,11 @@ extension ProductionEngine {
             m.loopPlaylist = pm.loop
             m.shuffle = pm.shuffle
             if let ch = pm.channel { restore(ch, to: m.channel) }
+        }
+        for t in tones.map(\.id) { removeTone(id: t) }
+        for pt in doc.audio.tones ?? [] {
+            let t = addTone(frequency: pt.frequency, levelDB: pt.levelDB, id: pt.id, name: pt.channel?.name ?? "Tone")
+            if let ch = pt.channel { restore(ch, to: t.channel) }
         }
         for ch in doc.audio.channels {
             if let uid = ch.deviceUniqueID {

@@ -36,6 +36,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Input Lottie (.json / .lottie) | Dihapus (0.15.0) | — | Atas permintaan pengguna: tidak tampil di Mac pengguna. Proyek lama tetap terbuka (input dilewati) |
 | Input Scene (kanvas kosong) + 7 template tata letak (penuh, PiP, berdampingan, grid 2×2, 1+2, tiga, wawancara) | Implemented (0.15.0), belum dites | L (template, proyek, thumbnail scene) + kompilasi CI | Seperti scene vMix: isi dengan layer di editor scene; thumbnail menampilkan isi scene |
 | Input Colour Bars (SMPTE) | Implemented (0.15.0), belum dites | L (proyek) + kompilasi CI | Gambar saja, tanpa nada audio |
+| Koreksi warna per input (kecerahan, kontras, saturasi, gamma) + balik horizontal/vertikal (putar 180°) | Implemented (0.16.0), belum dites | L (rumus warna, proyek; 3 unit test) + kompilasi shader CI | Satu pass GPU per input yang diatur; hasilnya dipakai di Program, Preview, layer scene, overlay, thumbnail. Disimpan di proyek |
 | Tombol fullscreen per input (penampil source) | Implemented (0.15.0), belum dites | L (plan detail) + kompilasi CI | Jendela besar resolusi output, papan catur untuk transparansi, tombol layar penuh / Preview / Cut |
 | Transparansi & tepi halus | Implemented (0.15.0), belum dites | kompilasi shader CI | Tile & editor scene transparan (papan catur); sampling 4-tap saat gambar diperkecil; video ber-alpha di-premultiply di semua layer (sebelumnya hanya stinger) |
 | Picture-in-Picture (layer pada input / overlay preset PiP) | Implemented | L + M | Preset posisi + editor scene (drag, resize). 0.13.0: tombol "Tambah Layer" diperbaiki (dulu menu tidak terbuka) |
@@ -66,6 +67,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Pemilihan input (semua perangkat input macOS) | Implemented | M | |
 | Kanal multi-input, fader, trim, pan | Implemented | L (DSP) + M | |
 | Properti audio per kanal (nama, mode kanal, balik fase, delay 0–1000 ms, attack/release/makeup kompresor, range gate, routing, AFV) | Implemented (0.15.0), belum dites | L (mode kanal, delay, fase) + kompilasi CI | Jendela Properti Audio ala vMix; disimpan di proyek |
+| Nada tes (sine 1 kHz, -18 dBFS; 100 Hz–10 kHz, level -60…0 dBFS) | Implemented (0.16.0), belum dites | L (generator, proyek; 2 unit test) + kompilasi CI | Kanal mixer sendiri (Tambah Audio › Nada Tes); bisa dipadukan dengan Colour Bars. Disimpan di proyek |
 | Mute | Implemented | L + M | |
 | Solo (ke bus monitor) | Implemented | M | |
 | Routing ke Program on/off | Implemented | M | |

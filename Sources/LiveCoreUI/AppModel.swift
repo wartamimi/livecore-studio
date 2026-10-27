@@ -676,9 +676,22 @@ public final class AppModel: ObservableObject {
     }
 
     public func removeAudioInput(_ id: String) {
-        engine?.removeAudioInput(uniqueID: id)
+        if let t = engine?.tone(channelID: id) { engine?.removeTone(id: t.id) } else { engine?.removeAudioInput(uniqueID: id) }
         reloadAudioChannels()
     }
+
+    // MARK: Test tone
+
+    public func addTone() {
+        engine?.addTone(name: L10n.t("tone.name"))
+        reloadAudioChannels()
+    }
+    public func tone(_ channelID: String) -> TestTone? { engine?.tone(channelID: channelID) }
+
+    // MARK: Input colour correction / orientation
+
+    public func adjust(of id: InputID) -> InputAdjust { engine?.adjust(of: id) ?? InputAdjust() }
+    public func setAdjust(_ id: InputID, _ a: InputAdjust) { engine?.setAdjust(id, a) }
 
     /// Rebuilds channel view models, keeping existing ones so open popovers stay bound.
     public func reloadAudioChannels() {

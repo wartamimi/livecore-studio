@@ -14,6 +14,8 @@ struct AudioMixerView: View {
                 Spacer()
                 Menu {
                     ForEach(model.audioDevices) { d in Button(d.name) { model.addAudioInput(d) } }
+                    Divider()
+                    Button(L10n.t("tone.add")) { model.addTone() }
                 } label: { Image(systemName: "plus.circle.fill") }
                 .menuStyle(.borderlessButton).fixedSize()
                 .help(L10n.t("audio.add"))
@@ -55,6 +57,7 @@ struct ChannelStripView: View {
             HStack(spacing: 2) {
                 if vm.isFileChannel { Image(systemName: "film").font(.system(size: 8)).help(L10n.t("audio.file")) }
                 if vm.isMusicChannel { Image(systemName: "music.note").font(.system(size: 8)).help(L10n.t("music.title")) }
+                if model.tone(vm.id) != nil { Image(systemName: "waveform").font(.system(size: 8)).help(L10n.t("tone.name")) }
                 Text(vm.name).font(.system(size: 10, weight: .semibold)).lineLimit(1)
             }
             .frame(width: 84)
@@ -231,6 +234,7 @@ struct AudioPropertiesSheet: View {
             row("Pan", $vm.pan, -1...1, "%+.2f")
             row(L10n.t("audio.delay"), $vm.delayMs, 0...Double(ChannelStripDSP.maxDelayMs), "%.0f ms")
             Text(L10n.t("audio.delay_help")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+            if let t = model.tone(vm.id) { ToneControls(tone: t) }
             LabeledContent(L10n.t("audio.drift")) { Text(String(format: "%+.0f ppm", vm.channel.driftPPM.value)).monospacedDigit() }
             LabeledContent(L10n.t("audio.underruns")) { Text("\(vm.channel.underrunCount)").monospacedDigit() }
         }
@@ -434,6 +438,24 @@ struct VerticalFader: View {
         }
         .frame(width: 26)
         .help("Double-click: 0 dB")
+    }
+}
+/// Frequency and level of a test tone channel (in its audio properties).
+struct ToneControls: View {
+    let tone: TestTone
+    @State private var freq: Double = 1000
+    @State private var level: Double = -18
+    var body: some View {
+        Group {
+            Picker(L10n.t("tone.frequency"), selection: Binding(get: { freq }, set: { freq = $0; tone.frequency = $0 })) {
+                ForEach([100.0, 440, 1000, 10_000], id: \.self) { f in Text(f >= 1000 ? "\(Int(f / 1000)) kHz" : "\(Int(f)) Hz").tag(f) }
+            }
+            LabeledContent(L10n.t("tone.level")) {
+                Slider(value: Binding(get: { level }, set: { level = $0; tone.levelDB = $0 }), in: ToneGenerator.levelRange, step: 1)
+                Text(String(format: "%.0f dBFS", level)).monospacedDigit().frame(width: 70, alignment: .trailing)
+            }
+        }
+        .onAppear { freq = tone.frequency; level = tone.levelDB }
     }
 }
 #endif

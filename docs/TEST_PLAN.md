@@ -50,6 +50,12 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## P. Tes manual build 0.16.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-67 | Warna & orientasi input | Klik kanan kamera › Warna & Orientasi…; geser kecerahan, kontras, saturasi 0, gamma; centang kedua balik; pakai kamera itu juga sebagai layer di Scene; simpan & buka proyek | Perubahan langsung di tile, Preview, Program dan Scene; saturasi 0 = hitam putih; kedua balik = terbalik 180°; logo PNG transparan tetap transparan; setelan kembali setelah proyek dibuka |
+| T-68 | Nada tes | Mixer › + › Nada Tes (1 kHz); rekam 10 s; ganti frekuensi/level di Properti Audio; hapus kanal | Meter kanal ≈ -18 dBFS; rekaman berisi nada 1 kHz bersih tanpa putus-putus; perubahan langsung terdengar |
+
 ## O. Tes manual build 0.15.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

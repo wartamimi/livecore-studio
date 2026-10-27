@@ -148,4 +148,49 @@ struct CaptureCardSheet: View {
         formats = model.captureFormats(uniqueID: deviceID)
     }
 }
+/// Colour correction and orientation of one input, applied live (vMix input colour correction).
+struct InputAdjustSheet: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    let input: InputID
+    @State private var a = InputAdjust()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("\(L10n.t("adjust.title")) — \(model.inputs.first { $0.id == input }?.name ?? "")").font(.headline)
+            Form {
+                row(L10n.t("adjust.brightness"), \.brightness, -0.5...0.5, "%+.2f")
+                row(L10n.t("adjust.contrast"), \.contrast, 0...2, "%.2f")
+                row(L10n.t("adjust.saturation"), \.saturation, 0...2, "%.2f")
+                row(L10n.t("adjust.gamma"), \.gamma, 0.5...2, "%.2f")
+                Toggle(L10n.t("adjust.flip_h"), isOn: binding(\.flipHorizontal))
+                Toggle(L10n.t("adjust.flip_v"), isOn: binding(\.flipVertical))
+                Text(L10n.t("adjust.rotate_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+            }
+            .formStyle(.grouped)
+            HStack {
+                Button(L10n.t("adjust.reset")) { a = InputAdjust(); model.setAdjust(input, a) }
+                Spacer()
+                Button(L10n.t("common.ok")) { dismiss() }.keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(16)
+        .frame(width: 420)
+        .onAppear {
+            a = model.adjust(of: input)
+            model.preview(input)
+        }
+    }
+
+    private func binding<T>(_ path: WritableKeyPath<InputAdjust, T>) -> Binding<T> {
+        Binding(get: { a[keyPath: path] }, set: { v in a[keyPath: path] = v; model.setAdjust(input, a) })
+    }
+
+    private func row(_ label: String, _ path: WritableKeyPath<InputAdjust, Double>, _ range: ClosedRange<Double>, _ fmt: String) -> some View {
+        LabeledContent(label) {
+            Slider(value: binding(path), in: range)
+            Text(String(format: fmt, a[keyPath: path])).monospacedDigit().frame(width: 50, alignment: .trailing)
+        }
+    }
+}
 #endif

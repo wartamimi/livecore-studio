@@ -21,6 +21,7 @@ struct InputPanelView: View {
     @State private var closing: InputID?
     @State private var showCaptureCard = false
     @State private var editingCaptureCard: InputID?
+    @State private var adjusting: InputID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -63,6 +64,7 @@ struct InputPanelView: View {
         .sheet(item: $editingCapture) { id in CaptureSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showCaptureCard) { CaptureCardSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCaptureCard) { id in CaptureCardSheet(editing: id).environmentObject(model) }
+        .sheet(item: $adjusting) { id in InputAdjustSheet(input: id).environmentObject(model) }
         .alert(L10n.f("inputs.close_confirm", model.inputs.first { $0.id == closing }?.name ?? ""),
                isPresented: Binding(get: { closing != nil }, set: { if !$0 { closing = nil } })) {
             Button(L10n.t("inputs.close"), role: .destructive) { if let id = closing { model.remove(id) }; closing = nil }
@@ -126,6 +128,7 @@ struct InputPanelView: View {
             }
         }
         if info.kind == .camera { Button(L10n.t("capturecard.edit_menu")) { editingCaptureCard = info.id } }
+        if info.kind != .scene { Button(L10n.t("adjust.menu")) { adjusting = info.id } }
         if info.kind == .camera || info.kind == .videoFile || info.kind == .image {
             Button(L10n.t("key.menu")) { keying = info.id }
         }
