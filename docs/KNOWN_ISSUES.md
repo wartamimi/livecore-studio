@@ -1,8 +1,9 @@
-# Known Issues & Batasan (Milestone 1)
+# Known Issues & Batasan (Milestone 1 & 2)
 
-1. **Belum dikompilasi di macOS.** Kode macOS lolos syntax parse, belum type-check. Kemungkinan ada error kompilasi kecil
-   (nama API/overload) yang perlu diperbaiki pada build pertama. Laporkan output `scripts/build_macos.sh` dan akan diperbaiki.
-2. **Audio file video tidak masuk mixer.** Player di-mute agar audio tidak melewati mixer. Perlu `MTAudioProcessingTap` (M2).
+1. **Fitur M2 belum diuji di perangkat** (T-17..T-22). Kompilasi & unit test lulus di CI; perilaku nyata menunggu laporan.
+2. **Audio file video (M2):** latensi ±85–300 ms jitter buffer (AVPlayer menyerahkan audio dalam blok besar); sinkronisasi
+   bibir terhadap video file belum diukur. Resampler linear (bukan kualitas mastering). Jika file tidak punya trek audio,
+   kanal tidak dibuat. Format sampel non-float diabaikan (senyap) dan dicatat di log.
 3. **Tidak ada koreksi drift clock audio.** Perangkat input dan output memiliki clock berbeda; jitter buffer membatasi latensi
    (buang kelebihan > 100 ms, isi senyap saat kosong). Pada sesi sangat panjang dapat terdengar klik sesekali. M2: resampler adaptif.
 4. **Limiter tanpa look-ahead.** Transien sangat cepat di-clamp keras pada −1 dBFS (bisa sedikit distorsi), bukan dihaluskan.
@@ -15,9 +16,15 @@
 10. **MP4 hanya dapat diputar setelah stop yang bersih.** Gunakan MOV (movie fragments 10 s) untuk acara penting.
 11. **Reconnect hanya setelah pernah LIVE.** Kegagalan pertama (URL/key salah, ditolak) dilaporkan tanpa retry.
 12. **Timestamp RTMP mulai dari 0 lagi setelah reconnect**; beberapa platform menganggapnya sesi baru (perilaku umum encoder).
-13. **Overlay/scene tidak disimpan** ke file proyek (M2: profil proyek).
+13. ~~Overlay/scene tidak disimpan~~ — M2: disimpan di file proyek `.livecore`.
 14. **Keyboard shortcut tanpa modifier** (Space/Return/angka) aktif saat jendela utama fokus; saat mengetik di dialog,
     dialog yang menangkap input.
 15. **Capture card non-UVC** (DeckLink, AJA, Magewell Pro) tidak didukung di M1.
 16. **Tidak di-sandbox** (App Sandbox) agar folder rekaman bebas dipilih tanpa security-scoped bookmarks; hardened runtime aktif.
 17. **GPU utilisation** tidak tersedia lewat API publik; yang ditampilkan adalah waktu GPU per frame.
+18. **Chroma key** bekerja per input dengan satu warna kunci; belum ada pemilih warna dari gambar (eyedropper), garbage matte,
+    atau light wrap. Hasil sangat bergantung pada pencahayaan green screen.
+19. **Multiview** memakai thumbnail 10 fps 384×216 untuk tile input (Preview/Program tetap penuh). Tidak ada meter audio
+    atau jam di Multiview dan bukan output SDI/HDMI terpisah (gunakan jendela di monitor kedua).
+20. **File proyek** menyimpan path absolut + relatif. Kamera/perangkat audio dicocokkan via uniqueID macOS; perangkat yang
+    tidak terpasang dilewati dengan peringatan. Overlay dimuat dalam keadaan OFF. Gaya teks (ukuran font) memakai default.

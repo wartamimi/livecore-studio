@@ -30,6 +30,26 @@ Catatan: runner CI tidak punya kamera, mikrofon, atau layar interaktif, jadi T-0
 Putaran CI sebelumnya menemukan dan memperbaiki: initializer `DrawCommand`/`Stats` yang tidak `public`, dan format project
 XcodeGen yang butuh Xcode 16 (Xcode 15.4 gagal membaca project).
 
+## Passed di Mac pengguna (laporan manual, build-5 / 0.1.0, 2026-10-27)
+Dilaporkan oleh pengguna di MacBook miliknya (model/chip belum dicatat). Bukti: laporan tertulis pengguna, belum ada log/screenshot.
+| ID | Tes | Hasil |
+|---|---|---|
+| T-02 | App dapat dibuka | Passed |
+| T-03 | Input kamera tampil | Passed ("muncul") |
+| T-05 / T-06 | CUT dan AUTO mengubah Program | Passed |
+| T-07 (sebagian) | Meter audio mikrofon bergerak | Passed; sinkronisasi A/V belum diukur |
+| T-09 | Rekaman dapat diputar | Passed |
+| T-08 | Streaming ke platform | Passed |
+
+Belum dilaporkan: T-10 (stream+rekam 10 menit), T-11 reconnect, T-12 cabut-colok, T-13 beban, T-14 disk penuh, T-15 izin ditolak, T-16 bahasa.
+
+## Milestone 2 (0.2.0) — otomatis
+| ID | Tes | Hasil |
+|---|---|---|
+| A-01 | 61/61 unit test di Linux (Swift 6.0.3), termasuk 14 tes baru M2 | Passed |
+| A-06, M-01..M-04 | Kompilasi macOS, shader Metal offline, build app, DMG | Lihat run CI pada branch `claude/project-thread-ba7wg0` |
+| T-17..T-22 | Tes manual M2 | Not tested (butuh Mac + perangkat) |
+
 ## Failed
 Tidak ada tes yang gagal pada putaran terakhir.
 

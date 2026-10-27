@@ -8,31 +8,34 @@ Definisi status:
 
 Verifikasi: **L** = lulus tes otomatis di Linux (unit/E2E), **M** = perlu diuji di Mac (belum), **—** = n/a.
 
-> Penting: **Milestone 1 belum boleh dinyatakan selesai.** Seluruh kode macOS sudah ditulis dan lolos *syntax parse*,
-> tetapi belum dikompilasi terhadap macOS SDK dan belum dijalankan di perangkat. Lihat `TEST_RESULTS.md`.
+Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.0).
+
+> Status per 2026-10-27: M1 dikompilasi di CI macOS dan fungsi inti (kamera, CUT/AUTO, meter, rekam, stream) dilaporkan
+> berfungsi oleh pengguna. Reconnect, cabut-colok, beban jangka panjang belum diuji. Fitur M2 (0.2.0) dikompilasi dan diuji
+> unit, tetapi **belum diverifikasi di perangkat** (T-17..T-22).
 
 ## Video
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|
 | Penemuan kamera USB/UVC & built-in, hot-plug | Implemented | M | `DeviceManager` |
-| Input kamera (pemilihan format sesuai output) | Implemented | M | `CameraSource` |
-| Input file video (loop, play/pause/restart) | Partially implemented | M | Audio file **belum** masuk mixer (player di-mute) |
+| Input kamera (pemilihan format sesuai output) | Implemented | U | `CameraSource` |
+| Input file video (loop, play/pause/restart) | Implemented | U (video) + M (audio) | M2: audio file masuk kanal mixer sendiri via MTAudioProcessingTap, resample ke 48 kHz |
 | Input gambar (PNG alpha, JPEG, HEIC…) | Implemented | M | |
 | Input warna | Implemented | M | |
 | Text / lower third (CoreText) | Implemented | M | Editor dasar: judul, subjudul, bar |
 | Preview/Program terpisah | Implemented | L (logika) + M (render) | `Switcher`, `FramePlanner` teruji |
-| CUT | Implemented | L + M | |
-| AUTO: Dissolve, Fade (dip to black), Wipe | Implemented | L (state) + M (shader) | |
+| CUT | Implemented | L + U | |
+| AUTO: Dissolve, Fade (dip to black), Wipe | Implemented | L + U | |
 | T-bar manual | Implemented | L + M | |
 | Overlay 4 kanal dengan fade | Implemented | L + M | |
 | Picture-in-Picture (layer pada input / overlay preset PiP) | Implemented | L + M | Preset posisi; belum ada drag-resize |
-| Scene composition dasar (layer per input) | Partially implemented | L + M | Tambah/hapus layer via menu; editor visual M2 |
+| Scene composition dasar (layer per input) | Partially implemented | L + M | Tambah/hapus layer via menu; layer disimpan di proyek; editor visual drag-resize masih planned |
 | Scaling fit/fill/stretch & aspect ratio | Implemented | L + M | `LayoutMath` teruji |
 | Resolusi/frame rate output (720p30/60, 1080p25/30/60) | Implemented | M | Terkunci saat output aktif |
 | Thumbnail input live (≈5 fps) | Implemented | M | |
 | Jendela Program untuk monitor eksternal | Implemented | M | Seret ke layar lain + full screen |
-| Multiview | Planned (M2) | — | |
-| Chroma key | Planned (M2) | — | Tidak ditampilkan di UI |
+| Multiview | Implemented (M2) | M | Jendela terpisah: Preview, Program, semua input + tally; input 10 fps 384×216 |
+| Chroma key | Implemented (M2) | L (matematika) + M (shader) | Per input (kamera/file/gambar), warna kunci, similarity, smoothness, spill; GPU |
 | Browser source | Planned (M2) | — | Butuh evaluasi keamanan WKWebView offscreen |
 | Transisi lanjutan (stinger, slide, custom) | Planned (M3) | — | |
 
@@ -44,14 +47,15 @@ Verifikasi: **L** = lulus tes otomatis di Linux (unit/E2E), **M** = perlu diuji 
 | Mute | Implemented | L + M | |
 | Solo (ke bus monitor) | Implemented | M | |
 | Routing ke Program on/off | Implemented | M | |
-| Peak meter + peak hold | Implemented | L + M | |
+| Peak meter + peak hold | Implemented | L + U | |
 | Compressor per kanal | Implemented | L + M | Feed-forward, stereo-linked |
 | Limiter master | Implemented | L + M | Tanpa look-ahead (lihat known issues) |
-| Noise gate | Planned (M2) | — | Tidak ditampilkan |
+| Noise gate | Implemented (M2) | L + M | Per kanal: threshold, range, hysteresis 4 dB, hold 60 ms |
 | Monitoring + pemilihan perangkat output | Implemented | M | |
 | Sinkronisasi A/V (host clock + offset manual) | Implemented | L (anchor) + M | Butuh kalibrasi per kamera |
 | Koreksi drift clock (resampling adaptif) | Planned (M2) | — | M1: jitter buffer |
-| Audio dari file video / NDI | Planned (M2/M3) | — | |
+| Audio dari file video | Implemented (M2) | M | Lihat Known issue: sinkronisasi audio file belum diukur |
+| Audio NDI | Planned (M3) | — | |
 
 ## Streaming
 | Fitur | Status | Verifikasi | Catatan |
@@ -70,7 +74,7 @@ Verifikasi: **L** = lulus tes otomatis di Linux (unit/E2E), **M** = perlu diuji 
 ## Recording
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|
-| Rekam Program (MP4/MOV, H.264+AAC) | Implemented | M | AVAssetWriter |
+| Rekam Program (MP4/MOV, H.264+AAC) | Implemented | U | AVAssetWriter |
 | Pilih folder, pola nama file, nama unik | Implemented | L (penamaan) + M | |
 | Status, durasi, ukuran file, ruang kosong | Implemented | M | |
 | Penanganan disk penuh / gagal tulis | Implemented | M | Berhenti & finalisasi |
@@ -93,4 +97,4 @@ Verifikasi: **L** = lulus tes otomatis di Linux (unit/E2E), **M** = perlu diuji 
 | Logging os.Logger per kategori, tanpa stream key | Implemented | L (redaksi) + M |
 | Shortcut keyboard dapat diubah | Implemented | M |
 | UI EN + ID | Implemented | M |
-| Profil proyek / simpan-muat scene | Planned (M2) | — |
+| Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
