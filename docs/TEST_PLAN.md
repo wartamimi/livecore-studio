@@ -49,6 +49,13 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## I. Tes manual build 0.8.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-38 | Playlist video | Input › Playlist video: pilih 3 klip; Play; tunggu klip pertama selesai; ⏭/⏮; pilih klip dari menu | Lanjut otomatis ke klip berikut; audio tiap klip lewat channel mixer yang sama; nomor klip di tile benar |
+| T-39 | Auto play | Klik kanan input video › Auto play › Mulai dari awal; CUT ke input itu, lalu CUT ke input lain | Video mulai dari awal saat masuk Program dan berhenti saat keluar; juga saat AUTO/transisi |
+| T-40 | Transport | Tambah video/musik baru; geser seekbar; ⏯ | Media baru tidak langsung berputar (tampil frame pertama); seekbar memindahkan posisi; waktu/durasi benar |
+
 ## H. Tes manual build 0.7.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

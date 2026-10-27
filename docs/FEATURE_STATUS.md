@@ -103,7 +103,9 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 |---|---|---|---|
 | Shortcut keyboard yang bisa diatur | Implemented | M | |
 | Kontrol MIDI dengan Learn (CUT, AUTO, T-bar, preview/cut 1–8, overlay 1–4, stream, rekam, snapshot) | Implemented (0.7.0) | L (parser MIDI 1.0/UMP, pemetaan, 6 unit test) + kompilasi CI | Semua sumber CoreMIDI tersambung otomatis; pemetaan disimpan di Mac (bukan proyek). Belum dites dengan controller (T-35) |
-| Input playlist video | Planned | — | Setelah 0.7.0 |
+| Input playlist video | Implemented (0.8.0) | L (urutan, model proyek) + kompilasi CI | Satu input memutar beberapa klip berurutan; next/previous/pilih klip; ulangi playlist; tersimpan di proyek. Belum dites (T-38) |
+| Auto play saat masuk Program (vMix-style) | Implemented (0.8.0) | kompilasi CI | Mati / putar-jeda / mulai dari awal-jeda; berlaku juga untuk layer scene, overlay aktif, dan transisi. Belum dites (T-39) |
+| Transport media: seekbar, play/pause, prev/next; media dimuat dalam keadaan jeda | Implemented (0.8.0) | kompilasi CI | Di tile input video dan strip musik. Belum dites (T-40) |
 | Panel dock yang bisa dikecilkan (Input, Preview/Program, Mixer, Kontrol) | Implemented (0.7.0) | kompilasi CI | Pegangan "–" di atas panel mengecilkan jadi bilah tipis; klik bilah untuk membuka; diingat antar peluncuran. Belum dites (T-37) |
 
 ## Sistem

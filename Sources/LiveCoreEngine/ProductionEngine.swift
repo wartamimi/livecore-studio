@@ -155,7 +155,10 @@ public final class ProductionEngine {
         }
         if !events.isEmpty || snapshot != lastSwitcher {
             lastSwitcher = snapshot
-            DispatchQueue.main.async { [weak self] in self?.onSwitcherChange?(snapshot) }
+            DispatchQueue.main.async { [weak self] in
+                self?.applyAutoPlay()
+                self?.onSwitcherChange?(snapshot)
+            }
         }
 
         guard inFlight.mutate({ n -> Bool in if n >= 2 { return false }; n += 1; return true }) else {
@@ -231,8 +234,15 @@ public final class ProductionEngine {
 
     @discardableResult
     public func addVideoFile(url: URL, id: InputID? = nil, loop: Bool = true) -> InputID {
-        let src = VideoFileSource(id: id ?? InputID(UUID().uuidString), url: url)
+        addVideoFile(urls: [url], id: id, loop: loop)
+    }
+
+    /// A video input; several URLs make a playlist played in order.
+    @discardableResult
+    public func addVideoFile(urls: [URL], id: InputID? = nil, loop: Bool = true, autoPlay: VideoFileSource.AutoPlay = .off) -> InputID {
+        let src = VideoFileSource(id: id ?? InputID(UUID().uuidString), urls: urls)
         src.loop = loop
+        src.autoPlay = autoPlay
         let srcID = src.id
         // The file's audio gets its own mixer channel once AVFoundation reports an audio track.
         // AVPlayer taps deliver blocks of up to ~90 ms, so this channel buffers more than a mic.
@@ -454,6 +464,41 @@ public final class ProductionEngine {
         control.mutate { st in _ = st.switcher.setPreview(id); _ = st.switcher.cut() }
     }
 
+    // MARK: Auto play (vMix-style)
+
+    private var autoPlayOnAir = Set<InputID>()
+
+    /// Starts video inputs set to auto play when they become visible on Program (directly, as a
+    /// scene layer, as an on-air overlay or as either side of a transition) and pauses them when
+    /// they leave. Main thread.
+    public func applyAutoPlay() {
+        let (sw, layers, overlays, sources, stingerID) = control.read { st in
+            (st.switcher.state, st.layers, st.overlays, st.sources, st.stinger.source)
+        }
+        var visible = Set<InputID>()
+        for id in [sw.program, sw.transition?.from, sw.transition?.to].compactMap({ $0 }) {
+            visible.insert(id)
+            for l in layers[id] ?? [] { visible.insert(l.source) }
+        }
+        for o in overlays where o.isOn { if let s = o.source { visible.insert(s) } }
+        for (id, src) in sources {
+            guard let v = src as? VideoFileSource, v.autoPlay != .off, id != stingerID else { continue }
+            let was = autoPlayOnAir.contains(id), now = visible.contains(id)
+            if now && !was { v.autoPlay == .restartPause ? v.restart() : v.play() }
+            if !now && was { v.pause() }
+        }
+        autoPlayOnAir = visible
+    }
+
+    /// Changes a video input's auto play mode; an input set to auto play that is not on air pauses.
+    public func setAutoPlay(_ mode: VideoFileSource.AutoPlay, for id: InputID) {
+        guard let v = source(id) as? VideoFileSource else { return }
+        v.autoPlay = mode
+        autoPlayOnAir.remove(id)
+        if mode != .off { v.pause() }
+        applyAutoPlay()
+    }
+
     // MARK: Stinger
 
     public var stinger: StingerConfig { control.read { $0.stinger } }
@@ -495,6 +540,7 @@ public final class ProductionEngine {
             guard let i = st.overlays.firstIndex(where: { $0.index == index }), st.overlays[i].source != nil else { return }
             st.overlays[i].set(on: on, now: now)
         }
+        applyAutoPlay()
     }
 
     // MARK: Audio inputs
@@ -694,7 +740,9 @@ extension ProductionEngine {
             let ps: ProjectSource
             switch src {
             case let c as CameraSource: ps = .camera(uniqueID: c.deviceUniqueID, deviceName: c.name)
-            case let v as VideoFileSource: ps = .videoFile(path: v.url.path, relativePath: rel(v.url), loop: v.loop)
+            case let v as VideoFileSource:
+                ps = v.isPlaylist ? .videoPlaylist(tracks: v.urls.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) }, loop: v.loop)
+                    : .videoFile(path: v.url.path, relativePath: rel(v.url), loop: v.loop)
             case let i as ImageSource: ps = .image(path: i.url.path, relativePath: rel(i.url))
             case let c as ColorSource: ps = .color(ProjectColor(c.color))
             case let t as TextSource: ps = .title(ProjectTitleStyle(t.style))
@@ -703,8 +751,10 @@ extension ProductionEngine {
             default: continue
             }
             let key = keys[id]
-            doc.inputs.append(ProjectInput(id: id, name: src.name, source: ps, layers: layers[id] ?? [],
-                                           chromaKey: key == ChromaKey() ? nil : key))
+            var pi = ProjectInput(id: id, name: src.name, source: ps, layers: layers[id] ?? [],
+                                  chromaKey: key == ChromaKey() ? nil : key)
+            if let v = src as? VideoFileSource, v.autoPlay != .off { pi.autoPlay = v.autoPlay.rawValue }
+            doc.inputs.append(pi)
         }
         doc.stinger = control.read { $0.stinger.source == nil && $0.stinger.cutPoint == nil ? nil : $0.stinger }
         doc.overlays = overlays.map { ProjectOverlay(index: $0.index, source: $0.source, preset: $0.preset, fadeDuration: $0.fadeDuration) }
@@ -765,7 +815,12 @@ extension ProductionEngine {
                     continue
                 }
             case let .videoFile(path, relative, loop):
-                addVideoFile(url: mediaURL(path, relative), id: pi.id, loop: loop)
+                addVideoFile(urls: [mediaURL(path, relative)], id: pi.id, loop: loop,
+                             autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off)
+            case let .videoPlaylist(tracks, loop):
+                guard !tracks.isEmpty else { continue }
+                addVideoFile(urls: tracks.map { mediaURL($0.path, $0.relativePath) }, id: pi.id, loop: loop,
+                             autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off)
             case let .image(path, relative):
                 addImage(url: mediaURL(path, relative), id: pi.id)
             case let .color(c):

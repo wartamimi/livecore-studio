@@ -222,3 +222,15 @@
 "dock.controls" = "Controls";
 "dock.minimize" = "Minimize this panel (click the bar to restore it)";
 "dock.restore" = "Restore %@";
+
+"playlist.add" = "Video playlist (several clips)…";
+"playlist.next" = "Next clip";
+"playlist.previous" = "Previous clip";
+"playlist.clips" = "Clips";
+"playlist.add_clips" = "Add clips…";
+"playlist.loop" = "Repeat playlist";
+"video.loop" = "Loop";
+"autoplay.title" = "Auto play";
+"autoplay.off" = "Off";
+"autoplay.playPause" = "Play on Program, pause when off";
+"autoplay.restartPause" = "Restart on Program, pause when off";

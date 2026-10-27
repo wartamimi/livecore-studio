@@ -67,6 +67,8 @@ public final class MusicInput {
 
     public func togglePlay() { isPlaying ? pause() : play() }
 
+    public func seek(to seconds: Double) { player.seek(to: CMTime(seconds: max(seconds, 0), preferredTimescale: 600)) }
+
     public func next() {
         guard let n = PlaylistMath.next(index: index, count: tracks.count, loop: true, shuffle: shuffle, random: Int.random(in:)) else { return }
         load(n, autoplay: isPlaying)

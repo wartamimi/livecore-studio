@@ -190,6 +190,34 @@ public final class AppModel: ObservableObject {
         pickFile(types: ["public.movie"]) { [weak self] url in self?.engine?.addVideoFile(url: url) }
     }
 
+    private func pickMovies() -> [URL] {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.movie]
+        return panel.runModal() == .OK ? panel.urls : []
+    }
+
+    /// One input that plays several clips in order.
+    public func addVideoPlaylist() {
+        let urls = pickMovies()
+        guard !urls.isEmpty else { return }
+        engine?.addVideoFile(urls: urls)
+    }
+
+    public func addClips(to id: InputID) {
+        guard let v = videoFile(id) else { return }
+        let urls = pickMovies()
+        guard !urls.isEmpty else { return }
+        v.setURLs(v.urls + urls)
+        if v.isPlaylist, v.name == v.urls.first?.deletingPathExtension().lastPathComponent { rename(id, "Playlist") }
+    }
+
+    public func setAutoPlay(_ mode: VideoFileSource.AutoPlay, for id: InputID) {
+        engine?.setAutoPlay(mode, for: id)
+        objectWillChange.send()
+    }
+
     public func addColor(_ c: NSColor, name: String) { engine?.addColor(c, name: name) }
 
     public func addTitle(_ style: TextSource.Style) { engine?.addTitle(style) }

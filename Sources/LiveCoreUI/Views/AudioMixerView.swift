@@ -135,6 +135,13 @@ struct MusicTransport: View {
             Text(player.currentTitle).font(.system(size: 9)).lineLimit(1).truncationMode(.middle)
                 .foregroundStyle(Theme.textDim).frame(width: 84)
                 .help("\(player.index + 1)/\(player.tracks.count) · \(player.currentTitle)")
+            TimelineView(.periodic(from: .now, by: 0.5)) { _ in
+                if let d = player.duration {
+                    Slider(value: Binding(get: { min(player.position, d) }, set: { player.seek(to: $0) }), in: 0...d)
+                        .controlSize(.mini).frame(width: 84)
+                        .help("\(TimerMath.duration(player.position)) / \(TimerMath.duration(d))")
+                }
+            }
             HStack(spacing: 6) {
                 Button { player.previous() } label: { Image(systemName: "backward.fill") }
                 Button { player.togglePlay() } label: { Image(systemName: player.isPlaying ? "pause.fill" : "play.fill") }

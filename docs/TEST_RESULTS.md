@@ -47,6 +47,9 @@ Belum dilaporkan: T-10 (stream+rekam 10 menit), T-11 reconnect, T-12 cabut-colok
 Pengguna melaporkan "sejauh ini belum ada bug" setelah mencoba 0.2.0. Rincian per tes T-17..T-22 belum dilaporkan, jadi
 statusnya tetap Not tested per item.
 
+## Laporan pengguna build 0.7.0 (dev-build-27), 2026-10-27
+Pengguna menanggapi 0.7.0 dengan "Bagus, lanjutkan" (musik, dock, MIDI — tanpa rincian per tes T-35..T-37).
+
 ## Laporan pengguna build 0.6.0 (dev-build-21), 2026-10-27
 Pengguna melaporkan 0.6.0 "sudah bisa": browser source, jam/hitung mundur, dan snapshot berfungsi (T-32..T-34, ringkas).
 
