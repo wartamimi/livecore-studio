@@ -1,6 +1,7 @@
 #if os(macOS)
 import AVFoundation
 import CoreVideo
+import CObjCSupport
 import LiveCoreCore
 
 /// USB/UVC cameras, built-in FaceTime cameras and HDMI/SDI capture devices that present
@@ -94,35 +95,72 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
 
     /// Chooses the device format closest to the program resolution that supports the program
     /// frame rate (so the camera does not deliver more pixels than we need).
+    ///
+    /// Robustness: capture-card drivers often report frame-rate ranges they do not accept
+    /// (e.g. 29.97 vs 30, or legacy DAL plug-ins that reject any explicit duration). Durations are
+    /// therefore taken from the range itself, and every setter runs inside an Objective-C
+    /// exception guard: if the driver refuses, the device keeps its own default and is still used.
     private func selectFormat(_ device: AVCaptureDevice) {
         let want = target.size
         let fps = Double(target.frameRate)
-        var best: AVCaptureDevice.Format?
+        var best: (format: AVCaptureDevice.Format, range: AVFrameRateRange?)?
         var bestScore = Double.greatestFiniteMagnitude
         for f in device.formats {
             let d = CMVideoFormatDescriptionGetDimensions(f.formatDescription)
-            guard f.videoSupportedFrameRateRanges.contains(where: { $0.minFrameRate <= fps + 0.01 && $0.maxFrameRate >= fps - 0.01 }) else { continue }
+            guard d.width > 0, d.height > 0 else { continue }
+            let range = Self.matchingRange(f.videoSupportedFrameRateRanges, fps: fps)
             let pixels = Double(d.width) * Double(d.height)
             let wantPixels = Double(want.width * want.height)
-            // Prefer >= target (downscale is better than upscale), then closest.
-            let score = pixels >= wantPixels ? pixels - wantPixels : (wantPixels - pixels) * 4
-            if score < bestScore { bestScore = score; best = f }
+            // Prefer a matching frame rate, then >= target size (downscale beats upscale), then closest.
+            var score = pixels >= wantPixels ? pixels - wantPixels : (wantPixels - pixels) * 4
+            if range == nil { score += 1e12 }
+            if score < bestScore { bestScore = score; best = (f, range) }
+        }
+        guard let best else {
+            Log.devices.info("camera \(self.name, privacy: .public): no formats reported, using device default")
+            activeFormatDescription = "default"
+            return
         }
         do {
             try device.lockForConfiguration()
-            if let best {
-                device.activeFormat = best
-                let duration = CMTime(value: 1, timescale: CMTimeScale(target.frameRate))
-                device.activeVideoMinFrameDuration = duration
-                device.activeVideoMaxFrameDuration = duration
+            defer { device.unlockForConfiguration() }
+            if let err = lc_catch_objc_exception({ device.activeFormat = best.format }) {
+                Log.devices.error("camera \(self.name, privacy: .public): activeFormat rejected: \(err, privacy: .public)")
+            } else if let range = best.range {
+                let duration = Self.frameDuration(in: range, fps: fps)
+                if let err = lc_catch_objc_exception({
+                    device.activeVideoMinFrameDuration = duration
+                    device.activeVideoMaxFrameDuration = duration
+                }) {
+                    Log.devices.error("camera \(self.name, privacy: .public): frame duration rejected, keeping driver default: \(err, privacy: .public)")
+                }
             }
-            device.unlockForConfiguration()
         } catch {
             Log.devices.error("lockForConfiguration failed: \(error.localizedDescription, privacy: .public)")
         }
-        let d = CMVideoFormatDescriptionGetDimensions(device.activeFormat.formatDescription)
-        activeFormatDescription = "\(d.width)×\(d.height)"
-        Log.devices.info("camera \(self.name, privacy: .public) format \(self.activeFormatDescription, privacy: .public)")
+        var desc = "default"
+        _ = lc_catch_objc_exception {
+            let d = CMVideoFormatDescriptionGetDimensions(device.activeFormat.formatDescription)
+            desc = "\(d.width)×\(d.height)"
+        }
+        activeFormatDescription = desc
+        Log.devices.info("camera \(self.name, privacy: .public) format \(desc, privacy: .public)")
+    }
+
+    /// A range that can deliver `fps` (NTSC rates such as 29.97 count as 30).
+    static func matchingRange(_ ranges: [AVFrameRateRange], fps: Double) -> AVFrameRateRange? {
+        let tol = 0.1
+        return ranges.first { $0.minFrameRate - tol <= fps && $0.maxFrameRate + tol >= fps }
+    }
+
+    /// A duration the range itself advertises: its fixed rate for single-rate ranges (exact NTSC
+    /// timescales like 1001/30000), otherwise 1/fps clamped into the range.
+    static func frameDuration(in range: AVFrameRateRange, fps: Double) -> CMTime {
+        if abs(range.maxFrameRate - range.minFrameRate) < 0.001 { return range.minFrameDuration }
+        let want = CMTime(value: 1, timescale: CMTimeScale(fps.rounded()))
+        if CMTimeCompare(want, range.minFrameDuration) < 0 { return range.minFrameDuration }
+        if CMTimeCompare(want, range.maxFrameDuration) > 0 { return range.maxFrameDuration }
+        return want
     }
 
     private func installObservers(_ device: AVCaptureDevice) {
