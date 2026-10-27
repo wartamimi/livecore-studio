@@ -52,7 +52,7 @@ public final class ProductionEngine {
     private var streamTerminal: [String: Bool] = [:]
     public let recorder = RecordingEngine()
     /// Music inputs (audio-file playlists), each with its own mixer channel. Main thread.
-    public private(set) var musicPlayers: [MusicPlayer] = []
+    public private(set) var musicPlayers: [MusicInput] = []
     public var onMusicChange: (() -> Void)?
     public static let musicChannelPrefix = "music:"
     public let performance = PerformanceMonitor()
@@ -251,12 +251,12 @@ public final class ProductionEngine {
 
     /// Adds a music input playing `urls` into a new mixer channel (paused until Play).
     @discardableResult
-    public func addMusic(urls: [URL], name: String? = nil, id: String? = nil) -> MusicPlayer {
+    public func addMusic(urls: [URL], name: String? = nil, id: String? = nil) -> MusicInput {
         let mid = id ?? String(UUID().uuidString.prefix(8)).lowercased()
         let title = name ?? (urls.count == 1 ? urls[0].deletingPathExtension().lastPathComponent : "Music")
         // Same buffering as video-file audio: AVPlayer taps deliver large blocks.
         let ch = mixer.addChannel(id: Self.musicChannelPrefix + mid, name: title, primeFrames: 4096, maxBufferedFrames: 14_400)
-        let m = MusicPlayer(id: mid, name: title, tracks: urls, channel: ch)
+        let m = MusicInput(id: mid, name: title, tracks: urls, channel: ch)
         m.onChange = { [weak self] in self?.onMusicChange?() }
         musicPlayers.append(m)
         onAudioChannelsChange?()
@@ -273,7 +273,7 @@ public final class ProductionEngine {
         onMusicChange?()
     }
 
-    public func musicPlayer(channelID: String) -> MusicPlayer? {
+    public func musicPlayer(channelID: String) -> MusicInput? {
         guard channelID.hasPrefix(Self.musicChannelPrefix) else { return nil }
         return musicPlayers.first { Self.musicChannelPrefix + $0.id == channelID }
     }

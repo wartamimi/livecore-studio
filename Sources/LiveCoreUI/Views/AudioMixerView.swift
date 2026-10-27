@@ -128,7 +128,7 @@ struct ChannelStripView: View {
 /// Play/pause, previous/next and the current track of a music input.
 struct MusicTransport: View {
     @EnvironmentObject var model: AppModel
-    let player: MusicPlayer
+    let player: MusicInput
 
     var body: some View {
         VStack(spacing: 2) {
