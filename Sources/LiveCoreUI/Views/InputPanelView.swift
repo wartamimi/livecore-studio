@@ -205,7 +205,6 @@ struct InputTile: View {
         case .timer: return "timer"
         case .screen: return "macwindow"
         case .replay: return "gobackward"
-        case .meeting: return "person.crop.rectangle"
         }
     }
 }

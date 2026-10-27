@@ -19,100 +19,10 @@ struct ControlPanelView: View {
                 RecordSection()
                 Divider()
                 ReplaySection()
-                if model.zoomAvailable {
-                    Divider()
-                    ZoomSection()
-                }
             }
             .padding(8)
         }
         .panel()
-    }
-}
-
-/// Zoom meeting: sign in, join, participants as inputs, return feed.
-struct ZoomSection: View {
-    @EnvironmentObject var model: AppModel
-    @AppStorage("zoom.lastMeeting") private var meeting = ""
-    @AppStorage("zoom.displayName") private var displayName = "LiveCore Studio"
-    @State private var passcode = ""
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                SectionHeader(title: "Zoom")
-                Spacer()
-                Text(stateText).font(.system(size: 10, weight: .semibold)).foregroundStyle(stateColor)
-            }
-            if !model.zoomMessage.isEmpty {
-                Text(model.zoomMessage).font(.system(size: 10)).foregroundStyle(Theme.textDim).fixedSize(horizontal: false, vertical: true)
-            }
-            switch model.zoomState {
-            case .notAuthorized, .failed:
-                Button(L10n.t("zoom.sign_in")) { model.zoomAuthorize() }
-                    .disabled(!model.zoomHasCredentials)
-                if !model.zoomHasCredentials { Text(L10n.t("zoom.no_credentials")).font(.system(size: 10)).foregroundStyle(Theme.warning) }
-            case .authorizing, .joining:
-                ProgressView().controlSize(.small)
-                if case .joining = model.zoomState { Button(L10n.t("zoom.leave")) { model.zoomLeave() } }
-            case .ready:
-                TextField(L10n.t("zoom.meeting"), text: $meeting, prompt: Text("812 3456 7890 / https://zoom.us/j/…"))
-                SecureField(L10n.t("zoom.passcode"), text: $passcode)
-                TextField(L10n.t("zoom.name"), text: $displayName)
-                Toggle(L10n.t("zoom.send_program"), isOn: $model.zoomSendProgram)
-                Picker(L10n.t("zoom.mic_bus"), selection: $model.zoomMicBus) {
-                    Text(L10n.t("zoom.mic_off")).tag(OutputBus?.none)
-                    Text("Master").tag(Optional(OutputBus.master))
-                    Text("Bus A").tag(Optional(OutputBus.busA))
-                    Text("Bus B").tag(Optional(OutputBus.busB))
-                }
-                Button(L10n.t("zoom.join")) { model.zoomJoin(meeting, passcode: passcode, displayName: displayName) }
-                    .buttonStyle(StudioButtonStyle(color: Theme.preview, active: false))
-                    .disabled(meeting.isEmpty)
-            case let .inMeeting(raw):
-                HStack {
-                    Button(L10n.t("zoom.leave"), role: .destructive) { model.zoomLeave() }
-                    if raw != .allowed {
-                        Button(raw == .requested ? L10n.t("zoom.waiting_host") : L10n.t("zoom.ask_permission")) { model.zoomRequestRawData() }
-                            .disabled(raw == .requested)
-                    }
-                }
-                if raw != .allowed { Text(L10n.t("zoom.permission_note")).font(.system(size: 10)).foregroundStyle(Theme.textDim).fixedSize(horizontal: false, vertical: true) }
-                ForEach(model.zoomParticipants.filter { !$0.isMe }) { p in
-                    HStack(spacing: 6) {
-                        Image(systemName: p.videoOn ? "video.fill" : "video.slash").font(.system(size: 10))
-                            .foregroundStyle(p.videoOn ? Theme.text : Theme.textDim)
-                        Text(p.name + (p.isHost ? " (host)" : "")).font(.system(size: 11)).lineLimit(1)
-                        Spacer()
-                        if model.isZoomParticipantInput(p) {
-                            Text(L10n.t("zoom.is_input")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
-                        } else {
-                            Button(L10n.t("zoom.add_input")) { model.addZoomParticipant(p) }
-                                .font(.system(size: 10)).disabled(raw != .allowed)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private var stateText: String {
-        switch model.zoomState {
-        case .notAuthorized: return L10n.t("zoom.state.signed_out")
-        case .authorizing: return L10n.t("zoom.state.signing_in")
-        case .ready: return L10n.t("zoom.state.ready")
-        case .joining: return L10n.t("zoom.state.joining")
-        case .inMeeting: return L10n.t("zoom.state.in_meeting")
-        case .failed: return L10n.t("zoom.state.failed")
-        }
-    }
-
-    private var stateColor: Color {
-        switch model.zoomState {
-        case .inMeeting: return Theme.program
-        case .failed: return Theme.warning
-        default: return Theme.textDim
-        }
     }
 }
 

@@ -15,10 +15,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Zoom Meeting SDK bridge: present only in builds made with the SDK (Xcode app target).
-        if let registrar = NSClassFromString("LCZoomRegistrar") as? NSObject.Type {
-            _ = registrar.perform(NSSelectorFromString("register"))
-        }
         model.start()
     }
 
