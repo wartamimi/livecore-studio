@@ -77,3 +77,14 @@ final class LayerStyleTests: XCTestCase {
         XCTAssertEqual(after.preview.map(\.source), [a])
     }
 }
+
+final class LottieProjectTests: XCTestCase {
+    func testLottieInputRoundTripsInProjects() throws {
+        let pi = ProjectInput(id: InputID("l"), name: "Lower third", source: .lottie(path: "/a/b.json", relativePath: "b.json", loop: false))
+        var pi2 = pi
+        pi2.autoPlay = "restartPause"
+        let back = try JSONDecoder().decode(ProjectInput.self, from: JSONEncoder().encode(pi2))
+        XCTAssertEqual(back, pi2)
+        XCTAssertEqual(back.source, .lottie(path: "/a/b.json", relativePath: "b.json", loop: false))
+    }
+}

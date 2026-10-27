@@ -132,6 +132,8 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case videoPlaylist(tracks: [ProjectMediaRef], loop: Bool)
     /// Window or display capture with optional app/system audio (since 0.10.0).
     case screen(ProjectScreenCapture)
+    /// Lottie animation, .json or .lottie (since 0.13.0).
+    case lottie(path: String, relativePath: String?, loop: Bool)
 }
 
 public struct ProjectBrowser: Codable, Equatable, Sendable {

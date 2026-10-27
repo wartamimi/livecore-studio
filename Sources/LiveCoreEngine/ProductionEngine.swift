@@ -246,6 +246,17 @@ public final class ProductionEngine {
         addVideoFile(urls: [url], id: id, loop: loop)
     }
 
+    /// Lottie animation input (.json / .lottie), transparent; placed full screen like titles' pages.
+    @discardableResult
+    public func addLottie(url: URL, id: InputID? = nil, loop: Bool = true, autoPlay: VideoFileSource.AutoPlay = .off) -> InputID {
+        let src = LottieSource(id: id ?? InputID(UUID().uuidString), url: url)
+        src.loop = loop
+        src.autoPlay = autoPlay
+        if autoPlay != .off { src.cue() }
+        add(src)
+        return src.id
+    }
+
     /// A video input; several URLs make a playlist played in order.
     @discardableResult
     public func addVideoFile(urls: [URL], id: InputID? = nil, loop: Bool = true, autoPlay: VideoFileSource.AutoPlay = .off) -> InputID {
@@ -567,6 +578,12 @@ public final class ProductionEngine {
             if !now && was { r.cue() }
         }
         for (id, src) in sources {
+            if let l = src as? LottieSource, l.autoPlay != .off {
+                let was = autoPlayOnAir.contains(id), now = visible.contains(id)
+                if now && !was { l.autoPlay == .restartPause ? l.restart() : l.play() }
+                if !now && was { l.autoPlay == .restartPause ? l.cue() : l.pause() }
+                continue
+            }
             guard let v = src as? VideoFileSource, v.autoPlay != .off, id != stingerID else { continue }
             let was = autoPlayOnAir.contains(id), now = visible.contains(id)
             if now && !was { v.autoPlay == .restartPause ? v.restart() : v.play() }
@@ -577,6 +594,13 @@ public final class ProductionEngine {
 
     /// Changes a video input's auto play mode; an input set to auto play that is not on air pauses.
     public func setAutoPlay(_ mode: VideoFileSource.AutoPlay, for id: InputID) {
+        if let l = source(id) as? LottieSource {
+            l.autoPlay = mode
+            autoPlayOnAir.remove(id)
+            if mode != .off { l.cue() }
+            applyAutoPlay()
+            return
+        }
         guard let v = source(id) as? VideoFileSource else { return }
         v.autoPlay = mode
         autoPlayOnAir.remove(id)
@@ -916,12 +940,14 @@ extension ProductionEngine {
             case let b as BrowserSource: ps = .browser(b.config)
             case let t as TimerSource: ps = .timer(t.config, nil)
             case let c as ScreenCaptureSource: ps = .screen(c.config)
+            case let l as LottieSource: ps = .lottie(path: l.url.path, relativePath: rel(l.url), loop: l.loop)
             default: continue
             }
             let key = keys[id]
             var pi = ProjectInput(id: id, name: src.name, source: ps, layers: layers[id] ?? [],
                                   chromaKey: key == ChromaKey() ? nil : key)
             if let v = src as? VideoFileSource, v.autoPlay != .off { pi.autoPlay = v.autoPlay.rawValue }
+            if let l = src as? LottieSource, l.autoPlay != .off { pi.autoPlay = l.autoPlay.rawValue }
             doc.inputs.append(pi)
         }
         doc.stinger = control.read { $0.stinger.source == nil && $0.stinger.cutPoint == nil ? nil : $0.stinger }
@@ -994,6 +1020,9 @@ extension ProductionEngine {
                              autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off)
             case let .image(path, relative):
                 addImage(url: mediaURL(path, relative), id: pi.id)
+            case let .lottie(path, relative, loop):
+                addLottie(url: mediaURL(path, relative), id: pi.id, loop: loop,
+                          autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off)
             case let .color(c):
                 addColor(c.nsColor, name: pi.name, id: pi.id)
             case let .title(t):

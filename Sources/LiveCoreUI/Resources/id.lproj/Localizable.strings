@@ -292,3 +292,4 @@
 "scene.shape.circle" = "Lingkaran";
 "scene.shape.input_name" = "Bentuk";
 "overlay.help" = "Klik: tampil di Preview (oranye), CUT/AUTO membawanya ke Program. Klik dua jari / klik kanan: langsung ke Program (hijau).";
+"lottie.add" = "Lottie (.json / .lottie)…";
