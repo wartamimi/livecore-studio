@@ -8,7 +8,7 @@ import LiveCoreCore
 /// silenced, so music is heard only through the mixer (fader, mute, routing, meters).
 ///
 /// Main thread only.
-public final class MusicPlayer {
+public final class MusicInput {
     public let id: String
     public var name: String
     public let channel: MixerChannel

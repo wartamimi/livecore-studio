@@ -430,7 +430,7 @@ public final class AppModel: ObservableObject {
         m.setTracks(m.tracks + urls)
     }
 
-    public func musicPlayer(_ channelID: String) -> MusicPlayer? { engine?.musicPlayer(channelID: channelID) }
+    public func musicPlayer(_ channelID: String) -> MusicInput? { engine?.musicPlayer(channelID: channelID) }
 
     public func removeMusic(_ channelID: String) {
         guard let m = engine?.musicPlayer(channelID: channelID) else { return }
