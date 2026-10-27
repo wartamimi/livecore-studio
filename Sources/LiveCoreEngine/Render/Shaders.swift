@@ -47,25 +47,44 @@ enum ShaderSource {
         return float4(rgb * a, a);
     }
 
-    struct TransitionParams { float progress; int kind; };
+    struct TransitionParams { float progress; int kind; float aspect; float pad; };
 
-    // kind: 1 dissolve, 2 fade-to-black, 3 wipe-left (see LiveCoreCore.TransitionKind)
+    // B appears where coord > edge; the edge sweeps from 1+soft to -soft (LiveCoreCore.TransitionMath).
+    float wipe_mask(float coord, float t) {
+        const float soft = 0.02;
+        float edge = mix(1.0 + soft, -soft, t);
+        return smoothstep(edge - soft, edge + soft, coord);
+    }
+
+    // kind: see LiveCoreCore.TransitionKind (1 dissolve, 2 fade, 3-6 wipes, 7-8 push, 9-10 slide, 11 iris)
     fragment float4 transition_fragment(VOut in [[stage_in]], texture2d<float> a [[texture(0)]],
                                         texture2d<float> b [[texture(1)]], constant TransitionParams &p [[buffer(0)]]) {
         constexpr sampler s(address::clamp_to_edge, filter::linear);
-        float4 ca = a.sample(s, in.uv);
-        float4 cb = b.sample(s, in.uv);
+        float2 uv = in.uv;
         float t = clamp(p.progress, 0.0, 1.0);
         float4 c;
         if (p.kind == 2) {
-            c = t < 0.5 ? ca * (1.0 - 2.0 * t) : cb * (2.0 * t - 1.0);
-        } else if (p.kind == 3) {
+            c = t < 0.5 ? a.sample(s, uv) * (1.0 - 2.0 * t) : b.sample(s, uv) * (2.0 * t - 1.0);
+        } else if (p.kind >= 3 && p.kind <= 6) {
+            float coord = p.kind == 3 ? uv.x : (p.kind == 4 ? 1.0 - uv.x : (p.kind == 5 ? uv.y : 1.0 - uv.y));
+            c = mix(a.sample(s, uv), b.sample(s, uv), wipe_mask(coord, t));
+        } else if (p.kind == 7) {
+            c = uv.x < 1.0 - t ? a.sample(s, float2(uv.x + t, uv.y)) : b.sample(s, float2(uv.x - (1.0 - t), uv.y));
+        } else if (p.kind == 8) {
+            c = uv.x >= t ? a.sample(s, float2(uv.x - t, uv.y)) : b.sample(s, float2(uv.x + (1.0 - t), uv.y));
+        } else if (p.kind == 9) {
+            c = uv.x >= 1.0 - t ? b.sample(s, float2(uv.x - (1.0 - t), uv.y)) : a.sample(s, uv);
+        } else if (p.kind == 10) {
+            c = uv.x < t ? b.sample(s, float2(uv.x + (1.0 - t), uv.y)) : a.sample(s, uv);
+        } else if (p.kind == 11) {
             const float soft = 0.02;
-            float edge = mix(1.0 + soft, -soft, t);
-            float m = smoothstep(edge - soft, edge + soft, in.uv.x);
-            c = mix(ca, cb, m);
+            float2 d = float2((uv.x - 0.5) * p.aspect, uv.y - 0.5);
+            float maxR = sqrt(p.aspect * p.aspect / 4.0 + 0.25) + soft;
+            float r = t * maxR;
+            float m = t >= 1.0 ? 1.0 : 1.0 - smoothstep(r - soft, r, length(d));
+            c = mix(a.sample(s, uv), b.sample(s, uv), m);
         } else {
-            c = mix(ca, cb, t);
+            c = mix(a.sample(s, uv), b.sample(s, uv), t);
         }
         return float4(c.rgb, 1.0);
     }

@@ -34,3 +34,7 @@
 23. **Capture card UVC generik** kadang melaporkan rentang frame rate yang tidak benar-benar diterima driver. Sejak 0.3.1
     app tidak crash lagi; bila driver menolak, kartu berjalan pada frame rate bawaannya (mis. 60 fps) dan render loop
     mengambil frame terbaru. Detailnya tercatat di log (Console.app, subsystem `studio.livecore.LiveCoreStudio`, kategori `devices`).
+24. **Multi-destination** memakai satu encode, jadi semua tujuan menerima resolusi/bitrate yang sama (tidak ada encode
+    terpisah per platform). Upload yang dibutuhkan = jumlah tujuan × (bitrate video + audio). Jika upload kurang, semua tujuan
+    ikut terpengaruh karena encoder dibagi. Maksimal 3 tujuan. Setelan stream dikunci selama siaran.
+25. **Transisi Push/Slide/Iris** belum punya pengaturan arah/lebar tepi sendiri; tepi wipe/iris memakai kelembutan tetap.

@@ -59,12 +59,17 @@ struct StreamSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             SectionHeader(title: L10n.t("stream.title"))
-            Text(model.settings.stream.serverURL.isEmpty ? "—" : model.settings.stream.serverURL)
-                .font(.system(size: 11)).foregroundStyle(Theme.textDim).lineLimit(1).truncationMode(.middle)
-            Text(model.hasStreamKey ? L10n.t("stream.key_saved") : L10n.t("stream.key_missing"))
-                .font(.system(size: 10)).foregroundStyle(model.hasStreamKey ? Theme.textDim : Theme.warning)
+            ForEach(destinationRows, id: \.id) { row in
+                HStack(spacing: 6) {
+                    Circle().fill(color(row.stats)).frame(width: 7, height: 7)
+                    Text(row.name).font(.system(size: 11)).lineLimit(1)
+                    Spacer()
+                    Text(row.detail).font(.system(size: 10).monospacedDigit()).foregroundStyle(row.warn ? Theme.warning : Theme.textDim)
+                        .lineLimit(1).truncationMode(.tail)
+                }
+            }
             Button(model.isStreamingActive ? L10n.t("stream.stop") : L10n.t("stream.start")) {
-                if model.settings.stream.serverURL.isEmpty || !model.hasStreamKey { showSettings = true } else { model.toggleStream() }
+                if !model.isStreamingActive && model.readyDestinationCount == 0 { showSettings = true } else { model.toggleStream() }
             }
             .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isStreamingActive))
             statsView
@@ -86,6 +91,55 @@ struct StreamSection: View {
             Text(reason).font(.system(size: 11)).foregroundStyle(Theme.warning).fixedSize(horizontal: false, vertical: true)
         default:
             EmptyView()
+        }
+    }
+
+    private struct Row { var id: String; var name: String; var stats: StreamingEngine.Stats?; var detail: String; var warn: Bool }
+
+    /// While streaming: the destinations of this session. Otherwise: the configured ones, with key status.
+    private var destinationRows: [Row] {
+        if !model.streamTargets.isEmpty && (model.isStreamingActive || model.destinationStats.values.contains { if case .failed = $0.state { return true }; return false }) {
+            return model.streamTargets.map { t in
+                let s = model.destinationStats[t.id]
+                return Row(id: t.id, name: t.name, stats: s, detail: s.map(stateText) ?? L10n.t("stream.connecting"), warn: s.map(isWarn) ?? false)
+            }
+        }
+        let st = model.settings.stream
+        var rows: [Row] = []
+        func row(_ id: String, _ name: String, _ enabled: Bool, _ url: String, _ hasKey: Bool) {
+            let detail = !enabled ? L10n.t("stream.dest_off") : url.isEmpty ? L10n.t("stream.dest_no_server") : hasKey ? L10n.t("stream.key_saved") : L10n.t("stream.key_missing")
+            rows.append(Row(id: id, name: name.isEmpty ? id : name, stats: nil, detail: detail, warn: enabled && (url.isEmpty || !hasKey)))
+        }
+        row(AppModel.primaryDestinationID, st.primaryName, st.primaryEnabled, st.serverURL, model.hasStreamKey)
+        for d in st.additional { row(d.id, d.name, d.enabled, d.serverURL, model.hasKey(account: d.keychainAccount)) }
+        return rows
+    }
+
+    private func stateText(_ s: StreamingEngine.Stats) -> String {
+        switch s.state {
+        case .idle: return L10n.t("stream.idle")
+        case .connecting: return L10n.t("stream.connecting")
+        case .live: return String(format: "%.0f kbps", s.bitrateKbps)
+        case let .reconnecting(attempt, _): return L10n.f("stream.reconnecting", attempt)
+        case let .failed(reason): return reason
+        case .stopping: return L10n.t("stream.stopping")
+        }
+    }
+
+    private func isWarn(_ s: StreamingEngine.Stats) -> Bool {
+        switch s.state {
+        case .failed, .reconnecting: return true
+        default: return false
+        }
+    }
+
+    private func color(_ s: StreamingEngine.Stats?) -> Color {
+        guard let s else { return Theme.textDim.opacity(0.5) }
+        switch s.state {
+        case .live: return Theme.program
+        case .failed, .reconnecting: return Theme.warning
+        case .connecting: return Theme.accent
+        default: return Theme.textDim.opacity(0.5)
         }
     }
 

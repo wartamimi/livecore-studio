@@ -49,6 +49,14 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## E. Tes manual build 0.4.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-28 | Multi-destination | Pengaturan › Stream: isi tujuan utama (YouTube), Tambah tujuan (Facebook, URL `rtmps://…`, key); Apply; Mulai Stream | Kedua platform menerima video+audio; panel Stream menunjukkan status & kbps per tujuan; CPU tidak naik dua kali lipat |
+| T-28b | Satu tujuan putus | Saat live ke 2 tujuan, buat key salah di salah satu (atau putuskan jaringan sesaat) | Tujuan lain tetap live; tujuan bermasalah menunjukkan reconnect/gagal tanpa menghentikan yang lain |
+| T-28c | Setelan lama | Buka app setelah memakai 0.3.x | URL & key lama tetap ada sebagai tujuan utama; stream seperti sebelumnya |
+| T-29 | Transisi baru | Pilih Wipe ↑/↓, Push ←/→, Slide ←/→, Iris; jalankan AUTO lalu T-bar perlahan | Gerakan halus ke arah yang benar, tanpa garis/kedip; hasil akhir = sumber Preview |
+
 ## D. Tes manual build 0.3.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

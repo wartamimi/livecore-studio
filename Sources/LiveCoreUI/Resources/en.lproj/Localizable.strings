@@ -149,3 +149,15 @@
 "audio.clock" = "Clock";
 "audio.drift" = "Drift correction";
 "audio.underruns" = "Buffer underruns";
+
+"stream.primary" = "Primary destination";
+"stream.dest_name" = "Name";
+"stream.delete_key" = "Delete saved key";
+"stream.remove_dest" = "Remove";
+"stream.add_dest" = "Add destination";
+"stream.multi_note" = "Up to 3 destinations stream at once from one shared encode, so each extra destination costs upload bandwidth (video + audio bitrate), not CPU. Each destination reconnects on its own.";
+"stream.dest_off" = "Off";
+"stream.dest_no_server" = "No server URL";
+"stream.dest_no_url" = "%@: no server URL, skipped.";
+"stream.dest_no_key" = "%@: no stream key saved, skipped.";
+"stream.no_destination" = "No destination is ready. Enable one and enter its server URL and stream key in Settings › Stream.";

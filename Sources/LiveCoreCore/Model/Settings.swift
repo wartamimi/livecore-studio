@@ -32,12 +32,62 @@ public struct AudioEncoderSettings: Codable, Equatable, Sendable {
     public init() {}
 }
 
+/// An additional RTMP/RTMPS destination streamed simultaneously with the primary one (same
+/// encoded stream, so no extra encoding cost). Its key lives in the Keychain under `keychainAccount`.
+public struct StreamDestination: Codable, Equatable, Sendable, Identifiable {
+    public var id: String
+    public var name: String
+    public var serverURL: String
+    public var keychainAccount: String
+    public var enabled: Bool
+    public init(id: String, name: String, serverURL: String = "", enabled: Bool = true) {
+        self.id = id; self.name = name; self.serverURL = serverURL
+        self.keychainAccount = "dest-\(id)"; self.enabled = enabled
+    }
+}
+
 public struct StreamSettings: Codable, Equatable, Sendable {
+    public static let maxDestinations = 3   // primary + 2 additional
+
     public var serverURL: String = ""
     public var keychainAccount: String = "default"   // pointer into the Keychain, not the key itself
+    public var primaryName: String = "Primary"
+    public var primaryEnabled: Bool = true
     public var autoReconnect: Bool = true
     public var reconnect = ExponentialBackoff()
+    /// Added in 0.4.0.
+    public var additional: [StreamDestination] = []
     public init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case serverURL, keychainAccount, primaryName, primaryEnabled, autoReconnect, reconnect, additional
+    }
+
+    // Tolerant decoding: settings saved by older versions lack the newer keys.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let d = StreamSettings()
+        serverURL = try c.decodeIfPresent(String.self, forKey: .serverURL) ?? d.serverURL
+        keychainAccount = try c.decodeIfPresent(String.self, forKey: .keychainAccount) ?? d.keychainAccount
+        primaryName = try c.decodeIfPresent(String.self, forKey: .primaryName) ?? d.primaryName
+        primaryEnabled = try c.decodeIfPresent(Bool.self, forKey: .primaryEnabled) ?? d.primaryEnabled
+        autoReconnect = try c.decodeIfPresent(Bool.self, forKey: .autoReconnect) ?? d.autoReconnect
+        reconnect = try c.decodeIfPresent(ExponentialBackoff.self, forKey: .reconnect) ?? d.reconnect
+        additional = try c.decodeIfPresent([StreamDestination].self, forKey: .additional) ?? []
+    }
+
+    /// Problems with the destination list (empty = OK). Keys are checked by the app (Keychain).
+    public func destinationErrors() -> [String] {
+        var errs: [String] = []
+        if 1 + additional.count > Self.maxDestinations {
+            errs.append("At most \(Self.maxDestinations) stream destinations are supported.")
+        }
+        for d in additional where d.enabled && d.serverURL.trimmed.isEmpty {
+            errs.append("Destination \"\(d.name)\" is enabled but has no server URL.")
+        }
+        if Set(additional.map(\.id)).count != additional.count { errs.append("Duplicate destination id.") }
+        return errs
+    }
 }
 
 public enum RecordingContainer: String, Codable, Sendable, CaseIterable {
@@ -73,6 +123,7 @@ public struct ProductionSettings: Codable, Equatable, Sendable {
         if !(300...50_000).contains(video.bitrateKbps) { errs.append("Video bitrate must be 300–50000 kbps.") }
         if ![64, 96, 128, 160, 192, 256, 320].contains(audio.bitrateKbps) { errs.append("Audio bitrate not supported by AAC encoder.") }
         if ![44100, 48000].contains(audio.sampleRate) { errs.append("Audio sample rate must be 44.1 or 48 kHz.") }
+        errs += stream.destinationErrors()
         return errs
     }
 }

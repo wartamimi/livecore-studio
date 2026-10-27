@@ -45,7 +45,10 @@ public final class AppModel: ObservableObject {
 
     // Outputs
     @Published public var settings = ProductionSettings()
-    @Published public var streamStats = StreamingEngine.Stats()
+    /// Live statistics per stream destination ("primary" or a StreamDestination id).
+    @Published public var destinationStats: [String: StreamingEngine.Stats] = [:]
+    /// Destinations of the current/last stream session, in display order.
+    @Published public private(set) var streamTargets: [(id: String, name: String)] = []
     @Published public var recordStats = RecordingEngine.Stats()
     @Published public var hasStreamKey = false
     @Published public var performance = PerformanceSnapshot.zero
@@ -112,7 +115,7 @@ public final class AppModel: ObservableObject {
             self.thumbnailFeeds = self.thumbnailFeeds.filter { ids.contains($0.key) }
             self.overlays = e.overlays
         }
-        e.onStreamStats = { [weak self] s in self?.streamStats = s }
+        e.onStreamStats = { [weak self] id, s in self?.destinationStats[id] = s }
         e.onRecordStats = { [weak self] s in self?.recordStats = s }
         e.onError = { [weak self] msg in self?.report(msg) }
         e.onAudioChannelsChange = { [weak self] in self?.reloadAudioChannels() }
@@ -274,11 +277,51 @@ public final class AppModel: ObservableObject {
 
     // MARK: Stream
 
-    public var isStreamingActive: Bool {
-        switch streamStats.state {
+    public static let primaryDestinationID = "primary"
+
+    private static func isActive(_ s: StreamingEngine.Stats) -> Bool {
+        switch s.state {
         case .idle, .failed: return false
         default: return true
         }
+    }
+
+    /// Aggregate status across destinations: live if any is live (bitrate summed), otherwise
+    /// the first destination that is connecting/reconnecting/failed, otherwise idle.
+    public var streamStats: StreamingEngine.Stats {
+        let all = streamTargets.compactMap { destinationStats[$0.id] }
+        let live = all.filter { $0.state == .live }
+        if var first = live.first {
+            first.bitrateKbps = live.reduce(0) { $0 + $1.bitrateKbps }
+            first.droppedVideoFrames = live.reduce(0) { $0 + $1.droppedVideoFrames }
+            first.uptime = live.map(\.uptime).max() ?? first.uptime
+            return first
+        }
+        return all.first { Self.isActive($0) } ?? all.first { if case .failed = $0.state { return true }; return false } ?? StreamingEngine.Stats()
+    }
+
+    public var isStreamingActive: Bool { streamTargets.contains { destinationStats[$0.id].map(Self.isActive) ?? true } }
+
+    /// Whether a key exists in the Keychain for an account (never returns the key itself).
+    public func hasKey(account: String) -> Bool {
+        ((try? KeychainStore.load(account: account)) ?? nil)?.isEmpty == false
+    }
+
+    /// Saves or (when empty) deletes the key of an additional destination.
+    public func saveKey(_ key: String, account: String) {
+        do {
+            if key.isEmpty { try KeychainStore.delete(account: account) }
+            else { try KeychainStore.save(streamKey: key, account: account) }
+        } catch {
+            report(error.localizedDescription)
+        }
+    }
+
+    /// Number of destinations that would go live now (enabled, URL set, key saved).
+    public var readyDestinationCount: Int {
+        var n = settings.stream.primaryEnabled && !settings.stream.serverURL.isEmpty && hasStreamKey ? 1 : 0
+        n += settings.stream.additional.filter { $0.enabled && !$0.serverURL.isEmpty && hasKey(account: $0.keychainAccount) }.count
+        return n
     }
 
     public func saveStreamKey(_ key: String) {
@@ -294,14 +337,32 @@ public final class AppModel: ObservableObject {
     public func toggleStream() {
         guard let e = engine else { return }
         if isStreamingActive { e.stopStreaming(); return }
-        do {
-            guard let key = try KeychainStore.load(account: settings.stream.keychainAccount), !key.isEmpty else {
-                report("Enter a stream key in Settings › Stream first."); return
+        var targets: [ProductionEngine.StreamTarget] = []
+        let st = settings.stream
+        var candidates: [(id: String, name: String, url: String, account: String)] = []
+        if st.primaryEnabled { candidates.append((Self.primaryDestinationID, st.primaryName, st.serverURL, st.keychainAccount)) }
+        for d in st.additional where d.enabled { candidates.append((d.id, d.name, d.serverURL, d.keychainAccount)) }
+        for c in candidates {
+            let label = c.name.isEmpty ? c.id : c.name
+            do {
+                guard !c.url.isEmpty else { report(L10n.f("stream.dest_no_url", label)); continue }
+                guard let key = try KeychainStore.load(account: c.account), !key.isEmpty else {
+                    report(L10n.f("stream.dest_no_key", label)); continue
+                }
+                targets.append(.init(id: c.id, name: label, url: try RTMPURL.parse(serverURL: c.url, streamKey: key)))
+            } catch let err as RTMPURL.ParseError {
+                report("\(label): \(err.description)")
+            } catch {
+                report("\(label): \(error.localizedDescription)")
             }
-            try e.startStreaming(streamKey: key)
-        } catch let err as RTMPURL.ParseError {
-            report(err.description)
+        }
+        guard !targets.isEmpty else { report(L10n.t("stream.no_destination")); return }
+        destinationStats = [:]
+        streamTargets = targets.map { ($0.id, $0.name) }
+        do {
+            try e.startStreaming(to: targets)
         } catch {
+            streamTargets = []
             report(error.localizedDescription)
         }
     }
