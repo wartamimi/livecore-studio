@@ -4,8 +4,9 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.5.0 — Milestone 3 berjalan.** 0.5.0 menambah transisi stinger (klip video dengan alpha, titik potong
-> diatur) dan aux bus A/B dengan output ke perangkat terpisah (mix-minus) — dikompilasi & diuji unit, menunggu tes T-30..T-31.
+> **Status: 0.6.0 — Milestone 3 berjalan.** 0.6.0 menambah browser source (halaman web/HTML sebagai input), input jam /
+> hitung mundur / stopwatch, dan snapshot Program ke PNG — dikompilasi & diuji unit, menunggu tes T-32..T-34.
+> 0.5.0 (dilaporkan berfungsi) menambah transisi stinger dan aux bus A/B dengan output ke perangkat terpisah (mix-minus).
 > 0.4.0 (dilaporkan berfungsi oleh pengguna) menambah streaming ke beberapa tujuan sekaligus (hingga 3, satu encode)
 > dan transisi baru (Wipe 4 arah, Push, Slide, Iris) — dikompilasi & diuji unit, menunggu tes perangkat T-28..T-29.
 > 0.3.1 memperbaiki crash capture card generik (dikonfirmasi pengguna). 0.3.0 menambah editor scene visual, lower third yang dapat diatur,
@@ -83,7 +84,7 @@ docs/                         Dokumentasi (lihat di bawah)
   CUT/Dissolve/Fade/Wipe/T-bar, overlay & PiP dasar, mixer + compressor/limiter + meter, RTMP/RTMPS + reconnect, rekaman MP4/MOV.
 - **M2 Production Workflow** — selesai di kode (0.2.0, menunggu tes perangkat): audio file video ke mixer, noise gate,
   multiview, simpan/muat proyek, chroma key. 0.3.0: koreksi drift clock, EQ/HPF, editor scene visual,
-  lower third yang dapat diatur. Masih planned: browser source (evaluasi keamanan), capture 4:2:0, optimasi performa.
+  lower third yang dapat diatur. 0.6.0: browser source. Masih planned: capture 4:2:0, optimasi performa.
 - **M3 Broadcast Expansion** — 0.4.0: multi-destination streaming, transisi Wipe/Push/Slide/Iris. 0.5.0: stinger,
   aux bus A/B + mix-minus. Masih planned: Blackmagic DeckLink, AJA/Magewell SDK, NDI (perlu SDK vendor), output SDI/HDMI,
   profil operator.

@@ -154,8 +154,18 @@ struct RecordSection: View {
         VStack(alignment: .leading, spacing: 6) {
             SectionHeader(title: L10n.t("record.title"))
             Text(folderLabel).font(.system(size: 11)).foregroundStyle(Theme.textDim).lineLimit(1).truncationMode(.head)
-            Button(model.isRecording ? L10n.t("record.stop") : L10n.t("record.start")) { model.toggleRecord() }
-                .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isRecording))
+            HStack(spacing: 6) {
+                Button(model.isRecording ? L10n.t("record.stop") : L10n.t("record.start")) { model.toggleRecord() }
+                    .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isRecording))
+                Button { model.saveSnapshot() } label: { Image(systemName: "camera") }
+                    .buttonStyle(StudioButtonStyle(color: Theme.accent))
+                    .frame(width: 44)
+                    .help(L10n.t("snapshot.help"))
+            }
+            if let snap = model.lastSnapshotURL {
+                Button(L10n.f("snapshot.saved", snap.lastPathComponent)) { NSWorkspace.shared.activateFileViewerSelecting([snap]) }
+                    .buttonStyle(.link).font(.system(size: 10)).lineLimit(1)
+            }
             switch model.recordStats.state {
             case let .recording(url):
                 Text(url.lastPathComponent).font(.system(size: 10)).lineLimit(1)

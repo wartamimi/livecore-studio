@@ -29,14 +29,16 @@ targets:
       properties:
         CFBundleName: LiveCore Studio
         CFBundleDisplayName: LiveCore Studio
-        CFBundleShortVersionString: "0.5.0"
-        CFBundleVersion: "6"
+        CFBundleShortVersionString: "0.6.0"
+        CFBundleVersion: "7"
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, id]
         LSApplicationCategoryType: public.app-category.video
         LSMinimumSystemVersion: "13.0"
         NSCameraUsageDescription: LiveCore Studio uses cameras and video capture devices as production inputs.
         NSMicrophoneUsageDescription: LiveCore Studio uses microphones and audio interfaces as mixer inputs.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoadsInWebContent: true
         NSHighResolutionCapable: true
         NSPrincipalClass: NSApplication
         NSSupportsAutomaticGraphicsSwitching: false

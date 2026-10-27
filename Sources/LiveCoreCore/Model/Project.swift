@@ -122,6 +122,21 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case image(path: String, relativePath: String?)
     case color(ProjectColor)
     case title(ProjectTitleStyle)
+    /// Web page rendered offscreen (since 0.6.0).
+    case browser(ProjectBrowser)
+    /// Clock / countdown / count-up generator (since 0.6.0).
+    case timer(TimerConfig, ProjectColor?)
+}
+
+public struct ProjectBrowser: Codable, Equatable, Sendable {
+    public var url: String
+    public var width: Int
+    public var height: Int
+    public var fps: Int
+    public var transparent: Bool
+    public init(url: String, width: Int = 1920, height: Int = 1080, fps: Int = 15, transparent: Bool = true) {
+        self.url = url; self.width = width; self.height = height; self.fps = fps; self.transparent = transparent
+    }
 }
 
 public struct ProjectOverlay: Codable, Equatable, Sendable {
