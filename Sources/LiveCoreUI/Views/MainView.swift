@@ -6,6 +6,7 @@ import LiveCoreEngine
 struct MainView: View {
     @EnvironmentObject var model: AppModel
     @State private var showSettings = false
+    @State private var settingsTab = 0
     // Docked panels that are minimized to a slim bar (remembered between launches).
     @AppStorage("dock.inputs.minimized") private var inputsMin = false
     @AppStorage("dock.mixer.minimized") private var mixerMin = false
@@ -63,7 +64,7 @@ struct MainView: View {
                                             if controlsMin {
                                                 DockBar(title: L10n.t("dock.controls"), axis: .vertical) { controlsMin = false }
                                             } else {
-                                                ControlPanelView(showSettings: $showSettings)
+                                                ControlPanelView()
                                                     .dockHandle { controlsMin = true }
                                                     .frame(width: 330)
                                             }
@@ -80,13 +81,16 @@ struct MainView: View {
                             }
                         }
                     }
+                    // Always shown: RECORD, STREAM, EXTERNAL and the four outputs.
+                    OutputDockView { tab in settingsTab = tab; showSettings = true }
                 }
                 .padding(6)
             }
         }
         .background(Theme.background)
         .foregroundStyle(Theme.text)
-        .sheet(isPresented: $showSettings) { SettingsView().environmentObject(model) }
+        .sheet(isPresented: $showSettings) { SettingsView(initialTab: settingsTab).environmentObject(model) }
+        .onChange(of: showSettings) { shown in if !shown { settingsTab = 0 } }
         .background(KeyboardShortcuts())
         .alert(model.pendingStop == .record ? L10n.t("record.stop_confirm") : L10n.t("stream.stop_confirm"),
                isPresented: Binding(get: { model.pendingStop != nil }, set: { if !$0 { model.pendingStop = nil } }),

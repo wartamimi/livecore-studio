@@ -76,11 +76,14 @@ struct TopBarView: View {
 /// vMix-style Fullscreen button: click toggles, the menu picks the display.
 struct FullscreenButton: View {
     @ObservedObject var output: FullscreenOutput
+    /// Icon only (output rows under EXTERNAL ⚙).
+    var compact = false
     var body: some View {
         Button { output.toggle() } label: {
             Label(L10n.t("fullscreen.button"), systemImage: output.isActive ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                .labelStyle(AdaptiveLabelStyle(iconOnly: compact))
                 .font(.system(size: 11, weight: .bold))
-                .padding(.horizontal, 8).padding(.vertical, 4)
+                .padding(.horizontal, compact ? 5 : 8).padding(.vertical, 4)
                 .background(output.isActive ? Theme.program : Theme.panelRaised)
                 .clipShape(Capsule())
         }
@@ -96,6 +99,13 @@ struct FullscreenButton: View {
                 }
             }
         }
+    }
+}
+
+struct AdaptiveLabelStyle: LabelStyle {
+    let iconOnly: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        if iconOnly { configuration.icon } else { HStack(spacing: 4) { configuration.icon; configuration.title } }
     }
 }
 

@@ -4,19 +4,15 @@ import SwiftUI
 import LiveCoreCore
 import LiveCoreEngine
 
-/// Lower-right control area: overlays, streaming and recording.
+/// Lower-right control area: overlays and instant replay. Record / Stream / External live in
+/// the bottom dock (OutputDockView).
 struct ControlPanelView: View {
     @EnvironmentObject var model: AppModel
-    @Binding var showSettings: Bool
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 OverlaySection()
-                Divider()
-                StreamSection(showSettings: $showSettings)
-                Divider()
-                RecordSection()
                 Divider()
                 ReplaySection()
             }
@@ -119,9 +115,9 @@ struct OverlaySection: View {
     }
 }
 
-struct StreamSection: View {
+/// Stream destinations and live statistics (STREAM ⚙ in the bottom dock).
+struct StreamDetails: View {
     @EnvironmentObject var model: AppModel
-    @Binding var showSettings: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -134,14 +130,6 @@ struct StreamSection: View {
                     Text(row.detail).font(.system(size: 10).monospacedDigit()).foregroundStyle(row.warn ? Theme.warning : Theme.textDim)
                         .lineLimit(1).truncationMode(.tail)
                 }
-            }
-            HStack(spacing: 6) {
-                Button(model.isStreamingActive ? L10n.t("stream.stop") : L10n.t("stream.start")) {
-                    if !model.isStreamingActive && model.readyDestinationCount == 0 { showSettings = true } else { model.requestToggleStream() }
-                }
-                .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isStreamingActive))
-                .disabled(model.streamLocked)
-                LockButton(locked: $model.streamLocked, help: L10n.t("lock.stream_help"))
             }
             statsView
         }
@@ -230,23 +218,20 @@ struct LockButton: View {
     }
 }
 
-struct RecordSection: View {
+/// Recording folder, options and the file being written (RECORD ⚙ in the bottom dock).
+struct RecordDetails: View {
     @EnvironmentObject var model: AppModel
+    @AppStorage(RecordReminderMode.storageKey) private var reminder = RecordReminderMode.always.rawValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             SectionHeader(title: L10n.t("record.title"))
             Text(folderLabel).font(.system(size: 11)).foregroundStyle(Theme.textDim).lineLimit(1).truncationMode(.head)
-            HStack(spacing: 6) {
-                Button(model.isRecording ? L10n.t("record.stop") : L10n.t("record.start")) { model.requestToggleRecord() }
-                    .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isRecording))
-                    .disabled(model.recordLocked)
-                LockButton(locked: $model.recordLocked, help: L10n.t("lock.record_help"))
-                Button { model.saveSnapshot() } label: { Image(systemName: "camera") }
-                    .buttonStyle(StudioButtonStyle(color: Theme.accent))
-                    .frame(width: 44)
-                    .help(L10n.t("snapshot.help"))
+            Picker(L10n.t("record.reminder"), selection: $reminder) {
+                ForEach(RecordReminderMode.allCases, id: \.self) { m in Text(L10n.t("record.reminder." + m.rawValue)).tag(m.rawValue) }
             }
+            .font(.system(size: 11))
+            .help(L10n.t("record.reminder_help"))
             Toggle(L10n.t("record.with_stream"), isOn: $model.recordWithStream)
                 .toggleStyle(.checkbox).font(.system(size: 11))
                 .help(L10n.t("record.with_stream_help"))

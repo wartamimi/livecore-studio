@@ -5,6 +5,7 @@ import LiveCoreCore
 /// Preview | Transition controls | Program
 struct MonitorRow: View {
     @EnvironmentObject var model: AppModel
+    @AppStorage(RecordReminderMode.storageKey) private var reminder = RecordReminderMode.always.rawValue
 
     var body: some View {
         HStack(spacing: 6) {
@@ -13,7 +14,9 @@ struct MonitorRow: View {
             TransitionControls().frame(width: 150)
             MonitorView(title: L10n.t("monitor.program"), color: Theme.program, feed: model.programFeed,
                         inputName: name(model.switcher.transition?.to ?? model.switcher.program),
-                        live: model.isStreamingActive || model.isRecording)
+                        live: model.isStreamingActive || model.isRecording,
+                        notRecording: RecordReminder.applies(mode: RecordReminderMode(rawValue: reminder) ?? .always,
+                                                             recording: model.isRecording, streaming: model.isStreamingActive))
         }
     }
 
@@ -29,6 +32,7 @@ struct MonitorView: View {
     let feed: FrameFeed
     let inputName: String
     let live: Bool
+    var notRecording = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -46,6 +50,7 @@ struct MonitorView: View {
             PixelBufferView(feed: feed)
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .overlay(Rectangle().stroke(color, lineWidth: 2))
+                .overlay(alignment: .top) { if notRecording { NotRecordingBadge().padding(.top, 8) } }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(4)

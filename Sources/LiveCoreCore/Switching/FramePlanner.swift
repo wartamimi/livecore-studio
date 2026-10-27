@@ -39,6 +39,10 @@ public struct FramePlan: Equatable, Sendable {
     public var thumbnails: [InputID: [DrawCommand]] = [:]
     /// Full-size view of one input (the per-input fullscreen viewer), nil when none is open.
     public var detail: [DrawCommand]? = nil
+    /// Full-size, opaque pictures of single inputs for the extra outputs.
+    public var extra: [InputID: [DrawCommand]] = [:]
+    /// Preview at full output size, for an extra output that shows Preview (nil when none does).
+    public var fullPreview: [DrawCommand]? = nil
 }
 
 public enum FramePlanner {
@@ -52,7 +56,9 @@ public enum FramePlanner {
                             keyFor: (InputID) -> ChromaKey? = { _ in nil },
                             thumbnailsFor: [InputID] = [],
                             composedThumbnails: Set<InputID> = [],
-                            detailInput: InputID? = nil) -> FramePlan {
+                            detailInput: InputID? = nil,
+                            extraInputs: [InputID] = [],
+                            fullPreview: Bool = false) -> FramePlan {
         func key(_ id: InputID) -> ChromaKey? {
             guard let k = keyFor(id), k.enabled else { return nil }
             return k.clamped
@@ -108,6 +114,8 @@ public enum FramePlanner {
             }
         }
         if let d = detailInput, layersFor(d) != nil { plan.detail = composition(d) }
+        for id in extraInputs where layersFor(id) != nil { plan.extra[id] = composition(id) }
+        if fullPreview { plan.fullPreview = plan.preview }
         return plan
     }
 }

@@ -54,6 +54,13 @@ public enum LiveCoreScenes {
                 .preferredColorScheme(.dark)
         }
         .windowStyle(.hiddenTitleBar)
+
+        // Output 1–4 windows (EXTERNAL ⚙ / output buttons in the bottom dock).
+        WindowGroup(L10n.t("output.section"), id: "output", for: Int.self) { $index in
+            OutputWindowView(index: index ?? 1)
+                .environmentObject(model)
+                .preferredColorScheme(.dark)
+        }
     }
 }
 #endif

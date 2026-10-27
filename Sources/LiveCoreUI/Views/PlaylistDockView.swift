@@ -4,12 +4,15 @@ import LiveCoreCore
 import LiveCoreEngine
 
 /// Dock beside the audio mixer listing the songs of a music input or the clips of a video
-/// input: click a row to play it, drag to reorder, right-click to move or remove.
+/// input: click a row to select it, double-click (or ▶) to play it, drag to reorder,
+/// right-click to move or remove.
 struct PlaylistDockView: View {
     @EnvironmentObject var model: AppModel
     /// "music:<channel id>" or "input:<input id>".
     @AppStorage("dock.playlist.selection") private var selection = ""
     @State private var query = ""
+    /// Row picked with a single click (highlighted, not played): "<source key>#<index>".
+    @State private var picked: String?
 
     private enum Source {
         case music(MusicInput)
@@ -81,8 +84,12 @@ struct PlaylistDockView: View {
                         .lineLimit(1).truncationMode(.middle)
                     Spacer(minLength: 0)
                 }
+                .padding(.vertical, 1)
                 .contentShape(Rectangle())
-                .onTapGesture { play(s, i) }
+                .onTapGesture(count: 2) { play(s, i) }
+                .onTapGesture { picked = key(s) + "#\(i)" }
+                .listRowBackground(RoundedRectangle(cornerRadius: 4)
+                    .fill(picked == key(s) + "#\(i)" ? Theme.accent.opacity(0.35) : Color.clear))
                 .help(u.lastPathComponent)
                 .contextMenu {
                     Button(L10n.t("playlist.play_this")) { play(s, i) }
@@ -109,7 +116,8 @@ struct PlaylistDockView: View {
             switch s {
             case let .music(m):
                 Button { m.previous() } label: { Image(systemName: "backward.fill") }
-                Button { m.togglePlay(); model.objectWillChange.send() } label: { Image(systemName: m.isPlaying ? "pause.fill" : "play.fill") }
+                Button { playPickedOrToggle(s) } label: { Image(systemName: m.isPlaying && pickedIndex(s) == nil ? "pause.fill" : "play.fill") }
+                    .help(L10n.t("playlist.play_help"))
                 Button { m.next() } label: { Image(systemName: "forward.fill") }
                 Toggle(isOn: Binding(get: { m.loopPlaylist }, set: { m.loopPlaylist = $0; model.objectWillChange.send() })) { Image(systemName: "repeat") }
                     .toggleStyle(.button).help(L10n.t("music.loop"))
@@ -120,7 +128,8 @@ struct PlaylistDockView: View {
                 Button { model.addTracks(toMusic: m.channel.id) } label: { Image(systemName: "plus") }.help(L10n.t("music.add_tracks"))
             case let .video(id, v):
                 Button { v.previousClip() } label: { Image(systemName: "backward.fill") }
-                Button { v.isPlaying ? v.pause() : v.play(); model.objectWillChange.send() } label: { Image(systemName: v.isPlaying ? "pause.fill" : "play.fill") }
+                Button { playPickedOrToggle(s) } label: { Image(systemName: v.isPlaying && pickedIndex(s) == nil ? "pause.fill" : "play.fill") }
+                    .help(L10n.t("playlist.play_help"))
                 Button { v.nextClip() } label: { Image(systemName: "forward.fill") }
                 Toggle(isOn: Binding(get: { v.loop }, set: { v.loop = $0; model.objectWillChange.send() })) { Image(systemName: "repeat") }
                     .toggleStyle(.button).help(L10n.t("playlist.loop"))
@@ -151,6 +160,30 @@ struct PlaylistDockView: View {
         .help(L10n.t("playlist.m3u_help"))
     }
 
+    private func key(_ s: Source) -> String {
+        switch s {
+        case let .music(m): return "music:" + m.channel.id
+        case let .video(id, _): return "input:" + id.raw
+        }
+    }
+
+    /// The selected row of this list when it is not the item already playing.
+    private func pickedIndex(_ s: Source) -> Int? {
+        guard let p = picked, p.hasPrefix(key(s) + "#"), let i = Int(p.dropFirst(key(s).count + 1)) else { return nil }
+        let it = items(s)
+        return it.urls.indices.contains(i) && i != it.index ? i : nil
+    }
+
+    /// ▶ plays the selected row; with nothing new selected it pauses / resumes.
+    private func playPickedOrToggle(_ s: Source) {
+        if let i = pickedIndex(s) { play(s, i); return }
+        switch s {
+        case let .music(m): m.togglePlay()
+        case let .video(_, v): v.isPlaying ? v.pause() : v.play()
+        }
+        model.objectWillChange.send()
+    }
+
     private func isLocked(_ s: Source) -> Bool {
         switch s {
         case let .music(m): return m.channel.locked
@@ -159,6 +192,7 @@ struct PlaylistDockView: View {
     }
 
     private func play(_ s: Source, _ i: Int) {
+        picked = nil
         switch s {
         case let .music(m): m.select(i)
         case let .video(_, v): v.selectClip(i); v.play()
@@ -167,6 +201,7 @@ struct PlaylistDockView: View {
     }
 
     private func move(_ s: Source, _ from: Int, _ to: Int) {
+        if picked == key(s) + "#\(from)" { picked = key(s) + "#\(to)" }
         switch s {
         case let .music(m): m.moveTrack(from: from, to: to)
         case let .video(_, v): v.moveClip(from: from, to: to)
@@ -176,6 +211,7 @@ struct PlaylistDockView: View {
 
     private func remove(_ s: Source, _ i: Int) {
         guard !isLocked(s) else { return }
+        picked = nil
         switch s {
         case let .music(m): m.removeTrack(at: i)
         case let .video(_, v): v.removeClip(at: i)

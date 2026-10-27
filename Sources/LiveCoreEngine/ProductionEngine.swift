@@ -37,6 +37,17 @@ public final class ProductionEngine {
     public var onThumbnails: (([InputID: CVPixelBuffer]) -> Void)?
     /// Full-size picture of `detailInput` (per-input viewer). Main thread.
     public var onDetailFrame: ((InputID, CVPixelBuffer) -> Void)?
+    /// Every rendered frame for the extra outputs, called on the GPU completion thread (not the
+    /// main thread) so Syphon and the virtual camera get frames without a main-thread hop.
+    /// Set it before `start()`.
+    public var outputFrameHandler: ((OutputFrames) -> Void)?
+    public struct OutputFrames {
+        public var program: CVPixelBuffer
+        /// Preview at full output size; nil unless `setOutputRendering(fullPreview: true)`.
+        public var preview: CVPixelBuffer?
+        public var inputs: [InputID: CVPixelBuffer]
+        public var pts: CMTime
+    }
     public var onSwitcherChange: ((SwitcherSnapshot) -> Void)?
     public var onInputsChange: (([InputInfo]) -> Void)?
     /// Statistics of one stream destination (destination id, stats). Main thread.
@@ -79,6 +90,9 @@ public final class ProductionEngine {
         var adjusts: [InputID: InputAdjust] = [:]
         /// Input shown in the per-input viewer window, rendered at full size every frame.
         var detail: InputID?
+        /// Inputs rendered at full size for the extra outputs, and whether Preview is too.
+        var extraInputs: [InputID] = []
+        var fullPreview = false
         var stinger = StingerConfig()
     }
     private let control = Locked(ControlState())
@@ -175,7 +189,8 @@ public final class ProductionEngine {
                                          layersFor: { layers[$0] }, keyFor: { keys[$0] },
                                          thumbnailsFor: thumbTick ? st.order : [],
                                          composedThumbnails: thumbTick ? Set(st.sources.filter { $0.value is SceneSource }.keys) : [],
-                                         detailInput: st.detail)
+                                         detailInput: st.detail,
+                                         extraInputs: st.extraInputs, fullPreview: st.fullPreview)
             return (plan, st.sources, st.switcher.state, st.adjusts)
         }
         if !events.isEmpty || snapshot != lastSwitcher {
@@ -192,7 +207,8 @@ public final class ProductionEngine {
         }
 
         var needed = Set<InputID>()
-        for c in plan.program + plan.overlays + plan.preview + (plan.transition?.incoming ?? []) + (plan.detail ?? []) { needed.insert(c.source) }
+        for c in plan.program + plan.overlays + plan.preview + (plan.transition?.incoming ?? []) + (plan.detail ?? []) + (plan.fullPreview ?? []) { needed.insert(c.source) }
+        for list in plan.extra.values { for c in list { needed.insert(c.source) } }
         for list in plan.thumbnails.values { for c in list { needed.insert(c.source) } }
         if let s = plan.stinger { needed.insert(s.source) }
         var frames: [InputID: CVPixelBuffer] = [:]
@@ -211,6 +227,7 @@ public final class ProductionEngine {
             outs.streamEncoder?.encode(program, pts: pts)
             if outs.recording { self.recorder.append(video: program, pts: pts) }
             if outs.replay { self.replay.append(program, hostTime: pts.seconds) }
+            self.outputFrameHandler?(OutputFrames(program: program, preview: result.fullPreview, inputs: result.extra, pts: pts))
             let preview = result.preview
             let thumbs = result.thumbnails
             let detail = result.detail
@@ -508,6 +525,11 @@ public final class ProductionEngine {
 
     /// Input rendered at full size for the per-input viewer (nil = none).
     public func setDetailInput(_ id: InputID?) { control.mutate { $0.detail = id } }
+
+    /// Which pictures the extra outputs need besides Program (see `OutputRouting.renderedInputs`).
+    public func setOutputRendering(inputs: [InputID], fullPreview: Bool) {
+        control.mutate { $0.extraInputs = inputs; $0.fullPreview = fullPreview }
+    }
 
     public func isInputLocked(_ id: InputID) -> Bool { control.read { $0.locked.contains(id) } }
 

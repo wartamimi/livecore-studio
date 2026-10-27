@@ -14,7 +14,7 @@ scripts/rtmp_e2e_test.sh           # E2E RTMP ke server ffmpeg lokal
 scripts/build_macos.sh release     # xcodegen + xcodebuild → build/DerivedData/Build/Products/Release/LiveCoreStudio.app
 open build/DerivedData/Build/Products/Release/LiveCoreStudio.app
 ```
-DMG (tanpa tanda tangan) untuk dibagikan: `scripts/make_dmg.sh` → `build/LiveCoreStudio-0.21.0-unsigned.dmg`. Pertama kali dibuka: klik kanan app → Open (Gatekeeper).
+DMG (tanpa tanda tangan) untuk dibagikan: `scripts/make_dmg.sh` → `build/LiveCoreStudio-0.22.0-unsigned.dmg`. Pertama kali dibuka: klik kanan app → Open (Gatekeeper).
 Alternatif tanpa XcodeGen: `scripts/bundle_spm_app.sh` (SwiftPM + bundle .app manual + ad-hoc codesign).
 Untuk mengembangkan di Xcode: `xcodegen generate && open LiveCoreStudio.xcodeproj`, pilih skema *LiveCoreStudio*, ⌘R.
 
@@ -42,3 +42,11 @@ Lingkungan pembuatan proyek ini (Linux) **tidak dapat** melakukan signing/notari
 ## CI
 `.github/workflows/ci.yml`: job Linux (unit + E2E) dan job `macos-14` (unit + E2E + build app + upload artefak .app).
 Setelah repo di-push ke GitHub, status CI menjadi bukti kompilasi macOS pertama.
+
+## Komponen pihak ketiga dan extension (0.22.0)
+- `Sources/CSyphon`: sebagian kode server [Syphon](https://github.com/Syphon/Syphon-Framework) (lisensi BSD 3-klausa,
+  `Sources/CSyphon/License.txt`), dikompilasi statis ke dalam app (tanpa framework tertanam, aman untuk ad-hoc +
+  hardened runtime).
+- `Contents/Library/SystemExtensions/studio.livecore.LiveCoreStudio.CameraExtension.systemextension`: kamera virtual.
+  Hanya bisa diaktifkan pada build bertanda tangan Developer ID; lihat `docs/VIRTUAL_CAMERA.md`.
+- Saat menaikkan versi, ubah juga `CameraExtension/Info.plist` (CFBundleShortVersionString / CFBundleVersion).

@@ -17,6 +17,8 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
     public var programInput: InputID?
     /// Stinger transition clip and cut point (absent in projects from before 0.5.0).
     public var stinger: StingerConfig?
+    /// The four extra outputs and the virtual camera's output (added in 0.22.0).
+    public var outputs: OutputRouting?
 
     public init(version: Int = ProjectDocument.currentVersion, settings: ProductionSettings = ProductionSettings(),
                 inputs: [ProjectInput] = [], overlays: [ProjectOverlay] = [], audio: ProjectAudio = ProjectAudio(),
@@ -72,6 +74,7 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
         if let p = previewInput, !seen.contains(p) { doc.previewInput = nil }
         if let p = programInput, !seen.contains(p) { doc.programInput = nil }
         if let s = doc.stinger?.source, !seen.contains(s) { doc.stinger?.source = nil }
+        doc.outputs = outputs?.normalized(existing: seen)
         return doc
     }
 }
