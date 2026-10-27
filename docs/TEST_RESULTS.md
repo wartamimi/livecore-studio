@@ -47,6 +47,11 @@ Belum dilaporkan: T-10 (stream+rekam 10 menit), T-11 reconnect, T-12 cabut-colok
 Pengguna melaporkan "sejauh ini belum ada bug" setelah mencoba 0.2.0. Rincian per tes T-17..T-22 belum dilaporkan, jadi
 statusnya tetap Not tested per item.
 
+## Laporan pengguna build 0.13.0 (dev-build-53), 2026-10-27
+Crash saat dibuka: dyld menolak Lottie.framework ("different Team IDs") karena framework masih bertanda tangan Airbnb,
+sedangkan app ditandatangani ad-hoc. 0.13.1 menandatangani ulang framework secara ad-hoc dan build gagal bila Team ID
+berbeda. Juga ditemukan: CFBundleVersion selalu "11" karena project.yml menimpa Info.plist; diperbaiki (17).
+
 ## Build Zoom 0.11.0/0.11.1 (dev-build-39/41/43), 2026-10-27
 Join ke meeting milik akun Zoom lain gagal dengan kode 63 (`UnableToJoinExternalMeeting`: aplikasi Meeting SDK yang belum
 dipublikasikan hanya boleh join meeting akun sendiri). Atas keputusan pemilik, fitur Zoom SDK ditarik dari repo dan rilis

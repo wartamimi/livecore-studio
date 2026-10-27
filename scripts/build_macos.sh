@@ -50,6 +50,26 @@ for fw in $(otool -L "$APP/Contents/MacOS/LiveCoreStudio" | awk '/@rpath\/.*\.fr
   [ -d "$APP/Contents/Frameworks/$fw" ] || { echo "ERROR: $fw is linked but not embedded in the app"; exit 1; }
   echo "embedded: $fw"
 done
+# Embedded frameworks keep their vendor's signature (Lottie: Airbnb's Team ID). The hardened runtime
+# only loads libraries signed by the app's own team, so when the app itself is ad-hoc signed every
+# embedded framework is re-signed ad-hoc and the app re-sealed (inside-out, no --deep).
+APP_TEAM=$(codesign -dv "$APP" 2>&1 | sed -n 's/^TeamIdentifier=//p')
+if [ -d "$APP/Contents/Frameworks" ] && { [ -z "$APP_TEAM" ] || [ "$APP_TEAM" = "not set" ]; }; then
+  for fw in "$APP"/Contents/Frameworks/*.framework; do
+    [ -d "$fw" ] || continue
+    codesign --force --sign - --timestamp=none "$fw"
+  done
+  codesign --force --sign - --timestamp=none --options runtime \
+    --entitlements Config/LiveCoreStudio.entitlements "$APP"
+fi
+# Fail the build instead of shipping an app that dyld refuses to launch.
+APP_TEAM=$(codesign -dv "$APP" 2>&1 | sed -n 's/^TeamIdentifier=//p')
+for fw in "$APP"/Contents/Frameworks/*.framework; do
+  [ -d "$fw" ] || continue
+  FW_TEAM=$(codesign -dv "$fw" 2>&1 | sed -n 's/^TeamIdentifier=//p')
+  [ "$FW_TEAM" = "$APP_TEAM" ] || { echo "ERROR: $(basename "$fw") Team ID '$FW_TEAM' differs from the app's '$APP_TEAM'"; exit 1; }
+  echo "signature ok: $(basename "$fw") (team: ${FW_TEAM:-none})"
+done
 codesign --verify --deep --strict --verbose=2 "$APP" || true
 echo "Built: $APP"
 echo "Run:   open \"$APP\""
