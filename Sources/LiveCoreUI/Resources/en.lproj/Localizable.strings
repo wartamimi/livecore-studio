@@ -292,3 +292,4 @@
 "scene.shape.circle" = "Circle";
 "scene.shape.input_name" = "Shape";
 "overlay.help" = "Click: show on Preview (orange); CUT/AUTO takes it to Program. Two-finger / right click: straight to Program (green).";
+"lottie.add" = "Lottie (.json / .lottie)…";

@@ -233,6 +233,17 @@ public final class AppModel: ObservableObject {
         reloadAudioChannels()
     }
 
+    public func addLottie() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [UTType.json] + [UTType(filenameExtension: "lottie")].compactMap { $0 }
+        guard panel.runModal() == .OK else { return }
+        for url in panel.urls { engine?.addLottie(url: url) }
+    }
+
+    public func lottie(_ id: InputID) -> LottieSource? { engine?.source(id) as? LottieSource }
+
     public func addClips(to id: InputID) {
         guard let v = videoFile(id) else { return }
         let urls = pickMedia()

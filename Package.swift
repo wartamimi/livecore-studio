@@ -25,11 +25,18 @@ let package = Package(
         .library(name: "LiveCoreEngine", targets: ["LiveCoreEngine"]),
         .library(name: "LiveCoreUI", targets: ["LiveCoreUI"]),
     ],
+    dependencies: [
+        // Lottie animation player (Apache-2.0), precompiled XCFramework; macOS only.
+        .package(url: "https://github.com/airbnb/lottie-spm.git", exact: "4.6.1"),
+    ],
     targets: [
         .target(name: "CAtomics"),
         .target(name: "CObjCSupport"),   // NSException guard for capture-driver calls (Apple only)
         .target(name: "LiveCoreCore", dependencies: ["CAtomics"]),
-        .target(name: "LiveCoreEngine", dependencies: ["LiveCoreCore", "CAtomics", "CObjCSupport"]),
+        .target(name: "LiveCoreEngine", dependencies: [
+            "LiveCoreCore", "CAtomics", "CObjCSupport",
+            .product(name: "Lottie", package: "lottie-spm", condition: .when(platforms: [.macOS])),
+        ]),
         .target(
             name: "LiveCoreUI",
             dependencies: ["LiveCoreEngine", "LiveCoreCore"],

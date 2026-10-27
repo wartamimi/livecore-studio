@@ -45,6 +45,11 @@ APP="build/DerivedData/Build/Products/$XC_CONFIG/LiveCoreStudio.app"
 echo "== Verify bundle"
 plutil -p "$APP/Contents/Info.plist" | grep -E "NSCameraUsage|NSMicrophoneUsage|LSMinimumSystemVersion"
 lipo -archs "$APP/Contents/MacOS/LiveCoreStudio"
+# Every @rpath framework the app links (Lottie) must be embedded, or the app cannot launch.
+for fw in $(otool -L "$APP/Contents/MacOS/LiveCoreStudio" | awk '/@rpath\/.*\.framework/{print $1}' | sed -E 's#@rpath/([^/]+\.framework).*#\1#' | sort -u); do
+  [ -d "$APP/Contents/Frameworks/$fw" ] || { echo "ERROR: $fw is linked but not embedded in the app"; exit 1; }
+  echo "embedded: $fw"
+done
 codesign --verify --deep --strict --verbose=2 "$APP" || true
 echo "Built: $APP"
 echo "Run:   open \"$APP\""

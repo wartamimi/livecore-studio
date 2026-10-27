@@ -68,6 +68,7 @@ struct InputPanelView: View {
             Button(L10n.t("media.add")) { model.addMedia() }
             Button(L10n.t("media.add_playlist")) { model.addMediaPlaylist() }
             Button(L10n.t("inputs.image")) { model.addImage() }
+            Button(L10n.t("lottie.add")) { model.addLottie() }
             Button(L10n.t("inputs.title_generator")) { showTitleSheet = true }
             Button(L10n.t("capture.add")) { showCaptureSheet = true }
             Button(L10n.t("browser.add")) { showBrowserSheet = true }
@@ -134,6 +135,17 @@ struct InputPanelView: View {
             Menu(L10n.t("autoplay.title")) {
                 ForEach(VideoFileSource.AutoPlay.allCases, id: \.self) { m in
                     Button((v.autoPlay == m ? "✓ " : "") + L10n.t("autoplay." + m.rawValue)) { model.setAutoPlay(m, for: info.id) }
+                }
+            }
+        }
+        if info.kind == .lottie, let l = model.lottie(info.id) {
+            Button("Play") { l.play() }
+            Button("Pause") { l.pause() }
+            Button("Restart") { l.restart() }
+            Toggle(L10n.t("video.loop"), isOn: Binding(get: { l.loop }, set: { l.loop = $0; model.objectWillChange.send() }))
+            Menu(L10n.t("autoplay.title")) {
+                ForEach(VideoFileSource.AutoPlay.allCases, id: \.self) { m in
+                    Button((l.autoPlay == m ? "✓ " : "") + L10n.t("autoplay." + m.rawValue)) { model.setAutoPlay(m, for: info.id) }
                 }
             }
         }
@@ -205,6 +217,7 @@ struct InputTile: View {
         case .timer: return "timer"
         case .screen: return "macwindow"
         case .replay: return "gobackward"
+        case .lottie: return "sparkles"
         }
     }
 }
