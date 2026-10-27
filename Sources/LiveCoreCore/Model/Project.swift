@@ -89,6 +89,8 @@ public struct ProjectInput: Codable, Equatable, Sendable {
     public var locked: Bool?
     /// Camera / capture card format and options (since 0.15.0; absent = automatic).
     public var capture: CaptureConfig?
+    /// Colour correction and flips (since 0.16.0; absent = unchanged).
+    public var adjust: InputAdjust?
 
     public init(id: InputID, name: String, source: ProjectSource, layers: [Layer] = [], chromaKey: ChromaKey? = nil) {
         self.id = id; self.name = name; self.source = source
@@ -178,6 +180,8 @@ public struct ProjectAudio: Codable, Equatable, Sendable {
     public var aux: [ProjectAuxBus]?
     /// Music players (absent in projects from before 0.7.0). Their mixer settings are in `channel`.
     public var music: [ProjectMusic]?
+    /// Test tone generators (since 0.16.0). Their mixer settings are in `channel`.
+    public var tones: [ProjectTone]?
     public init() {}
 }
 
@@ -276,6 +280,16 @@ public struct ProjectMediaRef: Codable, Equatable, Sendable {
 }
 
 /// Music input: playlist and options, with the settings of its mixer channel.
+public struct ProjectTone: Codable, Equatable, Sendable {
+    public var id: String
+    public var frequency: Double
+    public var levelDB: Double
+    public var channel: ProjectAudioChannel?
+    public init(id: String, frequency: Double = 1000, levelDB: Double = -18, channel: ProjectAudioChannel? = nil) {
+        self.id = id; self.frequency = frequency; self.levelDB = levelDB; self.channel = channel
+    }
+}
+
 public struct ProjectMusic: Codable, Equatable, Sendable {
     public var id: String
     public var name: String

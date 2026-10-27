@@ -356,3 +356,17 @@
 "audio.state" = "State";
 "audio.gain_reduction" = "Gain reduction";
 "audio.route_program" = "To Program (stream / recording)";
+"adjust.menu" = "Colour & Orientation…";
+"adjust.title" = "Colour & Orientation";
+"adjust.brightness" = "Brightness";
+"adjust.contrast" = "Contrast";
+"adjust.saturation" = "Saturation";
+"adjust.gamma" = "Gamma";
+"adjust.flip_h" = "Flip horizontally (mirror)";
+"adjust.flip_v" = "Flip vertically";
+"adjust.rotate_hint" = "Both flips together turn the picture 180° (a camera mounted upside down). Applies everywhere the input is used.";
+"adjust.reset" = "Reset";
+"tone.add" = "Test Tone (1 kHz)";
+"tone.name" = "Tone";
+"tone.frequency" = "Frequency";
+"tone.level" = "Level";

@@ -22,6 +22,9 @@ public final class MetalCompositor {
     private let keyPipeline: MTLRenderPipelineState
     private let straightPipeline: MTLRenderPipelineState
     private let styledPipeline: MTLRenderPipelineState
+    private let adjustPipeline: MTLRenderPipelineState
+    /// Corrected copies of adjusted inputs (render queue only), reused frame to frame.
+    private var adjustTextures: [InputID: MTLTexture] = [:]
     private let quadVertex: MTLFunction
     /// User shader for `TransitionKind.custom`; swapped from the main thread, read on the render queue.
     private let customLock = NSLock()
@@ -79,6 +82,7 @@ public final class MetalCompositor {
             keyPipeline = try pipeline("key_fragment", blend: true)
             straightPipeline = try pipeline("straight_fragment", blend: true)
             styledPipeline = try pipeline("styled_fragment", blend: true)
+            adjustPipeline = try pipeline("adjust_fragment", blend: false)
         } catch {
             throw CompositorError.pipeline(error.localizedDescription)
         }
@@ -156,6 +160,7 @@ public final class MetalCompositor {
     /// are safe to read/encode from then on.
     /// `keys` holds the enabled chroma keys, so thumbnails show the keyed picture too.
     public func render(plan: FramePlan, frames: [InputID: CVPixelBuffer],
+                       adjusts: [InputID: InputAdjust] = [:],
                        completion: @escaping (Result) -> Void) -> Bool {
         guard let cb = queue.makeCommandBuffer(), let programPool, let previewPool,
               let programPB = makeBuffer(programPool), let previewPB = makeBuffer(previewPool),
@@ -173,6 +178,32 @@ public final class MetalCompositor {
                 if Self.isTaggedStraight(pb) { straightSources.insert(id) }
             }
         }
+
+        // Colour correction / flips: each adjusted input is drawn once into its own texture, which
+        // then replaces the input everywhere in this frame (premultiplied from here on).
+        for (id, adj) in adjusts where !adj.isIdentity {
+            guard let entry = textures[id], let dst = adjustTexture(id, size: entry.1) else { continue }
+            let (src, size) = entry
+            let rp = passDescriptor(dst, load: .dontCare)
+            guard let enc = cb.makeRenderCommandEncoder(descriptor: rp) else { continue }
+            let a = adj.clamped
+            let u0: Float = a.flipHorizontal ? 1 : 0, u1: Float = a.flipHorizontal ? 0 : 1
+            let v0: Float = a.flipVertical ? 1 : 0, v1: Float = a.flipVertical ? 0 : 1
+            var verts = quad(dest: PixelRect(x: 0, y: 0, width: Double(size.width), height: Double(size.height)),
+                             uv: (u0, v0, u1, v1), canvas: size)
+            enc.setRenderPipelineState(adjustPipeline)
+            enc.setVertexBytes(&verts, length: MemoryLayout<Float>.stride * verts.count, index: 0)
+            var params = AdjustParamsGPU(brightness: Float(a.brightness), contrast: Float(a.contrast),
+                                         saturation: Float(a.saturation), invGamma: Float(1 / a.gamma),
+                                         straight: straightSources.contains(id) ? 1 : 0)
+            enc.setFragmentBytes(&params, length: MemoryLayout<AdjustParamsGPU>.stride, index: 0)
+            enc.setFragmentTexture(src, index: 0)
+            enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
+            enc.endEncoding()
+            textures[id] = (dst, size)
+            straightSources.remove(id)
+        }
+        for id in adjustTextures.keys where adjusts[id] == nil || adjusts[id]!.isIdentity { adjustTextures[id] = nil }
 
         // Stinger clip on top of everything. Decoders tag alpha as straight or premultiplied;
         // untagged clips are treated as straight (what ProRes 4444 / HEVC-alpha exports normally are).
@@ -261,6 +292,23 @@ public final class MetalCompositor {
     static func hasStraightAlpha(_ pb: CVPixelBuffer) -> Bool {
         guard let mode = CVBufferCopyAttachment(pb, kCVImageBufferAlphaChannelModeKey, nil) as? String else { return true }
         return mode != (kCVImageBufferAlphaChannelMode_PremultipliedAlpha as String)
+    }
+
+    /// Matches `AdjustParams` in the shader (4 floats, 4 ints).
+    private struct AdjustParamsGPU {
+        var brightness: Float, contrast: Float, saturation: Float, invGamma: Float
+        var straight: Int32, pad0: Int32 = 0, pad1: Int32 = 0, pad2: Int32 = 0
+    }
+
+    private func adjustTexture(_ id: InputID, size: PixelSize) -> MTLTexture? {
+        if let t = adjustTextures[id], t.width == size.width, t.height == size.height { return t }
+        let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: max(1, size.width),
+                                                          height: max(1, size.height), mipmapped: false)
+        td.usage = [.renderTarget, .shaderRead]
+        td.storageMode = .private
+        let t = device.makeTexture(descriptor: td)
+        adjustTextures[id] = t
+        return t
     }
 
     private struct CustomParamsGPU { var progress: Float; var ratio: Float; var time: Float; var pad: Float = 0 }

@@ -36,6 +36,21 @@ enum ShaderSource {
         return acc * 0.25;
     }
 
+    // Input colour correction (LiveCoreCore.InputAdjust, same math): output is premultiplied.
+    struct AdjustParams { float brightness; float contrast; float saturation; float invGamma; int straight; int pad0; int pad1; int pad2; };
+    fragment float4 adjust_fragment(VOut in [[stage_in]], texture2d<float> tex [[texture(0)]],
+                                    constant AdjustParams &p [[buffer(0)]]) {
+        constexpr sampler s(address::clamp_to_edge, filter::linear);
+        float4 c = tex.sample(s, in.uv);
+        float a = c.a;
+        float3 rgb = p.straight != 0 ? c.rgb : (a > 0.0 ? c.rgb / a : float3(0.0));
+        rgb = pow(max(rgb, float3(0.0)), float3(p.invGamma));
+        rgb = (rgb - 0.5) * p.contrast + 0.5 + p.brightness;
+        float l = dot(rgb, float3(0.2126, 0.7152, 0.0722));
+        rgb = clamp(l + (rgb - l) * p.saturation, 0.0, 1.0);
+        return float4(rgb * a, a);
+    }
+
     // Layer: textures are premultiplied BGRA; opacity scales all channels (premultiplied blend).
     fragment float4 layer_fragment(VOut in [[stage_in]], texture2d<float> tex [[texture(0)]],
                                    constant float &opacity [[buffer(0)]]) {

@@ -12,7 +12,7 @@ awk '/= """[[:space:]]*$/{on=1; next} on && /^[[:space:]]*"""[[:space:]]*$/{exit
 [ -s "$OUT/LiveCoreShaders.metal" ] || { echo "could not extract shader source"; exit 1; }
 xcrun -sdk macosx metal -c "$OUT/LiveCoreShaders.metal" -o "$OUT/LiveCoreShaders.air"
 echo "Metal shaders compile: OK"
-for fn in quad_vertex smooth_sample layer_fragment key_fragment transition_fragment wipe_mask straight_fragment styled_fragment; do
+for fn in quad_vertex smooth_sample adjust_fragment layer_fragment key_fragment transition_fragment wipe_mask straight_fragment styled_fragment; do
   grep -q "$fn" "$OUT/LiveCoreShaders.metal" || { echo "missing function $fn"; exit 1; }
 done
 

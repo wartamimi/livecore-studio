@@ -98,3 +98,7 @@
 47. **Capture card**: pilihan format sebatas yang dilaporkan driver; deinterlace dan koreksi warna per input belum ada.
     Audio perangkat ditambahkan sebagai kanal mixer terpisah (bisa diatur di Properti Audio).
 48. **Properti audio**: perubahan delay melompat (tanpa crossfade), bisa terdengar klik bila diubah saat siaran.
+49. **Koreksi warna**: diterapkan pada piksel 8-bit sRGB (bukan linear), tanpa LUT / kurva / white balance. Chroma key
+    dihitung setelah koreksi warna. Balik hanya horizontal/vertikal (putar 90° belum ada).
+50. **Nada tes**: dibangkitkan oleh timer 5 ms; bila app sangat sibuk dalam waktu lama bisa terjadi putus (underrun
+    tercatat di Properti Audio).
