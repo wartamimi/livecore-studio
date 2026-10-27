@@ -6,6 +6,8 @@ public struct OverlayChannel: Equatable, Codable, Sendable {
     public var preset: LayoutPreset
     public var fadeDuration: Double
     public private(set) var isOn: Bool = false
+    /// Shown on Preview only (vMix "overlay to preview"); the next CUT/AUTO takes it to Program.
+    public var onPreview: Bool = false
     // Fade state
     private var fadeStart: Double = 0
     private var fadeFrom: Double = 0
@@ -30,4 +32,14 @@ public struct OverlayChannel: Equatable, Codable, Sendable {
     }
 
     public func isVisible(at now: Double) -> Bool { source != nil && opacity(at: now) > 0.001 }
+
+    /// Moves an overlay that is waiting on Preview to Program (fading in). Returns true if it moved.
+    @discardableResult
+    public mutating func takeToProgram(now: Double) -> Bool {
+        guard onPreview else { return false }
+        onPreview = false
+        guard source != nil else { return false }
+        set(on: true, now: now)
+        return true
+    }
 }

@@ -32,6 +32,33 @@ enum ShaderSource {
         return float4(c.rgb * c.a, c.a) * opacity;
     }
 
+    // Layer with rounded corners / ellipse mask and border (LiveCoreCore.LayerStyle). Distances are
+    // in target pixels; in.position is the pixel centre, origin top-left.
+    struct StyleParams { float4 maskRect; float4 borderColor; float opacity; float radius; float border; int ellipse; int premultiply; };
+
+    fragment float4 styled_fragment(VOut in [[stage_in]], texture2d<float> tex [[texture(0)]],
+                                    constant StyleParams &p [[buffer(0)]]) {
+        constexpr sampler s(address::clamp_to_edge, filter::linear);
+        float4 c = tex.sample(s, in.uv);
+        if (p.premultiply != 0) { c = float4(c.rgb * c.a, c.a); }
+        float2 halfSize = max(p.maskRect.zw * 0.5, float2(0.5));
+        float2 rel = in.position.xy - (p.maskRect.xy + halfSize);
+        float d;   // signed distance to the shape edge, negative inside
+        if (p.ellipse != 0) {
+            d = (length(rel / halfSize) - 1.0) * min(halfSize.x, halfSize.y);
+        } else {
+            float r = min(p.radius, min(halfSize.x, halfSize.y));
+            float2 q = abs(rel) - (halfSize - r);
+            d = length(max(q, float2(0.0))) + min(max(q.x, q.y), 0.0) - r;
+        }
+        float inside = clamp(0.5 - d, 0.0, 1.0);
+        if (p.border > 0.0) {
+            float picture = clamp(0.5 - (d + p.border), 0.0, 1.0);
+            c = mix(float4(p.borderColor.rgb, 1.0), c, picture);
+        }
+        return c * (inside * p.opacity);
+    }
+
     // Chroma key (see LiveCoreCore.ChromaKey for the reference maths and parameter ranges).
     struct KeyParams { float opacity; float similarity; float smoothness; float spill; float2 keyChroma; float2 pad; };
 
