@@ -1,0 +1,23 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  linux-core:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: swift-actions/setup-swift@v2
+        with: { swift-version: "6.0" }
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: scripts/validate_linux.sh
+  macos-app:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen ffmpeg
+      - run: swift test
+      - run: scripts/rtmp_e2e_test.sh
+      - run: scripts/build_macos.sh release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LiveCoreStudio.app
+          path: build/DerivedData/Build/Products/Release/LiveCoreStudio.app

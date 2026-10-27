@@ -1,0 +1,68 @@
+# XcodeGen spec — generates LiveCoreStudio.xcodeproj (macOS app bundle with Info.plist,
+# entitlements, hardened runtime and code signing). Run: xcodegen generate
+name: LiveCoreStudio
+options:
+  bundleIdPrefix: studio.livecore
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+    ARCHS: "$(ARCHS_STANDARD)"          # arm64 + x86_64 (Universal) for Release
+    ONLY_ACTIVE_ARCH[config=Debug]: YES
+packages:
+  LiveCoreStudio:
+    path: .
+targets:
+  LiveCoreStudio:
+    type: application
+    platform: macOS
+    sources:
+      - path: App
+    dependencies:
+      - package: LiveCoreStudio
+        product: LiveCoreUI
+    info:
+      path: Config/Info.plist
+      properties:
+        CFBundleName: LiveCore Studio
+        CFBundleDisplayName: LiveCore Studio
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        CFBundleDevelopmentRegion: en
+        CFBundleLocalizations: [en, id]
+        LSApplicationCategoryType: public.app-category.video
+        LSMinimumSystemVersion: "13.0"
+        NSCameraUsageDescription: LiveCore Studio uses cameras and video capture devices as production inputs.
+        NSMicrophoneUsageDescription: LiveCore Studio uses microphones and audio interfaces as mixer inputs.
+        NSHighResolutionCapable: true
+        NSPrincipalClass: NSApplication
+        NSSupportsAutomaticGraphicsSwitching: false
+    entitlements:
+      path: Config/LiveCoreStudio.entitlements
+      properties:
+        com.apple.security.device.camera: true
+        com.apple.security.device.audio-input: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: studio.livecore.LiveCoreStudio
+        ENABLE_HARDENED_RUNTIME: YES
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: "-"          # ad-hoc by default; set your Developer ID for distribution
+        COMBINE_HIDPI_IMAGES: YES
+        GENERATE_INFOPLIST_FILE: NO
+schemes:
+  LiveCoreStudio:
+    build:
+      targets:
+        LiveCoreStudio: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - package: LiveCoreStudio/LiveCoreCoreTests
+    archive:
+      config: Release

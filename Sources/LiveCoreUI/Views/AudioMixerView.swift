@@ -1,0 +1,201 @@
+#if os(macOS)
+import SwiftUI
+import LiveCoreCore
+import LiveCoreEngine
+
+struct AudioMixerView: View {
+    @EnvironmentObject var model: AppModel
+    @EnvironmentObject var meters: MeterModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                SectionHeader(title: L10n.t("audio.title"))
+                Spacer()
+                Menu {
+                    ForEach(model.audioDevices) { d in Button(d.name) { model.addAudioInput(d) } }
+                } label: { Image(systemName: "plus.circle.fill") }
+                .menuStyle(.borderlessButton).fixedSize()
+                .help(L10n.t("audio.add"))
+            }
+            HStack(alignment: .top, spacing: 6) {
+                if model.audioChannels.isEmpty {
+                    Text(L10n.t("audio.none")).font(.system(size: 12)).foregroundStyle(Theme.textDim)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    ScrollView(.horizontal) {
+                        HStack(alignment: .top, spacing: 6) {
+                            ForEach(model.audioChannels) { ch in
+                                ChannelStripView(vm: ch, level: meters.levels[ch.id])
+                            }
+                        }
+                    }
+                }
+                Divider()
+                MasterStripView()
+            }
+        }
+        .padding(8)
+        .panel()
+    }
+}
+
+struct ChannelStripView: View {
+    @EnvironmentObject var model: AppModel
+    @ObservedObject var vm: ChannelVM
+    let level: MeterModel.Level?
+    @State private var showDSP = false
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(vm.channel.name).font(.system(size: 10, weight: .semibold)).lineLimit(1).frame(width: 84)
+            HStack(spacing: 4) {
+                MeterView(levelDB: level?.l ?? -120, holdDB: level?.holdL ?? -120)
+                MeterView(levelDB: level?.r ?? -120, holdDB: level?.holdR ?? -120)
+                VerticalFader(value: $vm.fader)
+            }
+            .frame(height: 120)
+            Text(dbLabel).font(.system(size: 9).monospacedDigit()).foregroundStyle(Theme.textDim)
+            HStack(spacing: 3) {
+                toggle(L10n.t("audio.mute"), $vm.muted, Theme.program)
+                toggle(L10n.t("audio.solo"), $vm.solo, Theme.warning)
+                toggle(L10n.t("audio.pgm"), $vm.toProgram, Theme.accent)
+            }
+            Button(vm.compressor ? "\(L10n.t("audio.comp")) ●" : L10n.t("audio.comp")) { showDSP.toggle() }
+                .buttonStyle(.borderless).font(.system(size: 10))
+                .popover(isPresented: $showDSP) { DSPPopover(vm: vm, grDB: level?.gr ?? 0) }
+                .contextMenu { Button(L10n.t("inputs.remove"), role: .destructive) { model.removeAudioInput(vm.id) } }
+        }
+        .padding(4)
+        .background(Theme.panelRaised)
+        .clipShape(RoundedRectangle(cornerRadius: 5))
+    }
+
+    private var dbLabel: String {
+        let db = FaderLaw.db(forPosition: vm.fader)
+        return db <= -90 ? "-∞ dB" : String(format: "%+.1f dB", db)
+    }
+
+    private func toggle(_ label: String, _ b: Binding<Bool>, _ color: Color) -> some View {
+        Button(label) { b.wrappedValue.toggle() }
+            .font(.system(size: 9, weight: .bold))
+            .frame(width: 26, height: 18)
+            .background(b.wrappedValue ? color : Theme.panel)
+            .clipShape(RoundedRectangle(cornerRadius: 3))
+            .buttonStyle(.plain)
+    }
+}
+
+struct DSPPopover: View {
+    @ObservedObject var vm: ChannelVM
+    let grDB: Float
+    var body: some View {
+        Form {
+            Section("Input") {
+                LabeledContent("Gain") { Slider(value: $vm.gainDB, in: -24...24); Text(String(format: "%+.0f dB", vm.gainDB)).monospacedDigit() }
+                LabeledContent("Pan") { Slider(value: $vm.pan, in: -1...1) }
+            }
+            Section("Compressor") {
+                Toggle("Enabled", isOn: $vm.compressor)
+                LabeledContent("Threshold") { Slider(value: $vm.compThreshold, in: -50...0); Text(String(format: "%.0f dB", vm.compThreshold)).monospacedDigit() }
+                LabeledContent("Ratio") { Slider(value: $vm.compRatio, in: 1...20); Text(String(format: "%.1f:1", vm.compRatio)).monospacedDigit() }
+                LabeledContent("Gain reduction") { Text(String(format: "%.1f dB", grDB)).monospacedDigit() }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(width: 320)
+    }
+}
+
+struct MasterStripView: View {
+    @EnvironmentObject var model: AppModel
+    @EnvironmentObject var meters: MeterModel
+    @State private var masterFader = 0.75
+    @State private var monitor = 1.0
+    @State private var limiter = true
+
+    var body: some View {
+        VStack(spacing: 4) {
+            Text(L10n.t("audio.master")).font(.system(size: 10, weight: .heavy))
+            HStack(spacing: 4) {
+                MeterView(levelDB: meters.master.l, holdDB: meters.master.holdL)
+                MeterView(levelDB: meters.master.r, holdDB: meters.master.holdR)
+                VerticalFader(value: Binding(get: { masterFader }, set: { masterFader = $0
+                    model.engine?.mixer.master.faderDB.value = FaderLaw.db(forPosition: $0) }))
+            }
+            .frame(height: 120)
+            Toggle(L10n.t("audio.limiter"), isOn: Binding(get: { limiter }, set: { limiter = $0; model.engine?.mixer.limiterEnabled.value = $0 }))
+                .toggleStyle(.checkbox).font(.system(size: 10))
+            if meters.master.gr > 0.1 {
+                Text(String(format: "GR %.1f dB", meters.master.gr)).font(.system(size: 9)).foregroundStyle(Theme.warning)
+            }
+            HStack(spacing: 2) {
+                Image(systemName: "headphones").font(.system(size: 10))
+                Slider(value: Binding(get: { monitor }, set: { monitor = $0; model.engine?.mixer.monitorVolume.value = Float($0) }), in: 0...1)
+                    .frame(width: 70)
+            }
+            .help(L10n.t("audio.monitor"))
+        }
+        .padding(4)
+        .frame(width: 110)
+    }
+}
+
+/// Peak meter: green to -18 dBFS, yellow to -6, red above; peak-hold line.
+struct MeterView: View {
+    let levelDB: Float
+    let holdDB: Float
+    static let floor: Float = -60
+
+    var body: some View {
+        GeometryReader { geo in
+            let h = geo.size.height
+            ZStack(alignment: .bottom) {
+                Rectangle().fill(Color.black.opacity(0.5))
+                LinearGradient(stops: [
+                    .init(color: Theme.meterGreen, location: 0),
+                    .init(color: Theme.meterGreen, location: 0.69),
+                    .init(color: Theme.meterYellow, location: 0.7),
+                    .init(color: Theme.meterYellow, location: 0.89),
+                    .init(color: Theme.meterRed, location: 0.9),
+                ], startPoint: .bottom, endPoint: .top)
+                .mask(alignment: .bottom) { Rectangle().frame(height: h * Self.fraction(levelDB)) }
+                Rectangle().fill(holdDB > -6 ? Theme.meterRed : Color.white.opacity(0.8))
+                    .frame(height: 2)
+                    .offset(y: -h * Self.fraction(holdDB))
+                    .opacity(holdDB > Self.floor ? 1 : 0)
+            }
+        }
+        .frame(width: 8)
+        .clipShape(RoundedRectangle(cornerRadius: 2))
+    }
+
+    static func fraction(_ db: Float) -> CGFloat {
+        CGFloat(min(max((db - floor) / -floor, 0), 1))
+    }
+}
+
+struct VerticalFader: View {
+    @Binding var value: Double
+    var body: some View {
+        GeometryReader { geo in
+            let h = geo.size.height
+            ZStack(alignment: .bottom) {
+                Capsule().fill(Color.black.opacity(0.5)).frame(width: 4)
+                RoundedRectangle(cornerRadius: 2).fill(Theme.text)
+                    .frame(width: 22, height: 10)
+                    .offset(y: -CGFloat(value) * (h - 10))
+                    .shadow(radius: 1)
+            }
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0).onChanged { g in
+                value = min(max(1 - Double((g.location.y - 5) / (h - 10)), 0), 1)
+            })
+            .onTapGesture(count: 2) { value = 0.75 } // unity
+        }
+        .frame(width: 26)
+        .help("Double-click: 0 dB")
+    }
+}
+#endif

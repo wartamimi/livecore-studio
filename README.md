@@ -1,0 +1,69 @@
+# LiveCore Studio
+
+Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal, Core Audio, VideoToolbox) dengan
+workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
+tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
+
+> **Status: Milestone 1 — kode lengkap, belum terverifikasi di Mac.**
+> Logika inti (switcher, transisi, DSP audio, FLV/RTMP) lulus 47 unit test dan uji end-to-end RTMP ke server nyata
+> (ffmpeg) di Linux. Seluruh kode khusus macOS sudah ditulis dan lolos *syntax parse*, tetapi **belum dikompilasi atau
+> dijalankan di macOS** karena lingkungan pembuatan tidak memiliki Mac/Xcode. Milestone 1 baru dinyatakan selesai setelah
+> tes manual di `docs/TEST_PLAN.md` lulus di MacBook. Detail: `docs/TEST_RESULTS.md`.
+
+## Mulai cepat (di Mac)
+```bash
+brew install xcodegen ffmpeg
+swift test                        # 47 unit test inti
+scripts/rtmp_e2e_test.sh          # uji RTMP end-to-end ke server ffmpeg lokal
+scripts/build_macos.sh release    # generate Xcode project + build .app (Universal)
+open build/DerivedData/Build/Products/Release/LiveCoreStudio.app
+```
+Pengembangan di Xcode: `xcodegen generate && open LiveCoreStudio.xcodeproj` → skema *LiveCoreStudio* → ⌘R.
+Kebutuhan: macOS 13 Ventura+, Xcode 15+. Mac Intel (2017+) dan Apple Silicon.
+
+## Cara pakai singkat
+1. **+** di panel Inputs → kamera / file video / gambar / judul / warna. Izinkan akses kamera & mikrofon.
+2. Klik tile (atau tombol 1–9) → **Preview**. **CUT** (Space) atau **AUTO** (Return) → **Program**. Klik ganda tile = cut langsung.
+3. Mixer: **+** → mikrofon/interface. Fader, M (mute), S (solo ke monitor), PGM (routing), Comp (compressor), limiter master.
+4. Overlay 1–4: pilih sumber + layout (lower third, PiP), klik nomor untuk on/off (fade).
+5. ⚙︎ Settings → Stream: URL + key (disimpan di Keychain) → **Start Stream** (⌘L). **Start Recording** (⌘R).
+6. Jendela Program Output (ikon ⧉) dapat diseret ke monitor/proyektor eksternal → ⌃⌘F.
+
+## Struktur proyek
+```
+Package.swift                 SwiftPM (CAtomics, LiveCoreCore, LiveCoreEngine, LiveCoreUI, app, CLI, tests)
+project.yml                   XcodeGen → LiveCoreStudio.xcodeproj (Info.plist, entitlements, signing)
+App/                          Entry point @main
+Config/                       Info.plist, entitlements
+Sources/CAtomics/             C11 atomics (lock-free untuk thread real-time)
+Sources/LiveCoreCore/         Portabel & teruji: Switching/ Layout/ Audio/ Media/ RTMP/ Concurrency/ Model/ Util/
+Sources/LiveCoreEngine/       macOS: Sources/ (kamera, file, gambar, warna, teks) Render/ (Metal) Audio/ Encode/
+                              Output/ (streaming, recording) Devices/ System/ ProductionEngine.swift
+Sources/LiveCoreUI/           SwiftUI: AppModel, Views/, Theme, Shortcuts, Resources/{en,id}.lproj
+Sources/livecore-rtmp-push/   CLI validasi RTMP/FLV
+Tests/LiveCoreCoreTests/      Unit test
+scripts/                      build_macos.sh, bundle_spm_app.sh, rtmp_e2e_test.sh, validate_linux.sh
+docs/                         Dokumentasi (lihat di bawah)
+.github/workflows/ci.yml      CI Linux + macOS
+```
+
+## Dokumentasi
+| Dokumen | Isi |
+|---|---|
+| [ENVIRONMENT.md](docs/ENVIRONMENT.md) | Analisis lingkungan, target macOS, Intel vs Apple Silicon, pilihan framework, lisensi, risiko, kriteria MVP |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Modul, diagram, aliran video/audio/data, concurrency, timestamp, pixel format, desain UI |
+| [FEATURE_STATUS.md](docs/FEATURE_STATUS.md) | Implemented / partial / planned / blocked |
+| [TEST_PLAN.md](docs/TEST_PLAN.md) | Tes otomatis & manual (T-01…T-16) |
+| [TEST_RESULTS.md](docs/TEST_RESULTS.md) | Hasil aktual: Passed / Failed / Not tested / Blocked |
+| [KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | Batasan yang diketahui |
+| [RTMP_GUIDE.md](docs/RTMP_GUIDE.md) | Konfigurasi RTMP/RTMPS per platform |
+| [CAPTURE_DEVICES.md](docs/CAPTURE_DEVICES.md) | Perangkat yang didukung & cara menambah dukungan |
+| [PACKAGING.md](docs/PACKAGING.md) | Build, packaging, code signing, notarisasi |
+
+## Roadmap
+- **M1 Working MVP** (kode selesai, menunggu verifikasi Mac): input kamera/file/gambar/teks/warna, Preview/Program,
+  CUT/Dissolve/Fade/Wipe/T-bar, overlay & PiP dasar, mixer + compressor/limiter + meter, RTMP/RTMPS + reconnect, rekaman MP4/MOV.
+- **M2 Production Workflow**: audio file video ke mixer, resampler drift, noise gate/EQ, multiview, editor scene visual,
+  simpan/muat proyek, chroma key, browser source (dievaluasi), capture 4:2:0, optimasi performa.
+- **M3 Broadcast Expansion**: Blackmagic DeckLink, AJA/Magewell SDK, NDI, stinger & transisi lanjutan, output SDI/HDMI,
+  routing audio lanjutan (aux/mix-minus), multi-destination streaming, profil operator.

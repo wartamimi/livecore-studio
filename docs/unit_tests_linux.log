@@ -1,0 +1,104 @@
+# Run: 2026-10-27T01:25:21Z on Linux 6.18.44-fc-v165 x86_64, Swift version 6.0.3 (swift-6.0.3-RELEASE)
+Test Case 'AudioDSPTests.testChannelStripMuteFaderAndMeter' started at 2026-10-27 01:25:24.479
+Test Case 'AudioDSPTests.testChannelStripMuteFaderAndMeter' passed (0.001 seconds)
+Test Case 'AudioDSPTests.testCompressorReducesSteadyToneToExpectedLevel' started at 2026-10-27 01:25:24.481
+Test Case 'AudioDSPTests.testCompressorReducesSteadyToneToExpectedLevel' passed (0.017 seconds)
+Test Case 'AudioDSPTests.testCompressorStaticCurve' started at 2026-10-27 01:25:24.498
+Test Case 'AudioDSPTests.testCompressorStaticCurve' passed (0.0 seconds)
+Test Case 'AudioDSPTests.testDBConversions' started at 2026-10-27 01:25:24.498
+Test Case 'AudioDSPTests.testDBConversions' passed (0.0 seconds)
+Test Case 'AudioDSPTests.testFaderLawMonotonicAndRoundTrips' started at 2026-10-27 01:25:24.498
+Test Case 'AudioDSPTests.testFaderLawMonotonicAndRoundTrips' passed (0.0 seconds)
+Test Case 'AudioDSPTests.testGainRampIsClickFreeAndReachesTarget' started at 2026-10-27 01:25:24.498
+Test Case 'AudioDSPTests.testGainRampIsClickFreeAndReachesTarget' passed (0.0 seconds)
+Test Case 'AudioDSPTests.testLimiterNeverExceedsCeiling' started at 2026-10-27 01:25:24.498
+Test Case 'AudioDSPTests.testLimiterNeverExceedsCeiling' passed (0.002 seconds)
+Test Case 'AudioDSPTests.testMeterBallisticsDecayAndHold' started at 2026-10-27 01:25:24.500
+Test Case 'AudioDSPTests.testMeterBallisticsDecayAndHold' passed (0.0 seconds)
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.021 (0.021) seconds
+Test Case 'ClockAnchorTests.testAnchorMapsSampleIndexToHostTime' started at 2026-10-27 01:25:24.501
+Test Case 'ClockAnchorTests.testAnchorMapsSampleIndexToHostTime' passed (0.0 seconds)
+Test Case 'ClockAnchorTests.testAnchorReadsAreNeverTorn' started at 2026-10-27 01:25:24.501
+Test Case 'ClockAnchorTests.testAnchorReadsAreNeverTorn' passed (0.31 seconds)
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.31 (0.31) seconds
+Test Case 'ConcurrencyTests.testAtomicFloatStoreMaxAndExchange' started at 2026-10-27 01:25:24.811
+Test Case 'ConcurrencyTests.testAtomicFloatStoreMaxAndExchange' passed (0.004 seconds)
+Test Case 'ConcurrencyTests.testBackoffSchedule' started at 2026-10-27 01:25:24.815
+Test Case 'ConcurrencyTests.testBackoffSchedule' passed (0.001 seconds)
+Test Case 'ConcurrencyTests.testRedaction' started at 2026-10-27 01:25:24.816
+Test Case 'ConcurrencyTests.testRedaction' passed (0.001 seconds)
+Test Case 'ConcurrencyTests.testRingBufferConcurrentProducerConsumerPreservesOrder' started at 2026-10-27 01:25:24.817
+Test Case 'ConcurrencyTests.testRingBufferConcurrentProducerConsumerPreservesOrder' passed (0.032 seconds)
+Test Case 'ConcurrencyTests.testRingBufferRoundsCapacityAndWraps' started at 2026-10-27 01:25:24.849
+Test Case 'ConcurrencyTests.testRingBufferRoundsCapacityAndWraps' passed (0.0 seconds)
+Test Case 'ConcurrencyTests.testRingBufferUnderrunLeavesDestinationUntouched' started at 2026-10-27 01:25:24.849
+Test Case 'ConcurrencyTests.testRingBufferUnderrunLeavesDestinationUntouched' passed (0.0 seconds)
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.038 (0.038) seconds
+Test Case 'MediaTests.testAACConfigAndADTS' started at 2026-10-27 01:25:24.849
+Test Case 'MediaTests.testAACConfigAndADTS' passed (0.001 seconds)
+Test Case 'MediaTests.testAMF0KnownEncodingOfNumber' started at 2026-10-27 01:25:24.850
+Test Case 'MediaTests.testAMF0KnownEncodingOfNumber' passed (0.101 seconds)
+Test Case 'MediaTests.testAMF0RejectsTruncated' started at 2026-10-27 01:25:24.951
+Test Case 'MediaTests.testAMF0RejectsTruncated' passed (0.0 seconds)
+Test Case 'MediaTests.testAMF0RoundTrip' started at 2026-10-27 01:25:24.951
+Test Case 'MediaTests.testAMF0RoundTrip' passed (0.001 seconds)
+Test Case 'MediaTests.testAnnexBSplitAndAVCC' started at 2026-10-27 01:25:24.952
+Test Case 'MediaTests.testAnnexBSplitAndAVCC' passed (0.001 seconds)
+Test Case 'MediaTests.testDecoderConfigurationRecord' started at 2026-10-27 01:25:24.953
+Test Case 'MediaTests.testDecoderConfigurationRecord' passed (0.0 seconds)
+Test Case 'MediaTests.testFLVBodiesAndFileWriter' started at 2026-10-27 01:25:24.953
+Test Case 'MediaTests.testFLVBodiesAndFileWriter' passed (0.0 seconds)
+Test Case 'MediaTests.testSPSDimensions' started at 2026-10-27 01:25:24.953
+Test Case 'MediaTests.testSPSDimensions' passed (0.0 seconds)
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.104 (0.104) seconds
+Test Case 'RTMPTests.testBadHandshakeVersionFails' started at 2026-10-27 01:25:24.953
+Test Case 'RTMPTests.testBadHandshakeVersionFails' passed (0.002 seconds)
+Test Case 'RTMPTests.testChunkRoundTripAcrossChunkSizesAndExtendedTimestamps' started at 2026-10-27 01:25:24.955
+Test Case 'RTMPTests.testChunkRoundTripAcrossChunkSizesAndExtendedTimestamps' passed (0.012 seconds)
+Test Case 'RTMPTests.testConnectRejectedFails' started at 2026-10-27 01:25:24.967
+Test Case 'RTMPTests.testConnectRejectedFails' passed (0.002 seconds)
+Test Case 'RTMPTests.testOutputQueueDropsNonKeyVideoUnderCongestion' started at 2026-10-27 01:25:24.969
+Test Case 'RTMPTests.testOutputQueueDropsNonKeyVideoUnderCongestion' passed (0.001 seconds)
+Test Case 'RTMPTests.testPublishRejectedFailsWithScrubbedReason' started at 2026-10-27 01:25:24.970
+Test Case 'RTMPTests.testPublishRejectedFailsWithScrubbedReason' passed (0.002 seconds)
+Test Case 'RTMPTests.testReaderAppliesServerSetChunkSize' started at 2026-10-27 01:25:24.972
+Test Case 'RTMPTests.testReaderAppliesServerSetChunkSize' passed (0.0 seconds)
+Test Case 'RTMPTests.testReaderHandlesFmt1Fmt2Fmt3Headers' started at 2026-10-27 01:25:24.972
+Test Case 'RTMPTests.testReaderHandlesFmt1Fmt2Fmt3Headers' passed (0.0 seconds)
+Test Case 'RTMPTests.testSessionReachesPublishingAndSendsMedia' started at 2026-10-27 01:25:24.972
+Test Case 'RTMPTests.testSessionReachesPublishingAndSendsMedia' passed (0.001 seconds)
+Test Case 'RTMPTests.testTwoByteChunkStreamID' started at 2026-10-27 01:25:24.973
+Test Case 'RTMPTests.testTwoByteChunkStreamID' passed (0.0 seconds)
+Test Case 'RTMPTests.testURLParsing' started at 2026-10-27 01:25:24.974
+Test Case 'RTMPTests.testURLParsing' passed (0.0 seconds)
+Test Case 'RTMPTests.testVideoBeforePublishingThrows' started at 2026-10-27 01:25:24.974
+Test Case 'RTMPTests.testVideoBeforePublishingThrows' passed (0.0 seconds)
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.021 (0.021) seconds
+Test Case 'SettingsTests.testDefaultSettingsAreValidAndCodable' started at 2026-10-27 01:25:24.974
+Test Case 'SettingsTests.testDefaultSettingsAreValidAndCodable' passed (0.002 seconds)
+Test Case 'SettingsTests.testFileNaming' started at 2026-10-27 01:25:24.976
+Test Case 'SettingsTests.testFileNaming' passed (0.0 seconds)
+Test Case 'SettingsTests.testValidationCatchesBadValues' started at 2026-10-27 01:25:24.976
+Test Case 'SettingsTests.testValidationCatchesBadValues' passed (0.101 seconds)
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.103 (0.103) seconds
+Test Case 'SwitcherTests.testAutoTransitionProgressesAndCompletes' started at 2026-10-27 01:25:25.077
+Test Case 'SwitcherTests.testAutoTransitionProgressesAndCompletes' passed (0.101 seconds)
+Test Case 'SwitcherTests.testAutoWithCutKindIsInstant' started at 2026-10-27 01:25:25.178
+Test Case 'SwitcherTests.testAutoWithCutKindIsInstant' passed (0.101 seconds)
+Test Case 'SwitcherTests.testCutDuringTransitionCompletesIt' started at 2026-10-27 01:25:25.279
+Test Case 'SwitcherTests.testCutDuringTransitionCompletesIt' passed (0.101 seconds)
+Test Case 'SwitcherTests.testCutSwapsPreviewAndProgram' started at 2026-10-27 01:25:25.380
+Test Case 'SwitcherTests.testCutSwapsPreviewAndProgram' passed (0.0 seconds)
+Test Case 'SwitcherTests.testFramePlanDuringTransitionAndOverlays' started at 2026-10-27 01:25:25.381
+Test Case 'SwitcherTests.testFramePlanDuringTransitionAndOverlays' passed (0.001 seconds)
+Test Case 'SwitcherTests.testLayoutMath' started at 2026-10-27 01:25:25.381
+Test Case 'SwitcherTests.testLayoutMath' passed (0.0 seconds)
+Test Case 'SwitcherTests.testOverlayFadeInOut' started at 2026-10-27 01:25:25.381
+Test Case 'SwitcherTests.testOverlayFadeInOut' passed (0.0 seconds)
+Test Case 'SwitcherTests.testRemovingOnAirInputGoesToBlackWithoutCrash' started at 2026-10-27 01:25:25.381
+Test Case 'SwitcherTests.testRemovingOnAirInputGoesToBlackWithoutCrash' passed (0.0 seconds)
+Test Case 'SwitcherTests.testTBarManualTransition' started at 2026-10-27 01:25:25.382
+Test Case 'SwitcherTests.testTBarManualTransition' passed (0.0 seconds)
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.304 (0.304) seconds
+	 Executed 47 tests, with 0 failures (0 unexpected) in 0.901 (0.901) seconds
+	 Executed 47 tests, with 0 failures (0 unexpected) in 0.901 (0.901) seconds
