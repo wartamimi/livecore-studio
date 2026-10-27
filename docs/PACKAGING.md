@@ -1,7 +1,7 @@
 # Membangun, Packaging & Code Signing di Mac
 
 ## Prasyarat
-- macOS 13+; **Xcode 15+ lengkap** (Swift 5.9+). Command Line Tools saja tidak cukup (tidak ada `xcodebuild`, SDK lengkap, XCTest).
+- macOS 13+ untuk menjalankan app; untuk build: **Xcode 16+ lengkap** (XcodeGen terbaru menghasilkan format proyek Xcode 16; Xcode 15.4 hanya bisa build lewat `swift build`/`scripts/bundle_spm_app.sh`) (Swift 5.9+). Command Line Tools saja tidak cukup (tidak ada `xcodebuild`, SDK lengkap, XCTest).
   Setelah memasang Xcode: `sudo xcode-select -s /Applications/Xcode.app/Contents/Developer`,
   `sudo xcodebuild -license accept`, `xcodebuild -runFirstLaunch`, lalu verifikasi `xcodebuild -version`.
 - `brew install xcodegen ffmpeg` (ffmpeg hanya untuk tes).

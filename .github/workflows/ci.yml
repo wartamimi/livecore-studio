@@ -18,11 +18,11 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg
       - run: scripts/ci_run.sh linux-validate scripts/validate_linux.sh
   macos-app:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - run: brew install xcodegen ffmpeg
-      - run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer || true
+      - run: xcodebuild -version && xcodegen --version
       - run: scripts/ci_run.sh macos-swift-build swift build --build-tests
       - run: scripts/ci_run.sh macos-swift-test swift test
       - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
