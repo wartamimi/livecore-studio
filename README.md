@@ -4,7 +4,11 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.24.0 — Milestone 3 berjalan.** 0.24.0 menambah output NDI®: tiap output bisa dikirim sebagai sumber NDI
+> **Status: 0.25.0 — Milestone 3 berjalan.** 0.25.0 menambah Layer Designer di monitor Preview (geser/ubah ukuran
+> langsung dengan snapping, crop dengan menarik tepi — Shift untuk simetris —, bingkai, sudut melengkung, sembunyikan/kunci
+> layer, Flatten Layers, dan tata letak tersimpan sebagai template), tombol FULLSCREEN ala vMix di bar atas dengan ⚙ untuk
+> memilih layar dan gambar tiap output (layar ke-2/ke-3), tombol FOTO seukuran RECORD, transisi awal Dissolve, dan dock
+> Playlist yang baru muncul setelah ada playlist — menunggu tes T-96..T-100. 0.24.0 menambah output NDI®: tiap output bisa dikirim sebagai sumber NDI
 > "LiveCore Output N", sehingga Zoom/Meet bisa memakai LiveCore lewat kamera "NDI Virtual Camera" dari NDI Tools tanpa OBS.
 > LiveCore memakai runtime NDI yang sudah terpasang (NDI Tools / NDI Runtime) dan tidak menyertakannya. CI membuktikan proses
 > lain menemukan sumber NDI dan menerima frame-nya — menunggu tes T-93..T-95 di Mac. 0.23.0 memperbaiki Syphon (frame dikirim sejak awal, Output 1 otomatis

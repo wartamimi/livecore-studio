@@ -237,7 +237,7 @@
 "bus.output" = "Audio bus";
 "bus.note" = "Master is the Program mix. Bus A/B are the aux buses from the mixer (use the A/B send buttons on each channel), e.g. a recording without music or a different mix per platform.";
 "fullscreen.button" = "Fullscreen output";
-"fullscreen.help" = "Show Program fullscreen on the chosen display (Esc to exit). Right-click to choose the display.";
+"fullscreen.help" = "Show this output full screen on the chosen display (Esc closes it). Right-click to pick the display.";
 "fullscreen.display" = "Output display";
 "fullscreen.none" = "No display found";
 "midi.fullscreen" = "Fullscreen output";
@@ -496,3 +496,39 @@
 "output.ndi_missing" = "The NDI runtime was not found. Install NDI Tools or the NDI Runtime, then restart LiveCore Studio.";
 "output.ndi_download" = "Download the NDI Runtime (ndi.link)";
 "output.ndi_trademark" = "NDI® is a registered trademark of Vizrt NDI AB.";
+
+/* 0.25.0: FULLSCREEN, photo button, Layer Designer */
+"fullscreen.big" = "FULLSCREEN";
+"fullscreen.big_help" = "Open the ticked outputs full screen on their displays (2nd, 3rd screen…), or close them all. ⚙ picks the display and the picture";
+"fullscreen.settings" = "Fullscreen settings: display and picture of each output";
+"fullscreen.col_display" = "DISPLAY";
+"fullscreen.col_source" = "PICTURE";
+"fullscreen.main" = "this screen";
+"fullscreen.use_help" = "Ticked: the FULLSCREEN button opens this output";
+"fullscreen.one_display" = "Only one display is connected: fullscreen would cover this screen (Esc closes it). Connect a second or third display, TV or projector.";
+"fullscreen.settings_hint" = "Each output can go to its own display: e.g. Output 1 = Program on the projector, Output 2 = one camera on a TV. The button on the right opens or closes a single output.";
+"snapshot.button_big" = "PHOTO";
+"designer.button" = "LAYERS";
+"designer.help" = "Layer Designer: move, resize and crop the layers of the Preview input right on the picture";
+"designer.close" = "Close the Layer Designer";
+"designer.mode_position" = "Move and resize";
+"designer.mode_crop" = "Crop";
+"designer.mode_help" = "Move/resize or crop with the handles";
+"designer.resize_help" = "Drag to resize (corners keep the shape; Shift = free). Hold ⌘ to turn snapping off";
+"designer.crop_help" = "Drag to crop this edge; hold Shift to crop both sides equally";
+"designer.snap" = "Snapping to the edges, centre and other layers (hold ⌘ while dragging to turn it off)";
+"designer.style" = "Border, corners and crop";
+"designer.visible" = "Show / hide this layer";
+"designer.lock" = "Lock this layer's position and size";
+"designer.hidden" = "hidden";
+"designer.flatten" = "Flatten layers: wherever this input is used as one picture (layer, overlay, output), all its layers are one image, so crop, border and overlay animations apply to all of them";
+"designer.layers_help" = "Pick the layer to edit, add a layer or remove it";
+"designer.no_layer" = "No layer";
+"designer.remove_layer" = "Remove this layer";
+"designer.templates" = "Saved layouts";
+"designer.template_save" = "Save layout as template…";
+"designer.template_name" = "Name of the layout:";
+"designer.template_apply" = "Apply “%@”";
+"designer.template_delete" = "Delete layout";
+"designer.crop_values" = "Crop: left %.0f%%  top %.0f%%  right %.0f%%  bottom %.0f%%";
+"designer.crop_reset" = "Remove crop";

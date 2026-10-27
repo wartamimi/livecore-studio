@@ -22,10 +22,13 @@ public final class FullscreenOutput: ObservableObject {
 
     private let idKey: String
     private let nameKey: String
+    private let extraIndex: Int
 
     /// `keyPrefix` keeps each output's chosen display apart ("fullscreen" = the Program output).
-    public init(feed: FrameFeed, keyPrefix: String = "fullscreen") {
+    /// `extraIndex`: which external display is used until one is chosen (0 = the first).
+    public init(feed: FrameFeed, keyPrefix: String = "fullscreen", extraIndex: Int = 0) {
         self.feed = feed
+        self.extraIndex = extraIndex
         idKey = keyPrefix + ".displayID"
         nameKey = keyPrefix + ".displayName"
         refreshDisplays()
@@ -42,7 +45,7 @@ public final class FullscreenOutput: ObservableObject {
         let d = UserDefaults.standard
         let savedID = d.object(forKey: idKey) as? Int
         return OutputDisplayPicker.choose(savedID: savedID.map { UInt32(truncatingIfNeeded: $0) },
-                                          savedName: d.string(forKey: nameKey), displays: displays)
+                                          savedName: d.string(forKey: nameKey), displays: displays, extraIndex: extraIndex)
     }
 
     public func select(_ display: DisplayInfo) {
@@ -53,6 +56,9 @@ public final class FullscreenOutput: ObservableObject {
     }
 
     public func toggle() { isActive ? close() : open() }
+
+    /// Re-reads the connected displays (the FULLSCREEN settings refresh it when shown).
+    public func reloadDisplays() { refreshDisplays() }
 
     public func open() {
         refreshDisplays()

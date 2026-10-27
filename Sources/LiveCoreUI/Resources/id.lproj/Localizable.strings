@@ -237,7 +237,7 @@
 "bus.output" = "Bus audio";
 "bus.note" = "Master adalah mix Program. Bus A/B adalah bus aux dari mixer (pakai tombol kirim A/B di tiap channel), misalnya rekaman tanpa musik atau mix berbeda per platform.";
 "fullscreen.button" = "Output fullscreen";
-"fullscreen.help" = "Tampilkan Program penuh layar di layar pilihan (Esc untuk keluar). Klik kanan untuk memilih layar.";
+"fullscreen.help" = "Tampilkan output ini penuh layar di layar pilihan (Esc untuk keluar). Klik kanan untuk memilih layar.";
 "fullscreen.display" = "Layar output";
 "fullscreen.none" = "Tidak ada layar";
 "midi.fullscreen" = "Output fullscreen";
@@ -496,3 +496,39 @@
 "output.ndi_missing" = "Runtime NDI tidak ditemukan. Pasang NDI Tools atau NDI Runtime, lalu buka ulang LiveCore Studio.";
 "output.ndi_download" = "Unduh NDI Runtime (ndi.link)";
 "output.ndi_trademark" = "NDI® adalah merek dagang terdaftar milik Vizrt NDI AB.";
+
+/* 0.25.0: FULLSCREEN, tombol foto, Layer Designer */
+"fullscreen.big" = "FULLSCREEN";
+"fullscreen.big_help" = "Buka output yang dicentang penuh layar di layarnya masing-masing (layar ke-2, ke-3…), atau tutup semuanya. ⚙ untuk memilih layar dan gambarnya";
+"fullscreen.settings" = "Setelan fullscreen: layar dan gambar tiap output";
+"fullscreen.col_display" = "LAYAR";
+"fullscreen.col_source" = "GAMBAR";
+"fullscreen.main" = "layar ini";
+"fullscreen.use_help" = "Dicentang: tombol FULLSCREEN membuka output ini";
+"fullscreen.one_display" = "Hanya satu layar terhubung: fullscreen akan menutupi layar ini (Esc untuk menutup). Sambungkan layar kedua atau ketiga, TV, atau proyektor.";
+"fullscreen.settings_hint" = "Tiap output bisa ke layarnya sendiri, misalnya Output 1 = Program di proyektor, Output 2 = satu kamera di TV. Tombol di kanan membuka atau menutup satu output saja.";
+"snapshot.button_big" = "FOTO";
+"designer.button" = "LAYER";
+"designer.help" = "Layer Designer: geser, ubah ukuran, dan crop layer input Preview langsung di gambar";
+"designer.close" = "Tutup Layer Designer";
+"designer.mode_position" = "Geser dan ubah ukuran";
+"designer.mode_crop" = "Crop";
+"designer.mode_help" = "Pegangan untuk geser/ubah ukuran atau untuk crop";
+"designer.resize_help" = "Tarik untuk mengubah ukuran (sudut menjaga bentuk; Shift = bebas). Tahan ⌘ untuk mematikan snapping";
+"designer.crop_help" = "Tarik untuk memotong tepi ini; tahan Shift untuk memotong dua sisi sama besar";
+"designer.snap" = "Snapping ke tepi, tengah dan layer lain (tahan ⌘ saat menarik untuk mematikannya)";
+"designer.style" = "Bingkai, sudut, dan crop";
+"designer.visible" = "Tampilkan / sembunyikan layer ini";
+"designer.lock" = "Kunci posisi dan ukuran layer ini";
+"designer.hidden" = "tersembunyi";
+"designer.flatten" = "Flatten layers: di mana pun input ini dipakai sebagai satu gambar (layer, overlay, output), semua layernya menjadi satu gambar, jadi crop, bingkai, dan animasi overlay berlaku untuk semuanya";
+"designer.layers_help" = "Pilih layer yang diedit, tambah layer, atau hapus";
+"designer.no_layer" = "Tidak ada layer";
+"designer.remove_layer" = "Hapus layer ini";
+"designer.templates" = "Tata letak tersimpan";
+"designer.template_save" = "Simpan tata letak sebagai template…";
+"designer.template_name" = "Nama tata letak:";
+"designer.template_apply" = "Terapkan “%@”";
+"designer.template_delete" = "Hapus tata letak";
+"designer.crop_values" = "Crop: kiri %.0f%%  atas %.0f%%  kanan %.0f%%  bawah %.0f%%";
+"designer.crop_reset" = "Hapus crop";

@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 APP="${1:-build/DerivedData/Build/Products/Release/LiveCoreStudio.app}"
-OUT="${2:-build/LiveCoreStudio-0.24.0-unsigned.dmg}"
+OUT="${2:-build/LiveCoreStudio-0.25.0-unsigned.dmg}"
 [ -d "$APP" ] || { echo "App not found: $APP (run scripts/build_macos.sh release first)"; exit 1; }
 STAGE="$(mktemp -d)"
 cp -R "$APP" "$STAGE/"

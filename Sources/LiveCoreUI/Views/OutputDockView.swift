@@ -31,7 +31,7 @@ struct OutputDockView: View {
                     Label(L10n.t("dock.record"), systemImage: model.isRecording ? "stop.circle.fill" : "record.circle")
                 }
                 .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isRecording))
-                .frame(width: 120)
+                .frame(width: StudioButtonStyle.mainWidth)
                 .disabled(model.recordLocked)
                 gear($showRecord, help: L10n.t("dock.record_settings")) {
                     VStack(alignment: .leading, spacing: 10) {
@@ -49,7 +49,7 @@ struct OutputDockView: View {
                     Label(L10n.t("dock.stream"), systemImage: "dot.radiowaves.left.and.right")
                 }
                 .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isStreamingActive))
-                .frame(width: 120)
+                .frame(width: StudioButtonStyle.mainWidth)
                 .disabled(model.streamLocked)
                 gear($showStream, help: L10n.t("dock.stream_settings")) {
                     VStack(alignment: .leading, spacing: 10) {
@@ -65,7 +65,7 @@ struct OutputDockView: View {
                     Label(L10n.t("dock.external"), systemImage: "rectangle.portrait.and.arrow.right")
                 }
                 .buttonStyle(StudioButtonStyle(color: Theme.accent, active: model.externalActive))
-                .frame(width: 130)
+                .frame(width: StudioButtonStyle.mainWidth)
                 .help(L10n.t("dock.external_help"))
                 gear($showExternal, help: L10n.t("dock.external_settings")) {
                     ExternalSettingsView().padding(12).frame(width: 640)

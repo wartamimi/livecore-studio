@@ -13,6 +13,9 @@ struct MainView: View {
     @AppStorage("dock.monitors.minimized") private var monitorsMin = false
     @AppStorage("dock.playlist.minimized") private var playlistMin = false
 
+    /// The Playlist dock appears once a music playlist or a video (playlist) input exists.
+    private var showPlaylist: Bool { !model.musicInputs.isEmpty || model.inputs.contains { $0.kind == .videoFile } }
+
     var body: some View {
         Group {
             if let err = model.startupError {
@@ -46,28 +49,32 @@ struct MainView: View {
                                             .dockHandle { monitorsMin = true }
                                             .frame(minHeight: 300)
                                     }
-                                    if !(mixerMin && playlistMin) {
+                                    if !(mixerMin && (playlistMin || !showPlaylist)) {
                                         HStack(alignment: .top, spacing: 6) {
                                             if mixerMin {
                                                 DockBar(title: L10n.t("audio.title"), axis: .vertical) { mixerMin = false }
                                             } else {
                                                 AudioMixerView().dockHandle { mixerMin = true }
                                             }
-                                            if playlistMin {
-                                                DockBar(title: L10n.t("playlist.dock"), axis: .vertical) { playlistMin = false }
-                                            } else {
-                                                PlaylistDockView()
-                                                    .dockHandle { playlistMin = true }
-                                                    .frame(width: 290)
+                                            if showPlaylist {
+                                                if playlistMin {
+                                                    DockBar(title: L10n.t("playlist.dock"), axis: .vertical) { playlistMin = false }
+                                                } else {
+                                                    PlaylistDockView()
+                                                        .dockHandle { playlistMin = true }
+                                                        .frame(width: 290)
+                                                }
                                             }
                                         }
                                         .frame(minHeight: 230, idealHeight: 280)
                                     }
                                 }
-                                if mixerMin && playlistMin {
+                                if mixerMin && (playlistMin || !showPlaylist) {
                                     HStack(spacing: 6) {
                                         DockBar(title: L10n.t("audio.title"), axis: .horizontal) { mixerMin = false }
-                                        DockBar(title: L10n.t("playlist.dock"), axis: .horizontal) { playlistMin = false }
+                                        if showPlaylist {
+                                            DockBar(title: L10n.t("playlist.dock"), axis: .horizontal) { playlistMin = false }
+                                        }
                                     }
                                 }
                             }

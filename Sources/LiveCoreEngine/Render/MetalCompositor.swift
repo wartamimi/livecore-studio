@@ -25,6 +25,8 @@ public final class MetalCompositor {
     private let adjustPipeline: MTLRenderPipelineState
     /// Corrected copies of adjusted inputs (render queue only), reused frame to frame.
     private var adjustTextures: [InputID: MTLTexture] = [:]
+    /// Per flattened input: its layers drawn into one picture (`FramePlan.flatten`).
+    private var flattenTextures: [InputID: MTLTexture] = [:]
     private let quadVertex: MTLFunction
     /// User shader for `TransitionKind.custom`; swapped from the main thread, read on the render queue.
     private let customLock = NSLock()
@@ -217,6 +219,18 @@ public final class MetalCompositor {
         }
         for id in adjustTextures.keys where adjusts[id] == nil || adjusts[id]!.isIdentity { adjustTextures[id] = nil }
 
+        // Flattened inputs (Layer Designer): all their layers drawn into one transparent image,
+        // which replaces the input's picture for the rest of the frame (contained inputs first).
+        for pass in plan.flatten {
+            guard let dst = flattenTexture(pass.input) else { continue }
+            drawComposition(cb, target: dst, size: outputSize, layers: pass.layers, textures: textures,
+                            load: .clear, transparent: true, straight: straightSources)
+            textures[pass.input] = (dst, outputSize)
+            straightSources.remove(pass.input)
+        }
+        let flattened = Set(plan.flatten.map(\.input))
+        for id in flattenTextures.keys where !flattened.contains(id) { flattenTextures[id] = nil }
+
         // Stinger clip on top of everything. Decoders tag alpha as straight or premultiplied;
         // untagged clips are treated as straight (what ProRes 4444 / HEVC-alpha exports normally are).
         var top: [DrawCommand] = []
@@ -329,6 +343,17 @@ public final class MetalCompositor {
     private struct AdjustParamsGPU {
         var brightness: Float, contrast: Float, saturation: Float, invGamma: Float
         var straight: Int32, pad0: Int32 = 0, pad1: Int32 = 0, pad2: Int32 = 0
+    }
+
+    private func flattenTexture(_ id: InputID) -> MTLTexture? {
+        if let t = flattenTextures[id], t.width == outputSize.width, t.height == outputSize.height { return t }
+        let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: outputSize.width,
+                                                          height: outputSize.height, mipmapped: false)
+        td.usage = [.renderTarget, .shaderRead]
+        td.storageMode = .private
+        let t = device.makeTexture(descriptor: td)
+        flattenTextures[id] = t
+        return t
     }
 
     private func adjustTexture(_ id: InputID, size: PixelSize) -> MTLTexture? {

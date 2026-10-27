@@ -159,6 +159,18 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Layer Designer dan tata letak 0.25.0
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Layer Designer di monitor Preview: geser & ubah ukuran langsung, snapping | Implemented (0.25.0), belum dites | L (pegangan sisi, snapping ke tepi/tengah/garis aman/layer lain; unit test) + kompilasi CI | Tombol LAYER di kepala monitor Preview; 8 pegangan; sudut menjaga bentuk (Shift = bebas); tahan ⌘ untuk mematikan snapping; garis bantu tampil saat menempel (T-96) |
+| Crop dengan menarik tepi, simetris dengan Shift | Implemented (0.25.0), belum dites | L (gambar tetap di tempat, batas 45 %/sisi; unit test) | Mode Crop; tepat untuk Stretch, atau Fit/Fill bila kotak seaspek gambar (KNOWN_ISSUES 59) (T-96) |
+| Bingkai, warna, sudut melengkung, bentuk elips | Implemented (0.13.0), kini juga di Layer Designer | GPU sejak 0.13.0 | Tombol bingkai di bar Layer Designer (T-97) |
+| Hide/show dan kunci layer | Implemented (0.25.0), belum dites | L (layer tersembunyi tidak digambar dan tidak dihitung AFV; proyek lama tetap terbaca) | Disimpan di proyek (T-97) |
+| Flatten Layers | Implemented (0.25.0), belum dites | L (rencana gambar: satu gambar per input, urutan bertingkat, siklus aman) + kompilasi CI (render GPU) | Semua layer input digambar ke satu tekstur dulu; dipakai di mana pun input itu muncul sebagai satu gambar (layer input lain, overlay, output, thumbnail) (T-98) |
+| Simpan tata letak sebagai template | Implemented (0.25.0), belum dites | L (cocok per urutan, sumber tetap, layer tambahan bila inputnya ada) | Disimpan di Mac ini (bukan di file proyek) (T-97) |
+| Tombol FULLSCREEN + ⚙ (layar & gambar per output) | Implemented (0.25.0), belum dites | L (pemilihan layar ke-2/ke-3; unit test) + kompilasi CI | Menggantikan tombol fullscreen Program lama; output yang dicentang dibuka di layarnya; MIDI "Fullscreen" memakai tombol ini (T-99) |
+| Tombol FOTO seukuran RECORD/STREAM/FULLSCREEN, transisi awal Dissolve, dock Playlist muncul setelah ada playlist | Implemented (0.25.0), belum dites | kompilasi CI | Dock Playlist muncul bila ada input musik atau video (T-100) |
+
 ## Output NDI (0.24.0)
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|
