@@ -4,7 +4,9 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.3.0 — Milestone 2 hampir lengkap.** 0.3.0 menambah editor scene visual, lower third yang dapat diatur,
+> **Status: 0.4.0 — awal Milestone 3.** 0.4.0 menambah streaming ke beberapa tujuan sekaligus (hingga 3, satu encode)
+> dan transisi baru (Wipe 4 arah, Push, Slide, Iris) — dikompilasi & diuji unit, menunggu tes perangkat T-28..T-29.
+> 0.3.1 memperbaiki crash capture card generik (dikonfirmasi pengguna). 0.3.0 menambah editor scene visual, lower third yang dapat diatur,
 > EQ/high-pass, dan koreksi drift clock audio. Fungsi inti M1 (kamera, CUT/AUTO, meter, rekam, stream) dilaporkan
 > berfungsi di Mac pengguna. M2 menambah audio file video ke mixer, noise gate, chroma key, Multiview, dan simpan/muat
 > proyek — dikompilasi & diuji unit, menunggu tes perangkat T-17..T-22.
@@ -80,5 +82,6 @@ docs/                         Dokumentasi (lihat di bawah)
 - **M2 Production Workflow** — selesai di kode (0.2.0, menunggu tes perangkat): audio file video ke mixer, noise gate,
   multiview, simpan/muat proyek, chroma key. 0.3.0: koreksi drift clock, EQ/HPF, editor scene visual,
   lower third yang dapat diatur. Masih planned: browser source (evaluasi keamanan), capture 4:2:0, optimasi performa.
-- **M3 Broadcast Expansion**: Blackmagic DeckLink, AJA/Magewell SDK, NDI, stinger & transisi lanjutan, output SDI/HDMI,
-  routing audio lanjutan (aux/mix-minus), multi-destination streaming, profil operator.
+- **M3 Broadcast Expansion** — 0.4.0: multi-destination streaming, transisi Wipe/Push/Slide/Iris. Masih planned:
+  Blackmagic DeckLink, AJA/Magewell SDK, NDI (perlu SDK vendor), stinger, output SDI/HDMI, routing audio lanjutan
+  (aux/mix-minus), profil operator.

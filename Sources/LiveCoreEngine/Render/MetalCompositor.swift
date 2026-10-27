@@ -126,7 +126,8 @@ public final class MetalCompositor {
                 var verts = quad(dest: PixelRect(x: 0, y: 0, width: Double(outputSize.width), height: Double(outputSize.height)),
                                  uv: (0, 0, 1, 1), canvas: outputSize)
                 enc.setVertexBytes(&verts, length: MemoryLayout<Float>.stride * verts.count, index: 0)
-                var params = TransitionParamsGPU(progress: Float(t.progress), kind: Int32(t.kind.rawValue))
+                var params = TransitionParamsGPU(progress: Float(t.progress), kind: Int32(t.kind.rawValue),
+                                                 aspect: Float(outputSize.aspect))
                 enc.setFragmentBytes(&params, length: MemoryLayout<TransitionParamsGPU>.stride, index: 0)
                 enc.setFragmentTexture(a, index: 0)
                 enc.setFragmentTexture(b, index: 1)
@@ -165,7 +166,7 @@ public final class MetalCompositor {
 
     // MARK: Helpers
 
-    private struct TransitionParamsGPU { var progress: Float; var kind: Int32 }
+    private struct TransitionParamsGPU { var progress: Float; var kind: Int32; var aspect: Float; var pad: Float = 0 }
     /// Matches `KeyParams` in the shader (float2 members are 8-byte aligned: 4 floats, then 2 + 2).
     private struct KeyParamsGPU {
         var opacity: Float, similarity: Float, smoothness: Float, spill: Float

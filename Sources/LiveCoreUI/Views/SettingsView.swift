@@ -9,6 +9,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var draft = ProductionSettings()
     @State private var keyField = ""
+    @State private var destKeys: [String: String] = [:]   // additional destination id → newly typed key
     @State private var shortcuts = ShortcutSettings()
     @State private var errors: [String] = []
     @State private var tab = 0
@@ -39,6 +40,7 @@ struct SettingsView: View {
             draft = model.settings
             shortcuts = model.shortcuts
             keyField = ""
+            destKeys = [:]
         }
     }
 
@@ -72,19 +74,49 @@ struct SettingsView: View {
 
     private var streamTab: some View {
         Form {
-            TextField(L10n.t("stream.server"), text: $draft.stream.serverURL, prompt: Text("rtmp://a.rtmp.youtube.com/live2"))
-            SecureField(L10n.t("stream.key"), text: $keyField,
-                        prompt: Text(model.hasStreamKey ? "•••••••• (\(L10n.t("stream.key_saved")))" : ""))
-            Text("The stream key is stored in the macOS Keychain, never in settings files or logs. Leave empty to keep the saved key.")
-                .font(.caption).foregroundStyle(Theme.textDim)
-            if model.hasStreamKey {
-                Button("Delete saved key", role: .destructive) { model.saveStreamKey("") }
+            Section(L10n.t("stream.primary")) {
+                HStack {
+                    Toggle("", isOn: $draft.stream.primaryEnabled).labelsHidden()
+                    TextField(L10n.t("stream.dest_name"), text: $draft.stream.primaryName, prompt: Text("YouTube"))
+                }
+                TextField(L10n.t("stream.server"), text: $draft.stream.serverURL, prompt: Text("rtmp://a.rtmp.youtube.com/live2"))
+                SecureField(L10n.t("stream.key"), text: $keyField,
+                            prompt: Text(model.hasStreamKey ? "•••••••• (\(L10n.t("stream.key_saved")))" : ""))
+                if model.hasStreamKey {
+                    Button(L10n.t("stream.delete_key"), role: .destructive) { model.saveStreamKey("") }
+                }
             }
+            ForEach($draft.stream.additional) { $d in
+                Section {
+                    HStack {
+                        Toggle("", isOn: $d.enabled).labelsHidden()
+                        TextField(L10n.t("stream.dest_name"), text: $d.name, prompt: Text("Facebook"))
+                        Button(L10n.t("stream.remove_dest"), role: .destructive) {
+                            draft.stream.additional.removeAll { $0.id == d.id }
+                            destKeys[d.id] = nil
+                        }
+                    }
+                    TextField(L10n.t("stream.server"), text: $d.serverURL, prompt: Text("rtmps://live-api-s.facebook.com:443/rtmp/"))
+                    SecureField(L10n.t("stream.key"), text: Binding(get: { destKeys[d.id] ?? "" }, set: { destKeys[d.id] = $0 }),
+                                prompt: Text(model.hasKey(account: d.keychainAccount) ? "•••••••• (\(L10n.t("stream.key_saved")))" : ""))
+                }
+            }
+            if draft.stream.additional.count < StreamSettings.maxDestinations - 1 {
+                Button(L10n.t("stream.add_dest")) {
+                    let id = String(UUID().uuidString.prefix(8)).lowercased()
+                    draft.stream.additional.append(StreamDestination(id: id, name: "Destination \(draft.stream.additional.count + 2)"))
+                }
+            }
+            Text(L10n.t("stream.multi_note"))
+                .font(.caption).foregroundStyle(Theme.textDim)
+            Text("Stream keys are stored in the macOS Keychain, never in settings files or logs. Leave a key field empty to keep the saved key.")
+                .font(.caption).foregroundStyle(Theme.textDim)
             Toggle(L10n.t("settings.reconnect"), isOn: $draft.stream.autoReconnect)
             Text("Reconnect: \(Int(draft.stream.reconnect.initialDelay)) s, doubling to \(Int(draft.stream.reconnect.maxDelay)) s, max \(draft.stream.reconnect.maxAttempts) attempts.")
                 .font(.caption).foregroundStyle(Theme.textDim)
         }
         .formStyle(.grouped)
+        .disabled(model.isStreamingActive)
     }
 
     private var recordTab: some View {
@@ -147,10 +179,17 @@ struct SettingsView: View {
     }
 
     private func apply() {
+        let old = model.settings
         draft.transition = model.transitionKind
         draft.transitionDuration = model.transitionDuration
         let errs = model.apply(draft)
         if !keyField.isEmpty { model.saveStreamKey(keyField) }
+        for d in draft.stream.additional { if let k = destKeys[d.id], !k.isEmpty { model.saveKey(k, account: d.keychainAccount) } }
+        if errs.isEmpty {
+            // Removed destinations: delete their Keychain items too.
+            let kept = Set(draft.stream.additional.map(\.id))
+            for d in old.stream.additional where !kept.contains(d.id) { model.saveKey("", account: d.keychainAccount) }
+        }
         model.saveShortcuts(shortcuts)
         errors = errs
         if errs.isEmpty { dismiss() }

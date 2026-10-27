@@ -26,6 +26,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Preview/Program terpisah | Implemented | L (logika) + M (render) | `Switcher`, `FramePlanner` teruji |
 | CUT | Implemented | L + U | |
 | AUTO: Dissolve, Fade (dip to black), Wipe | Implemented | L + U | |
+| Transisi Wipe 4 arah, Push ←/→, Slide ←/→, Iris | Implemented (0.4.0) | L (`TransitionMath`, 8 unit test) + shader dikompilasi CI | Bekerja dengan AUTO dan T-bar; belum dites di Mac (T-29) |
 | T-bar manual | Implemented | L + M | |
 | Overlay 4 kanal dengan fade | Implemented | L + M | |
 | Picture-in-Picture (layer pada input / overlay preset PiP) | Implemented | L + M | Preset posisi; belum ada drag-resize |
@@ -37,7 +38,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Multiview | Implemented (M2) | M | Jendela terpisah: Preview, Program, semua input + tally; input 10 fps 384×216 |
 | Chroma key | Implemented (M2) | L (matematika) + M (shader) | Per input (kamera/file/gambar), warna kunci, similarity, smoothness, spill; GPU |
 | Browser source | Planned (M2) | — | Butuh evaluasi keamanan WKWebView offscreen |
-| Transisi lanjutan (stinger, slide, custom) | Planned (M3) | — | |
+| Transisi stinger (video dengan alpha) & custom | Planned (M3) | — | |
 
 ## Audio
 | Fitur | Status | Verifikasi | Catatan |
@@ -70,7 +71,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Error handling (URL salah, ditolak server, putus) | Implemented | L + M | |
 | Reconnect otomatis (backoff) | Implemented | L (jadwal) + M | |
 | Statistik bitrate, dropped frames, antrean, durasi, HW/SW | Implemented | M | |
-| Multi-destination | Planned (M3) | — | |
+| Multi-destination (hingga 3 tujuan, mis. YouTube + Facebook) | Implemented (0.4.0) | L (validasi setelan) + kompilasi CI | Satu encode H.264/AAC dibagi ke semua tujuan; reconnect per tujuan; key tiap tujuan di Keychain. Belum dites di Mac (T-28) |
 
 ## Recording
 | Fitur | Status | Verifikasi | Catatan |

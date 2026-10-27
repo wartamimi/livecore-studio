@@ -149,3 +149,15 @@
 "audio.clock" = "Clock";
 "audio.drift" = "Koreksi drift";
 "audio.underruns" = "Buffer kosong";
+
+"stream.primary" = "Tujuan utama";
+"stream.dest_name" = "Nama";
+"stream.delete_key" = "Hapus key tersimpan";
+"stream.remove_dest" = "Hapus";
+"stream.add_dest" = "Tambah tujuan";
+"stream.multi_note" = "Hingga 3 tujuan di-stream bersamaan dari satu encode, jadi tiap tujuan tambahan memakai bandwidth upload (bitrate video + audio), bukan CPU. Tiap tujuan menyambung ulang sendiri-sendiri.";
+"stream.dest_off" = "Mati";
+"stream.dest_no_server" = "Belum ada URL server";
+"stream.dest_no_url" = "%@: belum ada URL server, dilewati.";
+"stream.dest_no_key" = "%@: belum ada stream key, dilewati.";
+"stream.no_destination" = "Belum ada tujuan yang siap. Aktifkan satu tujuan lalu isi URL server dan stream key di Pengaturan › Stream.";

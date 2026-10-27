@@ -64,10 +64,10 @@ Putaran CI pertama M2 menemukan 1 error kompilasi (tipe out-parameter `MTAudioPr
 | A-05 / M-04 | Build app 0.2.0 + DMG, dipublikasikan sebagai pre-release `dev-build-8` | Passed |
 | T-17..T-22 | Tes manual M2 | Not tested (butuh Mac + perangkat) |
 
-## Failed (ditemukan pengguna)
+## Failed (ditemukan pengguna) — semuanya sudah diperbaiki
 | ID | Build | Tes | Hasil | Perbaikan |
 |---|---|---|---|---|
-| T-03 | 0.3.0 | Tambah capture card HDMI USB merek generik (Mac17,2, macOS 27.0.1) | **Failed — crash** (SIGABRT: NSException dari `-[AVCaptureDALDevice setActiveVideoMinFrameDuration:]` di `CameraSource.selectFormat`) | 0.3.1: durasi frame diambil dari rentang yang dilaporkan perangkat, toleransi 29,97/30, semua setter perangkat dibungkus penangkap NSException (`CObjCSupport`); jika driver menolak, perangkat tetap dipakai dengan setelan bawaannya. CI macOS lulus (run 40449244649, `dev-build-11`). Menunggu tes ulang pengguna. |
+| T-03 | 0.3.0 | Tambah capture card HDMI USB merek generik (Mac17,2, macOS 27.0.1) | **Failed — crash** (SIGABRT: NSException dari `-[AVCaptureDALDevice setActiveVideoMinFrameDuration:]` di `CameraSource.selectFormat`) | 0.3.1: durasi frame diambil dari rentang yang dilaporkan perangkat, toleransi 29,97/30, semua setter perangkat dibungkus penangkap NSException (`CObjCSupport`); jika driver menolak, perangkat tetap dipakai dengan setelan bawaannya. CI macOS lulus (run 40449244649, `dev-build-11`). **Dikonfirmasi berfungsi oleh pengguna di 0.3.1.** |
 
 ## Failed (lainnya)
 Tidak ada tes yang gagal pada putaran terakhir.

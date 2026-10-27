@@ -35,7 +35,8 @@ public final class ProductionEngine {
     public var onThumbnails: (([InputID: CVPixelBuffer]) -> Void)?
     public var onSwitcherChange: ((SwitcherSnapshot) -> Void)?
     public var onInputsChange: (([InputInfo]) -> Void)?
-    public var onStreamStats: ((StreamingEngine.Stats) -> Void)?
+    /// Statistics of one stream destination (destination id, stats). Main thread.
+    public var onStreamStats: ((String, StreamingEngine.Stats) -> Void)?
     public var onRecordStats: ((RecordingEngine.Stats) -> Void)?
     public var onError: ((String) -> Void)?
     /// Mixer channels were added or removed by the engine itself (e.g. a video file's audio).
@@ -46,7 +47,9 @@ public final class ProductionEngine {
     public let mixer = AudioMixerEngine()
     public let devices = DeviceManager()
     public private(set) lazy var audioPump = ProgramAudioPump(mixer: mixer)
-    public let streamer = StreamingEngine()
+    /// One RTMP/RTMPS publisher per destination, all fed by the same encoders. Main thread.
+    public private(set) var streamers: [String: StreamingEngine] = [:]
+    private var streamTerminal: [String: Bool] = [:]
     public let recorder = RecordingEngine()
     public let performance = PerformanceMonitor()
 
@@ -87,15 +90,6 @@ public final class ProductionEngine {
         self.settings = settings
         compositor = try MetalCompositor(outputSize: settings.output.size)
         mixer.onError = { [weak self] msg in DispatchQueue.main.async { self?.onError?(msg) } }
-        streamer.onStats = { [weak self] s in
-            // Permanent failure (not reconnecting): release the encoder and audio sink.
-            if case .failed = s.state { self?.streamDidEnd() }
-            self?.onStreamStats?(s)
-        }
-        streamer.encoderStatsProvider = { [weak self] in
-            guard let enc = self?.outputs.read({ $0.streamEncoder }) else { return (false, 0) }
-            return (enc.isHardwareAccelerated, enc.droppedFrames.value)
-        }
         recorder.onStats = { [weak self] s in
             if case .recording = s.state {} else { self?.recordingEnded(s) }
             self?.onRecordStats?(s)
@@ -463,46 +457,91 @@ public final class ProductionEngine {
 
     // MARK: Streaming
 
-    public func startStreaming(streamKey: String) throws {
+    /// A stream destination with its key already resolved (from the Keychain).
+    public struct StreamTarget {
+        public var id: String
+        public var name: String
+        public var url: RTMPURL
+        public init(id: String, name: String, url: RTMPURL) { self.id = id; self.name = name; self.url = url }
+    }
+
+    /// Starts streaming to every target at once. One H.264 and one AAC encode are shared by all
+    /// destinations, so each extra destination costs upload bandwidth, not CPU/GPU.
+    public func startStreaming(to targets: [StreamTarget]) throws {
         guard outputs.read({ $0.streamEncoder }) == nil else { return }
-        let url = try RTMPURL.parse(serverURL: settings.stream.serverURL, streamKey: streamKey)
+        guard !targets.isEmpty else {
+            throw NSError(domain: "LiveCore", code: 11, userInfo: [NSLocalizedDescriptionKey: "No stream destination is enabled."])
+        }
         let errs = settings.validationErrors()
         if !errs.isEmpty { throw NSError(domain: "LiveCore", code: 10, userInfo: [NSLocalizedDescriptionKey: errs.joined(separator: "\n")]) }
         let enc = try H264Encoder(size: settings.output.size, frameRate: settings.output.frameRate, settings: settings.video)
         let aac = try AACEncoder(sampleRate: Double(settings.audio.sampleRate), channels: settings.audio.channels,
                                  bitrateKbps: settings.audio.bitrateKbps)
         aacEncoder = aac
-        let streamer = self.streamer
-        enc.onFrame = { [weak streamer] f in streamer?.send(video: f) }
-        streamer.onRequestKeyframe = { [weak enc] in enc?.requestKeyframe() }
+        streamers.values.forEach { $0.stop() }
+        streamers = [:]
+        streamTerminal = [:]
+        var engines: [StreamingEngine] = []
+        for t in targets {
+            let s = StreamingEngine()
+            s.onStats = { [weak self] st in self?.streamStatsChanged(t.id, st) }
+            s.encoderStatsProvider = { [weak self] in
+                guard let enc = self?.outputs.read({ $0.streamEncoder }) else { return (false, 0) }
+                return (enc.isHardwareAccelerated, enc.droppedFrames.value)
+            }
+            s.onRequestKeyframe = { [weak enc] in enc?.requestKeyframe() }
+            streamers[t.id] = s
+            streamTerminal[t.id] = false
+            engines.append(s)
+        }
+        enc.onFrame = { f in for s in engines { s.send(video: f) } }
         // AAC timestamps: Apple's AAC encoder has 2112 samples of priming delay. Output packet k
         // carries audio that started at firstHost + (k*1024 - 2112)/sr; stamping it that way keeps
         // lip-sync exact in FLV, which cannot signal priming.
         var firstHost: Double?
         var packetIndex: Int64 = 0
         let sr = Double(settings.audio.sampleRate)
-        audioPump.addSink("stream") { [weak streamer] chunk in
+        audioPump.addSink("stream") { chunk in
             if firstHost == nil { firstHost = chunk.hostTime }
             guard let data = try? aac.encode(chunk), let base = firstHost else { return }
             let t = base + (Double(packetIndex) * 1024 - Double(AACEncoder.primingFrames)) / sr
             packetIndex += 1
-            streamer?.send(audio: data, pts: CMTime(seconds: t, preferredTimescale: 48_000))
+            let pts = CMTime(seconds: t, preferredTimescale: 48_000)
+            for s in engines { s.send(audio: data, pts: pts) }
         }
         outputs.mutate { $0.streamEncoder = enc }
-        streamer.start(url: url, settings: settings, audioSpecificConfig: aac.audioSpecificConfig)
+        for (s, t) in zip(engines, targets) {
+            s.start(url: t.url, settings: settings, audioSpecificConfig: aac.audioSpecificConfig)
+        }
+    }
+
+    /// Each destination fails and reconnects on its own; the shared encoders are released only
+    /// when every destination has ended permanently.
+    private func streamStatsChanged(_ id: String, _ s: StreamingEngine.Stats) {
+        onStreamStats?(id, s)
+        switch s.state {
+        case .failed: streamTerminal[id] = true
+        case .idle: break
+        default: streamTerminal[id] = false
+        }
+        if !streamTerminal.isEmpty, streamTerminal.values.allSatisfy({ $0 }), outputs.read({ $0.streamEncoder }) != nil {
+            streamDidEnd()
+        }
     }
 
     public func stopStreaming() {
-        streamer.stop()
+        streamers.values.forEach { $0.stop() }
         audioPump.removeSink("stream")
         let enc: H264Encoder? = outputs.mutate { o in let e = o.streamEncoder; o.streamEncoder = nil; return e }
+        enc?.onFrame = nil
         renderQueue.async { enc?.invalidate() }
         aacEncoder = nil
     }
 
-    /// Called when the stream fails permanently (not while reconnecting) to release the encoder.
+    /// Called when every destination failed permanently (not while reconnecting) to release the encoder.
     public func streamDidEnd() {
         let enc: H264Encoder? = outputs.mutate { o in let e = o.streamEncoder; o.streamEncoder = nil; return e }
+        enc?.onFrame = nil
         audioPump.removeSink("stream")
         renderQueue.async { enc?.invalidate() }
     }
