@@ -4,7 +4,11 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.31.0 — Milestone 3 berjalan.** 0.31.0 mendesain ulang Web Controller menjadi panel switcher bergaya
+> **Status: 0.32.0 — Milestone 3 berjalan.** 0.32.0 menambah MultiCorder (rekaman ISO): sampai 4 input pilihan
+> ikut direkam ke file masing-masing selama RECORD berjalan ("… - ISO 2 Kamera Wide.mp4"), ukuran penuh dengan
+> layer-nya, audio & format sama dengan rekaman Program — untuk edit ulang wedding/event. Diuji di CI macOS
+> (`livecore-iso-check`: file Program + ISO bersamaan, keduanya bisa diputar dengan video+audio); menunggu tes
+> T-131..T-133. 0.31.0 mendesain ulang Web Controller menjadi panel switcher bergaya
 > hardware: gambar Program/Preview langsung (JPEG ±3 fps, hanya saat halaman dibuka), dua baris bus Preview/Program
 > dengan tombol menyala, tuas T-bar besar (horizontal di HP, vertikal di tablet), pilihan jenis dan durasi transisi,
 > mixer audio (fader master & per kanal, mute, meter), LED REC/LIVE dengan timer, keypad PIN, dan getaran saat ditekan

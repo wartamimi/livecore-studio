@@ -300,8 +300,10 @@ public final class MetalCompositor {
         var extraPBs: [InputID: CVPixelBuffer] = [:]
         var fullPreviewPB: CVPixelBuffer?
         if let extraPool {
+            // Up to 4 MultiCorder encoders hold a few frames each besides the output windows;
+            // the pool only grows to this when that many pictures are really in flight.
             for (id, layers) in plan.extra {
-                guard let pb = makeBuffer(extraPool, threshold: 24), let t = texture(for: pb) else { continue }
+                guard let pb = makeBuffer(extraPool, threshold: 40), let t = texture(for: pb) else { continue }
                 keepAlive.append(t.cv)
                 drawComposition(cb, target: t.tex, size: outputSize, layers: layers, textures: textures,
                                 load: .clear, straight: straightSources)

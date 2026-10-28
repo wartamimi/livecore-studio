@@ -623,3 +623,11 @@
 "remote.qr.help" = "Scan with the phone camera to open the remote and sign in at once. Do not show this code on air or on a shared screen.";
 "remote.clients" = "Devices connected: %d";
 "remote.security" = "The connection is plain HTTP (not encrypted): use it only on a network you trust. Anyone who knows the PIN can switch your show. After 5 wrong PINs a device is locked out for a while.";
+
+/* MultiCorder (0.32.0) */
+"multicorder.enable" = "Record chosen inputs to their own files with RECORD";
+"multicorder.no_inputs" = "Add inputs first.";
+"multicorder.help" = "Up to %d inputs. Each ISO file is the input on its own (full size, with its layers), with the same audio, format and bitrate as the Program recording, named after it plus \" - ISO <number> <name>\".";
+"multicorder.next_time" = "Changes apply the next time you start recording.";
+"multicorder.count" = "%d input(s)";
+"multicorder.full" = "MultiCorder records up to %d inputs.";

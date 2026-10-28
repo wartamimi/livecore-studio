@@ -53,6 +53,11 @@ public final class ProductionEngine {
     /// Statistics of one stream destination (destination id, stats). Main thread.
     public var onStreamStats: ((String, StreamingEngine.Stats) -> Void)?
     public var onRecordStats: ((RecordingEngine.Stats) -> Void)?
+    /// MultiCorder file states, per ISO input (main thread).
+    public var onISOStats: (([InputID: RecordingEngine.Stats]) -> Void)?
+    /// Inputs RECORD also records to their own files (main thread; applies at the next start).
+    public var multiCorder = MultiCorderConfig()
+    public private(set) var isoStats: [InputID: RecordingEngine.Stats] = [:]
     public var onError: ((String) -> Void)?
     /// Mixer channels were added or removed by the engine itself (e.g. a video file's audio).
     public var onAudioChannelsChange: (() -> Void)?
@@ -93,6 +98,8 @@ public final class ProductionEngine {
         /// Inputs rendered at full size for the extra outputs, and whether Preview is too.
         var extraInputs: [InputID] = []
         var fullPreview = false
+        /// Inputs being recorded to their own files (MultiCorder), also rendered at full size.
+        var isoInputs: [InputID] = []
         var stinger = StingerConfig()
         /// Layer Designer edits not yet on air, per input: Preview shows the draft of its input;
         /// everything else (Program, overlays, other inputs) keeps the committed layers.
@@ -134,6 +141,8 @@ public final class ProductionEngine {
         var streamEncoder: H264Encoder?
         var recording = false
         var replay = false
+        /// MultiCorder: one recorder per ISO input while recording.
+        var iso: [(InputID, RecordingEngine)] = []
     }
     private let outputs = Locked(Outputs())
     private var aacEncoders: [AACEncoder] = []
@@ -213,7 +222,8 @@ public final class ProductionEngine {
                                          thumbnailsFor: thumbTick ? st.order : [],
                                          composedThumbnails: thumbTick ? Set(st.sources.filter { $0.value is SceneSource }.keys) : [],
                                          detailInput: st.detail,
-                                         extraInputs: st.extraInputs, fullPreview: st.fullPreview,
+                                         extraInputs: st.extraInputs + st.isoInputs.filter { !st.extraInputs.contains($0) },
+                                         fullPreview: st.fullPreview,
                                          previewLayers: draft)
             return (plan, st.sources, st.switcher.state, st.adjusts)
         }
@@ -247,6 +257,7 @@ public final class ProductionEngine {
             let outs = self.outputs.current
             outs.streamEncoder?.encode(program, pts: pts)
             if outs.recording { self.recorder.append(video: program, pts: pts) }
+            for (id, r) in outs.iso { if let pb = result.extra[id] { r.append(video: pb, pts: pts) } }
             if outs.replay { self.replay.append(program, hostTime: pts.seconds) }
             self.outputFrameHandler?(OutputFrames(program: program, preview: result.fullPreview, inputs: result.extra, pts: pts))
             let preview = result.preview
@@ -1085,24 +1096,63 @@ public final class ProductionEngine {
 
     public func startRecording() {
         guard !outputs.read({ $0.recording }) else { return }
-        recorder.start(settings: settings.recording, output: settings.output, audio: settings.audio)
-        outputs.mutate { $0.recording = true }
+        let date = Date()
+        recorder.start(settings: settings.recording, output: settings.output, audio: settings.audio, date: date)
+        let iso = startISORecorders(date: date)
+        control.mutate { $0.isoInputs = iso.map(\.0) }
+        outputs.mutate { $0.recording = true; $0.iso = iso }
         let recorder = self.recorder
+        let isoRecorders = iso.map(\.1)
         let bus = settings.recording.bus
-        audioPump.addSink("record") { [weak recorder] chunk in recorder?.append(audio: chunk.bus(bus)) }
+        audioPump.addSink("record") { [weak recorder] chunk in
+            let c = chunk.bus(bus)
+            recorder?.append(audio: c)
+            for r in isoRecorders { r.append(audio: c) }   // ISO files carry the recording's audio
+        }
     }
 
     public func stopRecording() {
         guard outputs.read({ $0.recording }) else { return }
         recorder.stop()
+        stopISORecorders()
         outputs.mutate { $0.recording = false }
         audioPump.removeSink("record")
+    }
+
+    /// MultiCorder: a recorder per chosen input, named after the Program file plus
+    /// " - ISO <number> <name>". A failing ISO file is reported and leaves Program recording.
+    private func startISORecorders(date: Date) -> [(InputID, RecordingEngine)] {
+        let list = inputs
+        isoStats = [:]
+        var out: [(InputID, RecordingEngine)] = []
+        for id in multiCorder.active {
+            guard let info = list.first(where: { $0.id == id }) else { continue }
+            let r = RecordingEngine()
+            r.onStats = { [weak self] s in
+                guard let self else { return }
+                let wasFailed: Bool = { if case .failed? = self.isoStats[id]?.state { return true }; return false }()
+                if case let .failed(msg) = s.state, !wasFailed { self.onError?("ISO \(info.number) \(info.name): \(msg)") }
+                self.isoStats[id] = s
+                self.onISOStats?(self.isoStats)
+            }
+            r.start(settings: settings.recording, output: settings.output, audio: settings.audio,
+                    fileSuffix: MultiCorderConfig.fileSuffix(number: info.number, name: info.name), date: date)
+            out.append((id, r))
+        }
+        return out
+    }
+
+    private func stopISORecorders() {
+        let iso = outputs.mutate { o -> [(InputID, RecordingEngine)] in let l = o.iso; o.iso = []; return l }
+        for (_, r) in iso { r.stop() }
+        control.mutate { $0.isoInputs = [] }
     }
 
     private func recordingEnded(_ s: RecordingEngine.Stats) {
         switch s.state {
         case .failed, .finished, .idle:
             if outputs.read({ $0.recording }) {
+                stopISORecorders()
                 outputs.mutate { $0.recording = false }
                 audioPump.removeSink("record")
             }

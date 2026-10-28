@@ -19,6 +19,8 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
     public var stinger: StingerConfig?
     /// The four extra outputs and the virtual camera's output (added in 0.22.0).
     public var outputs: OutputRouting?
+    /// Inputs recorded to their own files while recording (added in 0.32.0).
+    public var multiCorder: MultiCorderConfig?
 
     public init(version: Int = ProjectDocument.currentVersion, settings: ProductionSettings = ProductionSettings(),
                 inputs: [ProjectInput] = [], overlays: [ProjectOverlay] = [], audio: ProjectAudio = ProjectAudio(),
@@ -75,6 +77,7 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
         if let p = programInput, !seen.contains(p) { doc.programInput = nil }
         if let s = doc.stinger?.source, !seen.contains(s) { doc.stinger?.source = nil }
         doc.outputs = outputs?.normalized(existing: seen)
+        doc.multiCorder = multiCorder?.keeping(existing: seen)
         return doc
     }
 }
