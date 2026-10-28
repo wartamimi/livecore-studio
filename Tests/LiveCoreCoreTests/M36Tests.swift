@@ -43,6 +43,16 @@ final class M36Tests: XCTestCase {
         XCTAssertTrue(s.hasPrefix("\"") && s.hasSuffix("\""))
     }
 
+    func testFullscreenScriptReplacesTheFullscreenAPI() {
+        let js = ProjectBrowser.fullscreenScript
+        for name in ["requestFullscreen", "webkitRequestFullscreen", "webkitEnterFullscreen", "exitFullscreen",
+                     "fullscreenElement", "fullscreenEnabled", "fullscreenchange", "Escape", "livecoreFullscreen"] {
+            XCTAssertTrue(js.contains(name), name)
+        }
+        XCTAssertTrue(js.contains("width:100vw!important;height:100vh!important"))
+        XCTAssertFalse(js.contains("</script>"))
+    }
+
     // MARK: Letter animation
 
     func testTextRevealTiming() {

@@ -308,6 +308,100 @@ public struct ProjectBrowser: Codable, Equatable, Sendable {
         """
     }
 
+    /// Page fullscreen inside the input (vMix-style): a site's own fullscreen button (YouTube,
+    /// Vimeo, Facebook…) makes its player fill the input's picture instead of taking over the Mac's
+    /// screen. Replaces the Fullscreen API at document start: the element gets fixed, full-viewport
+    /// CSS, `document.fullscreenElement` reports it and the usual change events fire, so the site
+    /// switches to its own fullscreen layout. An embedded player (iframe) asks its parent page to
+    /// fill the picture with the iframe too. Escape leaves fullscreen.
+    public static let fullscreenScript = #"""
+    (function () {
+      if (window.__livecoreFullscreen) return;
+      window.__livecoreFullscreen = true;
+      var current = null;
+      var css = '.livecore-fs{position:fixed!important;left:0!important;top:0!important;right:auto!important;bottom:auto!important;' +
+        'width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;min-width:0!important;' +
+        'min-height:0!important;margin:0!important;padding:0!important;border:0!important;z-index:2147483647!important;' +
+        'background:#000!important;transform:none!important;}' +
+        'video.livecore-fs,.livecore-fs video{object-fit:contain!important;}' +
+        '.livecore-fs-up{transform:none!important;filter:none!important;contain:none!important;will-change:auto!important;' +
+        'perspective:none!important;backdrop-filter:none!important;z-index:2147483647!important;}' +
+        'html.livecore-fs-root,html.livecore-fs-root body{overflow:hidden!important;}';
+      function addStyle() {
+        if (document.getElementById('livecore-fs-css')) return;
+        var s = document.createElement('style'); s.id = 'livecore-fs-css'; s.textContent = css;
+        (document.head || document.documentElement).appendChild(s);
+      }
+      function fire(el) {
+        ['fullscreenchange', 'webkitfullscreenchange'].forEach(function (t) {
+          if (el && el.isConnected) el.dispatchEvent(new Event(t, { bubbles: true }));
+          else document.dispatchEvent(new Event(t, { bubbles: true }));
+        });
+      }
+      function mark(el, on) {
+        el.classList.toggle('livecore-fs', on);
+        for (var p = el.parentElement; p && p !== document.documentElement; p = p.parentElement) p.classList.toggle('livecore-fs-up', on);
+        document.documentElement.classList.toggle('livecore-fs-root', on);
+      }
+      function tellParent(on) {
+        if (window.parent !== window) { try { window.parent.postMessage({ livecoreFullscreen: on }, '*'); } catch (e) {} }
+      }
+      function enter(el) {
+        if (!(el instanceof Element)) return Promise.reject(new TypeError('not an element'));
+        if (current === el) return Promise.resolve();
+        if (current) mark(current, false);
+        addStyle();
+        current = el;
+        mark(el, true);
+        tellParent(true);
+        fire(el);
+        return Promise.resolve();
+      }
+      function exit() {
+        if (!current) return Promise.resolve();
+        var el = current;
+        current = null;
+        mark(el, false);
+        tellParent(false);
+        fire(el);
+        return Promise.resolve();
+      }
+      function request() { return enter(this); }
+      function define(proto, name, value) {
+        try { Object.defineProperty(proto, name, { value: value, configurable: true, writable: true }); } catch (e) {}
+      }
+      function getter(proto, name, get) {
+        try { Object.defineProperty(proto, name, { get: get, configurable: true }); } catch (e) {}
+      }
+      ['requestFullscreen', 'webkitRequestFullscreen', 'webkitRequestFullScreen'].forEach(function (n) { define(Element.prototype, n, request); });
+      define(HTMLVideoElement.prototype, 'webkitEnterFullscreen', request);
+      define(HTMLVideoElement.prototype, 'webkitEnterFullScreen', request);
+      define(HTMLVideoElement.prototype, 'webkitExitFullscreen', exit);
+      getter(HTMLVideoElement.prototype, 'webkitSupportsFullscreen', function () { return true; });
+      getter(HTMLVideoElement.prototype, 'webkitDisplayingFullscreen', function () { return current === this; });
+      ['exitFullscreen', 'webkitExitFullscreen', 'webkitCancelFullScreen'].forEach(function (n) { define(Document.prototype, n, exit); });
+      ['fullscreenElement', 'webkitFullscreenElement', 'webkitCurrentFullScreenElement'].forEach(function (n) {
+        getter(Document.prototype, n, function () { return current; });
+      });
+      ['fullscreenEnabled', 'webkitFullscreenEnabled', 'webkitFullScreenKeyboardInputAllowed'].forEach(function (n) {
+        getter(Document.prototype, n, function () { return true; });
+      });
+      ['fullscreen', 'webkitIsFullScreen'].forEach(function (n) { getter(Document.prototype, n, function () { return current !== null; }); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && current) exit(); }, true);
+      // An embedded player went fullscreen: its iframe fills this page (and this page's parent).
+      window.addEventListener('message', function (e) {
+        var d = e.data;
+        if (!d || typeof d.livecoreFullscreen !== 'boolean') return;
+        var frames = document.querySelectorAll('iframe');
+        for (var i = 0; i < frames.length; i++) {
+          if (frames[i].contentWindow !== e.source) continue;
+          if (d.livecoreFullscreen) enter(frames[i]); else if (current === frames[i]) exit();
+          return;
+        }
+      });
+    })();
+    """#
+
     /// A JavaScript string literal (quotes, backslashes, line breaks and </script> escaped).
     public static func jsString(_ s: String) -> String {
         var out = "\""
