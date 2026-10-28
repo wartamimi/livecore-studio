@@ -51,6 +51,21 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AJ. Tes manual build 0.35.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-145 | Animasi nomor overlay | Title Designer › tab Animasi: pilih Geser dari kiri, 0,8 s; Coba animasi; Tambah; pasang di overlay 1; tekan 1 dua kali | Pratinjau memutar masuk-tahan-keluar; di Program title masuk dari kiri lalu keluar ke kiri dengan durasi sesuai |
+| T-146 | Teks berjalan di Title Designer | Tambah Input › Judul / Lower third / Teks berjalan › kategori Teks berjalan; pilih Breaking kuning; ubah label, pemisah, posisi Atas; tambahkan ke overlay 2 | Pita di atas dengan label, teks huruf besar bergulir dengan pemisah; muncul dengan animasi; edit ulang dari menu tile membuka Title Designer |
+| T-147 | Media auto restart | Tambah video; CUT ke Program, tunggu 5 s, CUT ke input lain, CUT kembali; matikan ↺ dan ulangi | Restart ON: mulai lagi dari 0:00. Restart OFF: lanjut dari detik terakhir. AUTO mati: tidak play/pause otomatis |
+| T-148 | ISOCorder bus per input | Panel ISOCorder: input 1 = Master, input 2 = Aux A (mic tertentu saja); rekam 30 s | File input 2 hanya berisi audio bus Aux A; file input 1 berisi Master |
+| T-149 | Tombol minimize | Arahkan kursor ke tile input | Tombol minimize ada di baris atas di tengah antara tombol fullscreen dan X; klik = tile jadi baris ringkas |
+| T-150 | Konfirmasi PHOTO | Klik PHOTO | Kilat putih + bunyi, banner "Foto tersimpan" ~3 s; klik banner membuka Finder dengan file terpilih |
+| T-151 | Edit halaman Web | Tambah input Web (mis. halaman komentar); klik ikon tangan; ketik di kolom, klik tombol | Jendela halaman terbuka dan bisa diketik; Program menahan gambar lama; "Selesai — tampilkan" menutup jendela dan Program menampilkan hasil edit |
+| T-152 | Edit Web tanpa tahan | Matikan "Tahan gambar terakhir"; edit lagi | Program mengikuti halaman langsung saat mengetik |
+| T-153 | PowerPoint (.pptx) | Mac dengan Keynote atau PowerPoint: Tambah Input › PowerPoint / Keynote / PDF; pilih .pptx; izinkan Automation | Tile menulis "Mengonversi…", lalu slide 1 tampil penuh (aspek benar); ◀ ▶ dan "n / total" bekerja; slide ganti seketika di Program |
+| T-154 | PDF & simpan proyek | Tambah PDF; ke slide 5; latar Putih; simpan & buka proyek | Slide 5 dan latar putih kembali tanpa konversi ulang |
+| T-155 | Tanpa konverter | Mac tanpa Keynote/PowerPoint/LibreOffice: pilih .pptx | Pesan jelas meminta memasang Keynote/PowerPoint/LibreOffice atau ekspor ke PDF; app tidak crash |
+
 ## AI. Tes manual build 0.34.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

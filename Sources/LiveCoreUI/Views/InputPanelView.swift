@@ -24,7 +24,6 @@ struct InputPanelView: View {
     @State private var showCaptureCard = false
     @State private var editingCaptureCard: InputID?
     @State private var adjusting: InputID?
-    @State private var showTickerSheet = false
     @State private var editingTicker: InputID?
     @State private var showSlideshowSheet = false
     @State private var editingSlideshow: InputID?
@@ -108,8 +107,7 @@ struct InputPanelView: View {
         .sheet(isPresented: $showCaptureCard) { CaptureCardSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCaptureCard) { id in CaptureCardSheet(editing: id).environmentObject(model) }
         .sheet(item: $adjusting) { id in InputAdjustSheet(input: id).environmentObject(model) }
-        .sheet(isPresented: $showTickerSheet) { TickerSheet(editing: nil).environmentObject(model) }
-        .sheet(item: $editingTicker) { id in TickerSheet(editing: id).environmentObject(model) }
+        .sheet(item: $editingTicker) { id in TitleSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showSlideshowSheet) { SlideshowSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingSlideshow) { id in SlideshowSheet(editing: id).environmentObject(model) }
         .alert(L10n.f("inputs.close_confirm", model.inputs.first { $0.id == closing }?.name ?? ""),
@@ -199,12 +197,13 @@ struct InputPanelView: View {
             Button(L10n.t("media.add_playlist")) { model.addMediaPlaylist() }
             Button(L10n.t("inputs.image")) { model.addImage() }
             Button(L10n.t("slideshow.add")) { showSlideshowSheet = true }
-            Button(L10n.t("inputs.title_generator")) { showTitleSheet = true }
+            Button(L10n.t("presentation.add")) { model.addPresentation() }
+            // Titles, lower thirds and running text are all made in the Title Designer.
+            Button(L10n.t("inputs.title_menu")) { showTitleSheet = true }
             Button(L10n.t("capture.add")) { showCaptureSheet = true }
             Button(L10n.t("ndi.add")) { showNDISheet = true }
             Button(L10n.t("browser.add")) { showBrowserSheet = true }
             Button(L10n.t("timer.add")) { showTimerSheet = true }
-            Button(L10n.t("ticker.add")) { showTickerSheet = true }
             Button(L10n.t("inputs.colorbars")) { model.addColorBars() }
             Menu(L10n.t("inputs.color")) {
                 Button("Black") { model.addColor(.black, name: "Black") }
@@ -253,6 +252,11 @@ struct InputPanelView: View {
         }
         if info.kind == .text { Button("Edit Title…") { editingTitle = info.id } }
         if info.kind == .browser {
+            Button(L10n.t("browser.interact")) { model.editBrowserPage(info.id) }
+            if let b = model.browserSource(info.id) {
+                Toggle(L10n.t("browser.freeze"), isOn: Binding(get: { b.freezeWhileEditing },
+                                                               set: { b.freezeWhileEditing = $0; model.objectWillChange.send() }))
+            }
             Button(L10n.t("browser.edit")) { editingBrowser = info.id }
             Button(L10n.t("browser.reload")) { model.browserSource(info.id)?.reload() }
         }
@@ -271,6 +275,25 @@ struct InputPanelView: View {
             Button(t.isPaused ? L10n.t("ticker.resume") : L10n.t("ticker.pause")) { t.setPaused(!t.isPaused) }
             Button(L10n.t("ticker.restart")) { t.restart() }
             Button(L10n.t("ticker.edit")) { editingTicker = info.id }
+        }
+        if info.kind == .presentation, let p = model.presentationSource(info.id) {
+            Button(L10n.t("presentation.next")) { p.next() }
+            Button(L10n.t("presentation.previous")) { p.previous() }
+            Button(L10n.t("presentation.first")) { p.first() }
+            Button(L10n.t("presentation.last")) { p.last() }
+            if p.slideCount > 1 {
+                Menu(L10n.t("presentation.go_to")) {
+                    ForEach(0..<p.slideCount, id: \.self) { i in
+                        Button((i == p.slide ? "▶ " : "") + L10n.f("presentation.slide_n", String(i + 1))) { p.go(to: i) }
+                    }
+                }
+            }
+            Menu(L10n.t("presentation.background")) {
+                Button(L10n.t("presentation.bg_black")) { p.setBackground(nil) }
+                Button(L10n.t("presentation.bg_white")) { p.setBackground(ProjectColor(r: 1, g: 1, b: 1)) }
+            }
+            Button(L10n.t("presentation.reload")) { p.reload() }
+            Button(L10n.t("presentation.open_app")) { NSWorkspace.shared.open(p.url) }
         }
         if info.kind == .slideshow, let s = model.slideshowSource(info.id) {
             Button(L10n.t("playlist.next")) { s.next() }
@@ -361,11 +384,16 @@ struct InputTile: View {
                     .padding(4)
                 if hovering {
                     HStack(spacing: 4) {
+                        if info.kind == .browser {
+                            tileButton("hand.point.up.left.fill", L10n.t("browser.interact")) { model.editBrowserPage(info.id) }
+                        }
                         Spacer()
                         tileButton("arrow.up.left.and.arrow.down.right.circle.fill", L10n.t("viewer.open")) {
                             model.openViewer(info.id)
                             openWindow(id: "source-viewer")
                         }
+                        // Minimize sits between full screen and close (vMix layout).
+                        tileButton("minus.circle.fill", L10n.t("groups.minimize")) { model.toggleMinimized(info.id) }
                         if !info.locked { tileButton("xmark.circle.fill", L10n.t("inputs.close"), action: onClose) }
                     }
                     .padding(4)
@@ -376,11 +404,6 @@ struct InputTile: View {
                 Text(info.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
                 Spacer(minLength: 0)
                 Image(systemName: icon).font(.system(size: 10)).foregroundStyle(Theme.textDim)
-                Button { model.toggleMinimized(info.id) } label: {
-                    Image(systemName: "minus.square").font(.system(size: 10)).foregroundStyle(Theme.textDim)
-                }
-                .buttonStyle(.plain)
-                .help(L10n.t("groups.minimize"))
                 Button { model.toggleLock(info.id) } label: {
                     Image(systemName: info.locked ? "lock.fill" : "lock.open")
                         .font(.system(size: 10))
@@ -389,8 +412,13 @@ struct InputTile: View {
                 .buttonStyle(.plain)
                 .help(info.locked ? L10n.t("lock.unlock_input") : L10n.t("lock.lock_input"))
             }
+            if info.kind == .browser, model.browserSource(info.id)?.isEditing == true {
+                Label(L10n.t("browser.editing_badge"), systemImage: "hand.point.up.left.fill")
+                    .font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.warning)
+            }
             OverlayNumbers(input: info.id)
             if info.kind == .videoFile, let v = model.videoFile(info.id) { MediaClock(video: v) }
+            if info.kind == .presentation, let p = model.presentationSource(info.id) { SlideControls(info: info, source: p) }
             if !info.status.isHealthy, info.status != .starting {
                 Text(info.status.label).font(.system(size: 9)).foregroundStyle(Theme.warning).lineLimit(2)
             }
@@ -446,6 +474,7 @@ struct InputTile: View {
         case .ticker: return "text.line.first.and.arrowtriangle.forward"
         case .slideshow: return "photo.stack"
         case .ndi: return "antenna.radiowaves.left.and.right"
+        case .presentation: return "rectangle.on.rectangle.angled"
         }
     }
 }
@@ -713,6 +742,7 @@ struct TimerSheet: View {
 /// Transport of a video input: seekbar (drag to scrub), position / length, previous, play/pause,
 /// next (clips of a playlist; for a single clip previous goes back to the start).
 struct MediaClock: View {
+    @EnvironmentObject var model: AppModel
     let video: VideoFileSource
     @State private var scrub: Double?
 
@@ -734,8 +764,20 @@ struct MediaClock: View {
                         .disabled(!video.isPlaylist)
                     Text("\(TimerMath.duration(scrub ?? video.position)) / \(video.duration.map { TimerMath.duration($0) } ?? "--:--")")
                     if video.isPlaylist { Text("\(video.index + 1)/\(video.urls.count)") }
-                    if video.autoPlay != .off { Text("AUTO").font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.accent) }
                     Spacer(minLength: 0)
+                    // vMix-style toggles: AUTO = play on Program / pause off it; ↺ = restart.
+                    toggle("AUTO", on: video.autoPlayEnabled, help: L10n.t("media.auto_help")) {
+                        model.setAutoPlayEnabled(!video.autoPlayEnabled, for: video.id)
+                    }
+                    Button { model.setAutoRestart(!video.autoRestart, for: video.id) } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 9, weight: .bold))
+                            .frame(width: 18, height: 13)
+                            .background(video.autoRestart ? Theme.accent : Theme.panel)
+                            .foregroundStyle(video.autoRestart ? Color.white : Theme.textDim)
+                            .clipShape(RoundedRectangle(cornerRadius: 3))
+                    }
+                    .help(L10n.t(video.autoRestart ? "media.restart_on_help" : "media.restart_off_help"))
                 }
                 .buttonStyle(.borderless)
                 .font(.system(size: 9).monospacedDigit())
@@ -743,6 +785,49 @@ struct MediaClock: View {
                 .lineLimit(1)
             }
         }
+    }
+
+    private func toggle(_ label: String, on: Bool, help: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 8, weight: .heavy))
+                .frame(height: 13)
+                .padding(.horizontal, 4)
+                .background(on ? Theme.accent : Theme.panel)
+                .foregroundStyle(on ? Color.white : Theme.textDim)
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+        }
+        .help(help)
+    }
+}
+
+/// Presentation tile bar: first / previous / next and "slide n / total" (vMix PowerPoint input).
+struct SlideControls: View {
+    let info: ProductionEngine.InputInfo
+    let source: PresentationSource
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Button { source.first() } label: { Image(systemName: "backward.end.fill") }
+                .help(L10n.t("presentation.first"))
+            Button { source.previous() } label: { Image(systemName: "chevron.left") }
+                .help(L10n.t("presentation.previous"))
+            if let s = info.slide, s.converting {
+                ProgressView().controlSize(.mini)
+                Text(L10n.t("presentation.converting"))
+            } else if let s = info.slide, s.count > 0 {
+                Text(L10n.f("presentation.counter", String(s.index), String(s.count)))
+            } else {
+                Text("--")
+            }
+            Button { source.next() } label: { Image(systemName: "chevron.right") }
+                .help(L10n.t("presentation.next"))
+            Spacer(minLength: 0)
+        }
+        .buttonStyle(.borderless)
+        .font(.system(size: 9).monospacedDigit())
+        .foregroundStyle(Theme.textDim)
+        .lineLimit(1)
     }
 }
 

@@ -138,19 +138,32 @@ public enum FramePlanner {
             plan.program = composition(snapshot.program)
         }
         plan.preview = previewComposition(snapshot.preview)
+        /// A full-screen overlay shows the input as it looks on Program (its own layers, e.g. a
+        /// running-text band at its position), moved and faded as one; other presets draw the
+        /// input's picture in the preset box.
+        func overlayCommands(_ ch: OverlayChannel, _ src: InputID, frame: NormRect, opacity: Double) -> [DrawCommand] {
+            guard ch.preset == .fullScreen else {
+                return [DrawCommand(source: src, rect: frame, scaleMode: ch.preset == .lowerThird ? .fit : .fill,
+                                    opacity: opacity, key: key(src))]
+            }
+            return composition(src).map { c in
+                var d = c
+                d.rect = NormRect(x: frame.x + c.rect.x * frame.width, y: frame.y + c.rect.y * frame.height,
+                                  width: c.rect.width * frame.width, height: c.rect.height * frame.height)
+                d.opacity = c.opacity * opacity
+                return d
+            }
+        }
         // Overlays waiting on Preview are drawn over the preview picture at full opacity.
         for ch in overlays.sorted(by: { $0.index < $1.index }) where ch.onPreview {
             guard let src = ch.source, layersFor(src) != nil else { continue }
-            plan.preview.append(DrawCommand(source: src, rect: ch.preset.rect,
-                                            scaleMode: ch.preset == .fullScreen || ch.preset == .lowerThird ? .fit : .fill,
-                                            opacity: 1, key: key(src)))
+            plan.preview += overlayCommands(ch, src, frame: ch.preset.rect, opacity: 1)
         }
         for ch in overlays.sorted(by: { $0.index < $1.index }) {
             guard let src = ch.source, layersFor(src) != nil else { continue }
             let (rect, a) = ch.placement(ch.preset.rect, at: now)
             guard a > 0.001 else { continue }
-            plan.overlays.append(DrawCommand(source: src, rect: rect, scaleMode: ch.preset == .fullScreen || ch.preset == .lowerThird ? .fit : .fill,
-                                             opacity: a, key: key(src)))
+            plan.overlays += overlayCommands(ch, src, frame: rect, opacity: a)
         }
         for id in thumbnailsFor where layersFor(id) != nil {
             if composedThumbnails.contains(id) {

@@ -24,6 +24,7 @@ public final class TickerSource: VideoSource {
     /// The text drawn in tiles of at most `tileWidth` pixels (very long text exceeds CoreGraphics / IOSurface limits).
     private var tiles: [CGImage] = []
     private var stripWidth = 0
+    private var labelImage: CGImage?
     private static let tileWidth = 4096
     private var canvas = PixelSize(width: 2, height: 2)
     private var pool: CVPixelBufferPool?
@@ -174,10 +175,7 @@ public final class TickerSource: VideoSource {
         let h = max(8, Int((Double(outputSize.height) * config.bandHeight).rounded()))
         canvas = PixelSize(width: max(16, outputSize.width), height: h)
         pool = PixelBufferFactory.makePool(width: canvas.width, height: canvas.height, minimumCount: 6)
-        let font = NSFont.systemFont(ofSize: CGFloat(config.fontSize * scale), weight: .semibold)
-        let text = config.text.replacingOccurrences(of: "\n", with: "   •   ")
-        let s = NSAttributedString(string: text.isEmpty ? " " : text,
-                                   attributes: [.font: font, .foregroundColor: config.textColor.nsColor])
+        let s = TickerRenderer.attributedText(config, scale: scale)
         let size = s.size()
         let w = max(2, Int(size.width.rounded(.up)) + 2), sh = max(2, Int(size.height.rounded(.up)) + 2)
         var made: [CGImage] = []
@@ -197,6 +195,7 @@ public final class TickerSource: VideoSource {
         }
         tiles = made
         stripWidth = w
+        labelImage = TickerRenderer.labelImage(config, scale: scale, bandHeight: h)
     }
 
     private func tick() {
@@ -209,7 +208,6 @@ public final class TickerSource: VideoSource {
         guard let pool else { return }
         var pbOut: CVPixelBuffer?
         guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pbOut) == kCVReturnSuccess, let pb = pbOut else { return }
-        let config = cfg
         let elapsed = (pausedAt ?? HostClock.now()) - startTime
         let w = canvas.width, h = canvas.height
         CVPixelBufferLockBaseAddress(pb, [])
@@ -217,30 +215,128 @@ public final class TickerSource: VideoSource {
                                bytesPerRow: CVPixelBufferGetBytesPerRow(pb), space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) {
             ctx.clear(CGRect(x: 0, y: 0, width: w, height: h))
-            if config.showBar {
-                ctx.setFillColor(config.barColor.nsColor.cgColor)
-                ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
-            }
-            if !tiles.isEmpty {
-                var x = TickerMath.offset(elapsed: elapsed, speed: config.speed * scale,
-                                          stripWidth: Double(stripWidth), viewWidth: Double(w),
-                                          direction: config.scrollDirection)
-                ctx.interpolationQuality = .medium
-                for tile in tiles {
-                    let tw = Double(tile.width)
-                    if x < Double(w), x + tw > 0 {
-                        let y = (Double(h) - Double(tile.height)) / 2
-                        ctx.draw(tile, in: CGRect(x: x, y: y, width: tw, height: Double(tile.height)))
-                    }
-                    x += tw
-                }
-            }
+            TickerRenderer.drawBand(ctx, cfg, width: w, height: h, scale: scale, tiles: tiles, stripWidth: stripWidth,
+                                    label: labelImage, elapsed: elapsed)
         }
         CVPixelBufferUnlockBaseAddress(pb, [])
         lock.withLock { frame = pb }
     }
 
     public func currentFrame() -> CVPixelBuffer? { lock.withLock { frame } }
+}
+
+/// Running-text drawing shared by `TickerSource` (every frame) and the Title Designer preview.
+public enum TickerRenderer {
+    /// The scrolled text: items joined with the (coloured) separator, in the chosen font.
+    public static func attributedText(_ c: TickerConfig, scale: Double) -> NSAttributedString {
+        let font = TitleRenderer.font(family: c.fontFamily, size: c.fontSize * scale, weight: c.textWeight, italic: c.italic ?? false)
+        var attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: c.textColor.nsColor]
+        if c.shadow == true {
+            let sh = NSShadow()
+            sh.shadowColor = NSColor.black.withAlphaComponent(0.8)
+            sh.shadowBlurRadius = 6 * scale
+            sh.shadowOffset = NSSize(width: 2 * scale, height: -2 * scale)
+            attrs[.shadow] = sh
+        }
+        let text = c.scrollText
+        let out = NSMutableAttributedString(string: text.isEmpty ? " " : text, attributes: attrs)
+        if let sc = c.separatorColor, !c.separatorText.isEmpty {
+            let ns = out.string as NSString
+            var r = ns.range(of: c.separatorText)
+            while r.location != NSNotFound {
+                out.addAttribute(.foregroundColor, value: sc.nsColor, range: r)
+                let next = r.location + r.length
+                r = ns.range(of: c.separatorText, options: [], range: NSRange(location: next, length: ns.length - next))
+            }
+        }
+        return out
+    }
+
+    /// Label box (BREAKING, NEWS…) as tall as the band, or nil.
+    public static func labelImage(_ c: TickerConfig, scale: Double, bandHeight h: Int) -> CGImage? {
+        let text = c.labelText
+        guard !text.isEmpty, h > 0 else { return nil }
+        let font = TitleRenderer.font(family: c.fontFamily, size: c.fontSize * scale * 0.8, weight: .heavy, italic: false)
+        let s = NSAttributedString(string: text.uppercased(), attributes: [
+            .font: font, .foregroundColor: (c.labelTextColor ?? ProjectColor(r: 1, g: 1, b: 1)).nsColor, .kern: 1.5 * scale])
+        let size = s.size()
+        let pad = 22 * scale
+        let w = max(2, Int((size.width + 2 * pad).rounded(.up)))
+        guard let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
+        else { return nil }
+        ctx.setFillColor((c.labelColor ?? ProjectColor(r: 1, g: 1, b: 1)).nsColor.cgColor)
+        ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: false)
+        s.draw(at: NSPoint(x: pad, y: (Double(h) - size.height) / 2))
+        NSGraphicsContext.restoreGraphicsState()
+        return ctx.makeImage()
+    }
+
+    /// One frame of the band (`width` × `height` pixels, CoreGraphics y-up): bar, scrolling text
+    /// in the area right of the label, then the label.
+    public static func drawBand(_ ctx: CGContext, _ c: TickerConfig, width w: Int, height h: Int, scale: Double,
+                                tiles: [CGImage], stripWidth: Int, label: CGImage?, elapsed: Double) {
+        if c.showBar {
+            ctx.setFillColor(c.barColor.nsColor.cgColor)
+            ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+        }
+        let lw = label.map { Double($0.width) } ?? 0
+        let view = max(Double(w) - lw, 1)
+        if !tiles.isEmpty {
+            ctx.saveGState()
+            ctx.clip(to: CGRect(x: lw, y: 0, width: view, height: Double(h)))
+            var x = lw + TickerMath.offset(elapsed: elapsed, speed: c.speed * scale, stripWidth: Double(stripWidth),
+                                           viewWidth: view, direction: c.scrollDirection)
+            ctx.interpolationQuality = .medium
+            for tile in tiles {
+                let tw = Double(tile.width)
+                if x < Double(w), x + tw > lw {
+                    let y = (Double(h) - Double(tile.height)) / 2
+                    ctx.draw(tile, in: CGRect(x: x, y: y, width: tw, height: Double(tile.height)))
+                }
+                x += tw
+            }
+            ctx.restoreGState()
+        }
+        if let label { ctx.draw(label, in: CGRect(x: 0, y: 0, width: label.width, height: h)) }
+    }
+
+    /// Whole-picture preview (transparent, band at its position) for the Title Designer.
+    public static func preview(_ c0: TickerConfig, width W: Int, height H: Int, elapsed: Double? = nil) -> CGImage? {
+        let c = c0.clamped
+        let scale = Double(H) / 1080
+        let bandH = max(4, Int((Double(H) * c.bandHeight).rounded()))
+        guard let ctx = CGContext(data: nil, width: W, height: H, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
+        else { return nil }
+        ctx.clear(CGRect(x: 0, y: 0, width: W, height: H))
+        let s = attributedText(c, scale: scale)
+        let size = s.size()
+        let sw = max(2, Int(size.width.rounded(.up)) + 2), sh = max(2, Int(size.height.rounded(.up)) + 2)
+        guard let tctx = CGContext(data: nil, width: min(sw, 16_384), height: sh, bitsPerComponent: 8, bytesPerRow: 0,
+                                   space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                   bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
+        else { return nil }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: tctx, flipped: false)
+        s.draw(at: NSPoint(x: 1, y: 1))
+        NSGraphicsContext.restoreGraphicsState()
+        let tiles = tctx.makeImage().map { [$0] } ?? []
+        let label = labelImage(c, scale: scale, bandHeight: bandH)
+        // Default: the text has just come in from the edge, so the start of it is readable.
+        let lw = Double(label?.width ?? 0)
+        let t = elapsed ?? (Double(W) - lw) * 0.8 / max(c.speed * scale, 1)
+        let rect = c.layerRect
+        ctx.saveGState()
+        ctx.translateBy(x: 0, y: Double(H) * (1 - rect.y - rect.height))
+        drawBand(ctx, c, width: W, height: bandH, scale: scale, tiles: tiles, stripWidth: sw, label: label, elapsed: t)
+        ctx.restoreGState()
+        return ctx.makeImage()
+    }
 }
 
 /// Photo slideshow: images (aspect-fit on black at the output size) shown in turn with a

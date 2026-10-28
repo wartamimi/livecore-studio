@@ -29,8 +29,8 @@ targets:
       properties:
         CFBundleName: LiveCore Studio
         CFBundleDisplayName: LiveCore Studio
-        CFBundleShortVersionString: "0.34.0"
-        CFBundleVersion: "40"
+        CFBundleShortVersionString: "0.35.0"
+        CFBundleVersion: "41"
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, id]
         LSApplicationCategoryType: public.app-category.video
@@ -39,6 +39,7 @@ targets:
         NSMicrophoneUsageDescription: LiveCore Studio uses microphones and audio interfaces as mixer inputs.
         NSLocalNetworkUsageDescription: LiveCore Studio sends and receives NDI video on your network and, when the Web Controller is on, lets phones and tablets on your network control the switcher.
         NSBonjourServices: [_ndi._tcp]
+        NSAppleEventsUsageDescription: LiveCore Studio asks Keynote, PowerPoint or LibreOffice to export a presentation you add as an input to PDF, so its slides can be shown.
         NSAppTransportSecurity:
           NSAllowsArbitraryLoadsInWebContent: true
         NSHighResolutionCapable: true
@@ -51,6 +52,8 @@ targets:
         com.apple.security.device.audio-input: true
         # Lets the ad-hoc signed app load the NDI runtime that NDI Tools installed (signed by NDI).
         com.apple.security.cs.disable-library-validation: true
+        # Lets the app ask Keynote / PowerPoint to export a presentation to PDF (0.35.0).
+        com.apple.security.automation.apple-events: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: studio.livecore.LiveCoreStudio

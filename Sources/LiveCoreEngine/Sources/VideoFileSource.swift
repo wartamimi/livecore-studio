@@ -45,7 +45,18 @@ public final class VideoFileSource: NSObject, VideoSource {
         get { RepeatMode(loop: loop, one: repeatOne) }
         set { repeatOne = newValue == .one; loop = newValue != .off }
     }
-    public var autoPlay: AutoPlay = .off
+    /// vMix "Auto Play": plays when the input goes on Program, pauses when it leaves.
+    public var autoPlayEnabled = false
+    /// vMix "Auto Restart": with auto play, starts from the beginning each time it goes on
+    /// Program (and rewinds when it leaves); off = carries on where it stopped.
+    public var autoRestart = true
+    public var autoPlay: AutoPlay {
+        get { !autoPlayEnabled ? .off : autoRestart ? .restartPause : .playPause }
+        set {
+            autoPlayEnabled = newValue != .off
+            if newValue != .off { autoRestart = newValue == .restartPause }
+        }
+    }
     /// Clip length in seconds once the file is ready (main thread).
     public private(set) var duration: Double?
     /// Called on the main thread once the file turns out to contain audio; must return the

@@ -210,14 +210,29 @@ struct MultiCorderDetails: View {
                 .font(.system(size: 10)).foregroundStyle(Theme.textDim)
             ForEach(model.inputs) { i in
                 let on = model.multiCorder.contains(i.id)
-                Toggle(isOn: Binding(get: { on }, set: { _ in model.toggleISO(i.id) })) {
-                    HStack(spacing: 5) {
-                        if let t = model.inputTags[i.id] { Circle().fill(t.color).frame(width: 7, height: 7) }
-                        Text("\(i.number)  \(i.name)").lineLimit(1)
+                HStack(spacing: 6) {
+                    Toggle(isOn: Binding(get: { on }, set: { _ in model.toggleISO(i.id) })) {
+                        HStack(spacing: 5) {
+                            if let t = model.inputTags[i.id] { Circle().fill(t.color).frame(width: 7, height: 7) }
+                            Text("\(i.number)  \(i.name)").lineLimit(1)
+                        }
+                    }
+                    .toggleStyle(.checkbox).font(.system(size: 11))
+                    .disabled(model.isMultiCorderRunning || (!on && model.multiCorder.isFull))
+                    Spacer(minLength: 4)
+                    if on {
+                        // Audio of this ISO file: the profile's bus or its own (Master / Bus A / Bus B).
+                        Picker("", selection: Binding(get: { model.multiCorder.ownBus(i.id) },
+                                                      set: { model.multiCorder.setBus($0, for: i.id) })) {
+                            Text(L10n.f("multicorder.bus_profile", busName(p.bus))).tag(OutputBus?.none)
+                            Divider()
+                            ForEach(OutputBus.allCases, id: \.self) { b in Text(busName(b)).tag(OutputBus?.some(b)) }
+                        }
+                        .labelsHidden().controlSize(.small).frame(width: 130)
+                        .disabled(model.isMultiCorderRunning)
+                        .help(L10n.t("multicorder.bus_help"))
                     }
                 }
-                .toggleStyle(.checkbox).font(.system(size: 11))
-                .disabled(model.isMultiCorderRunning || (!on && model.multiCorder.isFull))
             }
             if model.inputs.isEmpty {
                 Text(L10n.t("multicorder.no_inputs")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
@@ -228,6 +243,14 @@ struct MultiCorderDetails: View {
                         model.multiCorder.inputs.count))
                 .font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.textDim)
             ForEach(model.isoFiles) { f in isoRow(f.input, f.stats) }
+        }
+    }
+
+    private func busName(_ b: OutputBus) -> String {
+        switch b {
+        case .master: return "Master"
+        case .busA: return "Bus A"
+        case .busB: return "Bus B"
         }
     }
 

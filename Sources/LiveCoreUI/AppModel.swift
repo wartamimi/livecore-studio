@@ -64,6 +64,8 @@ public final class AppModel: ObservableObject {
     @Published public private(set) var auxBuses: [AuxBusVM] = []
     /// Last Program snapshot saved with `saveSnapshot()`.
     @Published public private(set) var lastSnapshotURL: URL?
+    /// Time of the last PHOTO saved, for the confirmation on the Program monitor.
+    @Published public private(set) var lastSnapshotAt: Date?
     var lastProgramFrame: CVPixelBuffer?
     var lastPreviewFrame: CVPixelBuffer?
     private var lastMusicError: String?
@@ -341,7 +343,8 @@ public final class AppModel: ObservableObject {
     public func addMedia() {
         guard let e = engine else { return }
         for url in pickMedia() {
-            if Self.isAudioOnly(url) { e.addMusic(urls: [url]) } else { e.addVideoFile(url: url) }
+            // New media inputs play from the start when they go on Program (vMix Auto Play + Auto Restart).
+            if Self.isAudioOnly(url) { e.addMusic(urls: [url]) } else { e.addVideoFile(url: url, autoPlay: .restartPause) }
         }
         reloadAudioChannels()
     }
@@ -351,7 +354,7 @@ public final class AppModel: ObservableObject {
     public func addMediaPlaylist() {
         let urls = pickMedia()
         guard !urls.isEmpty, let e = engine else { return }
-        if urls.allSatisfy(Self.isAudioOnly) { e.addMusic(urls: urls) } else { e.addVideoFile(urls: urls) }
+        if urls.allSatisfy(Self.isAudioOnly) { e.addMusic(urls: urls) } else { e.addVideoFile(urls: urls, autoPlay: .restartPause) }
         reloadAudioChannels()
     }
 
@@ -363,6 +366,17 @@ public final class AppModel: ObservableObject {
         v.appendClips(urls)
         objectWillChange.send()
         if v.isPlaylist, v.name == v.urls.first?.deletingPathExtension().lastPathComponent { rename(id, "Playlist") }
+    }
+
+    /// Tile buttons: AUTO (play on Program) and ↺ (start from the beginning each time).
+    public func setAutoPlayEnabled(_ on: Bool, for id: InputID) {
+        guard let v = videoFile(id) else { return }
+        setAutoPlay(on ? (v.autoRestart ? .restartPause : .playPause) : .off, for: id)
+    }
+
+    public func setAutoRestart(_ on: Bool, for id: InputID) {
+        engine?.setAutoRestart(on, for: id)
+        objectWillChange.send()
     }
 
     public func setAutoPlay(_ mode: VideoFileSource.AutoPlay, for id: InputID) {
@@ -436,6 +450,14 @@ public final class AppModel: ObservableObject {
     }
 
     public func browserSource(_ id: InputID) -> BrowserSource? { engine?.source(id) as? BrowserSource }
+
+    /// Opens a web input's page in a window to click and type in; "Done" shows it again.
+    public func editBrowserPage(_ id: InputID) {
+        guard let b = browserSource(id) else { return }
+        b.onEditingChange = { [weak self] _ in self?.objectWillChange.send() }
+        let name = inputs.first { $0.id == id }?.name ?? b.name
+        b.beginEditing(doneTitle: L10n.t("browser.edit_done"), windowTitle: L10n.f("browser.edit_window", name))
+    }
     public func captureSource(_ id: InputID) -> ScreenCaptureSource? { engine?.source(id) as? ScreenCaptureSource }
     public func addCapture(_ c: ProjectScreenCapture) {
         if let used = captureInUse(c) { report(L10n.f("inputs.already_used", used)); return }
@@ -467,8 +489,28 @@ public final class AppModel: ObservableObject {
     public func timerSource(_ id: InputID) -> TimerSource? { engine?.source(id) as? TimerSource }
     public func tickerSource(_ id: InputID) -> TickerSource? { engine?.source(id) as? TickerSource }
     public func addTicker(_ c: TickerConfig) { engine?.addTicker(c) }
-    public func updateTicker(_ id: InputID, _ c: TickerConfig) { tickerSource(id)?.update(c); objectWillChange.send() }
+    public func updateTicker(_ id: InputID, _ c: TickerConfig) { engine?.updateTicker(id, c); objectWillChange.send() }
     public func slideshowSource(_ id: InputID) -> SlideshowSource? { engine?.source(id) as? SlideshowSource }
+    public func presentationSource(_ id: InputID) -> PresentationSource? { engine?.source(id) as? PresentationSource }
+
+    /// PowerPoint, Keynote, OpenDocument or PDF slides; one input per file.
+    public func addPresentation() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.treatsFilePackagesAsDirectories = false
+        panel.allowedContentTypes = PresentationFiles.all.sorted().compactMap { UTType(filenameExtension: $0) }
+        guard panel.runModal() == .OK, let e = engine else { return }
+        let installed = PresentationConverter.installed()
+        for url in panel.urls {
+            let ext = url.pathExtension.lowercased()
+            if PresentationFiles.needsConversion(ext), PresentationFiles.converter(for: ext, installed: installed) == nil {
+                report(L10n.f("presentation.no_converter", ext))
+                continue
+            }
+            e.addPresentation(url: url)
+        }
+    }
     public func addSlideshow(urls: [URL], interval: Double, fade: Double, loop: Bool, kenBurns: Bool, folder: URL?) {
         engine?.addSlideshow(urls: urls, interval: interval, fade: fade, loop: loop, kenBurns: kenBurns, folder: folder)
     }
@@ -566,6 +608,8 @@ public final class AppModel: ObservableObject {
             CGImageDestinationAddImage(dest, cg, nil)
             guard CGImageDestinationFinalize(dest) else { report("Cannot write snapshot to \(url.path)."); return }
             lastSnapshotURL = url
+            lastSnapshotAt = Date()
+            NSSound(named: "Grab")?.play()
         } catch {
             report("Cannot save snapshot: \(error.localizedDescription)")
         }

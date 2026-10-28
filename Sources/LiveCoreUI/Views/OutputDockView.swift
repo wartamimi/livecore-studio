@@ -67,7 +67,7 @@ struct OutputDockView: View {
                         MultiCorderDetails()
                         Button(L10n.t("dock.more_settings")) { showMultiCorder = false; openSettings(8) }
                     }
-                    .padding(12).frame(width: 360)
+                    .padding(12).frame(width: 440)
                 }
             }
             group {

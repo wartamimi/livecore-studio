@@ -149,6 +149,15 @@
 62. **Duplikat input (0.26.0)**: satu kamera/capture card = satu input. Capture jendela dicocokkan dari aplikasi + judul
     jendela; jendela dengan judul yang berubah (mis. judul dokumen) dianggap jendela lain. Proyek lama yang sudah berisi
     duplikat tetap dibuka apa adanya.
+72. **Animasi title & teks berjalan (0.35.0)**: animasi adalah satu gerakan untuk seluruh title (fade, geser, zoom) memakai
+    kanal overlay; belum ada animasi per elemen/huruf atau animasi keluar yang berbeda dari animasi masuk. Animasi hanya
+    diputar lewat nomor overlay (1-4), bukan saat title dipotong (CUT) sebagai input biasa.
+73. **Mode edit input Web (0.35.0)**: login dan cookie hanya bertahan selama app terbuka (penyimpanan data tidak permanen).
+    Selama mengedit, gambar Program ditahan (bawaan) atau mengikuti halaman langsung bila opsi itu dimatikan.
+74. **Input PowerPoint (0.35.0)**: slide ditampilkan sebagai gambar statis dari PDF hasil ekspor; animasi, transisi slide,
+    video dan audio di dalam presentasi tidak diputar. File .pptx/.key butuh Keynote, PowerPoint atau LibreOffice di Mac;
+    tanpa itu, ekspor ke PDF dulu. PowerPoint (sandbox) bisa meminta "Grant access" untuk membuka file. Konversi pertama
+    bisa memakan waktu beberapa detik sampai menit untuk dek besar; setelah file diedit pilih "Muat ulang".
 71. **Title Designer (0.34.0)**: title template dirender sekali per perubahan (bukan per frame), jadi belum ada
     animasi per elemen; animasi masuk/keluar memakai animasi overlay (seluruh title bergerak bersama). Font yang tidak
     terpasang di Mac lain (proyek dibuka di Mac lain) diganti font sistem. Title template berukuran seluruh output: di

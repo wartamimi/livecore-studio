@@ -19,6 +19,30 @@ public struct TickerConfig: Codable, Equatable, Sendable {
     /// Minutes between feed refreshes (nil = 5).
     public var feedRefreshMinutes: Double?
 
+    // Advanced (0.35.0, Title Designer › Running text). nil = the earlier look.
+    public var template: TickerTemplate?
+    /// Fixed label at the left of the band (BREAKING, INFO…); empty / nil = none.
+    public var label: String?
+    public var labelColor: ProjectColor?
+    public var labelTextColor: ProjectColor?
+    public var fontFamily: String?
+    public var weight: TitleWeight?
+    public var italic: Bool?
+    public var uppercase: Bool?
+    /// Placed between items (lines); nil = "•".
+    public var separator: String?
+    public var separatorColor: ProjectColor?
+    /// Top of the band as a fraction of the picture height; nil = near the bottom.
+    public var bandY: Double?
+    public var shadow: Bool?
+    /// In / out motion when shown with an overlay number; nil = the overlay's own setting.
+    public var animation: OverlayAnimation?
+    public var animationDuration: Double?
+
+    public var labelText: String { Self.trim(label ?? "") }
+    public var separatorText: String { separator ?? "•" }
+    public var textWeight: TitleWeight { weight ?? .semibold }
+
     public var scrollDirection: TickerDirection { direction ?? .rightToLeft }
     public var feedRefreshSeconds: Double { min(max(feedRefreshMinutes ?? 5, 1), 120) * 60 }
 
@@ -36,13 +60,86 @@ public struct TickerConfig: Codable, Equatable, Sendable {
         c.speed = min(max(speed, Self.speedRange.lowerBound), Self.speedRange.upperBound)
         c.fontSize = min(max(fontSize, 12), 120)
         c.bandHeight = min(max(bandHeight, 0.04), 0.25)
+        if let y = bandY { c.bandY = min(max(y.isFinite ? y : 0, 0), 1 - c.bandHeight) }
+        if let d = animationDuration { c.animationDuration = min(max(d.isFinite ? d : 0.5, 0.1), 5) }
+        if let l = label, l.count > 30 { c.label = String(l.prefix(30)) }
+        if let s = separator, s.count > 8 { c.separator = String(s.prefix(8)) }
         return c
     }
 
-    /// Normalised layer rectangle of the band (bottom of the picture).
+    /// Normalised layer rectangle of the band (near the bottom unless `bandY` says otherwise).
     public var layerRect: NormRect {
-        let h = clamped.bandHeight
-        return NormRect(x: 0, y: 1 - h - 0.04, width: 1, height: h)
+        let c = clamped
+        return NormRect(x: 0, y: c.bandY ?? (1 - c.bandHeight - 0.04), width: 1, height: c.bandHeight)
+    }
+
+    static func trim(_ s: String) -> String {
+        var t = Substring(s)
+        while let f = t.first, f == " " || f == "\t" { t.removeFirst() }
+        while let l = t.last, l == " " || l == "\t" { t.removeLast() }
+        return String(t)
+    }
+
+    /// Items joined with the separator, as scrolled.
+    public var scrollText: String {
+        let items = text.split(whereSeparator: { $0.isNewline }).map { Self.trim(String($0)) }.filter { !$0.isEmpty }
+        let joined = items.joined(separator: "   \(separatorText)   ")
+        return (uppercase ?? false) ? joined.uppercased() : joined
+    }
+}
+
+/// Running-text styles offered in the Title Designer.
+public enum TickerTemplate: String, Codable, Sendable, CaseIterable {
+    case newsRed, breakingYellow, darkLabel, blueInfo, minimal, topBand
+
+    public func config(text: String) -> TickerConfig {
+        func rgb(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1) -> ProjectColor { ProjectColor(r: r, g: g, b: b, a: a) }
+        var c = TickerConfig(text: text)
+        c.template = self
+        c.animation = .slideFromBottom
+        c.animationDuration = 0.5
+        switch self {
+        case .newsRed:
+            c.barColor = rgb(0.6, 0.05, 0.05, 0.92)
+            c.label = "NEWS"
+            c.labelColor = rgb(1, 1, 1)
+            c.labelTextColor = rgb(0.6, 0.05, 0.05)
+            c.weight = .semibold
+        case .breakingYellow:
+            c.barColor = rgb(0.05, 0.05, 0.08, 0.92)
+            c.label = "BREAKING"
+            c.labelColor = rgb(1, 0.82, 0.1)
+            c.labelTextColor = rgb(0.08, 0.05, 0.02)
+            c.uppercase = true
+            c.weight = .bold
+            c.separatorColor = rgb(1, 0.82, 0.1)
+        case .darkLabel:
+            c.barColor = rgb(0.08, 0.09, 0.12, 0.88)
+            c.label = "INFO"
+            c.labelColor = rgb(0.25, 0.55, 1)
+            c.labelTextColor = rgb(1, 1, 1)
+            c.separatorColor = rgb(0.25, 0.55, 1)
+        case .blueInfo:
+            c.barColor = rgb(0.05, 0.25, 0.6, 0.92)
+            c.weight = .medium
+            c.separator = "|"
+            c.separatorColor = rgb(1, 1, 1, 0.6)
+        case .minimal:
+            c.showBar = false
+            c.shadow = true
+            c.weight = .semibold
+            c.animation = .fade
+        case .topBand:
+            c.barColor = rgb(0, 0, 0, 0.7)
+            c.bandY = 0.03
+            c.bandHeight = 0.06
+            c.fontSize = 34
+            c.label = "LIVE"
+            c.labelColor = rgb(0.88, 0.08, 0.1)
+            c.labelTextColor = rgb(1, 1, 1)
+            c.animation = .slideFromTop
+        }
+        return c
     }
 }
 
@@ -134,7 +231,7 @@ public enum FeedTitles {
         var depth = false
         for ch in t { if ch == "<" { depth = true } else if ch == ">" && depth { depth = false } else if !depth { noTags.append(ch) } }
         let decoded = decodeEntities(noTags)
-        return decoded.split(whereSeparator: { $0 == " " || $0 == "\n" || $0 == "\t" || $0 == "\r" }).joined(separator: " ")
+        return decoded.split(whereSeparator: { $0 == " " || $0 == "\t" || $0.isNewline }).joined(separator: " ")
     }
 
     static func decodeEntities(_ s: String) -> String {
