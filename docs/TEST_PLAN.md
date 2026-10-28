@@ -51,6 +51,18 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AD. Tes manual build 0.30.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-119 | Nyalakan Web Controller | Settings › Remote › nyalakan; HP di Wi-Fi yang sama buka alamat yang tertulis (mis. http://192.168.1.20:8088) | Halaman "LiveCore Remote" terbuka; PIN salah → "PIN salah"; PIN benar → nama proyek, Program/Preview dan daftar input tampil. Bila macOS menanyakan koneksi masuk, pilih Allow |
+| T-120 | Preview, CUT, AUTO | Ketuk input (mode "Ketuk = Preview"), CUT, lalu AUTO; ganti ke "Ketuk = Program" dan ketuk input | Preview/Program di Mac berubah dalam <1 detik; warna merah/hijau di HP sama dengan Mac; mode Program langsung memotong ke input itu |
+| T-121 | T-bar dari HP | Geser T-bar HP pelan-pelan sampai ujung | Transisi di Mac ikut bergerak; persen sama; di ujung Program berganti dan T-bar berikutnya berjalan ke arah sebaliknya |
+| T-122 | Overlay & replay | Atur overlay 1 dengan input; ketuk 1 di HP; rekam replay ≥10 detik lalu ketuk 10 s | Overlay nyala/mati di Program; tombol replay aktif sesuai detik yang tersedia dan replay diputar |
+| T-123 | Rekam & stream | Rekam dan Stream dari HP; hentikan (konfirmasi muncul di HP); kunci RECORD/STREAM di Mac lalu coba lagi | Mulai/berhenti sesuai; saat dikunci HP menampilkan pesan terkunci dan tidak ada yang berubah |
+| T-124 | Lockout | Masukkan PIN salah 5 kali | Pesan "Terlalu banyak PIN salah… 60 detik"; perangkat lain tetap bisa memakai remote |
+| T-125 | PIN baru | Settings › Remote › PIN baru | HP yang sudah masuk keluar ke layar PIN; PIN baru bisa dipakai; PIN tidak ada di preferences/proyek (hanya Keychain "remote-pin") |
+| T-126 | QR code | Buka "QR code", pindai dengan kamera HP | Halaman remote terbuka dan langsung masuk tanpa mengetik PIN; jumlah "Perangkat tersambung" naik |
+
 ## AC. Tes manual build 0.29.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

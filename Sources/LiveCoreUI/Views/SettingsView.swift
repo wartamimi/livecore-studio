@@ -17,7 +17,7 @@ struct SettingsView: View {
     @State private var canvasLines = 1080
     @State private var customWidth = 1920
     @State private var customHeight = 1080
-    /// Tab shown first (6 Canvas, 0 Output, 1 Stream, 2 Record, ...).
+    /// Tab shown first (6 Canvas, 0 Output, 1 Stream, 2 Record, ..., 7 Remote).
     var initialTab = 0
 
     init(initialTab: Int = 0) { self.initialTab = initialTab }
@@ -32,6 +32,7 @@ struct SettingsView: View {
                 audioTab.tabItem { Text(L10n.t("audio.title")) }.tag(3)
                 shortcutTab.tabItem { Text(L10n.t("settings.shortcuts")) }.tag(4)
                 MIDISettingsView().tabItem { Text("MIDI") }.tag(5)
+                RemoteSettingsView().tabItem { Text("Remote") }.tag(7)
             }
             .padding()
             if !errors.isEmpty {
@@ -45,7 +46,7 @@ struct SettingsView: View {
             }
             .padding()
         }
-        .frame(width: 560, height: 520)
+        .frame(width: 620, height: 540)
         .onAppear {
             draft = model.settings
             loadCanvas()

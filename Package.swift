@@ -8,6 +8,7 @@
 //   CNDI              NDI® output: loads the installed NDI runtime with dlopen; vendored MIT SDK headers.
 //   LiveCoreCore      Platform-independent logic: switcher state, transitions, layout math,
 //                     audio DSP, FLV/AMF0/RTMP protocol (sans-IO). Builds & tests on Linux + macOS.
+//   LiveCoreRemote    Web Controller HTTP server (POSIX sockets). Builds & tests on Linux + macOS.
 //   LiveCoreEngine    macOS-only engines: AVFoundation capture, Metal compositor, Core Audio mixer,
 //                     VideoToolbox/AAC encoders, RTMP transport (Network.framework), AVAssetWriter.
 //   LiveCoreUI        SwiftUI operator interface (macOS) + localisation resources (en, id).
@@ -38,12 +39,13 @@ let package = Package(
                                  .linkedFramework("IOSurface", .when(platforms: [.macOS])),
                                  .linkedFramework("AppKit", .when(platforms: [.macOS]))]),
         .target(name: "LiveCoreCore", dependencies: ["CAtomics"]),
+        .target(name: "LiveCoreRemote", dependencies: ["LiveCoreCore"]),
         .target(name: "LiveCoreEngine", dependencies: [
             "LiveCoreCore", "CAtomics", "CObjCSupport", "CSyphon", "CNDI",
         ]),
         .target(
             name: "LiveCoreUI",
-            dependencies: ["LiveCoreEngine", "LiveCoreCore"],
+            dependencies: ["LiveCoreEngine", "LiveCoreCore", "LiveCoreRemote"],
             resources: [.process("Resources")]
         ),
         .executableTarget(name: "LiveCoreStudio", dependencies: ["LiveCoreUI"], path: "App"),
@@ -51,6 +53,6 @@ let package = Package(
         .executableTarget(name: "livecore-transition-dump", dependencies: ["LiveCoreCore"]),
         .executableTarget(name: "livecore-syphon-check", dependencies: ["CSyphon"]),
         .executableTarget(name: "livecore-ndi-check", dependencies: ["CNDI", "LiveCoreCore", "LiveCoreEngine"]),
-        .testTarget(name: "LiveCoreCoreTests", dependencies: ["LiveCoreCore"]),
+        .testTarget(name: "LiveCoreCoreTests", dependencies: ["LiveCoreCore", "LiveCoreRemote"]),
     ]
 )

@@ -29,15 +29,15 @@ targets:
       properties:
         CFBundleName: LiveCore Studio
         CFBundleDisplayName: LiveCore Studio
-        CFBundleShortVersionString: "0.29.0"
-        CFBundleVersion: "34"
+        CFBundleShortVersionString: "0.30.0"
+        CFBundleVersion: "35"
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, id]
         LSApplicationCategoryType: public.app-category.video
         LSMinimumSystemVersion: "13.0"
         NSCameraUsageDescription: LiveCore Studio uses cameras and video capture devices as production inputs.
         NSMicrophoneUsageDescription: LiveCore Studio uses microphones and audio interfaces as mixer inputs.
-        NSLocalNetworkUsageDescription: LiveCore Studio sends its outputs as NDI sources to NDI Virtual Camera, OBS, vMix and other computers on your network.
+        NSLocalNetworkUsageDescription: LiveCore Studio sends and receives NDI video on your network and, when the Web Controller is on, lets phones and tablets on your network control the switcher.
         NSBonjourServices: [_ndi._tcp]
         NSAppTransportSecurity:
           NSAllowsArbitraryLoadsInWebContent: true

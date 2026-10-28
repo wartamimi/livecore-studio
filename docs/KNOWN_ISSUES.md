@@ -149,6 +149,12 @@
 62. **Duplikat input (0.26.0)**: satu kamera/capture card = satu input. Capture jendela dicocokkan dari aplikasi + judul
     jendela; jendela dengan judul yang berubah (mis. judul dokumen) dianggap jendela lain. Proyek lama yang sudah berisi
     duplikat tetap dibuka apa adanya.
+67. **Web Controller (0.30.0)**: koneksi HTTP biasa (tidak terenkripsi) — PIN dan perintah bisa dibaca orang lain di
+    jaringan yang sama; pakai hanya di Wi-Fi/LAN yang dipercaya (bukan Wi-Fi publik/tamu). Hanya IPv4. Bila firewall
+    macOS aktif, macOS bisa bertanya "izinkan koneksi masuk" untuk LiveCore Studio (app belum bertanda tangan Developer
+    ID, jadi pertanyaan itu bisa muncul lagi setelah update). Status di HP diperbarui tiap 0,5 detik (bukan real-time);
+    belum ada gambar preview/program di halaman remote, belum ada kontrol audio/mixer dan playlist dari remote. Wi-Fi
+    "client isolation" di sebagian router membuat HP tidak bisa menjangkau Mac.
 66. **Input NDI (0.29.0)**: butuh runtime NDI (NDI Tools / NDI Runtime) di Mac; tanpanya menu memberi link unduh. Video
     disalin ke buffer BGRA (CPU) — untuk banyak sumber 4K beban CPU naik. Hanya video progresif; sumber interlaced
     diminta progresif dari NDI. Audio diambil 2 kanal pertama. Belum ada sinkron A/V otomatis antara video dan audio NDI.

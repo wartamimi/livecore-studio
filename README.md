@@ -4,7 +4,11 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.29.0 — Milestone 3 berjalan.** 0.29.0 menambah input NDI®: sumber NDI di jaringan (HP dengan aplikasi
+> **Status: 0.30.0 — Milestone 3 berjalan.** 0.30.0 menambah Web Controller: remote dari browser HP, tablet atau
+> komputer lain di jaringan yang sama (tanpa install aplikasi) untuk Preview, CUT, AUTO, T-bar, overlay 1–4, instant
+> replay, rekam, streaming dan snapshot, dengan status Program/Preview langsung. Mati secara default; dikunci PIN yang
+> disimpan di Keychain, perangkat dikunci sementara setelah 5 PIN salah, ada QR code untuk masuk cepat (Settings ›
+> Remote). Server diuji otomatis di CI (Linux dan macOS); menunggu tes T-119..T-126. 0.29.0 menambah input NDI®: sumber NDI di jaringan (HP dengan aplikasi
 > kamera NDI, OBS/vMix di komputer lain, kamera NDI) bisa ditambahkan sebagai input, lengkap dengan audionya di mixer,
 > pilihan bandwidth rendah, dan info sinyal — diuji di CI (input LiveCore menerima sumber NDI dari proses lain), menunggu
 > tes T-116..T-118. 0.28.0 menambah bagian "Lanjutan" di pengaturan capture card: format video
