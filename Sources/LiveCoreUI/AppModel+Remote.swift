@@ -131,22 +131,31 @@ extension AppModel {
         return list
     }
 
-    /// Small JPEGs of Program and Preview for the remote page (3 per second, only while a page
-    /// is showing them). Encoded off the main thread.
+    /// Small JPEGs of Program and Preview for the remote page (up to 15 per second, only while a
+    /// page is showing them). Encoded off the main thread; a tick is skipped while the previous
+    /// pair is still encoding, so a slow Mac lowers the rate instead of queueing work.
     func pushRemoteFrames() {
         guard let server = remoteServer, server.wantsFrames() else { return }
+        guard Self.remoteEncoding.mutate({ busy -> Bool in
+            if busy { return false }
+            busy = true
+            return true
+        }) else { return }
         let frames = [("program", lastProgramFrame), ("preview", lastPreviewFrame)]
         Self.remoteEncodeQueue.async {
             for case let (bus, pb?) in frames {
                 if let jpeg = Self.remoteJPEG(pb) { server.setFrame(jpeg, bus: bus) }
             }
+            Self.remoteEncoding.mutate { $0 = false }
         }
     }
 
-    private static let remoteEncodeQueue = DispatchQueue(label: "studio.livecore.remote.jpeg", qos: .utility)
+    private static let remoteEncoding = Locked(false)
+
+    private static let remoteEncodeQueue = DispatchQueue(label: "studio.livecore.remote.jpeg", qos: .userInitiated)
     private static let remoteCI = CIContext(options: [.cacheIntermediates: false])
 
-    /// 640 px wide JPEG (quality 0.6).
+    /// 640 px wide JPEG (quality 0.55).
     static func remoteJPEG(_ pb: CVPixelBuffer, width: CGFloat = 640) -> [UInt8]? {
         var img = CIImage(cvPixelBuffer: pb)
         let scale = min(1, width / max(img.extent.width, 1))
@@ -154,7 +163,7 @@ extension AppModel {
         guard let cg = remoteCI.createCGImage(img, from: img.extent) else { return nil }
         let data = NSMutableData()
         guard let dest = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
-        CGImageDestinationAddImage(dest, cg, [kCGImageDestinationLossyCompressionQuality: 0.6] as CFDictionary)
+        CGImageDestinationAddImage(dest, cg, [kCGImageDestinationLossyCompressionQuality: 0.55] as CFDictionary)
         guard CGImageDestinationFinalize(dest) else { return nil }
         return [UInt8](data as Data)
     }

@@ -5,7 +5,6 @@ import LiveCoreEngine
 
 struct AudioMixerView: View {
     @EnvironmentObject var model: AppModel
-    @EnvironmentObject var meters: MeterModel
     @State private var showRadio = false
 
     var body: some View {
@@ -36,14 +35,14 @@ struct AudioMixerView: View {
                     ScrollView(.horizontal) {
                         HStack(alignment: .top, spacing: 6) {
                             ForEach(model.audioChannels) { ch in
-                                ChannelStripView(vm: ch, level: meters.levels[ch.id])
+                                ChannelStripView(vm: ch)
                             }
                         }
                     }
                 }
                 Divider()
                 ForEach(model.auxBuses) { bus in
-                    AuxStripView(bus: bus, level: bus.index < meters.aux.count ? meters.aux[bus.index] : nil)
+                    AuxStripView(bus: bus)
                 }
                 Divider()
                 MasterStripView()
@@ -58,7 +57,6 @@ struct AudioMixerView: View {
 struct ChannelStripView: View {
     @EnvironmentObject var model: AppModel
     @ObservedObject var vm: ChannelVM
-    let level: MeterModel.Level?
     @State private var showDSP = false
     @State private var hovering = false
     @State private var confirmClose = false
@@ -88,8 +86,7 @@ struct ChannelStripView: View {
             }
             .frame(width: 84)
             HStack(spacing: 4) {
-                MeterView(levelDB: level?.l ?? -120, holdDB: level?.holdL ?? -120)
-                MeterView(levelDB: level?.r ?? -120, holdDB: level?.holdR ?? -120)
+                StereoMeter(source: .channel(vm.id))
                 VerticalFader(value: $vm.fader)
             }
             .frame(height: 120)
@@ -366,14 +363,12 @@ struct AudioPropertiesSheet: View {
 struct AuxStripView: View {
     @EnvironmentObject var model: AppModel
     @ObservedObject var bus: AuxBusVM
-    let level: MeterModel.Level?
 
     var body: some View {
         VStack(spacing: 4) {
             Text(bus.name).font(.system(size: 10, weight: .heavy))
             HStack(spacing: 4) {
-                MeterView(levelDB: level?.l ?? -120, holdDB: level?.holdL ?? -120)
-                MeterView(levelDB: level?.r ?? -120, holdDB: level?.holdR ?? -120)
+                StereoMeter(source: .aux(bus.index))
                 VerticalFader(value: $bus.fader)
             }
             .frame(height: 120)
@@ -407,22 +402,18 @@ struct AuxStripView: View {
 
 struct MasterStripView: View {
     @EnvironmentObject var model: AppModel
-    @EnvironmentObject var meters: MeterModel
 
     var body: some View {
         VStack(spacing: 4) {
             Text(L10n.t("audio.master")).font(.system(size: 10, weight: .heavy))
             HStack(spacing: 4) {
-                MeterView(levelDB: meters.master.l, holdDB: meters.master.holdL)
-                MeterView(levelDB: meters.master.r, holdDB: meters.master.holdR)
+                StereoMeter(source: .master)
                 VerticalFader(value: $model.masterFader)
             }
             .frame(height: 120)
             Toggle(L10n.t("audio.limiter"), isOn: $model.limiterEnabled)
                 .toggleStyle(.checkbox).font(.system(size: 10))
-            if meters.master.gr > 0.1 {
-                Text(String(format: "GR %.1f dB", meters.master.gr)).font(.system(size: 9)).foregroundStyle(Theme.warning)
-            }
+            StereoMeter(source: .masterGR)
             LoudnessReadout()
             HStack(spacing: 2) {
                 Image(systemName: "headphones").font(.system(size: 10))
@@ -433,6 +424,37 @@ struct MasterStripView: View {
         }
         .padding(4)
         .frame(width: 110)
+    }
+}
+
+/// The only views that watch the 30 Hz meter model: strips, faders and the rest of the mixer
+/// are not redrawn on every meter update, which keeps dragging smooth and the CPU low.
+struct StereoMeter: View {
+    enum Source { case channel(String), aux(Int), master, masterGR }
+    @EnvironmentObject var meters: MeterModel
+    let source: Source
+
+    var body: some View {
+        switch source {
+        case .masterGR:
+            if meters.master.gr > 0.1 {
+                Text(String(format: "GR %.1f dB", meters.master.gr)).font(.system(size: 9)).foregroundStyle(Theme.warning)
+            }
+        default:
+            let level = self.level
+            HStack(spacing: 4) {
+                MeterView(levelDB: level?.l ?? -120, holdDB: level?.holdL ?? -120)
+                MeterView(levelDB: level?.r ?? -120, holdDB: level?.holdR ?? -120)
+            }
+        }
+    }
+
+    private var level: MeterModel.Level? {
+        switch source {
+        case let .channel(id): return meters.levels[id]
+        case let .aux(i): return i < meters.aux.count ? meters.aux[i] : nil
+        case .master, .masterGR: return meters.master
+        }
     }
 }
 
@@ -472,6 +494,9 @@ struct MeterView: View {
 
 struct VerticalFader: View {
     @Binding var value: Double
+    /// Fader position when the drag started: the cap moves by the drag distance instead of
+    /// jumping to the pointer, so grabbing it never makes the level leap.
+    @State private var dragStart: Double?
     var body: some View {
         GeometryReader { geo in
             let h = geo.size.height
@@ -484,10 +509,21 @@ struct VerticalFader: View {
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
-            .gesture(DragGesture(minimumDistance: 0).onChanged { g in
-                value = min(max(1 - Double((g.location.y - 5) / (h - 10)), 0), 1)
-            })
-            .onTapGesture(count: 2) { value = 0.75 } // unity
+            .gesture(DragGesture(minimumDistance: 1).onChanged { g in
+                let travel = max(Double(h - 10), 1)
+                if dragStart == nil {
+                    // A press on the cap grabs it; a press on the track moves the cap there first.
+                    let capY = Double(h - 5) - value * travel
+                    dragStart = abs(Double(g.startLocation.y) - capY) <= 10 ? value
+                        : min(max(1 - Double((g.startLocation.y - 5) / (h - 10)), 0), 1)
+                }
+                let v = min(max(dragStart! - Double(g.translation.height) / travel, 0), 1)
+                if abs(v - value) > 0.0005 {
+                    var t = Transaction(); t.disablesAnimations = true
+                    withTransaction(t) { value = v }
+                }
+            }.onEnded { _ in dragStart = nil })
+            .simultaneousGesture(TapGesture(count: 2).onEnded { value = 0.75 }) // unity
         }
         .frame(width: 26)
         .help("Double-click: 0 dB")
