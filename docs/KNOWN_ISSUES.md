@@ -249,3 +249,5 @@
     atur ulang di Layer Designer. Platform stream harus mendukung video vertikal (YouTube Shorts, Facebook, TikTok Live).
 94. **Title vMix GT (0.39.0)**: hasil render bisa sedikit berbeda dari vMix (posisi teks, ukuran font, arah skew). Text3D
     datar, Feather/crop gambar diabaikan, animasi keluar dan data source belum ada. File .gtzip harus tetap ada di tempatnya.
+95. **Font otomatis (0.40.0)**: hanya dari Google Fonts. Font berbayar atau "personal use" tidak tersedia dan harus dipasang
+    manual; perhatikan lisensinya sebelum dipakai di siaran.

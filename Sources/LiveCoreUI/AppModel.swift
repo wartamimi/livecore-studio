@@ -120,6 +120,7 @@ public final class AppModel: ObservableObject {
     public init() {}
 
     public func start() {
+        FontInstaller.registerAll()
         if let data = UserDefaults.standard.data(forKey: "settings"),
            let s = try? JSONDecoder().decode(ProductionSettings.self, from: data) {
             settings = s

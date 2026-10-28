@@ -71,6 +71,7 @@ public struct GTElement: Equatable, Sendable {
     /// Horizontal skew in degrees (WPF style: lower edge moves right for positive angles).
     public var skewX = 0.0
     public var shadow: (x: Double, y: Double)?
+    public var opacity = 1.0
     /// The layer box the element is cut to (template pixels), nil when not inside a layer.
     public var clip: (x: Double, y: Double, width: Double, height: Double)?
     // Text
@@ -89,7 +90,7 @@ public struct GTElement: Equatable, Sendable {
     public static func == (a: GTElement, b: GTElement) -> Bool {
         a.kind == b.kind && a.name == b.name && a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height
             && a.fill == b.fill && a.stroke == b.stroke && a.strokeThickness == b.strokeThickness && a.cornerRadius == b.cornerRadius
-            && a.skewX == b.skewX && a.clip?.x == b.clip?.x && a.clip?.y == b.clip?.y
+            && a.skewX == b.skewX && a.opacity == b.opacity && a.clip?.x == b.clip?.x && a.clip?.y == b.clip?.y
             && a.clip?.width == b.clip?.width && a.clip?.height == b.clip?.height && a.shadow?.x == b.shadow?.x && a.shadow?.y == b.shadow?.y && a.text == b.text
             && a.fontFamily == b.fontFamily && a.fontSize == b.fontSize && a.bold == b.bold && a.italic == b.italic
             && a.alignment == b.alignment && a.verticalAlignment == b.verticalAlignment && a.imageData == b.imageData
@@ -162,5 +163,94 @@ public struct GTAnimation: Equatable, Sendable {
 public struct ProjectGTTitle: Codable, Equatable, Sendable {
     public var file: ProjectMediaRef
     public var fields: [String: String]
-    public init(file: ProjectMediaRef, fields: [String: String] = [:]) { self.file = file; self.fields = fields }
+    /// Element changes made in the GT editor, by element name (0.40.0).
+    public var overrides: [String: GTElementOverride]?
+    /// Animation speed, 1 = as designed.
+    public var speed: Double?
+    public init(file: ProjectMediaRef, fields: [String: String] = [:], overrides: [String: GTElementOverride]? = nil,
+                speed: Double? = nil) {
+        self.file = file; self.fields = fields; self.overrides = overrides; self.speed = speed
+    }
+}
+
+/// The operator's changes to one element of an imported GT title (0.40.0). Nil fields keep the
+/// template's value.
+public struct GTElementOverride: Codable, Equatable, Sendable {
+    public var hidden: Bool?
+    public var x: Double?, y: Double?, width: Double?, height: Double?
+    public var fontFamily: String?
+    public var fontSize: Double?
+    public var bold: Bool?, italic: Bool?
+    public var alignment: String?
+    public var verticalAlignment: String?
+    /// Solid fill / text colour as "#AARRGGBB".
+    public var color: String?
+    public var strokeColor: String?
+    public var strokeThickness: Double?
+    public var cornerRadius: Double?
+    public var skewX: Double?
+    public var opacity: Double?
+    /// Replacement picture for an image element.
+    public var image: ProjectMediaRef?
+    /// Animation: type ("None" removes it), direction, delay and duration.
+    public var animation: String?
+    public var direction: String?
+    public var delay: Double?
+    public var duration: Double?
+    public init() {}
+    public var isEmpty: Bool { self == GTElementOverride() }
+}
+
+public extension GTColor {
+    var hex: String {
+        func h(_ v: Double) -> String { String(format: "%02X", Int((min(max(v, 0), 1) * 255).rounded())) }
+        return "#" + h(a) + h(r) + h(g) + h(self.b)
+    }
+}
+
+public extension GTTemplate {
+    /// The template with the operator's element changes, animation speed (1 = as designed) and
+    /// replacement pictures (`image` loads a ProjectMediaRef's bytes).
+    func applying(_ overrides: [String: GTElementOverride], speed: Double = 1,
+                  image: (ProjectMediaRef) -> Data? = { _ in nil }) -> GTTemplate {
+        var t = self
+        t.elements = t.elements.compactMap { e0 in
+            guard let o = overrides[e0.name] else { return e0 }
+            if o.hidden == true { return nil }
+            var e = e0
+            if let v = o.x { e.x = v }
+            if let v = o.y { e.y = v }
+            if let v = o.width { e.width = max(1, v) }
+            if let v = o.height { e.height = max(1, v) }
+            // A moved or resized element is no longer cut to its layer's box.
+            if o.x != nil || o.y != nil || o.width != nil || o.height != nil { e.clip = nil }
+            if let v = o.fontFamily, !v.isEmpty { e.fontFamily = v }
+            if let v = o.fontSize { e.fontSize = max(4, v) }
+            if let v = o.bold { e.bold = v }
+            if let v = o.italic { e.italic = v }
+            if let v = o.alignment { e.alignment = v }
+            if let v = o.verticalAlignment { e.verticalAlignment = v }
+            if let v = o.color.flatMap(GTColor.init(hex:)) { e.fill = GTBrush(color: v) }
+            if let v = o.strokeColor.flatMap(GTColor.init(hex:)) { e.stroke = v }
+            if let v = o.strokeThickness { e.strokeThickness = max(0, v) }
+            if let v = o.cornerRadius { e.cornerRadius = max(0, v) }
+            if let v = o.skewX { e.skewX = v }
+            if let v = o.opacity { e.opacity = min(max(v, 0), 1) }
+            if let r = o.image, let d = image(r) { e.imageData = d }
+            return e
+        }
+        var anims: [GTAnimation] = []
+        for e in elements {
+            let base = animation(for: e.name)
+            let o = overrides[e.name]
+            let type = o?.animation ?? base?.type
+            guard let type, type.lowercased() != "none" else { continue }
+            anims.append(GTAnimation(type: type, object: e.name, delay: o?.delay ?? base?.delay ?? 0,
+                                     duration: o?.duration ?? base?.duration ?? 0.5,
+                                     direction: o?.direction ?? base?.direction))
+        }
+        let s = speed > 0 ? speed : 1
+        t.animations = anims.map { var a = $0; a.delay /= s; a.duration /= s; return a }
+        return t
+    }
 }

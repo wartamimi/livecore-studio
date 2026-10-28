@@ -47,7 +47,8 @@ extension ProductionEngine {
             case let n as NDISource: ps = .ndi(n.config)
             case let f as FrameSource: ps = .frame(f.design)
             case let g as GTTitleSource:
-                ps = .gtTitle(ProjectGTTitle(file: ProjectMediaRef(path: g.url.path, relativePath: rel(g.url)), fields: g.fields))
+                ps = .gtTitle(ProjectGTTitle(file: ProjectMediaRef(path: g.url.path, relativePath: rel(g.url)), fields: g.fields,
+                                              overrides: g.overrides.isEmpty ? nil : g.overrides, speed: g.speed == 1 ? nil : g.speed))
             case let p as PresentationSource:
                 ps = .presentation(ProjectPresentation(file: ProjectMediaRef(path: p.url.path, relativePath: rel(p.url)),
                                                        slide: p.slide, background: p.background, live: p.prefersLive ? true : nil))
@@ -295,7 +296,7 @@ extension ProductionEngine {
             // A missing or broken .gtzip keeps its place as an empty title.
             let url = mediaURL(g.file.path, g.file.relativePath)
             addGTTitle(url: url, template: (try? GTReader.template(at: url)) ?? GTTemplate(width: 1920, height: 1080),
-                       fields: g.fields, id: pi.id)
+                       fields: g.fields, overrides: g.overrides ?? [:], speed: g.speed ?? 1, id: pi.id)
         case let .presentation(p):
             addPresentation(url: mediaURL(p.file.path, p.file.relativePath), slide: p.slide, background: p.background,
                             live: p.live ?? false, id: pi.id)
