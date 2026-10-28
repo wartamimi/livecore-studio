@@ -51,6 +51,20 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AK. Tes manual build 0.36.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-156 | Jendela edit Web | Input Web YouTube; klik ikon tangan; ketik di kolom cari, tekan Enter; back/forward; Selesai | Jendela biasa dengan title bar & bar alamat di tengah layar (tidak menutupi app); Enter mencari di halaman; Selesai menutup jendela dan input menampilkan halaman terakhir |
+| T-157 | Suara Web ke mixer | macOS 14.2+: putar video di input Web; izinkan Perekaman Audio Sistem | Channel "Web audio" muncul dan meter bergerak; suara tidak lagi keluar langsung dari speaker; fader/mute bekerja; ikut ke stream/rekaman |
+| T-158 | Video saja | Ubah input Web: Video saja ON, zoom 100%; putar YouTube | Video mengisi seluruh gambar input (hitam di sisi bila rasio beda), elemen lain hilang |
+| T-159 | Animasi per huruf | Title Designer › Animasi › Animasi huruf = Naik, jeda 40 ms; Coba animasi; pasang di overlay 1 dan tekan 1 | Huruf muncul satu per satu sambil naik, di pratinjau dan di Program; kotak title tidak berubah ukuran |
+| T-160 | PowerPoint Live | Mac dengan PowerPoint: tambah .pptx berisi animasi + video; izinkan Automation & Screen Recording | Jendela slideshow PowerPoint terbuka; input menampilkannya dengan LIVE; ▶ menjalankan animasi klik/slide berikut; video di slide terdengar di channel mixer |
+| T-161 | Live ↔ statis | Matikan "Live di PowerPoint" di menu input; nyalakan lagi | Statis: slide dari PDF; Live lagi: slideshow dibuka ulang; simpan & buka proyek mempertahankan pilihan |
+| T-162 | Frame kamera | Tambah Input › Frame kamera; pilih Lingkaran, kamera 1, nama | Kamera tampil bulat dengan border aksen dan nama di kanan; ganti template lewat Ubah frame mengubah posisi kamera |
+| T-163 | Frame sebagai overlay | Frame Broadcast tanpa kamera, latar transparan; pasang di overlay di atas kamera layar penuh | Sudut & strap LIVE di atas gambar Program; jendela tembus |
+| T-164 | Clicker | Presentasi di Program; tekan Page Down / Page Up (atau clicker) | Slide maju/mundur |
+| T-165 | PHOTO jadi input | Klik PHOTO lalu "Jadikan input" di banner | Input gambar baru berisi foto itu |
+
 ## AJ. Tes manual build 0.35.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

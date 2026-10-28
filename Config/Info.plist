@@ -22,9 +22,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.35.0</string>
+	<string>0.36.0</string>
 	<key>CFBundleVersion</key>
-	<string>41</string>
+	<string>42</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.video</string>
 	<key>LSMinimumSystemVersion</key>
@@ -42,6 +42,8 @@
 	<string>LiveCore Studio uses microphones and audio interfaces as mixer inputs.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>LiveCore Studio sends and receives NDI video on your network and, when the Web Controller is on, lets phones and tablets on your network control the switcher.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>LiveCore Studio takes the sound of its web page inputs into its audio mixer.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>LiveCore Studio asks Keynote, PowerPoint or LibreOffice to export a presentation you add as an input to PDF, so its slides can be shown.</string>
 	<key>NSBonjourServices</key>

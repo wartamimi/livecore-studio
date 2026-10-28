@@ -149,6 +149,16 @@
 62. **Duplikat input (0.26.0)**: satu kamera/capture card = satu input. Capture jendela dicocokkan dari aplikasi + judul
     jendela; jendela dengan judul yang berubah (mis. judul dokumen) dianggap jendela lain. Proyek lama yang sudah berisi
     duplikat tetap dibuka apa adanya.
+75. **Suara input Web (0.36.0)**: hanya macOS 14.2 ke atas, dan semua input web berbagi satu channel "Web audio"
+    (WebKit memutar suara semua halaman di satu proses). Bisukan per input memakai opsi "Bisukan halaman". Bila izin
+    Perekaman Audio Sistem ditolak, suara halaman tidak masuk mixer (pesan muncul sekali). Belum dites di Mac.
+76. **PowerPoint mode Live (0.36.0)**: butuh Microsoft PowerPoint; Keynote dan LibreOffice tetap statis. Satu slideshow
+    live sekaligus (perintah dikirim ke jendela slideshow pertama). Jendela slideshow harus tetap terbuka (boleh di
+    belakang jendela lain, jangan di-minimize). Ganti slide lewat AppleScript, jadi ada jeda ±0,2 dtk. Perintah AppleScript
+    PowerPoint belum dites di Mac.
+77. **Animasi per huruf & Frame (0.36.0)**: animasi per huruf dirender ulang di CPU 30×/dtk selama animasi berjalan;
+    animasi keluar tetap memakai animasi overlay. Frame: label nama tidak otomatis mengecil untuk nama yang sangat
+    panjang (dipotong "…"); kamera mengisi jendela dengan crop.
 72. **Animasi title & teks berjalan (0.35.0)**: animasi adalah satu gerakan untuk seluruh title (fade, geser, zoom) memakai
     kanal overlay; belum ada animasi per elemen/huruf atau animasi keluar yang berbeda dari animasi masuk. Animasi hanya
     diputar lewat nomor overlay (1-4), bukan saat title dipotong (CUT) sebagai input biasa.

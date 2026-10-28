@@ -15,7 +15,8 @@ import LiveCoreCore
 /// kept between launches), no script message handlers (the page cannot call into the app), no
 /// pop-up windows, and navigation limited to http/https (and file URLs inside the folder of a
 /// local page the operator picked).
-/// Audio from the page plays on the system output and is not captured by the mixer.
+/// Audio: on macOS 14.2+ the pages' sound is taken into the mixer's "Web audio" channel
+/// (see `WebAudioCapture`); on older systems it plays on the system output.
 public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, NSWindowDelegate {
     public let id: InputID
     public let kind: InputKind = .browser
@@ -33,15 +34,20 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
     private let slot = FrameSlot()
     private var activity: NSObjectProtocol?
 
-    /// Edit mode (vMix "interact"): the page is shown in a normal window where the operator can
-    /// click and type (log in, pick a match, fill a form). While `freezeWhileEditing` is on the
-    /// input keeps showing the last picture, so the audience does not see the editing; "Done"
-    /// shows the page again.
-    public private(set) var isEditing = false
+    /// Edit mode (vMix "Show window"): the page moves into a normal window with an address bar
+    /// where the operator can click and type (log in, pick a match, fill a form). While
+    /// `freezeWhileEditing` is on the input keeps showing the last picture, so the audience does not
+    /// see the editing; "Done" puts the page back and shows it again.
+    public var isEditing: Bool { editWindow != nil }
     public var freezeWhileEditing = true
-    /// Main thread; called when edit mode ends (Done button or closing the window).
+    /// Main thread; called when edit mode starts or ends (Done button or closing the window).
     public var onEditingChange: ((Bool) -> Void)?
-    private var savedFrame: NSRect?
+    /// Main thread; the page address changed in edit mode and was kept (the project should save it).
+    public var onConfigChange: (() -> Void)?
+    private var editWindow: NSWindow?
+    private weak var urlField: NSTextField?
+    private weak var backButton: NSButton?
+    private weak var forwardButton: NSButton?
 
     public init(id: InputID, config: ProjectBrowser) {
         self.id = id
@@ -54,6 +60,16 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         URL(string: url)?.host ?? URL(string: url)?.lastPathComponent ?? "Browser"
     }
 
+    /// Process ids of this page's WebKit processes (for audio capture), when WebKit reports them.
+    public var webKitProcessIDs: [pid_t] {
+        guard let wv = webView else { return [] }
+        return ["_webProcessIdentifier", "_gpuProcessIdentifier"].compactMap { key in
+            guard wv.responds(to: NSSelectorFromString(key)), let n = wv.value(forKey: key) as? NSNumber else { return nil }
+            let pid = n.int32Value
+            return pid > 0 ? pid : nil
+        }
+    }
+
     /// Main thread.
     public func start() {
         guard webView == nil else { return }
@@ -62,8 +78,10 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         cfg.websiteDataStore = .nonPersistent()
         cfg.mediaTypesRequiringUserActionForPlayback = []
         cfg.preferences.javaScriptCanOpenWindowsAutomatically = false
+        cfg.userContentController = WKUserContentController()
         let wv = WKWebView(frame: NSRect(x: 0, y: 0, width: w, height: h), configuration: cfg)
         wv.navigationDelegate = self
+        wv.allowsBackForwardNavigationGestures = true
         if config.transparent { wv.setValue(false, forKey: "drawsBackground") }
         // Offscreen but ordered in, so WebKit keeps laying out and animating the page.
         let win = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: w, height: h),
@@ -77,6 +95,7 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         win.orderBack(nil)
         window = win
         webView = wv
+        applyPageOptions()
         // Keep timers and rendering alive while the app is in the background.
         activity = ProcessInfo.processInfo.beginActivity(options: [.userInitiated, .idleSystemSleepDisabled],
                                                          reason: "Browser source rendering")
@@ -84,8 +103,19 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         startTimer()
     }
 
+    /// Zoom, CSS, video-only and mute (main thread; scripts apply from the next page load).
+    private func applyPageOptions() {
+        guard let wv = webView else { return }
+        wv.pageZoom = CGFloat(config.pageZoom)
+        let ucc = wv.configuration.userContentController
+        ucc.removeAllUserScripts()
+        if let js = config.userScript {
+            ucc.addUserScript(WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
+        }
+    }
+
     public func stop() {
-        if isEditing { endEditing() }
+        if isEditing { endEditing(keepAddress: false) }
         timer?.invalidate(); timer = nil
         webView?.stopLoading()
         webView?.navigationDelegate = nil
@@ -101,80 +131,141 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
     /// Changes the page or its settings (main thread). Size changes recreate the web view.
     public func update(_ new: ProjectBrowser) {
         let recreate = new.width != config.width || new.height != config.height || new.transparent != config.transparent
+        let reloadPage = new.url != config.url || new.userScript != config.userScript
         config = new
         config.fps = BrowserURLPolicy.clampFPS(new.fps)
         if recreate && webView != nil { stop(); start(); return }
+        applyPageOptions()
         startTimer()
-        load()
+        if reloadPage { load() }
     }
 
     public func reload() { webView?.reloadFromOrigin() }
 
-    /// Shows the page in a window the operator can use (main thread).
+    // MARK: Edit window
+
+    /// Moves the page into a window the operator can use (main thread).
     public func beginEditing(doneTitle: String, windowTitle: String) {
-        guard let win = window, let wv = webView, !isEditing else { window?.makeKeyAndOrderFront(nil); return }
-        isEditing = true
-        savedFrame = win.frame
+        if let w = editWindow { NSApp.activate(ignoringOtherApps: true); w.makeKeyAndOrderFront(nil); return }
+        guard let wv = webView else { return }
         let page = wv.frame.size
         let visible = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        // A page larger than the screen scrolls inside the window instead of being scaled.
-        let scroll = NSScrollView(frame: NSRect(origin: .zero, size: page))
-        scroll.hasVerticalScroller = page.height > visible.height * 0.9
-        scroll.hasHorizontalScroller = page.width > visible.width * 0.9
-        scroll.drawsBackground = true
-        scroll.backgroundColor = .darkGray
-        scroll.documentView = wv
-        win.styleMask = [.titled, .closable, .resizable, .miniaturizable]
+        let barHeight: CGFloat = 40
+        let content = NSSize(width: min(page.width, (visible.width * 0.8).rounded()),
+                             height: min(page.height, (visible.height * 0.8).rounded() - barHeight) + barHeight)
+        let win = NSWindow(contentRect: NSRect(origin: .zero, size: content),
+                           styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
+        win.isReleasedWhenClosed = false
         win.title = windowTitle
-        win.contentView = scroll
-        win.isOpaque = true
-        win.backgroundColor = .windowBackgroundColor
-        win.hasShadow = true
-        win.ignoresMouseEvents = false
+        win.minSize = NSSize(width: 520, height: 320)
         win.delegate = self
-        let size = NSSize(width: min(page.width, visible.width * 0.9), height: min(page.height, visible.height * 0.9))
-        win.setContentSize(size)
-        win.contentMaxSize = page
-        win.center()
+
+        func button(_ symbol: String, _ action: Selector) -> NSButton {
+            let b = NSButton(image: NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage(),
+                             target: self, action: action)
+            b.bezelStyle = .rounded
+            return b
+        }
+        let back = button("chevron.left", #selector(goBack))
+        let forward = button("chevron.right", #selector(goForward))
+        let reload = button("arrow.clockwise", #selector(reloadPage))
+        let field = NSTextField(string: wv.url?.absoluteString ?? config.url)
+        field.target = self
+        field.action = #selector(openTypedAddress)
+        field.lineBreakMode = .byTruncatingTail
+        field.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        // No key equivalent: Return must reach the page's own forms, not close the window.
         let done = NSButton(title: doneTitle, target: self, action: #selector(doneEditing))
         done.bezelStyle = .rounded
-        done.keyEquivalent = "\r"
-        let accessory = NSTitlebarAccessoryViewController()
-        accessory.layoutAttribute = .trailing
-        let holder = NSView(frame: NSRect(x: 0, y: 0, width: done.intrinsicContentSize.width + 16, height: 28))
-        done.frame = NSRect(x: 8, y: 2, width: done.intrinsicContentSize.width, height: 24)
-        holder.addSubview(done)
-        accessory.view = holder
-        win.addTitlebarAccessoryViewController(accessory)
+        done.bezelColor = .controlAccentColor
+        let bar = NSStackView(views: [back, forward, reload, field, done])
+        bar.orientation = .horizontal
+        bar.spacing = 6
+        bar.edgeInsets = NSEdgeInsets(top: 6, left: 8, bottom: 6, right: 8)
+        bar.translatesAutoresizingMaskIntoConstraints = false
+
+        // The page keeps its output size (what the audience sees); a larger page scrolls.
+        let scroll = NSScrollView()
+        scroll.hasVerticalScroller = true
+        scroll.hasHorizontalScroller = true
+        scroll.autohidesScrollers = true
+        scroll.drawsBackground = true
+        scroll.backgroundColor = .black
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        wv.removeFromSuperview()
+        wv.frame = NSRect(origin: .zero, size: page)
+        scroll.documentView = wv
+
+        let root = NSView(frame: NSRect(origin: .zero, size: content))
+        root.addSubview(bar)
+        root.addSubview(scroll)
+        NSLayoutConstraint.activate([
+            bar.topAnchor.constraint(equalTo: root.topAnchor),
+            bar.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            bar.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            bar.heightAnchor.constraint(equalToConstant: barHeight),
+            scroll.topAnchor.constraint(equalTo: bar.bottomAnchor),
+            scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            scroll.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+        ])
+        win.contentView = root
+        win.center()
+        editWindow = win
+        urlField = field
+        backButton = back
+        forwardButton = forward
+        updateNavigationButtons()
+        // Show the top of the page (the clip view is not flipped).
+        root.layoutSubtreeIfNeeded()
+        let visibleHeight = scroll.contentSize.height
+        scroll.contentView.scroll(to: NSPoint(x: 0, y: max(0, page.height - visibleHeight)))
+        scroll.reflectScrolledClipView(scroll.contentView)
         NSApp.activate(ignoringOtherApps: true)
         win.makeKeyAndOrderFront(nil)
+        win.makeFirstResponder(wv)
         onEditingChange?(true)
     }
 
-    @objc private func doneEditing() { endEditing() }
+    @objc private func doneEditing() { endEditing(keepAddress: true) }
+    @objc private func goBack() { webView?.goBack() }
+    @objc private func goForward() { webView?.goForward() }
+    @objc private func reloadPage() { webView?.reload() }
+    @objc private func openTypedAddress() {
+        guard let wv = webView, let typed = urlField?.stringValue else { return }
+        switch BrowserURLPolicy.check(typed) {
+        case let .web(s): if let u = URL(string: s) { wv.load(URLRequest(url: u)) }
+        case .file, .rejected: NSSound.beep()
+        }
+    }
 
-    /// Back to off-screen rendering; the page is shown on the input again (main thread).
-    public func endEditing() {
-        guard isEditing, let win = window, let wv = webView else { return }
-        while !win.titlebarAccessoryViewControllers.isEmpty { win.removeTitlebarAccessoryViewController(at: 0) }
+    private func updateNavigationButtons() {
+        backButton?.isEnabled = webView?.canGoBack ?? false
+        forwardButton?.isEnabled = webView?.canGoForward ?? false
+        if let u = webView?.url?.absoluteString, urlField?.currentEditor() == nil { urlField?.stringValue = u }
+    }
+
+    /// Puts the page back off screen; with `keepAddress` the page the operator ended on becomes the
+    /// input's address (saved with the project). Main thread.
+    public func endEditing(keepAddress: Bool = true) {
+        guard let win = editWindow, let wv = webView, let host = window else { return }
+        editWindow = nil
         win.delegate = nil
         win.orderOut(nil)
-        (win.contentView as? NSScrollView)?.documentView = nil
+        wv.removeFromSuperview()
         wv.frame = NSRect(origin: .zero, size: wv.frame.size)
-        win.styleMask = [.borderless]
-        win.contentView = wv
-        win.hasShadow = false
-        win.backgroundColor = .clear
-        win.isOpaque = false
-        win.ignoresMouseEvents = true
-        win.setFrame(savedFrame ?? NSRect(x: -20_000, y: -20_000, width: wv.frame.width, height: wv.frame.height), display: false)
-        win.orderBack(nil)
-        isEditing = false
+        host.contentView = wv
+        host.orderBack(nil)
+        win.contentView = nil
+        if keepAddress, let u = wv.url, ["http", "https"].contains(u.scheme?.lowercased() ?? ""), u.absoluteString != config.url {
+            config.url = u.absoluteString
+            onConfigChange?()
+        }
         onEditingChange?(false)
     }
 
     public func windowShouldClose(_ sender: NSWindow) -> Bool {
-        endEditing()
+        endEditing(keepAddress: true)
         return false
     }
 
@@ -206,7 +297,7 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         let sc = WKSnapshotConfiguration()
         sc.afterScreenUpdates = false
         // snapshotWidth is in points; divide by the backing scale so the image has `width` pixels.
-        sc.snapshotWidth = NSNumber(value: Double(config.width) / Double(window?.backingScaleFactor ?? 1))
+        sc.snapshotWidth = NSNumber(value: Double(config.width) / Double(wv.window?.backingScaleFactor ?? 1))
         wv.takeSnapshot(with: sc) { [weak self] image, error in
             guard let self else { return }
             self.snapshotInFlight = false
@@ -240,7 +331,12 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         }
     }
 
-    public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) { status = .live }
+    public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        status = .live
+        updateNavigationButtons()
+    }
+
+    public func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) { updateNavigationButtons() }
 
     public func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         status = .error(error.localizedDescription)

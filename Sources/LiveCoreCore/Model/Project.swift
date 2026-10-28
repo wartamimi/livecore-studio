@@ -168,6 +168,8 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case ndi(ProjectNDI)
     /// PowerPoint / Keynote / PDF slides (since 0.35.0).
     case presentation(ProjectPresentation)
+    /// Camera frame (since 0.36.0); the camera is its second layer, saved with the layers.
+    case frame(FrameDesign)
 }
 
 /// A presentation input: the file and the slide on air.
@@ -177,8 +179,10 @@ public struct ProjectPresentation: Codable, Equatable, Sendable {
     public var slide: Int
     /// Behind slides that do not fill the picture; nil = black.
     public var background: ProjectColor?
-    public init(file: ProjectMediaRef, slide: Int = 0, background: ProjectColor? = nil) {
-        self.file = file; self.slide = slide; self.background = background
+    /// Live mode (0.36.0): PowerPoint plays the slide show (animations, transitions, video).
+    public var live: Bool?
+    public init(file: ProjectMediaRef, slide: Int = 0, background: ProjectColor? = nil, live: Bool? = nil) {
+        self.file = file; self.slide = slide; self.background = background; self.live = live
     }
 }
 
@@ -252,8 +256,74 @@ public struct ProjectBrowser: Codable, Equatable, Sendable {
     public var height: Int
     public var fps: Int
     public var transparent: Bool
+    // vMix-style options (0.36.0; nil = off / 100 %).
+    /// The page's main video fills the picture (YouTube, Facebook, Vimeo pages...).
+    public var videoOnly: Bool?
+    /// Page zoom, 0.25…4.
+    public var zoom: Double?
+    /// Extra CSS added to every page (hide elements, change colours...).
+    public var css: String?
+    /// Silences the page's media (its audio does not reach the Web audio channel).
+    public var muted: Bool?
     public init(url: String, width: Int = 1920, height: Int = 1080, fps: Int = 15, transparent: Bool = true) {
         self.url = url; self.width = width; self.height = height; self.fps = fps; self.transparent = transparent
+    }
+
+    public static let zoomRange: ClosedRange<Double> = 0.25...4
+    public var pageZoom: Double {
+        let z = zoom ?? 1
+        return z.isFinite ? min(max(z, Self.zoomRange.lowerBound), Self.zoomRange.upperBound) : 1
+    }
+
+    /// CSS that makes the page's largest video fill the picture and hides everything else.
+    public static let videoOnlyCSS = """
+    html, body { background: #000 !important; overflow: hidden !important; }
+    body * { visibility: hidden !important; }
+    video { visibility: visible !important; position: fixed !important; left: 0 !important; top: 0 !important; \
+    width: 100vw !important; height: 100vh !important; max-width: none !important; max-height: none !important; \
+    object-fit: contain !important; z-index: 2147483647 !important; background: #000 !important; transform: none !important; }
+    """
+
+    /// Script run in every page: the operator's CSS, video-only mode and muting. Re-applied when the
+    /// page adds elements (single-page sites such as YouTube rebuild the page while playing).
+    public var userScript: String? {
+        var css = ""
+        if videoOnly == true { css += Self.videoOnlyCSS + "\n" }
+        if let c = self.css, !c.isEmpty { css += c }
+        let mute = muted == true
+        guard !css.isEmpty || mute else { return nil }
+        return """
+        (function () {
+          var css = \(Self.jsString(css));
+          function apply() {
+            if (css && !document.getElementById('livecore-css')) {
+              var s = document.createElement('style'); s.id = 'livecore-css'; s.textContent = css;
+              (document.head || document.documentElement).appendChild(s);
+            }
+            \(mute ? "document.querySelectorAll('video,audio').forEach(function (m) { m.muted = true; });" : "")
+          }
+          apply();
+          new MutationObserver(apply).observe(document.documentElement, { childList: true, subtree: true });
+        })();
+        """
+    }
+
+    /// A JavaScript string literal (quotes, backslashes, line breaks and </script> escaped).
+    public static func jsString(_ s: String) -> String {
+        var out = "\""
+        for u in s.unicodeScalars {
+            switch u {
+            case "\\": out += "\\\\"
+            case "\"": out += "\\\""
+            case "\n": out += "\\n"
+            case "\r": out += "\\r"
+            case "\u{2028}": out += "\\u2028"
+            case "\u{2029}": out += "\\u2029"
+            case "<": out += "\\u003c"
+            default: out.unicodeScalars.append(u)
+            }
+        }
+        return out + "\""
     }
 }
 

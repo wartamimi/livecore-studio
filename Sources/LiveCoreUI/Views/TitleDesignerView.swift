@@ -216,7 +216,9 @@ struct TitleSheet: View {
             TimelineView(.animation(minimumInterval: 1 / 30, paused: !isTicker && animStart == nil)) { ctx in
                 let img = isTicker ? TickerRenderer.preview(ticker, width: iw, height: ih,
                                                            elapsed: ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600))
-                                   : still
+                                   : (letterElapsed(at: ctx.date).map {
+                                       TitleRenderer.image(design, title: title, subtitle: subtitle, width: iw, height: ih, elapsed: $0)
+                                   } ?? still)
                 let placed = animationPlacement(at: ctx.date)
                 let r = placed.0, a = placed.1
                 ZStack {
@@ -238,7 +240,20 @@ struct TitleSheet: View {
         }
     }
 
-    /// The chosen in / out animation played once in the preview: in, hold 1 s, out.
+    /// Seconds into the letter animation while "Try animation" plays (nil = show the whole title).
+    private func letterElapsed(at now: Date) -> Double? {
+        guard !isTicker, let start = animStart, design.textAnimation != .off else { return nil }
+        return now.timeIntervalSince(start)
+    }
+
+    /// How long the preview holds the title between in and out: 1 s, or until every letter is in.
+    private var holdSeconds: Double {
+        guard !isTicker, design.textAnimation != .off else { return 1 }
+        let letters = TitleRenderer.letterCount(title: title, subtitle: subtitle, design: design)
+        return max(1, TextReveal(animation: design.textAnimation, delay: design.letterDelay).totalDuration(letters: letters) + 0.5)
+    }
+
+    /// The chosen in / out animation played once in the preview: in, hold, out.
     private func animationPlacement(at now: Date) -> (NormRect, Double) {
         guard let start = animStart else { return (.full, 1) }
         let (anim, dur): (OverlayAnimation, Double) = isTicker
@@ -246,7 +261,8 @@ struct TitleSheet: View {
             : (design.animation, design.animationDuration)
         let t = now.timeIntervalSince(start)
         let progress: Double
-        if t < dur { progress = t / dur } else if t < dur + 1 { progress = 1 } else if t < 2 * dur + 1 { progress = 1 - (t - dur - 1) / dur } else {
+        let hold = holdSeconds
+        if t < dur { progress = t / dur } else if t < dur + hold { progress = 1 } else if t < 2 * dur + hold { progress = 1 - (t - dur - hold) / dur } else {
             DispatchQueue.main.async { if animStart == start { animStart = nil } }
             return (.full, 1)
         }
@@ -264,6 +280,17 @@ struct TitleSheet: View {
                 slider(L10n.t("titled.animation_duration"), $design.animationDuration, 0.1...5, step: 0.1)
             }
             .disabled(design.useOverlayAnimation)
+            Divider()
+            row(L10n.t("titled.text_animation")) {
+                Picker("", selection: Binding(get: { design.textAnimation }, set: { design.textAnimation = $0 })) {
+                    ForEach(TextAnimation.allCases, id: \.self) { Text(L10n.t("textanim." + $0.rawValue)).tag($0) }
+                }
+                .labelsHidden().frame(width: 200)
+            }
+            if design.textAnimation != .off {
+                slider(L10n.t("titled.letter_delay"), Binding(get: { design.letterDelay * 1000 }, set: { design.letterDelay = $0 / 1000 }),
+                       10...300, step: 5)
+            }
             Text(L10n.t("titled.animation_help")).font(.caption).foregroundStyle(Theme.textDim).fixedSize(horizontal: false, vertical: true)
         }
     }
