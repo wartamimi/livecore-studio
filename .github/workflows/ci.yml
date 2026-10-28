@@ -50,6 +50,10 @@ jobs:
           LIVECORE_NDI_REQUIRED: "1"
       - run: scripts/ci_run.sh macos-title-check swift run livecore-title-check
       - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
+      # Engine run with recording + streaming, a stream drop in the middle and a full disk.
+      - run: scripts/ci_run.sh macos-soak-check swift run livecore-soak-check
+        env:
+          SOAK_SECONDS: "90"
       - run: scripts/ci_run.sh macos-app-build scripts/build_macos.sh release
       - run: scripts/ci_run.sh macos-dmg scripts/make_dmg.sh
       - uses: actions/upload-artifact@v4
