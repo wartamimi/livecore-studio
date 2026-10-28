@@ -21,7 +21,7 @@ struct TitleSheet: View {
     @State private var title = TitleTemplate.classicStrap.sample.title
     @State private var subtitle = TitleTemplate.classicStrap.sample.subtitle
     @State private var design = TitleTemplate.classicStrap.defaultDesign
-    @State private var gallery: TitleGalleryTab = .title(.lowerThird)
+    @State private var galleryTab: TitleGalleryTab = .title(.lowerThird)
     @State private var tab = 0
     @State private var thumbs: [TitleTemplate: CGImage] = [:]
     @State private var tickerThumbs: [TickerTemplate: CGImage] = [:]
@@ -82,7 +82,7 @@ struct TitleSheet: View {
     private var gallery: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L10n.t("inputs.title_generator")).font(.headline)
-            Picker("", selection: $gallery) {
+            Picker("", selection: $galleryTab) {
                 if !editingTicker {
                     ForEach(TitleCategory.allCases, id: \.self) { Text(L10n.t("titlecat." + $0.rawValue)).tag(TitleGalleryTab.title($0)) }
                 }
@@ -91,7 +91,7 @@ struct TitleSheet: View {
             .pickerStyle(.segmented).labelsHidden()
             ScrollView {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
-                    switch gallery {
+                    switch galleryTab {
                     case let .title(category):
                         ForEach(TitleTemplate.allCases.filter { $0.category == category }, id: \.self) { t in
                             templateTile(t)
@@ -255,9 +255,9 @@ struct TitleSheet: View {
     }
 
     private var animationTab: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 10) {
             row("") { Toggle(L10n.t("titled.use_overlay_animation"), isOn: $design.useOverlayAnimation) }
-            Group {
+            VStack(alignment: .leading, spacing: 6) {
                 row(L10n.t("titled.animation")) {
                     AnimationPicker(selection: $design.animation)
                 }
@@ -413,7 +413,7 @@ struct TitleSheet: View {
         if let id = editing, let k = model.tickerSource(id) {
             isTicker = true
             ticker = k.config
-            gallery = .ticker
+            galleryTab = .ticker
         }
         if let id = editing, let t = model.textSource(id) {
             let st = t.style
@@ -423,7 +423,7 @@ struct TitleSheet: View {
                 layout: st.layout.rawValue, showBar: st.showBar, textColor: ProjectColor(st.textColor),
                 barColor: ProjectColor(st.barColor), titleSize: Double(st.titleSize), subtitleSize: Double(st.subtitleSize))
         }
-        if !isTicker { gallery = .title(design.template.category) }
+        if !isTicker { galleryTab = .title(design.template.category) }
         var th: [TitleTemplate: CGImage] = [:]
         for t in TitleTemplate.allCases {
             let s = t.sample
@@ -646,7 +646,7 @@ struct TickerEditorPanel: View {
                         step: Double = 1, percent: Bool = false) -> some View {
         row(label) {
             Slider(value: value, in: range, step: step)
-            Text(percent ? "\(Int((value.wrappedValue * 100).rounded())) %" : String(format: "%.0f", value.wrappedValue))
+            Text(percent ? "\(Int((value.wrappedValue * 100).rounded())) %" : String(format: step < 1 ? "%.1f" : "%.0f", value.wrappedValue))
                 .monospacedDigit().frame(width: 48, alignment: .trailing)
         }
     }
