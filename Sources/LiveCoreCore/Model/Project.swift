@@ -152,6 +152,8 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case ticker(TickerConfig)
     /// Photo slideshow (since 0.17.0).
     case slideshow(ProjectSlideshow)
+    /// NDI® source from the network (since 0.29.0).
+    case ndi(ProjectNDI)
 }
 
 public struct ProjectBrowser: Codable, Equatable, Sendable {

@@ -89,7 +89,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Audio follow video (AFV) | Implemented (0.10.0) | L (on-air + gate DSP, 5 unit test) + kompilasi CI | Tombol AFV di tiap channel: audio file/tangkapan mengikuti inputnya sendiri, channel lain memilih input yang diikuti. Terbuka saat input tampil di Program, transisi, layer scene, atau overlay aktif. Tersimpan di proyek. 0.18.0: audio crossfade selama durasi transisi AUTO (masuk/keluar bersamaan), T-bar pindah di tengah. Belum dites (T-45, T-73) |
 | Output aux ke perangkat terpisah + mix-minus | Implemented (0.5.0) | kompilasi CI | Tiap bus bisa diputar di perangkat output lain (koreksi drift clock); menu kanal "Mix-minus" mengirim semua kanal kecuali kanal itu. Belum dites (T-31b) |
 | Input musik (playlist file audio: MP3/AAC/M4A/WAV/AIFF...) | Implemented (0.7.0) | L (urutan playlist/acak, model proyek) + kompilasi CI | Channel mixer sendiri; play/pause/next/previous di strip; ulangi & acak; tersimpan di proyek. 0.20.0: fade antarlagu 1–8 s (fade-out akhir + fade-in awal, tidak tumpang tindih; T-79). Belum dites di Mac (T-36) |
-| Audio NDI | Planned (M3) | — | |
+| Audio NDI | Implemented: keluar (0.24.0) dan masuk (0.29.0) | CI `livecore-ndi-check` (video) | Output NDI mengirim audio Program stereo; input NDI membawa audionya ke kanal mixer sendiri (48 kHz, sampel lain di-resample) |
 
 ## Streaming
 | Fitur | Status | Verifikasi | Catatan |
@@ -126,7 +126,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Capture card HDMI/SDI yang tampil sebagai UVC/AVFoundation | Implemented (via jalur kamera) | Lihat `CAPTURE_DEVICES.md` |
 | Blackmagic DeckLink (Desktop Video SDK) | Blocked → Planned M3 | Perlu SDK (EULA, registrasi) + perangkat uji |
 | AJA / Magewell Pro | Planned M3 | Perlu SDK vendor |
-| NDI | Blocked → Planned M3 | Perlu NDI SDK + kepatuhan lisensi |
+| NDI | Implemented: output (0.24.0) dan input (0.29.0) | Runtime NDI dimuat saat jalan (tidak disertakan); lihat bagian Input NDI 0.29.0 |
 | Virtual camera sendiri (Camera Extension seperti OBS) | Dihapus (0.23.0) | Dibuat di 0.22.0 lalu dihapus atas permintaan pemilik (butuh tanda tangan Developer ID). Pakai Syphon → OBS → OBS Virtual Camera |
 | Syphon (kirim output ke OBS, Resolume, MadMapper…) | Implemented (0.22.0), diperbaiki 0.23.0, belum dites di Mac pengguna | Server Syphon (kode BSD, di-vendor) per output; nyala saat EXTERNAL aktif (Output 1 otomatis bila belum ada yang dipilih); frame dikirim sejak server dibuat; status "aplikasi tersambung" di EXTERNAL ⚙. CI `livecore-syphon-check`: proses lain menemukan server lewat direktori Syphon dan membaca frame 1280×720 BGRA dari IOSurface (T-89) |
 
@@ -158,6 +158,13 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Shortcut keyboard dapat diubah | Implemented | M |
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
+
+## Input NDI 0.29.0
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Sumber NDI® sebagai input (video) | Implemented (0.29.0), belum dites di Mac pengguna | L (nama sumber, model proyek; unit test) + CI `livecore-ndi-check`: `NDIFinder` menemukan sumber dari proses lain dan input `NDISource` menerima frame BGRA 1280×720 merah | Tambah › Sumber NDI…: daftar sumber di jaringan (diperbarui otomatis) atau ketik nama; output LiveCore sendiri ditandai; satu sumber = satu input; tersambung kembali sendiri. Sumber ber-alpha (BGRA) tetap transparan (T-116) |
+| Audio input NDI ke mixer | Implemented (0.29.0), belum dites | kompilasi CI | Kanal mixer "ndi:<input>" dengan AFV, tersimpan di proyek; bisa dimatikan per input (T-117) |
+| Bandwidth rendah, info sinyal, chroma key | Implemented (0.29.0), belum dites | kompilasi CI | Stream preview kecil dari pengirim; resolusi/fps/audio/alpha tampil saat mengedit; menu Key tersedia untuk input NDI (T-118) |
 
 ## Capture card lanjutan 0.28.0
 | Fitur | Status | Verifikasi | Catatan |

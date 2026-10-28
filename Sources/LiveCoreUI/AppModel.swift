@@ -424,6 +424,24 @@ public final class AppModel: ObservableObject {
         if src.name == src.config.displayName { rename(id, c.displayName) }
         src.reconfigure(c)
     }
+    // MARK: NDI inputs
+
+    public func ndiSource(_ id: InputID) -> NDISource? { engine?.source(id) as? NDISource }
+    /// "<number> <name>" of the input already receiving this NDI source.
+    public func ndiInUse(_ sourceName: String, except: InputID? = nil) -> String? {
+        engine?.inputReceivingNDI(sourceName, except: except).flatMap(inputLabel)
+    }
+    public func addNDI(_ c: ProjectNDI) {
+        if let used = ndiInUse(c.sourceName) { report(L10n.f("inputs.already_used", used)); return }
+        engine?.addNDI(c)
+    }
+    public func updateNDI(_ id: InputID, _ c: ProjectNDI) {
+        guard let src = ndiSource(id) else { return }
+        if let used = ndiInUse(c.sourceName, except: id) { report(L10n.f("inputs.already_used", used)); return }
+        if src.name == src.config.displayName { rename(id, c.displayName) }
+        src.reconfigure(c)
+    }
+
     public func timerSource(_ id: InputID) -> TimerSource? { engine?.source(id) as? TimerSource }
     public func tickerSource(_ id: InputID) -> TickerSource? { engine?.source(id) as? TickerSource }
     public func addTicker(_ c: TickerConfig) { engine?.addTicker(c) }

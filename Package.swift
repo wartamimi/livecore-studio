@@ -50,7 +50,7 @@ let package = Package(
         .executableTarget(name: "livecore-rtmp-push", dependencies: ["LiveCoreCore"]),
         .executableTarget(name: "livecore-transition-dump", dependencies: ["LiveCoreCore"]),
         .executableTarget(name: "livecore-syphon-check", dependencies: ["CSyphon"]),
-        .executableTarget(name: "livecore-ndi-check", dependencies: ["CNDI", "LiveCoreEngine"]),
+        .executableTarget(name: "livecore-ndi-check", dependencies: ["CNDI", "LiveCoreCore", "LiveCoreEngine"]),
         .testTarget(name: "LiveCoreCoreTests", dependencies: ["LiveCoreCore"]),
     ]
 )

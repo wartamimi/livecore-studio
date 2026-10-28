@@ -48,6 +48,43 @@ void lc_ndi_receiver_destroy(lc_ndi_receiver *receiver);
 bool lc_ndi_receive_video(lc_ndi_receiver *receiver, int timeout_ms, int *width, int *height,
                           uint32_t *fourcc, uint32_t *centre_bgra);
 
+// Receiving side for NDI inputs (0.29.0).
+
+typedef struct lc_ndi_finder lc_ndi_finder;
+/// A long-lived source finder (also lists sources on this Mac). NULL without the runtime.
+lc_ndi_finder *lc_ndi_finder_create(void);
+void lc_ndi_finder_destroy(lc_ndi_finder *finder);
+/// Waits up to `timeout_ms` for changes, then writes the current source names separated by
+/// '\n' into `out` (always NUL-terminated). Returns the number of sources.
+int lc_ndi_finder_sources(lc_ndi_finder *finder, char *out, int out_len, int timeout_ms);
+
+/// Receiver for an input: BGRX/BGRA video, float audio. `low_bandwidth` asks for the source's
+/// preview stream (less network and CPU).
+lc_ndi_receiver *lc_ndi_input_create(const char *source_name, const char *receiver_name, bool low_bandwidth);
+
+typedef struct {
+    int width, height, stride;
+    int fps_n, fps_d;
+    bool has_alpha;            ///< BGRA with meaningful (straight) alpha; otherwise BGRX
+    const uint8_t *data;
+} lc_ndi_video;
+
+typedef struct {
+    int sample_rate, channels, samples, channel_stride;   ///< stride in bytes between planes
+    const float *data;
+} lc_ndi_audio;
+
+/// Waits up to `timeout_ms` for the next frame. Returns 1 for video (valid until
+/// `lc_ndi_release_video`), 2 for audio (valid until `lc_ndi_release_audio`), 0 for nothing
+/// / other frames, -1 when the connection failed.
+int lc_ndi_capture(lc_ndi_receiver *receiver, int timeout_ms, lc_ndi_video *video, lc_ndi_audio *audio);
+void lc_ndi_release_video(lc_ndi_receiver *receiver);
+void lc_ndi_release_audio(lc_ndi_receiver *receiver);
+/// Copies the last captured video frame into a BGRA buffer; BGRX frames get alpha 255.
+void lc_ndi_copy_video(const lc_ndi_video *video, uint8_t *dst, int dst_stride);
+/// Senders this receiver is connected to right now (0 or 1).
+int lc_ndi_receiver_connections(lc_ndi_receiver *receiver);
+
 #ifdef __cplusplus
 }
 #endif

@@ -51,6 +51,13 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AC. Tes manual build 0.29.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-116 | Input NDI | NDI Tools terpasang; di HP pasang aplikasi kamera NDI (mis. NDI HX Camera) atau jalankan OBS+NDI di komputer lain; LiveCore › + › Sumber NDI… | Sumber muncul dalam beberapa detik; Tambah → gambar tampil di input dan bisa CUT ke Program; output LiveCore sendiri bertanda "Output LiveCore"; sumber yang sudah dipakai tidak bisa dipilih lagi |
+| T-117 | Audio NDI | Sumber NDI dengan audio | Kanal mixer baru bernama input itu bergerak; AFV bekerja; matikan "Audio ke mixer" → tidak ada audio |
+| T-118 | Putus & sambung | Matikan aplikasi pengirim 10 detik lalu nyalakan lagi; coba "Bandwidth rendah" | Status "menunggu…" lalu gambar kembali sendiri; bandwidth rendah menampilkan resolusi lebih kecil di info sinyal |
+
 ## AB. Tes manual build 0.28.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

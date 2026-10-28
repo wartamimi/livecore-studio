@@ -149,6 +149,9 @@
 62. **Duplikat input (0.26.0)**: satu kamera/capture card = satu input. Capture jendela dicocokkan dari aplikasi + judul
     jendela; jendela dengan judul yang berubah (mis. judul dokumen) dianggap jendela lain. Proyek lama yang sudah berisi
     duplikat tetap dibuka apa adanya.
+66. **Input NDI (0.29.0)**: butuh runtime NDI (NDI Tools / NDI Runtime) di Mac; tanpanya menu memberi link unduh. Video
+    disalin ke buffer BGRA (CPU) — untuk banyak sumber 4K beban CPU naik. Hanya video progresif; sumber interlaced
+    diminta progresif dari NDI. Audio diambil 2 kanal pertama. Belum ada sinkron A/V otomatis antara video dan audio NDI.
 65. **Capture card lanjutan (0.28.0)**: "format video perangkat" menentukan apa yang dikirim perangkat lewat USB; macOS
     tetap mengubah gambar ke BGRA 8-bit untuk compositor, jadi format 10-bit (v210/P010) tidak membuat program 10-bit.
     Deinterlace memakai metode blend sederhana (bukan motion-adaptive). Perangkat yang hanya dikenali lewat SDK vendor

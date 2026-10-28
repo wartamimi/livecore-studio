@@ -148,7 +148,12 @@ int lc_ndi_find_sources(char *out, int out_len, int timeout_ms) {
     return (int)n;
 }
 
-struct lc_ndi_receiver { NDIlib_recv_instance_t inst; };
+struct lc_ndi_receiver {
+    NDIlib_recv_instance_t inst;
+    NDIlib_video_frame_v2_t video;   // last captured, until released
+    NDIlib_audio_frame_v2_t audio;
+    bool holds_video, holds_audio;
+};
 
 lc_ndi_receiver *lc_ndi_receiver_create(const char *source_name) {
     if (!lc_ndi_load()) return NULL;
@@ -169,6 +174,8 @@ lc_ndi_receiver *lc_ndi_receiver_create(const char *source_name) {
 
 void lc_ndi_receiver_destroy(lc_ndi_receiver *r) {
     if (!r) return;
+    lc_ndi_release_video(r);
+    lc_ndi_release_audio(r);
     ndi->recv_destroy(r->inst);
     free(r);
 }
@@ -191,5 +198,117 @@ bool lc_ndi_receive_video(lc_ndi_receiver *r, int timeout_ms, int *width, int *h
     *centre_bgra = (uint32_t)px[3] << 24 | (uint32_t)px[2] << 16 | (uint32_t)px[1] << 8 | px[0];
     ndi->recv_free_video_v2(r->inst, &v);
     return true;
+}
+// MARK: Inputs
+
+struct lc_ndi_finder { NDIlib_find_instance_t inst; };
+
+lc_ndi_finder *lc_ndi_finder_create(void) {
+    if (!lc_ndi_load()) return NULL;
+    NDIlib_find_create_t c;
+    memset(&c, 0, sizeof c);
+    c.show_local_sources = true;
+    NDIlib_find_instance_t f = ndi->find_create_v2(&c);
+    if (!f) return NULL;
+    lc_ndi_finder *out = calloc(1, sizeof *out);
+    if (!out) { ndi->find_destroy(f); return NULL; }
+    out->inst = f;
+    return out;
+}
+
+void lc_ndi_finder_destroy(lc_ndi_finder *f) {
+    if (!f) return;
+    ndi->find_destroy(f->inst);
+    free(f);
+}
+
+int lc_ndi_finder_sources(lc_ndi_finder *f, char *out, int out_len, int timeout_ms) {
+    if (out_len > 0) out[0] = 0;
+    if (!f) return 0;
+    if (timeout_ms > 0) ndi->find_wait_for_sources(f->inst, (uint32_t)timeout_ms);
+    uint32_t n = 0;
+    const NDIlib_source_t *src = ndi->find_get_current_sources(f->inst, &n);
+    int used = 0;
+    for (uint32_t i = 0; i < n && out_len > 0; i++) {
+        int w = snprintf(out + used, (size_t)(out_len - used), "%s%s", i ? "\n" : "", src[i].p_ndi_name ? src[i].p_ndi_name : "");
+        if (w < 0 || used + w >= out_len) break;
+        used += w;
+    }
+    return (int)n;
+}
+
+lc_ndi_receiver *lc_ndi_input_create(const char *source_name, const char *receiver_name, bool low_bandwidth) {
+    if (!lc_ndi_load()) return NULL;
+    NDIlib_recv_create_v3_t c;
+    memset(&c, 0, sizeof c);
+    c.source_to_connect_to.p_ndi_name = source_name;
+    c.color_format = NDIlib_recv_color_format_BGRX_BGRA;
+    c.bandwidth = low_bandwidth ? NDIlib_recv_bandwidth_lowest : NDIlib_recv_bandwidth_highest;
+    c.allow_video_fields = false;
+    c.p_ndi_recv_name = receiver_name;
+    NDIlib_recv_instance_t inst = ndi->recv_create_v3(&c);
+    if (!inst) return NULL;
+    lc_ndi_receiver *r = calloc(1, sizeof *r);
+    if (!r) { ndi->recv_destroy(inst); return NULL; }
+    r->inst = inst;
+    return r;
+}
+
+int lc_ndi_capture(lc_ndi_receiver *r, int timeout_ms, lc_ndi_video *v, lc_ndi_audio *a) {
+    if (!r) return -1;
+    lc_ndi_release_video(r);
+    lc_ndi_release_audio(r);
+    NDIlib_frame_type_e t = ndi->recv_capture_v2(r->inst, &r->video, &r->audio, NULL, (uint32_t)timeout_ms);
+    switch (t) {
+    case NDIlib_frame_type_video:
+        r->holds_video = true;
+        if (r->video.FourCC != NDIlib_FourCC_video_type_BGRA && r->video.FourCC != NDIlib_FourCC_video_type_BGRX) {
+            lc_ndi_release_video(r);
+            return 0;
+        }
+        v->width = r->video.xres;
+        v->height = r->video.yres;
+        v->stride = r->video.line_stride_in_bytes;
+        v->fps_n = r->video.frame_rate_N;
+        v->fps_d = r->video.frame_rate_D;
+        v->has_alpha = r->video.FourCC == NDIlib_FourCC_video_type_BGRA;
+        v->data = r->video.p_data;
+        return 1;
+    case NDIlib_frame_type_audio:
+        r->holds_audio = true;
+        a->sample_rate = r->audio.sample_rate;
+        a->channels = r->audio.no_channels;
+        a->samples = r->audio.no_samples;
+        a->channel_stride = r->audio.channel_stride_in_bytes;
+        a->data = r->audio.p_data;
+        return 2;
+    case NDIlib_frame_type_error:
+        return -1;
+    default:
+        return 0;
+    }
+}
+
+void lc_ndi_release_video(lc_ndi_receiver *r) {
+    if (r && r->holds_video) { ndi->recv_free_video_v2(r->inst, &r->video); r->holds_video = false; }
+}
+
+void lc_ndi_release_audio(lc_ndi_receiver *r) {
+    if (r && r->holds_audio) { ndi->recv_free_audio_v2(r->inst, &r->audio); r->holds_audio = false; }
+}
+
+void lc_ndi_copy_video(const lc_ndi_video *v, uint8_t *dst, int dst_stride) {
+    if (!v || !v->data || !dst) return;
+    size_t row = (size_t)v->width * 4;
+    for (int y = 0; y < v->height; y++) {
+        const uint8_t *s = v->data + (size_t)y * (size_t)v->stride;
+        uint8_t *d = dst + (size_t)y * (size_t)dst_stride;
+        memcpy(d, s, row);
+        if (!v->has_alpha) for (int x = 0; x < v->width; x++) d[x * 4 + 3] = 255;
+    }
+}
+
+int lc_ndi_receiver_connections(lc_ndi_receiver *r) {
+    return r ? ndi->recv_get_no_connections(r->inst) : 0;
 }
 #endif
