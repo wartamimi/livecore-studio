@@ -298,6 +298,11 @@ public final class ProductionEngine {
     var onAirInputs = Set<InputID>()
     /// Audio follow video (vMix AFV): mixer channel id -> the input it follows. Main thread.
     public internal(set) var afvLinks: [String: InputID] = [:]
+    /// PTZ camera control per input (saved in projects) and the open connections. Main thread.
+    public internal(set) var ptzConfigs: [InputID: PTZConfig] = [:] {
+        didSet { for id in ptzControllers.keys where ptzConfigs[id] == nil { ptzControllers.removeValue(forKey: id)?.stop() } }
+    }
+    var ptzControllers: [InputID: PTZController] = [:]
 
     // MARK: Stats
 
@@ -327,6 +332,7 @@ extension ProjectTitleStyle {
         subtitleSize = Double(s.subtitleSize)
         layout = s.layout.rawValue
         design = s.design
+        dataSource = s.dataSource
     }
     public var textStyle: TextSource.Style {
         var s = TextSource.Style(title: title, subtitle: subtitle)
@@ -337,6 +343,7 @@ extension ProjectTitleStyle {
         if let subtitleSize { s.subtitleSize = CGFloat(subtitleSize) }
         if let layout, let l = TextSource.Layout(rawValue: layout) { s.layout = l }
         s.design = design
+        s.dataSource = dataSource
         return s
     }
 }

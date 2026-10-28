@@ -315,4 +315,54 @@ final class M37Tests: XCTestCase {
         pi.ptz = c
         XCTAssertEqual(try roundTrip(pi), pi)
     }
+
+    func testXLSXSheetParsing() {
+        let shared = """
+        <sst xmlns="x"><si><t>Name</t></si><si><t>Role</t></si><si><r><t>Ana </t></r><r><t>Lestari</t></r></si>\
+        <si><t>漢字</t><rPh><t>かんじ</t></rPh></si></sst>
+        """
+        let sheet = """
+        <worksheet><sheetData>
+        <row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row>
+        <row r="2"><c r="A2" t="s"><v>2</v></c><c r="C2"><v>12.0</v></c></row>
+        <row r="3"></row>
+        <row r="4"><c r="A4" t="inlineStr"><is><t>Budi</t></is></c><c r="B4" t="b"><v>1</v></c></row>
+        <row r="5"><c r="A5" t="s"><v>3</v></c></row>
+        </sheetData></worksheet>
+        """
+        let t = XLSXReader.parse(sharedStrings: Data(shared.utf8), sheet: Data(sheet.utf8))
+        XCTAssertEqual(t.header, ["Name", "Role", ""])
+        XCTAssertEqual(t.rows.count, 3)
+        XCTAssertEqual(t.rows[0], ["Ana Lestari", "", "12"])
+        XCTAssertEqual(t.rows[1], ["Budi", "TRUE", ""])
+        XCTAssertEqual(t.rows[2][0], "漢字")
+        XCTAssertEqual(t.value(row: 0, column: "Name"), "Ana Lestari")
+        XCTAssertEqual(XLSXReader.cellRef("AB12"), XLSXReader.CellRef(row: 11, col: 27))
+    }
+
+    func testXLSXFileUsesFirstSheetInWorkbookOrder() throws {
+        let dir = tempDir()
+        let fm = FileManager.default
+        func write(_ path: String, _ text: String) throws {
+            let u = dir.appendingPathComponent("src/" + path)
+            try fm.createDirectory(at: u.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data(text.utf8).write(to: u)
+        }
+        try write("xl/workbook.xml", #"<workbook><sheets><sheet name="Tamu" sheetId="2" r:id="rId7"/><sheet name="Lain" sheetId="1" r:id="rId1"/></sheets></workbook>"#)
+        try write("xl/_rels/workbook.xml.rels", #"<Relationships><Relationship Id="rId1" Target="worksheets/sheet1.xml"/><Relationship Id="rId7" Target="worksheets/sheet2.xml"/></Relationships>"#)
+        try write("xl/worksheets/sheet1.xml", #"<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Wrong</t></is></c></row></sheetData></worksheet>"#)
+        try write("xl/worksheets/sheet2.xml", #"<worksheet><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>Nama</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>Citra</t></is></c></row></sheetData></worksheet>"#)
+        let zip = Process()
+        zip.executableURL = URL(fileURLWithPath: "/usr/bin/zip")
+        zip.currentDirectoryURL = dir.appendingPathComponent("src")
+        zip.arguments = ["-q", "-r", dir.appendingPathComponent("book.xlsx").path, "xl"]
+        try zip.run()
+        zip.waitUntilExit()
+        XCTAssertEqual(zip.terminationStatus, 0)
+        let t = try XLSXReader.table(at: dir.appendingPathComponent("book.xlsx"))
+        XCTAssertEqual(t.header, ["Nama"])
+        XCTAssertEqual(t.rows, [["Citra"]])
+        try Data("not a zip".utf8).write(to: dir.appendingPathComponent("bad.xlsx"))
+        XCTAssertThrowsError(try XLSXReader.table(at: dir.appendingPathComponent("bad.xlsx")))
+    }
 }

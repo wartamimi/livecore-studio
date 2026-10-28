@@ -7,6 +7,7 @@ import ImageIO
 import LiveCoreCore
 import LiveCoreEngine
 import LiveCoreRemote
+import LiveCoreServices
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -23,7 +24,9 @@ extension AppModel {
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         var doc = ProjectDocument(settings: settings)
         doc.audio = ProjectAudio()
-        let warnings = e.loadProject(doc, projectDirectory: nil)
+        var warnings: [String] = []
+        withUndoSuspended { warnings = e.loadProject(doc, projectDirectory: nil) }
+        clearUndo()
         warnings.forEach(report)
         projectURL = nil
         afterProjectLoad()
@@ -46,7 +49,10 @@ extension AppModel {
         do {
             let data = try Data(contentsOf: url)
             let doc = try JSONDecoder().decode(ProjectDocument.self, from: data)
-            let warnings = e.loadProject(doc, projectDirectory: url.deletingLastPathComponent())
+            var warnings: [String] = []
+            withUndoSuspended { warnings = e.loadProject(doc, projectDirectory: url.deletingLastPathComponent()) }
+            clearUndo()
+            FileLog.shared.info("opened project \(url.lastPathComponent)")
             projectURL = url
             afterProjectLoad()
             setOutputRouting(doc.sanitized().outputs ?? OutputRouting())
@@ -88,6 +94,7 @@ extension AppModel {
 
     func afterProjectLoad() {
         guard let e = engine else { return }
+        DispatchQueue.main.async { [weak self] in self?.reloadAllDataSources() }
         settings = e.settings
         transitionKind = settings.transition
         transitionDuration = settings.transitionDuration

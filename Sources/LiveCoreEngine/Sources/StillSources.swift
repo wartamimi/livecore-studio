@@ -158,6 +158,8 @@ public final class TextSource: VideoSource {
         /// Template-based title (0.34.0): full-output canvas, see `TitleDesign`. nil = the
         /// classic lower-third strip drawn from the fields above.
         public var design: TitleDesign?
+        /// CSV / Google Sheets rows filling the text (0.37.0); applied by the app.
+        public var dataSource: TitleDataSource?
         public init(title: String, subtitle: String = "") { self.title = title; self.subtitle = subtitle }
         public init(template: TitleTemplate, title: String? = nil, subtitle: String? = nil) {
             self.title = title ?? template.sample.title

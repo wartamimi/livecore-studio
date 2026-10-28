@@ -18,6 +18,12 @@ public enum LiveCoreScenes {
             CommandGroup(replacing: .newItem) {
                 Button(L10n.t("project.new")) { model.newProject() }
                 Button(L10n.t("project.open")) { model.openProject() }.keyboardShortcut("o", modifiers: [.command])
+                Button(L10n.t("template.menu")) { model.showTemplates = true }.keyboardShortcut("n", modifiers: [.command, .shift])
+            }
+            // Undo / Redo: text fields first, then an open editor, then the input list.
+            CommandGroup(replacing: .undoRedo) {
+                Button(L10n.t("undo.undo")) { model.performUndo() }.keyboardShortcut("z", modifiers: [.command])
+                Button(L10n.t("undo.redo")) { model.performRedo() }.keyboardShortcut("z", modifiers: [.command, .shift])
             }
             CommandGroup(replacing: .saveItem) {
                 Button(L10n.t("project.save")) { model.saveProject() }.keyboardShortcut("s", modifiers: [.command])
@@ -31,6 +37,19 @@ public enum LiveCoreScenes {
                 Button(model.isRecording ? L10n.t("record.stop") : L10n.t("record.start")) { model.requestToggleRecord() }.disabled(model.recordLocked)
                 Divider()
                 Button(L10n.t("fullscreen.big")) { model.toggleFullscreen() }.keyboardShortcut("f", modifiers: [.command, .shift])
+                Divider()
+                Button(L10n.t("preflight.menu")) { model.showPreflight = true }.keyboardShortcut("p", modifiers: [.command, .shift])
+                Button(L10n.t("outputs.menu")) { model.showOutputsPanel = true }.keyboardShortcut("o", modifiers: [.command, .shift])
+            }
+            CommandGroup(after: .sidebar) {
+                Button(model.isOperatorMode ? L10n.t("mode.switch_advanced") : L10n.t("mode.switch_operator")) {
+                    model.setUIMode(model.isOperatorMode ? .advanced : .operatorMode)
+                }
+                .keyboardShortcut("m", modifiers: [.command, .shift])
+            }
+            CommandGroup(after: .help) {
+                Button(L10n.t("diagnostics.menu")) { model.exportDiagnostics() }
+                Button(L10n.t("diagnostics.reveal_log")) { model.revealLogFolder() }
             }
         }
 

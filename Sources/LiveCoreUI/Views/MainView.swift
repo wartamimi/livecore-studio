@@ -12,6 +12,7 @@ struct MainView: View {
     @AppStorage("dock.mixer.minimized") private var mixerMin = false
     @AppStorage("dock.monitors.minimized") private var monitorsMin = false
     @AppStorage("dock.playlist.minimized") private var playlistMin = false
+    @AppStorage("welcome.showAtLaunch") private var welcomeAtLaunch = true
 
     /// The Playlist dock appears once a music playlist or a video (playlist) input exists.
     private var showPlaylist: Bool { !model.musicInputs.isEmpty || model.inputs.contains { $0.kind == .videoFile } }
@@ -91,6 +92,17 @@ struct MainView: View {
         .sheet(isPresented: $showSettings) { SettingsView(initialTab: settingsTab).environmentObject(model) }
         .onChange(of: showSettings) { shown in if !shown { settingsTab = 6 } }
         .background(KeyboardShortcuts())
+        .sheet(isPresented: $model.showPreflight) { PreflightSheet().environmentObject(model) }
+        .sheet(isPresented: $model.showOutputsPanel) { OutputsPanelSheet().environmentObject(model) }
+        .sheet(isPresented: $model.showTemplates) { TemplatesSheet().environmentObject(model) }
+        .onAppear {
+            // Welcome screen with the templates on an empty start (not over the recovery question).
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                if welcomeAtLaunch, !model.recoveryPending, model.inputs.isEmpty, model.projectURL == nil, model.startupError == nil {
+                    model.showTemplates = true
+                }
+            }
+        }
         .alert(model.pendingStop == .record ? L10n.t("record.stop_confirm") : model.pendingStop == .multicorder ? L10n.t("multicorder.stop_confirm") : L10n.t("stream.stop_confirm"),
                isPresented: Binding(get: { model.pendingStop != nil }, set: { if !$0 { model.pendingStop = nil } }),
                presenting: model.pendingStop) { r in

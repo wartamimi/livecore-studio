@@ -16,6 +16,7 @@ struct SceneEditorSheet: View {
     @State private var selected = 0
     @State private var lockAspect = true
     @State private var dragStart: NormRect?
+    @StateObject private var undo = DraftHistory<[Layer]>()
 
     /// The editing area has the canvas aspect (16:9, 9:16 or custom), at most 576 × 420.
     private var canvasBox: CGSize {
@@ -33,6 +34,7 @@ struct SceneEditorSheet: View {
             }
             Text(L10n.t("scene.hint")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
             HStack {
+                UndoRedoButtons(history: undo)
                 Spacer()
                 Button(L10n.t("common.ok")) { dismiss() }.keyboardShortcut(.defaultAction)
             }
@@ -42,7 +44,15 @@ struct SceneEditorSheet: View {
             layers = model.layers(of: input)
             selected = layers.count > 1 ? layers.count - 1 : 0
             model.preview(input)
+            undo.apply = { v in
+                layers = v
+                if !layers.indices.contains(selected) { selected = max(layers.count - 1, 0) }
+                model.setLayers(v, of: input)
+            }
+            undo.start(layers, model: model)
         }
+        .onDisappear { undo.stop(model: model) }
+        .onChange(of: layers) { undo.record($0) }
     }
 
     private var isScene: Bool { model.inputs.first { $0.id == input }?.kind == .scene }
@@ -90,6 +100,7 @@ struct SceneEditorSheet: View {
                 .gesture(DragGesture(minimumDistance: 1)
                     .onChanged { g in
                         selected = i
+                        if dragStart == nil { undo.breakCoalescing() }
                         let start = dragStart ?? layers[i].rect
                         dragStart = start
                         var m = LayerEditing.move(start, dx: g.translation.width / canvas.width, dy: g.translation.height / canvas.height)
@@ -113,6 +124,7 @@ struct SceneEditorSheet: View {
             .offset(x: x - 5, y: y - 5)
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { g in
+                    if dragStart == nil { undo.breakCoalescing() }
                     let start = dragStart ?? layers[i].rect
                     dragStart = start
                     let aspect = lockAspect ? start.width / max(start.height, 0.0001) : nil

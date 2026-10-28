@@ -188,6 +188,14 @@ extension AppModel {
             audioChannels.first { $0.id == id }?.fader = v
         case let .channelMute(id, on):
             audioChannels.first { $0.id == id }?.muted = on
+        case let .ptzPreset(n, p):
+            if let id = inputID(number: n) { ptz(.recallPreset(p - 1), input: id) }
+        case let .ptzHome(n):
+            if let id = inputID(number: n) { ptz(.home, input: id) }
+        case let .dataRow(n, delta):
+            if let id = inputID(number: n) { stepDataRow(id, by: delta) }
+        case let .dataRowSet(n, row):
+            if let id = inputID(number: n) { setDataRow(id, row - 1) }
         }
         pushRemoteState(clients: false)
     }

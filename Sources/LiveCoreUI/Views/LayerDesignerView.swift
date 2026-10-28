@@ -22,25 +22,49 @@ final class LayerDesignerState: ObservableObject {
     /// Snap lines shown while dragging (normalized).
     @Published var guidesX: [Double] = []
     @Published var guidesY: [Double] = []
-    var dragStart: (rect: NormRect, crop: LayerStyle.Crop)?
+    var dragStart: (rect: NormRect, crop: LayerStyle.Crop)? {
+        didSet { if dragStart != nil && oldValue == nil { history?.breakCoalescing() } }
+    }
+    /// Undo / redo of this input's layers (⌘Z / ⇧⌘Z while the designer is open). One drag is one step.
+    @Published private(set) var history: EditHistory<[Layer]>?
 
     /// Re-reads the layers of the input on Preview (when it changes or the designer opens).
     func load(_ model: AppModel, input id: InputID?) {
         input = id
         layers = id.flatMap { model.draftLayers(of: $0) } ?? id.map { model.layers(of: $0) } ?? []
         if !layers.indices.contains(selected) || selected == 0 { selected = max(layers.count - 1, 0) }
+        history = id == nil ? nil : EditHistory(layers)
+        model.editorUndo = EditorUndo(canUndo: { [weak self] in self?.history?.canUndo ?? false },
+                                      canRedo: { [weak self] in self?.history?.canRedo ?? false },
+                                      undo: { [weak self, weak model] in if let model { self?.undo(model) } },
+                                      redo: { [weak self, weak model] in if let model { self?.redo(model) } })
     }
 
     func update(_ model: AppModel, _ i: Int, _ change: (inout Layer) -> Void) {
         guard let input, layers.indices.contains(i) else { return }
         change(&layers[i])
         model.setDraftLayers(layers, of: input)
+        record()
     }
 
     func replaceAll(_ model: AppModel, _ new: [Layer]) {
         guard let input else { return }
         model.setDraftLayers(new, of: input)
         layers = model.draftLayers(of: input) ?? new
+        if !layers.indices.contains(selected) { selected = max(layers.count - 1, 0) }
+        history?.breakCoalescing()
+        record()
+    }
+
+    private func record() { history?.record(layers, now: ProcessInfo.processInfo.systemUptime) }
+
+    func undo(_ model: AppModel) { if let v = history?.undo() { restore(model, v) } }
+    func redo(_ model: AppModel) { if let v = history?.redo() { restore(model, v) } }
+
+    private func restore(_ model: AppModel, _ v: [Layer]) {
+        guard let input else { return }
+        model.setDraftLayers(v, of: input)
+        layers = model.draftLayers(of: input) ?? v
         if !layers.indices.contains(selected) { selected = max(layers.count - 1, 0) }
     }
 
@@ -242,6 +266,12 @@ struct LayerDesignerBar: View {
             }
             .disabled(state.layers.count < 2)
             templateMenu
+            Button { state.undo(model) } label: { Image(systemName: "arrow.uturn.backward") }
+                .buttonStyle(.borderless).help(L10n.t("undo.undo") + " (⌘Z)")
+                .disabled(state.history?.canUndo != true)
+            Button { state.redo(model) } label: { Image(systemName: "arrow.uturn.forward") }
+                .buttonStyle(.borderless).help(L10n.t("undo.redo") + " (⇧⌘Z)")
+                .disabled(state.history?.canRedo != true)
             Spacer(minLength: 0)
             Button { state.close() } label: { Image(systemName: "xmark.circle.fill") }
                 .buttonStyle(.borderless).help(L10n.t("designer.close"))

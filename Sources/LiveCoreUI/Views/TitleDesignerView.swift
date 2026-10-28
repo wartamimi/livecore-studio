@@ -31,6 +31,18 @@ struct TitleSheet: View {
     @State private var ticker = TickerTemplate.newsRed.config(text: L10n.t("titled.ticker_sample"))
     /// Start of the animation test in the preview.
     @State private var animStart: Date?
+    @StateObject private var undo = DraftHistory<TitleDraft>()
+
+    /// Everything the sheet edits, for undo / redo.
+    struct TitleDraft: Equatable {
+        var title: String
+        var subtitle: String
+        var design: TitleDesign
+        var ticker: TickerConfig
+        var isTicker: Bool
+    }
+
+    private var draft: TitleDraft { TitleDraft(title: title, subtitle: subtitle, design: design, ticker: ticker, isTicker: isTicker) }
 
     /// An existing input keeps its kind (title or running text).
     private var editingTicker: Bool { editing.map { model.tickerSource($0) != nil } ?? false }
@@ -56,6 +68,7 @@ struct TitleSheet: View {
                 .help(L10n.t("titled.reset_help"))
                 Button { animStart = Date() } label: { Label(L10n.t("titled.try_animation"), systemImage: "play.circle") }
                     .help(L10n.t("titled.try_animation_help"))
+                UndoRedoButtons(history: undo)
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
                 Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
@@ -64,6 +77,8 @@ struct TitleSheet: View {
                     } else {
                         var st = TextSource.Style(title: title, subtitle: subtitle)
                         st.design = design.clamped()
+                        // A title linked to a table keeps its link.
+                        if let id = editing { st.dataSource = model.dataSource(id) }
                         if let id = editing { model.updateTitle(id, style: st) } else { model.addTitle(st) }
                     }
                     dismiss()
@@ -74,7 +89,13 @@ struct TitleSheet: View {
             .padding(12)
         }
         .frame(width: 920, height: 640)
-        .onAppear(perform: load)
+        .onAppear {
+            load()
+            undo.apply = { d in title = d.title; subtitle = d.subtitle; design = d.design; ticker = d.ticker; isTicker = d.isTicker }
+            undo.start(draft, model: model)
+        }
+        .onDisappear { undo.stop(model: model) }
+        .onChange(of: draft) { undo.record($0) }
     }
 
     // MARK: Gallery
@@ -286,6 +307,7 @@ struct TitleSheet: View {
                     ForEach(TextAnimation.allCases, id: \.self) { Text(L10n.t("textanim." + $0.rawValue)).tag($0) }
                 }
                 .labelsHidden().frame(width: 200)
+                ExperimentalTag()
             }
             if design.textAnimation != .off {
                 slider(L10n.t("titled.letter_delay"), Binding(get: { design.letterDelay * 1000 }, set: { design.letterDelay = $0 / 1000 }),
@@ -545,6 +567,7 @@ struct TickerEditorPanel: View {
                 Stepper(L10n.f("ticker.feed_every", "\(Int(config.feedRefreshMinutes ?? 5))"),
                         value: Binding(get: { config.feedRefreshMinutes ?? 5 }, set: { config.feedRefreshMinutes = $0 }), in: 1...120)
                     .fixedSize()
+                ExperimentalTag()
             }
             if !(config.feedURL ?? "").isEmpty {
                 Text(L10n.t("ticker.feed_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)

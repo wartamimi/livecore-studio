@@ -434,6 +434,7 @@ extension ProductionEngine {
             return st.sources.removeValue(forKey: id)
         }
         removed?.stop()
+        ptzConfigs[id] = nil
         if let r = removed, r === replaySource { replayRemoved() }
         if removed is BrowserSource { updateWebAudio() }
         if removed is VideoFileSource || removed is ScreenCaptureSource || removed is PresentationSource {

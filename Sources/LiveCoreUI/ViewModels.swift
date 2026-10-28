@@ -43,6 +43,9 @@ public final class ChannelVM: ObservableObject, Identifiable {
     @Published public var invertPhase: Bool { didSet { channel.controls.invertPhase.value = invertPhase } }
     @Published public var delayMs: Double { didSet { channel.controls.delayMs.value = Float(delayMs) } }
     @Published public var locked: Bool { didSet { channel.locked = locked } }
+    /// Ducking: this channel (MC microphone) turns the ducked channels down / is turned down (music).
+    @Published public var duckTrigger: Bool { didSet { channel.controls.duckTrigger.value = duckTrigger } }
+    @Published public var duckTarget: Bool { didSet { channel.controls.duckTarget.value = duckTarget } }
     /// Audio of a video-file input (removed together with the input, not from the mixer).
     /// Audio that belongs to an input (video file or window/display capture).
     public var isFileChannel: Bool { ProductionEngine.inputOfChannel(channel.id) != nil }
@@ -53,6 +56,8 @@ public final class ChannelVM: ObservableObject, Identifiable {
         self.channel = channel
         let c = channel.controls
         locked = channel.locked
+        duckTrigger = c.duckTrigger.value
+        duckTarget = c.duckTarget.value
         name = channel.name
         compMakeup = Double(c.compMakeupDB.value)
         compAttack = Double(c.compAttackMs.value)
@@ -110,6 +115,21 @@ public final class MeterModel: ObservableObject {
     @Published public var levels: [String: Level] = [:]
     @Published public var master = Level(l: -120, r: -120, holdL: -120, holdR: -120, gr: 0)
     @Published public var aux: [Level] = []
+    /// Program loudness in LUFS (momentary, short-term, integrated) and the ducking reduction (dB).
+    public struct Loudness: Equatable {
+        public var momentary: Float = -.infinity
+        public var shortTerm: Float = -.infinity
+        public var integrated: Float = -.infinity
+        public var duckDB: Float = 0
+    }
+    @Published public var loudness = Loudness()
+
+    func updateLoudness(_ mixer: AudioMixerEngine) {
+        func r(_ v: Float) -> Float { v.isFinite ? (v * 10).rounded() / 10 : v }
+        let l = Loudness(momentary: r(mixer.lufsMomentary.value), shortTerm: r(mixer.lufsShortTerm.value),
+                         integrated: r(mixer.lufsIntegrated.value), duckDB: r(mixer.ducking.reductionDB.value))
+        if l != loudness { loudness = l }
+    }
     private var ballistics: [String: (MeterBallistics, MeterBallistics)] = [:]
     private var lastTime = HostClockUI.now()
 

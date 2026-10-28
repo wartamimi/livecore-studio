@@ -208,7 +208,7 @@ public final class RemoteServer: @unchecked Sendable {
             let wait: Double = lock.sync { lockout.waitTime(client, now: now) }
             if wait > 0 { return .error(429, "locked", headers: [("Retry-After", "\(Int(wait.rounded(.up)))")]) }
             let ok: Bool = lock.sync {
-                if RemoteAuth.pinMatches(req.headers[RemoteAuth.pinHeader], _pin) {
+                if RemoteAuth.pinMatches(req.headers[RemoteAuth.pinHeader] ?? req.query["pin"], _pin) {
                     lockout.recordSuccess(client)
                     seen[client] = now
                     return true

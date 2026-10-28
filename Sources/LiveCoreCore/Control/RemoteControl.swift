@@ -205,6 +205,12 @@ public enum RemoteCommand: Equatable, Sendable {
     case masterFader(Double)
     case channelFader(id: String, value: Double)
     case channelMute(id: String, on: Bool)
+    /// PTZ camera of input `input` (1-based): recall preset 1...8, or home.
+    case ptzPreset(input: Int, preset: Int)
+    case ptzHome(input: Int)
+    /// Title data source of input `input`: next (+1) / previous (-1) row, or row `n` (1-based).
+    case dataRow(input: Int, delta: Int)
+    case dataRowSet(input: Int, row: Int)
 }
 
 public enum RemoteRoute: Equatable, Sendable {
@@ -286,6 +292,20 @@ public enum RemoteRouter {
             guard let id = channelID(r.query["id"]) else { return .badRequest("id") }
             guard let on = r.query["on"], on == "0" || on == "1" else { return .badRequest("on") }
             cmd = .channelMute(id: id, on: on == "1")
+        case "/api/ptz/preset":
+            guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
+            guard let p = int(r.query["preset"]), (1...PTZConfig.presetCount).contains(p) else { return .badRequest("preset") }
+            cmd = .ptzPreset(input: n, preset: p)
+        case "/api/ptz/home":
+            guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
+            cmd = .ptzHome(input: n)
+        case "/api/data/next", "/api/data/previous":
+            guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
+            cmd = .dataRow(input: n, delta: r.path == "/api/data/next" ? 1 : -1)
+        case "/api/data/row":
+            guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
+            guard let row = int(r.query["row"]), (1...100_000).contains(row) else { return .badRequest("row") }
+            cmd = .dataRowSet(input: n, row: row)
         default: return .notFound
         }
         return r.method == "POST" ? .command(cmd) : .methodNotAllowed
