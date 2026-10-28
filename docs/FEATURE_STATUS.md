@@ -135,6 +135,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 |---|---|---|---|
 | Shortcut keyboard yang bisa diatur | Implemented | M | |
 | Kontrol MIDI dengan Learn (CUT, AUTO, T-bar, preview/cut 1–8, overlay 1–4, stream, rekam, snapshot) | Implemented (0.7.0) | L (parser MIDI 1.0/UMP, pemetaan, 6 unit test) + kompilasi CI | Semua sumber CoreMIDI tersambung otomatis; pemetaan disimpan di Mac (bukan proyek). Belum dites dengan controller (T-35) |
+| Web Controller (remote dari browser HP/tablet di jaringan yang sama) | Implemented (0.30.0) | lihat bagian Web Controller 0.30.0 | PIN, mati secara default |
 | Input tangkap jendela / layar (Zoom, Teams, Meet, slide) | Implemented (0.10.0) | L (pencocokan jendela, 5 unit test) + kompilasi CI | ScreenCaptureKit; audio aplikasi (jendela) atau sistem (layar) ke channel mixer sendiri; audio & jendela LiveCore sendiri dikecualikan; jendela ditemukan lagi lewat aplikasi + judul saat proyek dibuka. Perlu izin Perekaman Layar. Belum dites (T-46) |
 | Input Zoom via Zoom Meeting SDK (peserta terpisah, seperti vMix) | Ditunda (dihapus dari build publik di 0.10.1) | — | Pernah dibuat di 0.11.x dan dikompilasi dengan SDK, lalu ditarik dari repo & rilis publik atas keputusan pemilik; diarsipkan secara privat. Join meeting akun lain gagal (kode 63) sampai aplikasi SDK lolos review Zoom Marketplace. Untuk sekarang pakai input tangkap jendela |
 | Program sebagai kamera virtual (untuk Zoom) | Lewat NDI Tools (0.24.0) atau OBS | CI `livecore-ndi-check` | EXTERNAL › NDI → di NDI Tools pilih "LiveCore Output 1" → di Zoom pilih "NDI Virtual Camera" (tanpa OBS). Atau Syphon → OBS Virtual Camera. Kamera bernama "LiveCore" sendiri butuh Camera Extension bertanda tangan Developer ID (dihapus di 0.23.0) |
@@ -158,6 +159,14 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Shortcut keyboard dapat diubah | Implemented | M |
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
+
+## Web Controller 0.30.0
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Remote dari browser HP/tablet (Preview, CUT, AUTO, T-bar, overlay 1–4, replay 5/10/20 s, snapshot) | Implemented (0.30.0), belum dites di Mac pengguna | L (parser HTTP, rute, JSON status; unit test) + tes socket server sungguhan di CI Linux & macOS + halaman dites di browser ukuran HP | Settings › Remote; mati secara default; port 8088 (bisa diubah); halaman satu file tanpa sumber eksternal, bahasa ikut browser (Indonesia/Inggris); status diperbarui 2× per detik (T-119..T-122) |
+| Rekam / streaming dari remote | Implemented (0.30.0), belum dites | L (rute start/stop eksplisit) + kompilasi CI | Berhenti minta konfirmasi di HP; gembok RECORD/STREAM di aplikasi tetap berlaku (T-123) |
+| Keamanan: PIN di Keychain, kunci setelah PIN salah, cek Host | Implemented (0.30.0) | L (unit test PIN, lockout bertingkat, Host) | PIN 6 digit acak; tiap API butuh header PIN; 5 salah → kunci 1 menit, naik 2× tiap kali (maks 1 jam); hanya Host berupa IP/localhost/.local (melawan DNS rebinding); PIN baru mengeluarkan semua perangkat. Koneksi HTTP biasa, lihat KNOWN_ISSUES 67 (T-124..T-125) |
+| QR code + daftar alamat + jumlah perangkat | Implemented (0.30.0), belum dites | kompilasi CI | QR berisi alamat + PIN, tersembunyi sampai dibuka; PIN juga tersembunyi sampai tombol mata diklik (T-126) |
 
 ## Input NDI 0.29.0
 | Fitur | Status | Verifikasi | Catatan |

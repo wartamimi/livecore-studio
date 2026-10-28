@@ -6,6 +6,7 @@ import CoreImage
 import ImageIO
 import LiveCoreCore
 import LiveCoreEngine
+import LiveCoreRemote
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -88,6 +89,16 @@ public final class AppModel: ObservableObject {
     @Published public var performance = PerformanceSnapshot.zero
     @Published public var shortcuts = ShortcutSettings.load()
 
+    // Web Controller (remote control from a browser on the same network; off by default)
+    @Published public internal(set) var remoteEnabled = false
+    @Published public internal(set) var remotePort = RemoteServer.defaultPort
+    /// Shown in Settings › Remote; kept in the Keychain, never in preferences or projects.
+    @Published public internal(set) var remotePIN = ""
+    @Published public internal(set) var remoteError: String?
+    @Published public internal(set) var remoteClients = 0
+    @Published public internal(set) var remoteAddresses: [String] = []
+    var remoteServer: RemoteServer?
+
     // Errors
     @Published public var errors: [ErrorItem] = []
     public struct ErrorItem: Identifiable, Equatable { public let id = UUID(); public let message: String }
@@ -118,6 +129,7 @@ public final class AppModel: ObservableObject {
             overlays = e.overlays
             syncAuxFromEngine()
             startMIDI()
+            startRemoteIfEnabled()
         } catch {
             startupError = error.localizedDescription
             return
@@ -129,6 +141,7 @@ public final class AppModel: ObservableObject {
         statsTimer?.invalidate()
         outputRouter?.stopAll()
         midi.stop()
+        remoteServer?.stop()
         engine?.shutdown()
     }
 
@@ -203,6 +216,7 @@ public final class AppModel: ObservableObject {
         meters.update(channels: e.audioChannels, master: e.mixer.master, aux: e.mixer.aux)
         tickCount += 1
         if tickCount % 30 == 0 { performance = e.samplePerformance(); refreshExternalStatus() }
+        if remoteServer != nil, tickCount % 5 == 0 { pushRemoteState(clients: tickCount % 30 == 0) }
     }
 
     // MARK: Devices

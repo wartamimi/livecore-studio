@@ -607,3 +607,19 @@
 "ndi.own_output" = "Output LiveCore";
 "ndi.own_output_help" = "Ini output LiveCore sendiri; menerimanya kembali akan menampilkan Program di dalam Program.";
 "ndi.note" = "HP (mis. aplikasi NDI HX Camera), OBS dengan plugin NDI, vMix, kamera NDI dan komputer lain muncul di sini bila berada di jaringan yang sama. Izinkan akses \"Jaringan Lokal\" bila macOS meminta. Input tersambung kembali sendiri saat sumbernya muncul lagi.";
+
+/* Web Controller (0.30.0) */
+"remote.enable" = "Web Controller (remote dari HP atau tablet)";
+"remote.about" = "Buka alamat di bawah di browser HP, tablet atau komputer lain yang tersambung ke Wi-Fi / jaringan yang sama, lalu masukkan PIN. Tidak perlu install aplikasi. Preview, CUT, AUTO, T-bar, overlay, instant replay, rekam dan streaming.";
+"remote.port" = "Port";
+"remote.show" = "Tampilkan PIN";
+"remote.hide" = "Sembunyikan PIN";
+"remote.new_pin" = "PIN baru";
+"remote.new_pin.help" = "Membuat PIN acak baru; perangkat yang masuk dengan PIN lama akan keluar.";
+"remote.open" = "Buka di HP:";
+"remote.no_network" = "Mac ini tidak tersambung ke jaringan.";
+"remote.copy" = "Salin alamat";
+"remote.qr" = "QR code (berisi PIN)";
+"remote.qr.help" = "Pindai dengan kamera HP untuk membuka remote dan langsung masuk. Jangan tampilkan kode ini saat siaran atau saat berbagi layar.";
+"remote.clients" = "Perangkat tersambung: %d";
+"remote.security" = "Koneksinya HTTP biasa (tidak terenkripsi): gunakan hanya di jaringan yang Anda percaya. Siapa pun yang tahu PIN bisa memindah tampilan siaran Anda. Setelah 5 kali PIN salah, perangkat dikunci sementara.";

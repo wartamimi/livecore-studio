@@ -607,3 +607,19 @@
 "ndi.own_output" = "LiveCore output";
 "ndi.own_output_help" = "This is an output of LiveCore itself; receiving it back would show Program inside Program.";
 "ndi.note" = "Phones (e.g. NDI HX Camera app), OBS with the NDI plugin, vMix, NDI cameras and other computers appear here when they are on the same network. Allow \"Local Network\" access if macOS asks. The input reconnects by itself when the source comes back.";
+
+/* Web Controller (0.30.0) */
+"remote.enable" = "Web Controller (remote from a phone or tablet)";
+"remote.about" = "Open the address below in the browser of a phone, tablet or another computer on the same Wi-Fi / network and enter the PIN. No app to install. Preview, CUT, AUTO, T-bar, overlays, instant replay, recording and streaming.";
+"remote.port" = "Port";
+"remote.show" = "Show PIN";
+"remote.hide" = "Hide PIN";
+"remote.new_pin" = "New PIN";
+"remote.new_pin.help" = "Makes a new random PIN; devices signed in with the old PIN are signed out.";
+"remote.open" = "Open on the phone:";
+"remote.no_network" = "This Mac is not connected to a network.";
+"remote.copy" = "Copy address";
+"remote.qr" = "QR code (contains the PIN)";
+"remote.qr.help" = "Scan with the phone camera to open the remote and sign in at once. Do not show this code on air or on a shared screen.";
+"remote.clients" = "Devices connected: %d";
+"remote.security" = "The connection is plain HTTP (not encrypted): use it only on a network you trust. Anyone who knows the PIN can switch your show. After 5 wrong PINs a device is locked out for a while.";
