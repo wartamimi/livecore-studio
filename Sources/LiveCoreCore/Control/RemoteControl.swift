@@ -199,6 +199,12 @@ public enum RemoteCommand: Equatable, Sendable {
     /// Start (true) / stop (false). Explicit so a late tap never flips the state the wrong way.
     case stream(Bool)
     case record(Bool)
+    /// Transition for AUTO / T-bar: `TransitionKind` raw value and/or duration in seconds.
+    case transition(kind: Int?, duration: Double?)
+    /// Fader positions 0...1 (the app's fader law), as on the mixer.
+    case masterFader(Double)
+    case channelFader(id: String, value: Double)
+    case channelMute(id: String, on: Bool)
 }
 
 public enum RemoteRoute: Equatable, Sendable {
@@ -206,6 +212,8 @@ public enum RemoteRoute: Equatable, Sendable {
     case state
     /// Checks the PIN only (the page's sign-in).
     case ping
+    /// Latest JPEG of "program" or "preview".
+    case frame(String)
     case command(RemoteCommand)
     case notFound
     case methodNotAllowed
@@ -213,7 +221,7 @@ public enum RemoteRoute: Equatable, Sendable {
 
     public var needsPIN: Bool {
         switch self {
-        case .state, .ping, .command: return true
+        case .state, .ping, .frame, .command: return true
         default: return false
         }
     }
@@ -231,6 +239,10 @@ public enum RemoteRouter {
             return r.method == "GET" ? .state : .methodNotAllowed
         case "/api/ping":
             return r.method == "GET" ? .ping : .methodNotAllowed
+        case "/api/frame":
+            guard r.method == "GET" else { return .methodNotAllowed }
+            guard let bus = r.query["bus"], bus == "program" || bus == "preview" else { return .badRequest("bus") }
+            return .frame(bus)
         default:
             break
         }
@@ -256,12 +268,42 @@ public enum RemoteRouter {
         case "/api/stream/stop": cmd = .stream(false)
         case "/api/record/start": cmd = .record(true)
         case "/api/record/stop": cmd = .record(false)
+        case "/api/transition":
+            let kind = int(r.query["kind"])
+            let duration = r.query["duration"].flatMap(Double.init)
+            if r.query["kind"] != nil, kind.map({ !(0...63).contains($0) }) ?? true { return .badRequest("kind") }
+            if r.query["duration"] != nil, duration.map({ !$0.isFinite || !(0.1...10).contains($0) }) ?? true { return .badRequest("duration") }
+            guard kind != nil || duration != nil else { return .badRequest("kind") }
+            cmd = .transition(kind: kind, duration: duration)
+        case "/api/audio/master":
+            guard let v = unit(r.query["fader"]) else { return .badRequest("fader") }
+            cmd = .masterFader(v)
+        case "/api/audio/fader":
+            guard let id = channelID(r.query["id"]) else { return .badRequest("id") }
+            guard let v = unit(r.query["value"]) else { return .badRequest("value") }
+            cmd = .channelFader(id: id, value: v)
+        case "/api/audio/mute":
+            guard let id = channelID(r.query["id"]) else { return .badRequest("id") }
+            guard let on = r.query["on"], on == "0" || on == "1" else { return .badRequest("on") }
+            cmd = .channelMute(id: id, on: on == "1")
         default: return .notFound
         }
         return r.method == "POST" ? .command(cmd) : .methodNotAllowed
     }
 
     private static func int(_ s: String?) -> Int? { s.flatMap { Int($0) } }
+
+    /// A finite number in 0...1.
+    private static func unit(_ s: String?) -> Double? {
+        guard let v = s.flatMap(Double.init), v.isFinite, (0...1).contains(v) else { return nil }
+        return v
+    }
+
+    /// Mixer channel ids are short printable strings ("mic:...", "ndi:...").
+    private static func channelID(_ s: String?) -> String? {
+        guard let s, !s.isEmpty, s.utf8.count <= 256, !s.unicodeScalars.contains(where: { $0.value < 0x20 }) else { return nil }
+        return s
+    }
 }
 
 // MARK: Access
@@ -374,11 +416,32 @@ public struct RemoteState: Equatable, Sendable {
         }
     }
 
+    public struct Choice: Equatable, Sendable {
+        public var id: Int
+        public var name: String
+        public init(id: Int, name: String) { self.id = id; self.name = name }
+    }
+    /// A mixer strip; meters are peak dBFS (-120 = silence).
+    public struct Channel: Equatable, Sendable {
+        public var id: String
+        public var name: String
+        public var fader: Double
+        public var muted: Bool
+        public var levelL: Double
+        public var levelR: Double
+        public init(id: String, name: String, fader: Double, muted: Bool, levelL: Double, levelR: Double) {
+            self.id = id; self.name = name; self.fader = fader; self.muted = muted; self.levelL = levelL; self.levelR = levelR
+        }
+    }
+
     public var title = "LiveCore Studio"
     public var program: Int?
     public var preview: Int?
     public var transitioning = false
     public var transition = ""
+    public var transitionKind = 1
+    public var transitionDuration: Double = 1
+    public var transitions: [Choice] = []
     public var tbar: Double = 0
     public var tbarRest: Double = 0
     public var inputs: [Input] = []
@@ -388,8 +451,22 @@ public struct RemoteState: Equatable, Sendable {
     public var recording = false
     public var recordLocked = false
     public var replayAvailable: Double = 0
+    /// Seconds since recording / streaming started (0 when off).
+    public var recordTime: Double = 0
+    public var streamTime: Double = 0
+    public var master = Channel(id: "master", name: "Master", fader: 0.75, muted: false, levelL: -120, levelR: -120)
+    public var channels: [Channel] = []
+    /// A Program / Preview picture is available at /api/frame.
+    public var frames = false
 
     public init() {}
+
+    private static func render(_ c: Channel) -> String {
+        var e = JSON.Object()
+        e["id"] = JSON.string(c.id); e["name"] = JSON.string(c.name); e["fader"] = JSON.number(c.fader)
+        e["muted"] = JSON.bool(c.muted); e["l"] = JSON.number(max(-120, c.levelL)); e["r"] = JSON.number(max(-120, c.levelR))
+        return e.rendered
+    }
 
     public var json: String {
         var o = JSON.Object()
@@ -399,6 +476,13 @@ public struct RemoteState: Equatable, Sendable {
         o["preview"] = JSON.int(preview)
         o["transitioning"] = JSON.bool(transitioning)
         o["transition"] = JSON.string(transition)
+        o["transitionKind"] = "\(transitionKind)"
+        o["transitionDuration"] = JSON.number(transitionDuration)
+        o["transitions"] = JSON.array(transitions.map { c in
+            var e = JSON.Object()
+            e["id"] = "\(c.id)"; e["name"] = JSON.string(c.name)
+            return e.rendered
+        })
         o["tbar"] = JSON.number(tbar)
         o["tbarRest"] = JSON.number(tbarRest)
         o["inputs"] = JSON.array(inputs.map { i in
@@ -417,6 +501,11 @@ public struct RemoteState: Equatable, Sendable {
         o["recordLocked"] = JSON.bool(recordLocked)
         o["replayAvailable"] = JSON.number(replayAvailable)
         o["replayLengths"] = JSON.array(ReplayIndex.lengths.map { JSON.number($0) })
+        o["recordTime"] = JSON.number(recordTime)
+        o["streamTime"] = JSON.number(streamTime)
+        o["master"] = Self.render(master)
+        o["channels"] = JSON.array(channels.map(Self.render))
+        o["frames"] = JSON.bool(frames)
         return o.rendered
     }
 }

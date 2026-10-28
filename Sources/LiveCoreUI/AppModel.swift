@@ -64,7 +64,8 @@ public final class AppModel: ObservableObject {
     @Published public private(set) var auxBuses: [AuxBusVM] = []
     /// Last Program snapshot saved with `saveSnapshot()`.
     @Published public private(set) var lastSnapshotURL: URL?
-    private var lastProgramFrame: CVPixelBuffer?
+    var lastProgramFrame: CVPixelBuffer?
+    var lastPreviewFrame: CVPixelBuffer?
     private var lastMusicError: String?
 
     // Audio
@@ -161,7 +162,7 @@ public final class AppModel: ObservableObject {
             self?.lastProgramFrame = pb
             self?.programFeed.push(pb); self?.programOutputFeed.push(pb)
         }
-        e.onPreviewFrame = { [weak self] pb in self?.previewFeed.push(pb) }
+        e.onPreviewFrame = { [weak self] pb in self?.lastPreviewFrame = pb; self?.previewFeed.push(pb) }
         e.onThumbnails = { [weak self] thumbs in
             guard let self else { return }
             for (id, pb) in thumbs { self.feed(for: id).push(pb) }
@@ -216,7 +217,8 @@ public final class AppModel: ObservableObject {
         meters.update(channels: e.audioChannels, master: e.mixer.master, aux: e.mixer.aux)
         tickCount += 1
         if tickCount % 30 == 0 { performance = e.samplePerformance(); refreshExternalStatus() }
-        if remoteServer != nil, tickCount % 5 == 0 { pushRemoteState(clients: tickCount % 30 == 0) }
+        if remoteServer != nil, tickCount % 3 == 0 { pushRemoteState(clients: tickCount % 30 == 0) }
+        if remoteServer != nil, tickCount % 10 == 0 { pushRemoteFrames() }
     }
 
     // MARK: Devices

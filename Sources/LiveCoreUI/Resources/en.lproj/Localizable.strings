@@ -610,7 +610,7 @@
 
 /* Web Controller (0.30.0) */
 "remote.enable" = "Web Controller (remote from a phone or tablet)";
-"remote.about" = "Open the address below in the browser of a phone, tablet or another computer on the same Wi-Fi / network and enter the PIN. No app to install. Preview, CUT, AUTO, T-bar, overlays, instant replay, recording and streaming.";
+"remote.about" = "Open the address below in the browser of a phone, tablet or another computer on the same Wi-Fi / network and enter the PIN. No app to install. Live Program / Preview pictures, Preview and Program buses, CUT, AUTO, T-bar, transition and duration, overlays, instant replay, recording, streaming and the audio mixer.";
 "remote.port" = "Port";
 "remote.show" = "Show PIN";
 "remote.hide" = "Hide PIN";

@@ -51,6 +51,14 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AE. Tes manual build 0.31.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-127 | Panel di HP & tablet | Buka remote di HP (tegak) dan tablet/iPad (mendatar); masuk dengan keypad PIN | HP: satu kolom, T-bar mendatar; tablet: dua kolom, T-bar tegak; tombol bus Preview hijau / Program merah menyala sesuai Mac; tombol terasa "turun" saat ditekan |
+| T-128 | Gambar monitor | Biarkan halaman terbuka 1 menit sambil ganti input di Mac | Gambar PVW/PGM di HP ikut berubah (±3 fps); setelah halaman ditutup beban CPU Mac kembali seperti sebelumnya |
+| T-129 | Transisi dari HP | Pilih Wipe dan 2 s di HP, tekan AUTO | Pilihan transisi & durasi di Mac ikut berubah; AUTO menyala selama transisi |
+| T-130 | Mixer dari HP | Geser fader mic & master di HP, tekan MUTE | Fader di Mac bergerak sama (angka dB sama); mute menyala di Mac; meter di HP bergerak saat ada suara |
+
 ## AD. Tes manual build 0.30.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|
