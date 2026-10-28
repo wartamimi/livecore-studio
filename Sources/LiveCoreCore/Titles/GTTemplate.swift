@@ -122,6 +122,7 @@ public struct GTAnimation: Equatable, Sendable {
         public var scale = (x: 1.0, y: 1.0)
         public var anchor = (x: 0.5, y: 0.5)
         public var opacity = 1.0
+        public init() {}
         public static func == (a: Frame, b: Frame) -> Bool {
             a.clip == b.clip && a.scale == b.scale && a.anchor == b.anchor && a.opacity == b.opacity
         }
