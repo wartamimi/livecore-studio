@@ -160,6 +160,14 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Web Controller 0.31.0 (panel switcher)
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Tampilan panel hardware (bus Preview/Program, tombol menyala, tuas T-bar, LED + timer REC/LIVE, keypad PIN) | Implemented (0.31.0), belum dites di HP pengguna | Dites di browser ukuran iPhone 13 dan tablet 1180×820 (klik bus, transisi, T-bar sentuh & mouse, mute) | HP: satu kolom, T-bar horizontal; layar ≥900 px: dua kolom, T-bar vertikal. Getar hanya di browser yang mendukung (Android; Safari iOS tidak) (T-127) |
+| Gambar Program/Preview langsung | Implemented (0.31.0), belum dites | L (rute + tes socket: JPEG butuh PIN) + kompilasi CI | JPEG 640 px kualitas 0,6, ±3 per detik per monitor; dibuat hanya saat ada halaman yang memintanya dalam 3 detik terakhir (T-128) |
+| Pilih transisi + durasi dari HP | Implemented (0.31.0), belum dites | L (rute; unit test) + kompilasi CI | Daftar sama dengan aplikasi; stinger muncul bila klipnya dipilih; shader custom yang dipilih ikut tampil; durasi 0,5–3 s (T-129) |
+| Mixer audio dari HP | Implemented (0.31.0), belum dites | L (rute, JSON; unit test) + kompilasi CI | Fader master & per kanal (hukum fader sama: 0,75 = 0 dB), mute per kanal, meter peak L/R; belum ada solo/EQ/bus dari HP (T-130) |
+
 ## Web Controller 0.30.0
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|

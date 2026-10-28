@@ -4,7 +4,11 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.30.0 — Milestone 3 berjalan.** 0.30.0 menambah Web Controller: remote dari browser HP, tablet atau
+> **Status: 0.31.0 — Milestone 3 berjalan.** 0.31.0 mendesain ulang Web Controller menjadi panel switcher bergaya
+> hardware: gambar Program/Preview langsung (JPEG ±3 fps, hanya saat halaman dibuka), dua baris bus Preview/Program
+> dengan tombol menyala, tuas T-bar besar (horizontal di HP, vertikal di tablet), pilihan jenis dan durasi transisi,
+> mixer audio (fader master & per kanal, mute, meter), LED REC/LIVE dengan timer, keypad PIN, dan getaran saat ditekan
+> (Android). Menunggu tes T-127..T-130. 0.30.0 menambah Web Controller: remote dari browser HP, tablet atau
 > komputer lain di jaringan yang sama (tanpa install aplikasi) untuk Preview, CUT, AUTO, T-bar, overlay 1–4, instant
 > replay, rekam, streaming dan snapshot, dengan status Program/Preview langsung. Mati secara default; dikunci PIN yang
 > disimpan di Keychain, perangkat dikunci sementara setelah 5 PIN salah, ada QR code untuk masuk cepat (Settings ›

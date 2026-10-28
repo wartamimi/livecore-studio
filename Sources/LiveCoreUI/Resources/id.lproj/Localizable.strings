@@ -610,7 +610,7 @@
 
 /* Web Controller (0.30.0) */
 "remote.enable" = "Web Controller (remote dari HP atau tablet)";
-"remote.about" = "Buka alamat di bawah di browser HP, tablet atau komputer lain yang tersambung ke Wi-Fi / jaringan yang sama, lalu masukkan PIN. Tidak perlu install aplikasi. Preview, CUT, AUTO, T-bar, overlay, instant replay, rekam dan streaming.";
+"remote.about" = "Buka alamat di bawah di browser HP, tablet atau komputer lain yang tersambung ke Wi-Fi / jaringan yang sama, lalu masukkan PIN. Tidak perlu install aplikasi. Gambar Program / Preview langsung, bus Preview dan Program, CUT, AUTO, T-bar, jenis dan durasi transisi, overlay, instant replay, rekam, streaming dan mixer audio.";
 "remote.port" = "Port";
 "remote.show" = "Tampilkan PIN";
 "remote.hide" = "Sembunyikan PIN";

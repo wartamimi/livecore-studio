@@ -38,6 +38,8 @@ public final class RemoteServer: @unchecked Sendable {
     private var stateJSON = RemoteState().json
     private var lockout = RemoteLockout()
     private var seen: [String: Double] = [:]          // client address → last signed-in request
+    private var frames: [String: [UInt8]] = [:]        // "program" / "preview" → JPEG
+    private var lastFrameRequest: Double = -.infinity
     private let requestedPort: Int
     private var boundPort = 0
     private let commandQueue: DispatchQueue
@@ -66,6 +68,15 @@ public final class RemoteServer: @unchecked Sendable {
     }
 
     public func update(state json: String) { lock.sync { stateJSON = json } }
+
+    /// Latest JPEG for "program" or "preview" (served at /api/frame?bus=...).
+    public func setFrame(_ jpeg: [UInt8], bus: String) { lock.sync { frames[bus] = jpeg } }
+
+    /// A page asked for a picture in the last `window` seconds, so encoding them is worth it.
+    public func wantsFrames(window: Double = 3) -> Bool {
+        let now = Self.now()
+        return lock.sync { now - lastFrameRequest < window }
+    }
 
     /// Devices that made a signed-in request in the last `window` seconds.
     public func activeClients(window: Double = 10) -> Int {
@@ -118,6 +129,7 @@ public final class RemoteServer: @unchecked Sendable {
             listenFD = -1
             running = false
             seen = [:]
+            frames = [:]
             return f
         }
         if fd >= 0 { close(fd) }   // the accept loop sees running == false within its poll timeout
@@ -214,11 +226,15 @@ public final class RemoteServer: @unchecked Sendable {
         case .page:
             return HTTPResponse(status: 200, contentType: "text/html; charset=utf-8", body: Array(RemotePage.html.utf8),
                                 headers: [("X-Frame-Options", "DENY"), ("Referrer-Policy", "no-referrer"),
-                                          ("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'")])
+                                          ("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; frame-ancestors 'none'")])
         case .state:
             return .json(lock.sync { stateJSON })
         case .ping:
             return .json("{\"ok\":true}")
+        case let .frame(bus):
+            let jpeg: [UInt8]? = lock.sync { lastFrameRequest = Self.now(); return frames[bus] }
+            guard let jpeg else { return HTTPResponse(status: 204) }
+            return HTTPResponse(status: 200, contentType: "image/jpeg", body: jpeg)
         case let .command(cmd):
             let handler = onCommand
             commandQueue.async { handler(cmd) }

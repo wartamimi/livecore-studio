@@ -1,5 +1,9 @@
 #if os(macOS)
+import CoreImage
+import CoreVideo
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 import LiveCoreCore
 import LiveCoreEngine
 import LiveCoreRemote
@@ -72,7 +76,7 @@ extension AppModel {
     /// Addresses to open on the phone (Wi-Fi / Ethernet), e.g. "http://192.168.1.20:8088".
     public var remoteURLs: [String] { remoteAddresses.map { "http://\($0):\(remotePort)" } }
 
-    /// Refreshes what the remote page shows (5 times a second while the server runs).
+    /// Refreshes what the remote page shows (10 times a second while the server runs).
     func pushRemoteState(clients: Bool) {
         guard let server = remoteServer else { return }
         let number: (InputID?) -> Int? = { id in id.flatMap { id in self.inputs.first { $0.id == id }?.number } }
@@ -93,6 +97,19 @@ extension AppModel {
         s.recording = isRecording
         s.recordLocked = recordLocked
         s.replayAvailable = replayAvailable
+        s.transitionKind = transitionKind.rawValue
+        s.transitionDuration = transitionDuration
+        s.transitions = remoteTransitions
+        s.recordTime = isRecording ? recordStats.duration : 0
+        s.streamTime = isStreamingActive ? destinationStats.values.map(\.uptime).max() ?? 0 : 0
+        let m = meters.master
+        s.master = .init(id: "master", name: "Master", fader: masterFader, muted: false, levelL: Double(m.l), levelR: Double(m.r))
+        s.channels = audioChannels.map { c in
+            let lv = meters.levels[c.id]
+            return .init(id: c.id, name: c.name, fader: c.fader, muted: c.muted,
+                         levelL: Double(lv?.l ?? -120), levelR: Double(lv?.r ?? -120))
+        }
+        s.frames = true
         server.update(state: s.json)
         if clients {
             let n = server.activeClients()
@@ -100,6 +117,46 @@ extension AppModel {
             let a = RemoteServer.lanAddresses()
             if a != remoteAddresses { remoteAddresses = a }
         }
+    }
+
+    /// Transitions offered on the remote: the built-in ones, the stinger once a clip is chosen,
+    /// and the selected custom shader.
+    private var remoteTransitions: [RemoteState.Choice] {
+        var list = TransitionKind.allCases
+            .filter { $0 != .cut && $0 != .custom && ($0 != .stinger || stinger.source != nil) }
+            .map { RemoteState.Choice(id: $0.rawValue, name: $0.displayName) }
+        if let id = customTransitionID, let t = customTransitions.first(where: { $0.id == id }) {
+            list.append(.init(id: TransitionKind.custom.rawValue, name: t.name))
+        }
+        return list
+    }
+
+    /// Small JPEGs of Program and Preview for the remote page (3 per second, only while a page
+    /// is showing them). Encoded off the main thread.
+    func pushRemoteFrames() {
+        guard let server = remoteServer, server.wantsFrames() else { return }
+        let frames = [("program", lastProgramFrame), ("preview", lastPreviewFrame)]
+        Self.remoteEncodeQueue.async {
+            for case let (bus, pb?) in frames {
+                if let jpeg = Self.remoteJPEG(pb) { server.setFrame(jpeg, bus: bus) }
+            }
+        }
+    }
+
+    private static let remoteEncodeQueue = DispatchQueue(label: "studio.livecore.remote.jpeg", qos: .utility)
+    private static let remoteCI = CIContext(options: [.cacheIntermediates: false])
+
+    /// 640 px wide JPEG (quality 0.6).
+    static func remoteJPEG(_ pb: CVPixelBuffer, width: CGFloat = 640) -> [UInt8]? {
+        var img = CIImage(cvPixelBuffer: pb)
+        let scale = min(1, width / max(img.extent.width, 1))
+        img = img.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        guard let cg = remoteCI.createCGImage(img, from: img.extent) else { return nil }
+        let data = NSMutableData()
+        guard let dest = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(dest, cg, [kCGImageDestinationLossyCompressionQuality: 0.6] as CFDictionary)
+        guard CGImageDestinationFinalize(dest) else { return nil }
+        return [UInt8](data as Data)
     }
 
     /// Runs a remote command (main thread). Locks set in the app still apply.
@@ -120,6 +177,17 @@ extension AppModel {
             guard !recordLocked, on != isRecording else { return }
             pendingStop = nil
             toggleRecord()
+        case let .transition(kind, duration):
+            if let raw = kind, let k = TransitionKind(rawValue: raw), remoteTransitions.contains(where: { $0.id == raw }) {
+                if k == .custom, let id = customTransitionID { selectCustomTransition(id) } else { transitionKind = k }
+            }
+            if let d = duration { transitionDuration = min(5, max(0.2, d)) }
+        case let .masterFader(v):
+            masterFader = v
+        case let .channelFader(id, v):
+            audioChannels.first { $0.id == id }?.fader = v
+        case let .channelMute(id, on):
+            audioChannels.first { $0.id == id }?.muted = on
         }
         pushRemoteState(clients: false)
     }
