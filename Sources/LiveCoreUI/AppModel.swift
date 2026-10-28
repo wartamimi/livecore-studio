@@ -324,6 +324,9 @@ public final class AppModel: ObservableObject {
     @Published public var rundownIndex: Int?
     @Published public var rundownStart: Date?
     var rundownTimer: Timer?
+    /// Chapters (rundown segments) and highlights marked during the show (0.43.0).
+    @Published public var showMarks: [ShowMark] = []
+    @Published public var packageProgress: String?
     @Published public var showOutputsPanel = false
     @Published public var showTemplates = false
     /// True while the crash-recovery question is pending (the welcome screen waits for it).

@@ -185,6 +185,7 @@ extension ProductionEngine {
         let recorder = self.recorder
         let bus = settings.recording.bus
         audioPump.addSink("record") { [weak recorder] chunk in recorder?.append(audio: chunk.bus(bus)) }
+        recordingStartDate = Date()
         startVerticalRecording(date: Date())
     }
 

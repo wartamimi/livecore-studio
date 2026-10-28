@@ -41,6 +41,8 @@ struct RundownView: View {
                 Button(L10n.t("rundown.tpl.seminar")) { replace(with: Rundown.template("seminar")) }
                 Button(L10n.t("rundown.tpl.empty")) { replace(with: Rundown()) }
             }.fixedSize()
+            Button { model.makeClientPackage() } label: { Label(L10n.t("package.button"), systemImage: "shippingbox") }
+                .help(L10n.t("package.help"))
             Button { addSegment() } label: { Label(L10n.t("rundown.add"), systemImage: "plus") }
             Toggle(L10n.t("rundown.edit"), isOn: $editing).toggleStyle(.button)
         }
@@ -61,6 +63,12 @@ struct RundownView: View {
             if model.rundownIndex != nil {
                 Button(L10n.t("rundown.end")) { model.endRundown() }
             }
+            Button { model.markHighlight() } label: {
+                Label(L10n.f("package.highlight_button", "\(model.highlightCount)"), systemImage: "star.fill")
+            }
+            .keyboardShortcut("h", modifiers: [.command, .shift])
+            .help(L10n.t("package.highlight_help"))
+            if let p = model.packageProgress { Text(p).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
             Spacer()
             if let i = model.rundownIndex, segments.indices.contains(i) {
                 Text(L10n.f("rundown.now", segments[i].title)).font(.callout.bold()).lineLimit(1)

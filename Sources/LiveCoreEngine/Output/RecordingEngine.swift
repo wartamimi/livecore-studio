@@ -33,6 +33,11 @@ public final class RecordingEngine {
         public var freeBytes: Int64 = 0
         public var fileBytes: Int64 = 0
         public init() {}
+
+    private let fileLock = UnfairLock()
+    private var lastFile: URL?
+    /// The file of the current or last recording.
+    public var lastFileURL: URL? { fileLock.withLock { lastFile } }
     }
 
     public var onStats: ((Stats) -> Void)?   // main thread
@@ -139,6 +144,7 @@ public final class RecordingEngine {
             adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: v, sourcePixelBufferAttributes: nil)
             guard w.startWriting() else { throw w.error ?? NSError(domain: "LiveCore", code: 4) }
             writer = w; videoInput = v; audioInput = a; url = fileURL
+            fileLock.withLock { lastFile = fileURL }
             audioFormat = Self.makePCMFormat(sampleRate: Double(audio.sampleRate))
             sessionStart = nil
             lastVideoPTS = .invalid

@@ -29,12 +29,14 @@ targets:
       properties:
         CFBundleName: LiveCore Studio
         CFBundleDisplayName: LiveCore Studio
-        CFBundleShortVersionString: "0.42.0"
-        CFBundleVersion: "50"
+        CFBundleShortVersionString: "0.43.0"
+        CFBundleVersion: "51"
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, id]
         LSApplicationCategoryType: public.app-category.video
         LSMinimumSystemVersion: "13.0"
+        NSCameraUseContinuityCameraDeviceType: true
+        NSSpeechRecognitionUsageDescription: LiveCore Studio turns the program sound into live subtitles. On-device when the language allows it.
         NSCameraUsageDescription: LiveCore Studio uses cameras and video capture devices as production inputs.
         NSMicrophoneUsageDescription: LiveCore Studio uses microphones and audio interfaces as mixer inputs.
         NSLocalNetworkUsageDescription: LiveCore Studio sends and receives NDI video on your network and, when the Web Controller is on, lets phones and tablets on your network control the switcher.

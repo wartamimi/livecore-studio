@@ -46,6 +46,18 @@ extension AppModel {
         objectWillChange.send()
     }
 
+    // MARK: On-device AI
+
+    public var aiAvailable: Bool { AISupport.isAvailable }
+    public func inputAI(_ id: InputID) -> InputAI { engine?.inputAI(id) ?? InputAI() }
+    public func setInputAI(_ id: InputID, _ ai: InputAI) {
+        engine?.setInputAI(id, ai)
+        objectWillChange.send()
+    }
+
+    public func addSubtitles() -> InputID? { engine?.addSubtitles(SubtitleStyle()) }
+    public func subtitleSource(_ id: InputID) -> SubtitleSource? { engine?.source(id) as? SubtitleSource }
+
     // MARK: Rundown
 
     public func setRundown(_ r: Rundown) {
@@ -79,6 +91,7 @@ extension AppModel {
         overlays = e.overlays
         rundownIndex = i
         rundownStart = Date()
+        showMarks.append(ShowMark(kind: .chapter, title: rundown.segments[i].title, date: Date()))
         startRundownTimer()
         FileLog.shared.info("rundown: segment \(i + 1) \(rundown.segments[i].title)")
     }

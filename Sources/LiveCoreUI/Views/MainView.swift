@@ -38,7 +38,7 @@ struct MainView: View {
                             if !inputsMin {
                                 InputPanelView()
                                     .dockHandle { inputsMin = true }
-                                    .frame(minWidth: 220, idealWidth: 260, maxWidth: 360)
+                                    .frame(minWidth: 180, idealWidth: 260, maxWidth: 360)
                             }
                             VStack(spacing: 6) {
                                 if monitorsMin {
@@ -48,7 +48,7 @@ struct MainView: View {
                                     if !monitorsMin {
                                         MonitorRow()
                                             .dockHandle { monitorsMin = true }
-                                            .frame(minHeight: 300)
+                                            .frame(minHeight: 200)
                                     }
                                     if !(mixerMin && (playlistMin || !showPlaylist)) {
                                         HStack(alignment: .top, spacing: 6) {
@@ -63,11 +63,11 @@ struct MainView: View {
                                                 } else {
                                                     PlaylistDockView()
                                                         .dockHandle { playlistMin = true }
-                                                        .frame(width: 290)
+                                                        .frame(minWidth: 200, idealWidth: 290, maxWidth: 320)
                                                 }
                                             }
                                         }
-                                        .frame(minHeight: 230, idealHeight: 280)
+                                        .frame(minHeight: 160, idealHeight: 280)
                                     }
                                 }
                                 if mixerMin && (playlistMin || !showPlaylist) {

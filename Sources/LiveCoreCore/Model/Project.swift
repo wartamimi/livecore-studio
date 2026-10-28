@@ -95,6 +95,8 @@ public struct ProjectInput: Codable, Equatable, Sendable {
     /// Scene layers; layer 0 is the input itself.
     public var layers: [Layer]
     public var chromaKey: ChromaKey?
+    /// On-device AI effects (0.43.0).
+    public var ai: InputAI?
     /// Video inputs: "off", "playPause" or "restartPause" (absent before 0.8.0 = off).
     public var autoPlay: String?
     /// Video: auto restart off = resume where it stopped (since 0.35.0; absent = on).
@@ -180,6 +182,8 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case frame(FrameDesign)
     /// Imported vMix GT title (.gtzip, since 0.39.0).
     case gtTitle(ProjectGTTitle)
+    /// Live subtitles from speech (0.43.0).
+    case subtitles(SubtitleStyle)
 }
 
 /// A presentation input: the file and the slide on air.
