@@ -17,7 +17,7 @@ struct SettingsView: View {
     @State private var canvasLines = 1080
     @State private var customWidth = 1920
     @State private var customHeight = 1080
-    /// Tab shown first (6 Canvas, 0 Output, 1 Stream, 2 Record, ..., 7 Remote).
+    /// Tab shown first (6 Canvas, 0 Output, 1 Stream, 2 Record, ..., 7 Remote, 8 MultiCorder).
     var initialTab = 0
 
     init(initialTab: Int = 0) { self.initialTab = initialTab }
@@ -29,6 +29,7 @@ struct SettingsView: View {
                 outputTab.tabItem { Text(L10n.t("settings.output")) }.tag(0)
                 streamTab.tabItem { Text(L10n.t("stream.title")) }.tag(1)
                 recordTab.tabItem { Text(L10n.t("record.title")) }.tag(2)
+                multiCorderTab.tabItem { Text("MultiCorder") }.tag(8)
                 audioTab.tabItem { Text(L10n.t("audio.title")) }.tag(3)
                 shortcutTab.tabItem { Text(L10n.t("settings.shortcuts")) }.tag(4)
                 MIDISettingsView().tabItem { Text("MIDI") }.tag(5)
@@ -46,7 +47,7 @@ struct SettingsView: View {
             }
             .padding()
         }
-        .frame(width: 620, height: 540)
+        .frame(width: 680, height: 600)
         .onAppear {
             draft = model.settings
             loadCanvas()
@@ -231,28 +232,24 @@ struct SettingsView: View {
 
     private var recordTab: some View {
         Form {
-            LabeledContent(L10n.t("record.folder")) {
-                Text(draft.recording.folderPath.isEmpty ? RecordingEngine.defaultFolder().path : draft.recording.folderPath)
-                    .lineLimit(1).truncationMode(.head)
-                Button(L10n.t("record.choose")) {
-                    let p = NSOpenPanel()
-                    p.canChooseDirectories = true; p.canChooseFiles = false; p.canCreateDirectories = true
-                    if p.runModal() == .OK, let url = p.url { draft.recording.folderPath = url.path }
-                }
-            }
-            TextField(L10n.t("settings.filename"), text: $draft.recording.fileNamePattern)
-            Text("Tokens: {date} {time} {n}").font(.caption).foregroundStyle(Theme.textDim)
-            Picker(L10n.t("settings.container"), selection: $draft.recording.container) {
-                Text("MP4 (H.264/AAC)").tag(RecordingContainer.mp4)
-                Text("MOV (H.264/AAC, crash-resilient)").tag(RecordingContainer.mov)
-            }
-            Stepper(value: $draft.recording.bitrateKbps, in: 2_000...50_000, step: 1_000) {
-                LabeledContent(L10n.t("settings.record_bitrate"), value: "\(draft.recording.bitrateKbps)")
-            }
-            OutputBusPicker(selection: Binding(get: { draft.recording.bus }, set: { draft.recording.audioBus = $0 }))
+            RecordingProfileForm(settings: $draft.recording, output: draft.output)
             Text(L10n.t("bus.note")).font(.caption).foregroundStyle(Theme.textDim)
         }
         .formStyle(.grouped)
+        .disabled(model.isRecording)
+    }
+
+    /// MultiCorder: its own recording profile (one file per chosen input).
+    private var multiCorderTab: some View {
+        Form {
+            Text(L10n.t("multicorder.settings_help")).font(.caption).foregroundStyle(Theme.textDim)
+                .fixedSize(horizontal: false, vertical: true)
+            RecordingProfileForm(settings: Binding(get: { draft.multiCorderRecording }, set: { draft.multiCorder = $0 }),
+                                 output: draft.output, files: max(model.multiCorder.inputs.count, 1))
+            Button(L10n.t("multicorder.reset_profile")) { draft.multiCorder = nil }
+        }
+        .formStyle(.grouped)
+        .disabled(model.isMultiCorderRunning)
     }
 
     private var audioTab: some View {

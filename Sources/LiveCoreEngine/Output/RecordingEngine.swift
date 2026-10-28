@@ -3,6 +3,7 @@ import AVFoundation
 import CoreMedia
 import Foundation
 import LiveCoreCore
+import VideoToolbox
 
 /// Local recording of the Program output with AVAssetWriter (H.264 + AAC in MP4 or MOV).
 ///
@@ -94,36 +95,34 @@ public final class RecordingEngine {
         let c = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
         var fileURL: URL
         var n = 1
+        let container = settings.effectiveContainer
+        let ext = container.fileExtension
         repeat {
             var name = FileNaming.fileName(pattern: settings.fileNamePattern, year: c.year ?? 0, month: c.month ?? 0, day: c.day ?? 0,
                                            hour: c.hour ?? 0, minute: c.minute ?? 0, second: c.second ?? 0, counter: n,
-                                           ext: settings.container.fileExtension)
+                                           ext: ext)
             if let fileSuffix { name = MultiCorderConfig.isoFileName(name, suffix: fileSuffix) }
-            fileURL = folder.appendingPathComponent(n == 1 ? name : name.replacingOccurrences(of: ".\(settings.container.fileExtension)", with: " (\(n)).\(settings.container.fileExtension)"))
+            fileURL = folder.appendingPathComponent(n == 1 ? name : name.replacingOccurrences(of: ".\(ext)", with: " (\(n)).\(ext)"))
             n += 1
         } while FileManager.default.fileExists(atPath: fileURL.path)
 
         do {
-            let w = try AVAssetWriter(outputURL: fileURL, fileType: settings.container == .mov ? .mov : .mp4)
-            if settings.container == .mov { w.movieFragmentInterval = CMTime(seconds: 10, preferredTimescale: 600) }
-            let v = AVAssetWriterInput(mediaType: .video, outputSettings: [
-                AVVideoCodecKey: AVVideoCodecType.h264,
-                AVVideoWidthKey: output.size.width,
-                AVVideoHeightKey: output.size.height,
-                AVVideoCompressionPropertiesKey: [
-                    AVVideoAverageBitRateKey: settings.bitrateKbps * 1000,
-                    AVVideoMaxKeyFrameIntervalKey: output.frameRate * 2,
-                    AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
-                    AVVideoExpectedSourceFrameRateKey: output.frameRate,
-                ] as [String: Any],
-            ])
+            let w = try AVAssetWriter(outputURL: fileURL, fileType: container == .mov ? .mov : .mp4)
+            if container == .mov { w.movieFragmentInterval = CMTime(seconds: 10, preferredTimescale: 600) }
+            // Settings the writer refuses would raise an exception in AVAssetWriterInput, so
+            // they are checked first and the recording fails with a message instead.
+            let videoSettings = Self.videoSettings(settings, output: output)
+            guard w.canApply(outputSettings: videoSettings, forMediaType: .video) else {
+                throw NSError(domain: "LiveCore", code: 5, userInfo: [NSLocalizedDescriptionKey:
+                    "\(settings.videoCodec.label) recording is not supported on this Mac at \(output.size.width)×\(output.size.height)."])
+            }
+            let v = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
             v.expectsMediaDataInRealTime = true
-            let a = AVAssetWriterInput(mediaType: .audio, outputSettings: [
-                AVFormatIDKey: kAudioFormatMPEG4AAC,
-                AVSampleRateKey: audio.sampleRate,
-                AVNumberOfChannelsKey: audio.channels,
-                AVEncoderBitRateKey: max(audio.bitrateKbps, 128) * 1000,
-            ])
+            let audioSettings = Self.audioSettings(settings, audio: audio)
+            guard w.canApply(outputSettings: audioSettings, forMediaType: .audio) else {
+                throw NSError(domain: "LiveCore", code: 6, userInfo: [NSLocalizedDescriptionKey: "Audio format not supported for this file type."])
+            }
+            let a = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
             a.expectsMediaDataInRealTime = true
             guard w.canAdd(v), w.canAdd(a) else { throw NSError(domain: "LiveCore", code: 3, userInfo: [NSLocalizedDescriptionKey: "Writer rejected inputs"]) }
             w.add(v); w.add(a)
@@ -141,6 +140,46 @@ public final class RecordingEngine {
             cleanup()
             report(.failed("Cannot start recording: \(error.localizedDescription)"))
         }
+    }
+
+    /// Writer video settings for the chosen codec. H.264 / HEVC: hardware encoder, average
+    /// bitrate, keyframe interval in seconds, no B-frames unless asked (less encoder work and
+    /// memory per stream, which matters with four MultiCorder files at once).
+    static func videoSettings(_ s: RecordingSettings, output: OutputFormat) -> [String: Any] {
+        var v: [String: Any] = [AVVideoWidthKey: output.size.width, AVVideoHeightKey: output.size.height]
+        switch s.videoCodec {
+        case .proRes422Proxy: v[AVVideoCodecKey] = AVVideoCodecType.proRes422Proxy
+        case .proRes422LT: v[AVVideoCodecKey] = AVVideoCodecType.proRes422LT
+        case .proRes422: v[AVVideoCodecKey] = AVVideoCodecType.proRes422
+        case .proRes422HQ: v[AVVideoCodecKey] = AVVideoCodecType.proRes422HQ
+        case .h264, .hevc:
+            let h264 = s.videoCodec == .h264
+            v[AVVideoCodecKey] = h264 ? AVVideoCodecType.h264 : AVVideoCodecType.hevc
+            var c: [String: Any] = [
+                AVVideoAverageBitRateKey: s.bitrateKbps * 1000,
+                AVVideoMaxKeyFrameIntervalDurationKey: s.keyframeInterval,
+                AVVideoMaxKeyFrameIntervalKey: max(1, Int((Double(output.frameRate) * s.keyframeInterval).rounded())),
+                AVVideoAllowFrameReorderingKey: s.bFrames,
+                AVVideoExpectedSourceFrameRateKey: output.frameRate,
+            ]
+            if h264 {
+                c[AVVideoProfileLevelKey] = AVVideoProfileLevelH264HighAutoLevel
+                c[AVVideoH264EntropyModeKey] = AVVideoH264EntropyModeCABAC
+            }
+            v[AVVideoCompressionPropertiesKey] = c
+            v[AVVideoEncoderSpecificationKey] = [kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder as String: true]
+        }
+        return v
+    }
+
+    static func audioSettings(_ s: RecordingSettings, audio: AudioEncoderSettings) -> [String: Any] {
+        if s.usesPCM {
+            return [AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: audio.sampleRate, AVNumberOfChannelsKey: audio.channels,
+                    AVLinearPCMBitDepthKey: 24, AVLinearPCMIsFloatKey: false, AVLinearPCMIsBigEndianKey: false,
+                    AVLinearPCMIsNonInterleaved: false]
+        }
+        return [AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: audio.sampleRate, AVNumberOfChannelsKey: audio.channels,
+                AVEncoderBitRateKey: s.audioKbps * 1000]
     }
 
     // MARK: Media (called from render completion / audio pump threads)

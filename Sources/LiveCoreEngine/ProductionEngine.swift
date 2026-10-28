@@ -55,8 +55,9 @@ public final class ProductionEngine {
     public var onRecordStats: ((RecordingEngine.Stats) -> Void)?
     /// MultiCorder file states, per ISO input (main thread).
     public var onISOStats: (([InputID: RecordingEngine.Stats]) -> Void)?
-    /// Inputs RECORD also records to their own files (main thread; applies at the next start).
+    /// Inputs the MultiCorder records to their own files (main thread; applies at the next start).
     public var multiCorder = MultiCorderConfig()
+    public var isMultiCorderRunning: Bool { !outputs.read { $0.iso.isEmpty } }
     public private(set) var isoStats: [InputID: RecordingEngine.Stats] = [:]
     public var onError: ((String) -> Void)?
     /// Mixer channels were added or removed by the engine itself (e.g. a video file's audio).
@@ -141,7 +142,7 @@ public final class ProductionEngine {
         var streamEncoder: H264Encoder?
         var recording = false
         var replay = false
-        /// MultiCorder: one recorder per ISO input while recording.
+        /// MultiCorder: one recorder per ISO input while it runs.
         var iso: [(InputID, RecordingEngine)] = []
     }
     private let outputs = Locked(Outputs())
@@ -966,7 +967,7 @@ public final class ProductionEngine {
 
     public var isOutputActive: Bool {
         let o = outputs.current
-        return o.streamEncoder != nil || o.recording
+        return o.streamEncoder != nil || o.recording || !o.iso.isEmpty
     }
 
     /// Applies settings. Output resolution/frame rate changes require all outputs to be stopped.
@@ -1096,32 +1097,45 @@ public final class ProductionEngine {
 
     public func startRecording() {
         guard !outputs.read({ $0.recording }) else { return }
-        let date = Date()
-        recorder.start(settings: settings.recording, output: settings.output, audio: settings.audio, date: date)
-        let iso = startISORecorders(date: date)
-        control.mutate { $0.isoInputs = iso.map(\.0) }
-        outputs.mutate { $0.recording = true; $0.iso = iso }
+        recorder.start(settings: settings.recording, output: settings.output, audio: settings.audio)
+        outputs.mutate { $0.recording = true }
         let recorder = self.recorder
-        let isoRecorders = iso.map(\.1)
         let bus = settings.recording.bus
-        audioPump.addSink("record") { [weak recorder] chunk in
-            let c = chunk.bus(bus)
-            recorder?.append(audio: c)
-            for r in isoRecorders { r.append(audio: c) }   // ISO files carry the recording's audio
-        }
+        audioPump.addSink("record") { [weak recorder] chunk in recorder?.append(audio: chunk.bus(bus)) }
     }
 
     public func stopRecording() {
         guard outputs.read({ $0.recording }) else { return }
         recorder.stop()
-        stopISORecorders()
         outputs.mutate { $0.recording = false }
         audioPump.removeSink("record")
     }
 
-    /// MultiCorder: a recorder per chosen input, named after the Program file plus
-    /// " - ISO <number> <name>". A failing ISO file is reported and leaves Program recording.
-    private func startISORecorders(date: Date) -> [(InputID, RecordingEngine)] {
+    // MARK: MultiCorder
+
+    /// Starts one recorder per chosen input with the MultiCorder profile; files are named
+    /// "<pattern> - ISO <number> <name>" with one shared time stamp. Returns the number of files.
+    @discardableResult
+    public func startMultiCorder() -> Int {
+        guard outputs.read({ $0.iso.isEmpty }) else { return 0 }
+        let profile = settings.multiCorderRecording
+        let iso = startISORecorders(profile: profile, date: Date())
+        guard !iso.isEmpty else { return 0 }
+        control.mutate { $0.isoInputs = iso.map(\.0) }
+        outputs.mutate { $0.iso = iso }
+        let recorders = iso.map(\.1)
+        let bus = profile.bus
+        audioPump.addSink("multicorder") { chunk in
+            let c = chunk.bus(bus)
+            for r in recorders { r.append(audio: c) }
+        }
+        return iso.count
+    }
+
+    public func stopMultiCorder() { stopISORecorders() }
+
+    /// A failing ISO file is reported and the others keep recording.
+    private func startISORecorders(profile: RecordingSettings, date: Date) -> [(InputID, RecordingEngine)] {
         let list = inputs
         isoStats = [:]
         var out: [(InputID, RecordingEngine)] = []
@@ -1133,9 +1147,14 @@ public final class ProductionEngine {
                 let wasFailed: Bool = { if case .failed? = self.isoStats[id]?.state { return true }; return false }()
                 if case let .failed(msg) = s.state, !wasFailed { self.onError?("ISO \(info.number) \(info.name): \(msg)") }
                 self.isoStats[id] = s
+                // Every ISO file failed (disk full, encoder refused...): the MultiCorder stops.
+                let running = self.outputs.read { $0.iso.map(\.0) }
+                if !running.isEmpty, running.allSatisfy({ i in
+                    if case .failed? = self.isoStats[i]?.state { return true }; return false
+                }) { self.stopISORecorders() }
                 self.onISOStats?(self.isoStats)
             }
-            r.start(settings: settings.recording, output: settings.output, audio: settings.audio,
+            r.start(settings: profile, output: settings.output, audio: settings.audio,
                     fileSuffix: MultiCorderConfig.fileSuffix(number: info.number, name: info.name), date: date)
             out.append((id, r))
         }
@@ -1144,6 +1163,8 @@ public final class ProductionEngine {
 
     private func stopISORecorders() {
         let iso = outputs.mutate { o -> [(InputID, RecordingEngine)] in let l = o.iso; o.iso = []; return l }
+        guard !iso.isEmpty else { return }
+        audioPump.removeSink("multicorder")
         for (_, r) in iso { r.stop() }
         control.mutate { $0.isoInputs = [] }
     }
@@ -1152,7 +1173,6 @@ public final class ProductionEngine {
         switch s.state {
         case .failed, .finished, .idle:
             if outputs.read({ $0.recording }) {
-                stopISORecorders()
                 outputs.mutate { $0.recording = false }
                 audioPump.removeSink("record")
             }

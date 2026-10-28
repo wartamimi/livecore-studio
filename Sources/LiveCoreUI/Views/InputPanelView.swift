@@ -28,6 +28,9 @@ struct InputPanelView: View {
     @State private var editingTicker: InputID?
     @State private var showSlideshowSheet = false
     @State private var editingSlideshow: InputID?
+    @State private var collapsedGroups: Set<String> = []
+    @State private var renamingGroup: InputColorTag?
+    @State private var groupNameText = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -35,6 +38,12 @@ struct InputPanelView: View {
                 SectionHeader(title: L10n.t("inputs.title"))
                 Spacer()
                 if !model.inputs.isEmpty {
+                    let allMin = model.inputGroups.flatMap(\.inputs).allSatisfy { model.minimizedInputs.contains($0) }
+                    Button { model.setAllMinimized(!allMin) } label: {
+                        Image(systemName: allMin ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
+                    }
+                    .buttonStyle(.borderless)
+                    .help(allMin ? L10n.t("groups.expand_all") : L10n.t("groups.minimize_all"))
                     let allLocked = model.inputs.allSatisfy(\.locked)
                     Button { model.lockAllInputs(!allLocked) } label: { Image(systemName: allLocked ? "lock.fill" : "lock.open") }
                         .buttonStyle(.borderless)
@@ -46,11 +55,37 @@ struct InputPanelView: View {
                 Text(L10n.t("inputs.empty")).font(.system(size: 12)).foregroundStyle(Theme.textDim).padding(.top, 20)
                 Spacer()
             } else {
+                if !model.usedColorTags.isEmpty { filterBar }
                 ScrollView {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 6)], spacing: 6) {
-                        ForEach(model.inputs) { info in
-                            InputTile(info: info, onClose: { closing = info.id })
-                                .contextMenu { contextMenu(info) }
+                    let groups = model.inputGroups
+                    let byID = Dictionary(uniqueKeysWithValues: model.inputs.map { ($0.id, $0) })
+                    let headers = groups.count > 1 || groups.first?.tag != nil
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(groups, id: \.key) { g in
+                            if headers { groupHeader(g) }
+                            if !headers || !collapsedGroups.contains(g.key) {
+                                let infos = g.inputs.compactMap { byID[$0] }
+                                let full = infos.filter { !model.minimizedInputs.contains($0.id) }
+                                let mini = infos.filter { model.minimizedInputs.contains($0.id) }
+                                if !full.isEmpty {
+                                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 6)], spacing: 6) {
+                                        ForEach(full) { info in
+                                            InputTile(info: info, onClose: { closing = info.id })
+                                                .contextMenu { contextMenu(info) }
+                                        }
+                                    }
+                                }
+                                if !mini.isEmpty {
+                                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 4)], spacing: 4) {
+                                        ForEach(mini) { info in
+                                            MiniInputTile(info: info).contextMenu { contextMenu(info) }
+                                        }
+                                    }
+                                }
+                                if infos.isEmpty {
+                                    Text(L10n.t("groups.empty")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
+                                }
+                            }
                         }
                     }
                 }
@@ -84,10 +119,64 @@ struct InputPanelView: View {
         } message: {
             Text(L10n.t("inputs.close_message"))
         }
+        .alert(L10n.t("groups.rename"), isPresented: Binding(get: { renamingGroup != nil }, set: { if !$0 { renamingGroup = nil } })) {
+            TextField("", text: $groupNameText)
+            Button(L10n.t("common.ok")) { if let t = renamingGroup { model.renameGroup(t, groupNameText) }; renamingGroup = nil }
+            Button(L10n.t("settings.cancel"), role: .cancel) { renamingGroup = nil }
+        }
         .alert(L10n.t("inputs.rename"), isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } })) {
             TextField("", text: $renameText)
             Button(L10n.t("common.ok")) { if let id = renaming { model.rename(id, renameText) }; renaming = nil }
             Button(L10n.t("settings.cancel"), role: .cancel) { renaming = nil }
+        }
+    }
+
+    /// Colour filter (vMix-style): all inputs, or one colour group only.
+    private var filterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 5) {
+                filterChip(nil, label: L10n.f("groups.all", model.inputs.count))
+                let used = model.usedColorTags
+                ForEach(used.map { $0.tag }, id: \.self) { tag in
+                    let n = used.first { $0.tag == tag }?.count ?? 0
+                    filterChip(tag, label: "\(model.groupName(tag)) (\(n))")
+                }
+            }
+        }
+    }
+
+    private func filterChip(_ tag: InputColorTag?, label: String) -> some View {
+        let on = model.inputFilter == tag
+        return Button { model.inputFilter = tag } label: {
+            HStack(spacing: 4) {
+                if let tag { Circle().fill(tag.color).frame(width: 8, height: 8) }
+                Text(label).font(.system(size: 10, weight: on ? .bold : .regular)).lineLimit(1)
+            }
+            .padding(.horizontal, 7).padding(.vertical, 3)
+            .background(on ? (tag?.color.opacity(0.35) ?? Theme.accent.opacity(0.35)) : Theme.panelRaised)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(on ? (tag?.color ?? Theme.accent) : Theme.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func groupHeader(_ g: InputGroup) -> some View {
+        let collapsed = collapsedGroups.contains(g.key)
+        return HStack(spacing: 6) {
+            Image(systemName: collapsed ? "chevron.right" : "chevron.down").font(.system(size: 9, weight: .bold)).frame(width: 10)
+            RoundedRectangle(cornerRadius: 2).fill(g.tag?.color ?? Theme.textDim.opacity(0.5)).frame(width: 14, height: 8)
+            Text(model.groupName(g.tag)).font(.system(size: 11, weight: .semibold))
+            Text("\(g.inputs.count)").font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.textDim)
+            Rectangle().fill((g.tag?.color ?? Theme.border).opacity(0.35)).frame(height: 1)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { if collapsed { collapsedGroups.remove(g.key) } else { collapsedGroups.insert(g.key) } }
+        .contextMenu {
+            if let t = g.tag {
+                Button(L10n.t("groups.rename") + "…") { groupNameText = model.groupName(t); renamingGroup = t }
+            }
+            Button(L10n.t("groups.minimize_group")) { g.inputs.forEach { if !model.minimizedInputs.contains($0) { model.toggleMinimized($0) } } }
+            Button(L10n.t("groups.expand_group")) { g.inputs.forEach { if model.minimizedInputs.contains($0) { model.toggleMinimized($0) } } }
         }
     }
 
@@ -137,6 +226,14 @@ struct InputPanelView: View {
         Button(L10n.t("inputs.preview")) { model.preview(info.id) }
         Button(L10n.t("inputs.cutdirect")) { model.cutDirect(info.id) }
         Button(info.locked ? L10n.t("lock.unlock_input") : L10n.t("lock.lock_input")) { model.toggleLock(info.id) }
+        Button(model.minimizedInputs.contains(info.id) ? L10n.t("groups.expand") : L10n.t("groups.minimize")) { model.toggleMinimized(info.id) }
+        Menu(L10n.t("groups.color_label")) {
+            ForEach(InputColorTag.allCases, id: \.self) { t in
+                Button((model.inputTags[info.id] == t ? "✓ " : "") + model.groupName(t)) { model.setColorTag(t, for: info.id) }
+            }
+            Divider()
+            Button((model.inputTags[info.id] == nil ? "✓ " : "") + L10n.t("groups.no_label")) { model.setColorTag(nil, for: info.id) }
+        }
         Divider()
         Group { editItems(info) }.disabled(info.locked)
     }
@@ -279,6 +376,11 @@ struct InputTile: View {
                 Text(info.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
                 Spacer(minLength: 0)
                 Image(systemName: icon).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                Button { model.toggleMinimized(info.id) } label: {
+                    Image(systemName: "minus.square").font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                }
+                .buttonStyle(.plain)
+                .help(L10n.t("groups.minimize"))
                 Button { model.toggleLock(info.id) } label: {
                     Image(systemName: info.locked ? "lock.fill" : "lock.open")
                         .font(.system(size: 10))
@@ -294,7 +396,11 @@ struct InputTile: View {
             }
         }
         .padding(4)
+        .padding(.top, model.inputTags[info.id] == nil ? 0 : 2)
         .background(Theme.panelRaised)
+        .overlay(alignment: .top) {
+            if let t = model.inputTags[info.id] { Rectangle().fill(t.color).frame(height: 4) }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 5))
         .overlay(RoundedRectangle(cornerRadius: 5).stroke(isProgram ? Theme.program : (isPreview ? Theme.preview : Theme.border), lineWidth: isProgram || isPreview ? 2 : 1))
         .contentShape(Rectangle())
@@ -342,6 +448,50 @@ struct InputTile: View {
         case .ndi: return "antenna.radiowaves.left.and.right"
         }
     }
+}
+
+/// Minimized input (vMix-style): one compact row with the colour label, tally number, name and
+/// status. Click = Preview, double-click = Cut; the square button opens it again.
+struct MiniInputTile: View {
+    @EnvironmentObject var model: AppModel
+    let info: ProductionEngine.InputInfo
+
+    private var isProgram: Bool { model.switcher.program == info.id || model.switcher.transition?.from == info.id }
+    private var isPreview: Bool { model.switcher.preview == info.id }
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Rectangle().fill(model.inputTags[info.id]?.color ?? Color.clear).frame(width: 4)
+            Text("\(info.number)")
+                .font(.system(size: 10, weight: .heavy))
+                .frame(minWidth: 18)
+                .padding(.vertical, 1)
+                .background(isProgram ? Theme.program : (isPreview ? Theme.preview : Color.black.opacity(0.5)))
+                .clipShape(RoundedRectangle(cornerRadius: 3))
+            Text(info.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
+            Spacer(minLength: 0)
+            if info.locked { Image(systemName: "lock.fill").font(.system(size: 9)).foregroundStyle(Theme.warning) }
+            Button { model.toggleMinimized(info.id) } label: {
+                Image(systemName: "plus.square").font(.system(size: 11)).foregroundStyle(Theme.textDim)
+            }
+            .buttonStyle(.plain)
+            .help(L10n.t("groups.expand"))
+        }
+        .padding(.trailing, 5)
+        .frame(height: 24)
+        .background(Theme.panelRaised)
+        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .overlay(RoundedRectangle(cornerRadius: 4).stroke(isProgram ? Theme.program : (isPreview ? Theme.preview : Theme.border), lineWidth: isProgram || isPreview ? 2 : 1))
+        .contentShape(Rectangle())
+        .onTapGesture(count: 2) { model.cutDirect(info.id) }
+        .onTapGesture { model.preview(info.id) }
+        .help("Click: Preview · Double-click: Cut to Program")
+    }
+}
+
+extension InputGroup {
+    /// Stable key for SwiftUI lists and the collapsed-group set.
+    var key: String { tag?.rawValue ?? "untagged" }
 }
 
 /// Add or change a window / display capture (Zoom, Teams, Meet, slides...).

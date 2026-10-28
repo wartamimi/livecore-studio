@@ -19,8 +19,10 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
     public var stinger: StingerConfig?
     /// The four extra outputs and the virtual camera's output (added in 0.22.0).
     public var outputs: OutputRouting?
-    /// Inputs recorded to their own files while recording (added in 0.32.0).
+    /// Inputs recorded to their own files by the MultiCorder (added in 0.32.0).
     public var multiCorder: MultiCorderConfig?
+    /// Names given to colour groups in the inputs panel, by colour (added in 0.33.0).
+    public var groupNames: [String: String]?
 
     public init(version: Int = ProjectDocument.currentVersion, settings: ProductionSettings = ProductionSettings(),
                 inputs: [ProjectInput] = [], overlays: [ProjectOverlay] = [], audio: ProjectAudio = ProjectAudio(),
@@ -97,6 +99,9 @@ public struct ProjectInput: Codable, Equatable, Sendable {
     public var capture: CaptureConfig?
     /// Colour correction and flips (since 0.16.0; absent = unchanged).
     public var adjust: InputAdjust?
+    /// Colour label / group in the inputs panel, and a minimized tile (since 0.33.0).
+    public var colorTag: InputColorTag?
+    public var minimized: Bool?
 
     public init(id: InputID, name: String, source: ProjectSource, layers: [Layer] = [], chromaKey: ChromaKey? = nil) {
         self.id = id; self.name = name; self.source = source

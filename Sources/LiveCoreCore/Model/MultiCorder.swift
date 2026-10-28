@@ -1,13 +1,13 @@
-/// MultiCorder (ISO recording): besides the Program recording, chosen inputs are each
-/// recorded to their own file while RECORD runs, for editing afterwards. The selection is
-/// saved in the project.
+/// MultiCorder (ISO recording): chosen inputs are each recorded to their own file, for editing
+/// afterwards. Since 0.33.0 it has its own button and recording profile, separate from RECORD.
+/// The selection is saved in the project.
 public struct MultiCorderConfig: Codable, Equatable, Sendable {
     /// Each ISO file is one more full-size render and one more H.264 encode.
     public static let maxInputs = 4
 
     /// Inputs recorded on their own, in the order chosen.
     public private(set) var inputs: [InputID]
-    /// Off keeps the selection but records Program only.
+    /// Read from 0.32.0 projects (when ISO files followed RECORD); not used since 0.33.0.
     public var enabled: Bool
 
     public init(inputs: [InputID] = [], enabled: Bool = true) {
@@ -19,8 +19,8 @@ public struct MultiCorderConfig: Codable, Equatable, Sendable {
     public func contains(_ id: InputID) -> Bool { inputs.contains(id) }
     public var isFull: Bool { inputs.count >= Self.maxInputs }
 
-    /// The inputs RECORD starts ISO files for.
-    public var active: [InputID] { enabled ? inputs : [] }
+    /// The inputs the MULTICORDER button records.
+    public var active: [InputID] { inputs }
 
     /// Adds or removes an input; returns false when it cannot be added (already 4 inputs).
     @discardableResult

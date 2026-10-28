@@ -86,9 +86,14 @@ public final class AppModel: ObservableObject {
     /// Destinations of the current/last stream session, in display order.
     @Published public private(set) var streamTargets: [(id: String, name: String)] = []
     @Published public var recordStats = RecordingEngine.Stats()
-    /// MultiCorder: inputs also recorded to their own files, and those files' states.
+    /// MultiCorder: inputs recorded to their own files (own button and profile), and those files' states.
     @Published public internal(set) var multiCorder = MultiCorderConfig() { didSet { engine?.multiCorder = multiCorder } }
     @Published public internal(set) var isoStats: [InputID: RecordingEngine.Stats] = [:]
+    /// Inputs panel: colour labels (groups), minimized tiles, group names, colour filter.
+    @Published public internal(set) var inputTags: [InputID: InputColorTag] = [:]
+    @Published public internal(set) var minimizedInputs: Set<InputID> = []
+    @Published public internal(set) var groupNames: [InputColorTag: String] = [:]
+    @Published public var inputFilter: InputColorTag?
     @Published public var hasStreamKey = false
     @Published public var performance = PerformanceSnapshot.zero
     @Published public var shortcuts = ShortcutSettings.load()
@@ -391,7 +396,7 @@ public final class AppModel: ObservableObject {
     @Published public var recordLocked = false
 
     /// Stop Streaming / Stop Recording waiting for the operator's confirmation.
-    public enum StopRequest: String, Identifiable { case stream, record; public var id: String { rawValue } }
+    public enum StopRequest: String, Identifiable { case stream, record, multicorder; public var id: String { rawValue } }
     @Published public var pendingStop: StopRequest?
     /// Start recording automatically when streaming starts (and stop it with the stream).
     @Published public var recordWithStream = UserDefaults.standard.bool(forKey: "recordWithStream") {
@@ -415,6 +420,7 @@ public final class AppModel: ObservableObject {
         switch r {
         case .stream: if isStreamingActive { toggleStream() }
         case .record: if isRecording { toggleRecord() }
+        case .multicorder: if isMultiCorderRunning { toggleMultiCorder() }
         }
     }
 
@@ -1111,6 +1117,8 @@ public final class AppModel: ObservableObject {
         projectURL = nil
         afterProjectLoad()
         setOutputRouting(OutputRouting())
+        multiCorder = MultiCorderConfig()
+        applyInputGroups(from: doc)
     }
 
     public func openProject() {
@@ -1132,6 +1140,7 @@ public final class AppModel: ObservableObject {
             afterProjectLoad()
             setOutputRouting(doc.sanitized().outputs ?? OutputRouting())
             multiCorder = doc.sanitized().multiCorder ?? MultiCorderConfig()
+            applyInputGroups(from: doc)
             if !warnings.isEmpty { report("\(L10n.t("project.warnings")): " + warnings.joined(separator: " · ")) }
         } catch {
             report("Cannot open project: \(error.localizedDescription)")
@@ -1155,6 +1164,7 @@ public final class AppModel: ObservableObject {
         var doc = e.exportProject(projectDirectory: url.deletingLastPathComponent())
         doc.outputs = outputRouting
         doc.multiCorder = multiCorder
+        storeInputGroups(in: &doc)
         do {
             let enc = JSONEncoder()
             enc.outputFormatting = [.prettyPrinted, .sortedKeys]

@@ -16,8 +16,7 @@ final class M32Tests: XCTestCase {
         XCTAssertTrue(m.toggle(b), "removing always works")
         XCTAssertEqual(m.inputs, [a, c, d])
         m.enabled = false
-        XCTAssertEqual(m.active, [], "off records Program only")
-        XCTAssertEqual(m.inputs, [a, c, d], "but keeps the selection")
+        XCTAssertEqual(m.active, [a, c, d], "since 0.33.0 the MULTICORDER button records the selection")
     }
 
     func testInitDropsDuplicatesAndExtras() {

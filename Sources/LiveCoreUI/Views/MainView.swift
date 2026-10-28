@@ -91,13 +91,13 @@ struct MainView: View {
         .sheet(isPresented: $showSettings) { SettingsView(initialTab: settingsTab).environmentObject(model) }
         .onChange(of: showSettings) { shown in if !shown { settingsTab = 6 } }
         .background(KeyboardShortcuts())
-        .alert(model.pendingStop == .record ? L10n.t("record.stop_confirm") : L10n.t("stream.stop_confirm"),
+        .alert(model.pendingStop == .record ? L10n.t("record.stop_confirm") : model.pendingStop == .multicorder ? L10n.t("multicorder.stop_confirm") : L10n.t("stream.stop_confirm"),
                isPresented: Binding(get: { model.pendingStop != nil }, set: { if !$0 { model.pendingStop = nil } }),
                presenting: model.pendingStop) { r in
-            Button(r == .record ? L10n.t("record.stop") : L10n.t("stream.stop"), role: .destructive) { model.confirmStop(r) }
+            Button(r == .record ? L10n.t("record.stop") : r == .multicorder ? L10n.t("multicorder.stop") : L10n.t("stream.stop"), role: .destructive) { model.confirmStop(r) }
             Button(L10n.t("settings.cancel"), role: .cancel) { model.pendingStop = nil }
         } message: { r in
-            Text(r == .record ? L10n.t("record.stop_message") : L10n.t("stream.stop_message"))
+            Text(r == .record ? L10n.t("record.stop_message") : r == .multicorder ? L10n.t("multicorder.stop_message") : L10n.t("stream.stop_message"))
         }
     }
 }
