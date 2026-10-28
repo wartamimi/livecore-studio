@@ -449,11 +449,39 @@ public final class ProductionEngine {
     }
 
     public static func screenChannelID(_ id: InputID) -> String { "screen:\(id.raw)" }
+    public static func ndiChannelID(_ id: InputID) -> String { "ndi:\(id.raw)" }
 
-    /// The input a mixer channel belongs to (video file or capture audio), nil for devices/music.
+    /// The input a mixer channel belongs to (video file, capture or NDI audio), nil for devices/music.
     public static func inputOfChannel(_ channelID: String) -> InputID? {
-        for prefix in ["file:", "screen:"] where channelID.hasPrefix(prefix) { return InputID(String(channelID.dropFirst(prefix.count))) }
+        for prefix in ["file:", "screen:", "ndi:"] where channelID.hasPrefix(prefix) { return InputID(String(channelID.dropFirst(prefix.count))) }
         return nil
+    }
+
+    /// NDI® source from the network as an input; its audio (if any) gets a mixer channel.
+    @discardableResult
+    public func addNDI(_ config: ProjectNDI, id: InputID? = nil) -> InputID {
+        let src = NDISource(id: id ?? InputID(UUID().uuidString), config: config)
+        let srcID = src.id
+        src.audioChannelProvider = { [weak self, weak src] in
+            guard let self else { return MixerChannel.detached() }
+            let chID = Self.ndiChannelID(srcID)
+            if let existing = self.mixer.channelList.first(where: { $0.id == chID }) { return existing }
+            let ch = self.mixer.addChannel(id: chID, name: src?.name ?? "NDI", primeFrames: 2048, maxBufferedFrames: 9600)
+            if let saved = self.pendingFileChannelSettings.removeValue(forKey: srcID) { self.restore(saved, to: ch) }
+            self.applyAFV()
+            self.onAudioChannelsChange?()
+            return ch
+        }
+        add(src)
+        src.start()
+        return src.id
+    }
+
+    /// The input already receiving this NDI source, if any.
+    public func inputReceivingNDI(_ sourceName: String, except: InputID? = nil) -> InputID? {
+        control.read { st in
+            st.order.first { id in id != except && (st.sources[id] as? NDISource)?.config.sourceName == sourceName }
+        }
     }
 
     @discardableResult
@@ -533,6 +561,7 @@ public final class ProductionEngine {
         if removed is VideoFileSource || removed is ScreenCaptureSource {
             mixer.removeChannel(id: Self.fileChannelID(id))
             mixer.removeChannel(id: Self.screenChannelID(id))
+            mixer.removeChannel(id: Self.ndiChannelID(id))
             onAudioChannelsChange?()
         }
         // Channels that followed this input are no longer gated.
@@ -1130,6 +1159,7 @@ extension ProductionEngine {
                                                  kenBurns: sl.kenBurns ? true : nil,
                                                  folder: sl.folder.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) }))
             case let c as ScreenCaptureSource: ps = .screen(c.config)
+            case let n as NDISource: ps = .ndi(n.config)
             default: continue
             }
             let key = keys[id]
@@ -1253,6 +1283,8 @@ extension ProductionEngine {
                              fade: sl.fade, loop: sl.loop, kenBurns: sl.kenBurns ?? false, folder: folder, id: pi.id)
             case let .screen(c):
                 addScreenCapture(c, id: pi.id)
+            case let .ndi(n):
+                addNDI(n, id: pi.id)
             }
             created.insert(pi.id)
             renameInput(pi.id, to: pi.name)
@@ -1313,7 +1345,7 @@ extension ProductionEngine {
                 addAudioInput(uniqueID: uid)
                 if let mc = mixer.channelList.first(where: { $0.id == uid }) { restore(ch, to: mc) }
             } else if let iid = ch.inputID, created.contains(iid) {
-                if let mc = mixer.channelList.first(where: { $0.id == Self.fileChannelID(iid) || $0.id == Self.screenChannelID(iid) }) { restore(ch, to: mc) }
+                if let mc = mixer.channelList.first(where: { [Self.fileChannelID(iid), Self.screenChannelID(iid), Self.ndiChannelID(iid)].contains($0.id) }) { restore(ch, to: mc) }
                 else { pendingFileChannelSettings[iid] = ch }
             }
         }

@@ -589,3 +589,21 @@
 "capturecard.signal_value" = "%@ · %@ · %.1f fps · %ld terbuang";
 "capturecard.restart" = "Mulai ulang perangkat";
 "capturecard.restart_help" = "Menutup dan membuka lagi capture card (gambar macet, atau format sinyal dari sumber HDMI berubah).";
+
+/* 0.29.0 — NDI inputs */
+"ndi.add" = "Sumber NDI®…";
+"ndi.edit" = "Pengaturan NDI…";
+"ndi.add_title" = "Tambah sumber NDI®";
+"ndi.edit_title" = "Sumber NDI®";
+"ndi.sources" = "Sumber di jaringan";
+"ndi.searching" = "Mencari di jaringan…";
+"ndi.name" = "Nama sumber";
+"ndi.audio" = "Audio ke mixer";
+"ndi.low_bandwidth" = "Bandwidth rendah (kualitas preview)";
+"ndi.low_bandwidth_help" = "Menerima stream preview kecil dari pengirim: jauh lebih hemat jaringan dan CPU, kualitas gambar lebih rendah. Untuk monitoring atau Wi-Fi yang padat.";
+"ndi.signal_value" = "%d × %d · %.1f fps · audio %@ %@";
+"ndi.no_runtime" = "Runtime NDI belum terpasang di Mac ini. Pasang NDI Tools (gratis) atau NDI Runtime, lalu buka ulang LiveCore.";
+"ndi.download" = "Unduh NDI Runtime";
+"ndi.own_output" = "Output LiveCore";
+"ndi.own_output_help" = "Ini output LiveCore sendiri; menerimanya kembali akan menampilkan Program di dalam Program.";
+"ndi.note" = "HP (mis. aplikasi NDI HX Camera), OBS dengan plugin NDI, vMix, kamera NDI dan komputer lain muncul di sini bila berada di jaringan yang sama. Izinkan akses \"Jaringan Lokal\" bila macOS meminta. Input tersambung kembali sendiri saat sumbernya muncul lagi.";

@@ -18,6 +18,8 @@ struct InputPanelView: View {
     @State private var editingTimer: InputID?
     @State private var showCaptureSheet = false
     @State private var editingCapture: InputID?
+    @State private var showNDISheet = false
+    @State private var editingNDI: InputID?
     @State private var closing: InputID?
     @State private var showCaptureCard = false
     @State private var editingCaptureCard: InputID?
@@ -66,6 +68,8 @@ struct InputPanelView: View {
         .sheet(item: $editingTimer) { id in TimerSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showCaptureSheet) { CaptureSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCapture) { id in CaptureSheet(editing: id).environmentObject(model) }
+        .sheet(isPresented: $showNDISheet) { NDIInputSheet(editing: nil).environmentObject(model) }
+        .sheet(item: $editingNDI) { id in NDIInputSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showCaptureCard) { CaptureCardSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCaptureCard) { id in CaptureCardSheet(editing: id).environmentObject(model) }
         .sheet(item: $adjusting) { id in InputAdjustSheet(input: id).environmentObject(model) }
@@ -108,6 +112,7 @@ struct InputPanelView: View {
             Button(L10n.t("slideshow.add")) { showSlideshowSheet = true }
             Button(L10n.t("inputs.title_generator")) { showTitleSheet = true }
             Button(L10n.t("capture.add")) { showCaptureSheet = true }
+            Button(L10n.t("ndi.add")) { showNDISheet = true }
             Button(L10n.t("browser.add")) { showBrowserSheet = true }
             Button(L10n.t("timer.add")) { showTimerSheet = true }
             Button(L10n.t("ticker.add")) { showTickerSheet = true }
@@ -146,7 +151,7 @@ struct InputPanelView: View {
         }
         if info.kind == .camera { Button(L10n.t("capturecard.edit_menu")) { editingCaptureCard = info.id } }
         if info.kind != .scene { Button(L10n.t("adjust.menu")) { adjusting = info.id } }
-        if info.kind == .camera || info.kind == .videoFile || info.kind == .image {
+        if info.kind == .camera || info.kind == .videoFile || info.kind == .image || info.kind == .ndi {
             Button(L10n.t("key.menu")) { keying = info.id }
         }
         if info.kind == .text { Button("Edit Title…") { editingTitle = info.id } }
@@ -158,6 +163,7 @@ struct InputPanelView: View {
             Button(L10n.t("capture.edit")) { editingCapture = info.id }
             Button(L10n.t("capture.retry")) { model.captureSource(info.id)?.start() }
         }
+        if info.kind == .ndi { Button(L10n.t("ndi.edit")) { editingNDI = info.id } }
         if info.kind == .timer {
             Button(L10n.t("timer.start")) { model.timerControl(info.id, "play") }
             Button(L10n.t("timer.pause")) { model.timerControl(info.id, "pause") }
@@ -333,6 +339,7 @@ struct InputTile: View {
         case .scene: return "square.on.square"
         case .ticker: return "text.line.first.and.arrowtriangle.forward"
         case .slideshow: return "photo.stack"
+        case .ndi: return "antenna.radiowaves.left.and.right"
         }
     }
 }

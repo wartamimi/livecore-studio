@@ -53,14 +53,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: LiveCoreStudio-dmg
-          path: build/LiveCoreStudio-0.28.0-unsigned.dmg
+          path: build/LiveCoreStudio-0.29.0-unsigned.dmg
       - name: Publish DMG as pre-release (main and claude/* development branches)
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/claude/'))
         run: |
           if [ "$GITHUB_REF" = "refs/heads/main" ]; then TAG="build-${GITHUB_RUN_NUMBER}"; else TAG="dev-build-${GITHUB_RUN_NUMBER}"; fi
-          gh release create "$TAG" build/LiveCoreStudio-0.28.0-unsigned.dmg \
-            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.28.0 build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
-            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. New features are compiled and unit-tested but need hardware verification; see docs/TEST_PLAN.md (T-61..T-115: scenes, transparency, source viewer, capture settings, audio properties, colour bars, input colour correction, test tone, rotation, ticker, photo slideshow, delay de-click, AFV crossfade, ticker text file, Ken Burns, ticker direction and RSS, overlay animations, key eyedropper, music fades, mixer close and lock, playlist dock, bottom dock, NOT RECORDING reminder, outputs 1-4, Syphon (CI-checked), playlist select, overlay numbers on input tiles, replay under T-bar, NDI output for NDI Virtual Camera (CI-checked), Layer Designer, FULLSCREEN per output display, layer drafts, no duplicate inputs, repeat/shuffle, T-bar, canvas portrait/custom, replay fix, repeat one, capture card advanced settings)."
+          gh release create "$TAG" build/LiveCoreStudio-0.29.0-unsigned.dmg \
+            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.29.0 build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
+            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. New features are compiled and unit-tested but need hardware verification; see docs/TEST_PLAN.md (T-61..T-118: scenes, transparency, source viewer, capture settings, audio properties, colour bars, input colour correction, test tone, rotation, ticker, photo slideshow, delay de-click, AFV crossfade, ticker text file, Ken Burns, ticker direction and RSS, overlay animations, key eyedropper, music fades, mixer close and lock, playlist dock, bottom dock, NOT RECORDING reminder, outputs 1-4, Syphon (CI-checked), playlist select, overlay numbers on input tiles, replay under T-bar, NDI output for NDI Virtual Camera (CI-checked), Layer Designer, FULLSCREEN per output display, layer drafts, no duplicate inputs, repeat/shuffle, T-bar, canvas portrait/custom, replay fix, repeat one, capture card advanced settings, NDI inputs (CI-checked))."
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

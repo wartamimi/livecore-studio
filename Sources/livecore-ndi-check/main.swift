@@ -8,6 +8,7 @@
 import CNDI
 import CoreVideo
 import Foundation
+import LiveCoreCore
 import LiveCoreEngine
 
 let sourceName = "LiveCore Output 1 (check)"
@@ -76,14 +77,40 @@ while !got && Date() < frameDeadline {
     got = lc_ndi_receive_video(receiver, 500, &width, &height, &fourcc, &pixel)
 }
 lc_ndi_receiver_destroy(receiver)
-child.terminate()
-guard got else { fail("connected to \"\(full)\" but no video frame arrived") }
+guard got else { child.terminate(); fail("connected to \"\(full)\" but no video frame arrived") }
 let cc = String(bytes: withUnsafeBytes(of: fourcc.littleEndian) { Array($0) }, encoding: .ascii) ?? "?"
 print("ndi-check: frame \(width)x\(height) FourCC \(cc) centre 0x\(String(pixel, radix: 16))")
 guard width == 1280, height == 720 else { fail("wrong size") }
 // NDI compresses the picture, so allow a little colour error around pure red.
 let r = Int((pixel >> 16) & 0xFF), g = Int((pixel >> 8) & 0xFF), b = Int(pixel & 0xFF)
-guard r > 230, g < 25, b < 25 else { fail("centre pixel is not red") }
+guard r > 230, g < 25, b < 25 else { child.terminate(); fail("centre pixel is not red") }
+
+// 0.29.0 NDI inputs: LiveCore's own finder lists the source and an NDISource input receives it
+// into a BGRA pixel buffer, as an NDI input in the app does.
+var finderList: [String] = []
+let finder = NDIFinder()
+finder.start { finderList = $0 }
+let input = NDISource(id: InputID("ndi-check-input"), config: ProjectNDI(sourceName: full, audio: false))
+input.start()
+var inputFrame: CVPixelBuffer?
+let inputDeadline = Date().addingTimeInterval(15)
+while (inputFrame == nil || !finderList.contains(full)) && Date() < inputDeadline {
+    RunLoop.main.run(until: Date().addingTimeInterval(0.2))
+    inputFrame = input.currentFrame()
+}
+input.stop()
+finder.stop()
+child.terminate()
+guard finderList.contains(full) else { fail("NDIFinder did not list \"\(full)\" (saw \(finderList))") }
+guard let pb = inputFrame else { fail("NDISource input received no frame (status: \(input.status.label))") }
+CVPixelBufferLockBaseAddress(pb, .readOnly)
+let iw = CVPixelBufferGetWidth(pb), ih = CVPixelBufferGetHeight(pb)
+let ip = CVPixelBufferGetBaseAddress(pb)!.advanced(by: (ih / 2) * CVPixelBufferGetBytesPerRow(pb) + (iw / 2) * 4)
+    .assumingMemoryBound(to: UInt8.self)
+let (ib, ig, ir, ia) = (Int(ip[0]), Int(ip[1]), Int(ip[2]), Int(ip[3]))
+CVPixelBufferUnlockBaseAddress(pb, .readOnly)
+print("ndi-check: input frame \(iw)x\(ih) BGRA centre \(ib),\(ig),\(ir),\(ia) format \(CVPixelBufferGetPixelFormatType(pb) == kCVPixelFormatType_32BGRA ? "BGRA" : "?")")
+guard iw == 1280, ih == 720, ir > 230, ig < 25, ib < 25, ia == 255 else { fail("NDI input frame is wrong") }
 print("ndi-check: PASS")
 #else
 print("livecore-ndi-check runs on macOS only")

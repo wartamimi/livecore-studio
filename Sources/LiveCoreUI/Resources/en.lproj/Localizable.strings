@@ -589,3 +589,21 @@
 "capturecard.signal_value" = "%@ · %@ · %.1f fps · %ld dropped";
 "capturecard.restart" = "Restart device";
 "capturecard.restart_help" = "Closes and reopens the capture device (frozen picture, signal format changed on the HDMI source).";
+
+/* 0.29.0 — NDI inputs */
+"ndi.add" = "NDI® source…";
+"ndi.edit" = "NDI settings…";
+"ndi.add_title" = "Add NDI® source";
+"ndi.edit_title" = "NDI® source";
+"ndi.sources" = "Sources on the network";
+"ndi.searching" = "Searching the network…";
+"ndi.name" = "Source name";
+"ndi.audio" = "Audio to the mixer";
+"ndi.low_bandwidth" = "Low bandwidth (preview quality)";
+"ndi.low_bandwidth_help" = "Receives the sender's small preview stream: much less network and CPU, lower picture quality. For monitoring or busy Wi-Fi.";
+"ndi.signal_value" = "%d × %d · %.1f fps · audio %@ %@";
+"ndi.no_runtime" = "The NDI runtime is not installed on this Mac. Install NDI Tools (free) or the NDI Runtime, then restart LiveCore.";
+"ndi.download" = "Download the NDI Runtime";
+"ndi.own_output" = "LiveCore output";
+"ndi.own_output_help" = "This is an output of LiveCore itself; receiving it back would show Program inside Program.";
+"ndi.note" = "Phones (e.g. NDI HX Camera app), OBS with the NDI plugin, vMix, NDI cameras and other computers appear here when they are on the same network. Allow \"Local Network\" access if macOS asks. The input reconnects by itself when the source comes back.";
