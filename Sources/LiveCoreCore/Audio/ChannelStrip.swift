@@ -35,6 +35,9 @@ public final class ChannelControls: @unchecked Sendable {
     public let invertPhase = AtomicBool(false)
     /// Delays this channel (lip-sync for a camera that is late), 0...`ChannelStripDSP.maxDelayMs`.
     public let delayMs = AtomicFloat(0)
+    /// Ducking: this channel speaking turns the ducked channels down / this channel is turned down.
+    public let duckTrigger = AtomicBool(false)
+    public let duckTarget = AtomicBool(false)
     public var mode: ChannelMode {
         get { ChannelMode(rawValue: Int(channelMode.value.rounded())) ?? .stereo }
         set { channelMode.value = Float(newValue.rawValue) }

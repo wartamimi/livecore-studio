@@ -9,6 +9,7 @@
 //   LiveCoreCore      Platform-independent logic: switcher state, transitions, layout math,
 //                     audio DSP, FLV/AMF0/RTMP protocol (sans-IO). Builds & tests on Linux + macOS.
 //   LiveCoreRemote    Web Controller HTTP server (POSIX sockets). Builds & tests on Linux + macOS.
+//   LiveCoreServices  Autosave / crash recovery, file log and diagnostics export (Foundation). Linux + macOS.
 //   LiveCoreEngine    macOS-only engines: AVFoundation capture, Metal compositor, Core Audio mixer,
 //                     VideoToolbox/AAC encoders, RTMP transport (Network.framework), AVAssetWriter.
 //   LiveCoreUI        SwiftUI operator interface (macOS) + localisation resources (en, id).
@@ -42,12 +43,13 @@ let package = Package(
                                  .linkedFramework("AppKit", .when(platforms: [.macOS]))]),
         .target(name: "LiveCoreCore", dependencies: ["CAtomics"]),
         .target(name: "LiveCoreRemote", dependencies: ["LiveCoreCore"]),
+        .target(name: "LiveCoreServices", dependencies: ["LiveCoreCore"]),
         .target(name: "LiveCoreEngine", dependencies: [
             "LiveCoreCore", "CAtomics", "CObjCSupport", "CSyphon", "CNDI",
         ]),
         .target(
             name: "LiveCoreUI",
-            dependencies: ["LiveCoreEngine", "LiveCoreCore", "LiveCoreRemote"],
+            dependencies: ["LiveCoreEngine", "LiveCoreCore", "LiveCoreRemote", "LiveCoreServices"],
             resources: [.process("Resources")]
         ),
         .executableTarget(name: "LiveCoreStudio", dependencies: ["LiveCoreUI"], path: "App"),
@@ -57,6 +59,6 @@ let package = Package(
         .executableTarget(name: "livecore-ndi-check", dependencies: ["CNDI", "LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-iso-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-title-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
-        .testTarget(name: "LiveCoreCoreTests", dependencies: ["LiveCoreCore", "LiveCoreRemote"]),
+        .testTarget(name: "LiveCoreCoreTests", dependencies: ["LiveCoreCore", "LiveCoreRemote", "LiveCoreServices"]),
     ]
 )
