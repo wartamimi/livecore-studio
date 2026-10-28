@@ -6,6 +6,7 @@ import LiveCoreEngine
 struct AudioMixerView: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var meters: MeterModel
+    @State private var showRadio = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -22,6 +23,7 @@ struct AudioMixerView: View {
                     ForEach(model.audioDevices) { d in Button(d.name) { model.addAudioInput(d) } }
                     Divider()
                     Button(L10n.t("tone.add")) { model.addTone() }
+                    Button(L10n.t("radio.menu")) { showRadio = true }
                 } label: { Image(systemName: "plus.circle.fill") }
                 .menuStyle(.borderlessButton).fixedSize()
                 .help(L10n.t("audio.add"))
@@ -49,6 +51,7 @@ struct AudioMixerView: View {
         }
         .padding(8)
         .panel()
+        .sheet(isPresented: $showRadio) { RadioSearchSheet().environmentObject(model) }
     }
 }
 
@@ -65,6 +68,7 @@ struct ChannelStripView: View {
             HStack(spacing: 2) {
                 if vm.isFileChannel { Image(systemName: "film").font(.system(size: 8)).help(L10n.t("audio.file")) }
                 if vm.isMusicChannel { Image(systemName: "music.note").font(.system(size: 8)).help(L10n.t("music.title")) }
+                if vm.isRadioChannel { Image(systemName: "antenna.radiowaves.left.and.right").font(.system(size: 8)).help(L10n.t("radio.title")) }
                 if model.tone(vm.id) != nil { Image(systemName: "waveform").font(.system(size: 8)).help(L10n.t("tone.name")) }
                 Text(vm.name).font(.system(size: 10, weight: .semibold)).lineLimit(1)
                 Spacer(minLength: 0)
@@ -96,6 +100,7 @@ struct ChannelStripView: View {
                 toggle(L10n.t("audio.pgm"), $vm.toProgram, Theme.accent)
             }
             if let m = model.musicPlayer(vm.id) { MusicTransport(player: m) }
+            if let r = model.radio(vm.id) { RadioTransport(radio: r) }
             HStack(spacing: 3) {
                 toggle("A", $vm.toBusA, Theme.preview).help(L10n.t("aux.send_a"))
                 toggle("B", $vm.toBusB, Theme.preview).help(L10n.t("aux.send_b"))

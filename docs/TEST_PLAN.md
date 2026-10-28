@@ -51,6 +51,20 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AN. Tes manual build 0.38.0
+Otomatis di CI: unit test, dekoder radio (livecore-radio-check), RTMP/SRT e2e, soak 90 dtk.
+
+| ID | Tes | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-182 | Jendela edit Web pas | Input Web 1920×1080 (mis. YouTube) › Edit halaman; ubah ukuran jendela; tekan tombol hijau | Seluruh halaman terlihat diperkecil (tidak terpotong), scroll halaman jalan, makin besar jendela makin besar halamannya; Selesai mengembalikan tampilan input normal |
+| T-183 | Fullscreen di halaman | Di jendela edit, putar video YouTube › tombol fullscreen YouTube; keluar fullscreen; scroll | Video memenuhi gambar input tanpa nge-zoom/terpotong; setelah keluar, halaman bisa di-scroll lagi |
+| T-184 | Title saat menu terbuka | Title dengan animasi per huruf di Program; buka menu Production dan Pengaturan berkali-kali | Animasi title tetap mulus di Program/output |
+| T-185 | FPS saat pindah menu | Live 1080p30 dengan 2 kamera + title; buka/tutup menu, Pengaturan (semua tab), panel OUTPUTS, pre-flight selama 5 menit | FPS tetap ±30; bila drop, ekspor log dan kirim baris "render drops"/"main thread" |
+| T-186 | Cari & putar radio | Mixer › + › Radio Online…; cari negara ID, genre pop; Tambah ke Mixer | Daftar stasiun muncul; channel radio baru berbunyi dalam ±2 dtk, judul lagu tampil di strip bila stasiun mengirimnya |
+| T-187 | Radio ke stream/rekam | Fader radio naik, rekam 2 menit | Suara radio ada di rekaman tanpa putus-putus; meter bergerak |
+| T-188 | Radio putus jaringan | Saat radio diputar, matikan Wi-Fi 20 dtk lalu nyalakan | Strip menunjukkan "Menyambung ulang…", lalu radio kembali sendiri |
+| T-189 | Radio di proyek | Simpan proyek dengan 1 stasiun, buka ulang, ▶ | Stasiun kembali di mixer (berhenti sampai ▶), setelan fader/mute ikut |
+
 ## AM. Tes manual build 0.37.0
 Tes yang membutuhkan orang dan perangkat nyata. Tes otomatis (soak 90 dtk, stream putus, disk penuh, SRT) sudah jalan di CI.
 

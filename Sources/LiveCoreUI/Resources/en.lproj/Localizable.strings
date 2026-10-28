@@ -1016,3 +1016,27 @@
 "ptz.store_here" = "Store current position here";
 "ptz.names" = "Preset names";
 "stream.srt_hint" = "SRT: enter srt://host:port (optionally ?streamid=…&latency=ms). The key field, if filled, is used as the Stream ID. Passphrase encryption is not supported yet.";
+
+/* 0.38.0: online radio */
+"radio.menu" = "Online Radio…";
+"radio.title" = "Online Radio";
+"radio.intro" = "Internet radio stations from the free Radio Browser directory (no account or API key). Only HTTPS stations with MP3 or AAC are listed. The station plays into its own mixer channel.";
+"radio.name" = "Station name";
+"radio.genre" = "Genre (e.g. pop)";
+"radio.country" = "Country";
+"radio.country_help" = "Two-letter country code, e.g. ID, US, GB. Empty = all countries.";
+"radio.search" = "Search";
+"radio.add" = "Add to Mixer";
+"radio.none" = "No playable stations found. Try another name or genre, or clear the country.";
+"radio.search_failed" = "Cannot reach the radio directory: %@";
+"radio.copyright" = "Copyright: playing a radio station in your live stream or recording usually needs permission from the station and the music rights holders. YouTube and Facebook may mute or remove streams with copyrighted music.";
+"radio.source" = "Directory: radio-browser.info";
+"radio.stopped" = "Stopped";
+"radio.connecting" = "Connecting…";
+"radio.buffering" = "Buffering…";
+"radio.playing" = "Playing";
+"radio.reconnecting" = "Reconnecting in %@ s";
+"radio.failed" = "Failed: %@";
+"radio.error" = "Radio \"%@\" stopped: %@";
+"radio.play" = "Play the station";
+"radio.stop" = "Stop the station";

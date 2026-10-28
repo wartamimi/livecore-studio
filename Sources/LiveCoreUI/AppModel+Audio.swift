@@ -106,7 +106,7 @@ extension AppModel {
         guard let vm = audioChannels.first(where: { $0.id == id }) else { return }
         guard !vm.locked else { report(L10n.t("lock.audio_locked")); return }
         if let input = ProductionEngine.inputOfChannel(id) { remove(input); return }
-        if vm.isMusicChannel { removeMusic(id) } else { removeAudioInput(id) }
+        if vm.isMusicChannel { removeMusic(id) } else if vm.isRadioChannel { removeRadio(id) } else { removeAudioInput(id) }
     }
 
     public func lockAllAudio(_ locked: Bool) { for vm in audioChannels { vm.locked = locked } }

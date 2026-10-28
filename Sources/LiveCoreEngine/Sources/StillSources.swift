@@ -191,40 +191,47 @@ public final class TextSource: VideoSource {
         render()
     }
 
-    public func update(_ s: Style) { style = s; name = s.title.isEmpty ? "Title" : s.title; render() }
-
-    // Letter-by-letter animation (main thread): redrawn 30 times a second until every letter is in place.
-    private var animTimer: Timer?
-    private var animStart = 0.0
-
-    /// Plays the title's text animation from the first letter (when it goes on air).
-    public func playTextAnimation() {
-        guard let d = style.design, d.textAnimation != .off else { return }
-        let total = TextReveal(animation: d.textAnimation, delay: d.letterDelay)
-            .totalDuration(letters: TitleRenderer.letterCount(title: style.title, subtitle: style.subtitle, design: d))
-        animTimer?.invalidate()
-        animStart = HostClock.now()
-        render(elapsed: 0)
-        let t = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] timer in
-            guard let self else { timer.invalidate(); return }
-            let e = HostClock.now() - self.animStart
-            if e >= total {
-                timer.invalidate()
-                self.animTimer = nil
-                self.render()
-            } else {
-                self.render(elapsed: e)
-            }
-        }
-        RunLoop.main.add(t, forMode: .common)
-        animTimer = t
+    public func update(_ s: Style) {
+        if let t = animTimer { lock.withLock { t.cancel() }; animTimer = nil }
+        style = s; name = s.title.isEmpty ? "Title" : s.title; render()
     }
 
-    /// Stops the animation and shows the finished title (when it leaves the air).
+    // Letter-by-letter animation: redrawn 30 times a second until every letter is in place. The
+    // drawing runs on its own queue, so a busy main thread (menus, sheets) cannot make it stutter.
+    private var animTimer: DispatchSourceTimer?
+    private static let animQueue = DispatchQueue(label: "livecore.title-animation", qos: .userInteractive)
+
+    /// Plays the title's text animation from the first letter (when it goes on air). Main thread.
+    public func playTextAnimation() {
+        guard let d = style.design, d.textAnimation != .off else { return }
+        let title = style.title, subtitle = style.subtitle, size = outputSize
+        let total = TextReveal(animation: d.textAnimation, delay: d.letterDelay)
+            .totalDuration(letters: TitleRenderer.letterCount(title: title, subtitle: subtitle, design: d))
+        if let old = animTimer { lock.withLock { old.cancel() } }
+        let start = HostClock.now()
+        let t = DispatchSource.makeTimerSource(queue: Self.animQueue)
+        t.schedule(deadline: .now(), repeating: 1.0 / 30, leeway: .milliseconds(2))
+        t.setEventHandler { [weak self, weak t] in
+            guard let self, let t, !t.isCancelled else { return }
+            let e = HostClock.now() - start
+            let pb = PixelBufferFactory.draw(width: size.width, height: size.height) { ctx in
+                TitleRenderer.draw(d, title: title, subtitle: subtitle, in: ctx,
+                                   width: Double(size.width), height: Double(size.height), elapsed: e >= total ? nil : e)
+            }
+            // A newer render (finish, text change) may have cancelled this animation meanwhile.
+            self.lock.withLock { if !t.isCancelled { self.frame = pb } }
+            if e >= total { t.cancel() }
+        }
+        animTimer = t
+        t.resume()
+    }
+
+    /// Stops the animation and shows the finished title (when it leaves the air). Main thread.
     public func finishTextAnimation() {
-        guard animTimer != nil else { return }
-        animTimer?.invalidate()
+        guard let t = animTimer else { return }
         animTimer = nil
+        if t.isCancelled { return }   // already finished by itself
+        lock.withLock { t.cancel() }
         render()
     }
 

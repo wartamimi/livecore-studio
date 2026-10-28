@@ -17,7 +17,7 @@ struct SettingsView: View {
     @State private var canvasLines = 1080
     @State private var customWidth = 1920
     @State private var customHeight = 1080
-    /// Tab shown first (6 Canvas, 0 Output, 1 Stream, 2 Record, ..., 7 Remote, 8 MultiCorder).
+    /// Tab shown first (6 Canvas, 0 Output, 1 Stream, 2 Record, ..., 7 Remote, 8 MultiCorder, 9 Pre-flight).
     var initialTab = 0
 
     init(initialTab: Int = 0) { self.initialTab = initialTab }
@@ -34,6 +34,7 @@ struct SettingsView: View {
                 shortcutTab.tabItem { Text(L10n.t("settings.shortcuts")) }.tag(4)
                 MIDISettingsView().tabItem { Text("MIDI") }.tag(5)
                 RemoteSettingsView().tabItem { Text("Remote") }.tag(7)
+                PreflightSheet(embedded: true).tabItem { Text(L10n.t("preflight.button")) }.tag(9)
             }
             .padding()
             if !errors.isEmpty {

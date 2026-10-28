@@ -161,6 +161,26 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.38.0
+Perbaikan dari laporan pengguna setelah 0.37.0, plus input radio online. Kolom Verifikasi: L = unit test Linux,
+M = dikompilasi/diuji di CI macOS; "belum dites" = belum dicoba pengguna di Mac (TEST_PLAN bagian AN).
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Jendela edit Web: halaman diperkecil pas ke jendela | Implemented, belum dites | M (kompilasi) | Tata letak sama dengan output (lebar CSS sama), letterbox hitam; scroll halaman sendiri jalan; tombol hijau memperbesar (T-182) |
+| Fullscreen di halaman: ukuran "layar" = ukuran input | Implemented, belum dites di WebKit | Uji skrip di Chromium (Playwright) | `screen.width/height` halaman = ukuran input, sehingga player tidak tampak nge-zoom/terpotong (T-183) |
+| PRE-FLIGHT pindah ke Pengaturan | Implemented | M (kompilasi) | Tab "Pre-flight" di Pengaturan; menu Production › Pre-flight (⇧⌘P) membuka tab itu |
+| Switch Operator/Lanjutan dihapus | Implemented | M (kompilasi) | Selalu tampilan lengkap; yang sempat memilih Operator di 0.37.0 otomatis kembali |
+| Animasi title per huruf di antrean sendiri | Implemented, belum dites | M (kompilasi) | Tidak lagi tersendat saat menu/lembar dibuka (T-184) |
+| 3 frame GPU dalam antrean (sebelumnya 2) | Implemented, belum dites | M (soak check) | Menahan hentakan GPU singkat; latensi maks +1 frame |
+| Log penyebab drop & thread UI macet | Implemented | L (watchdog) + M | Di log (Bantuan › Ekspor Log & Diagnostik): "render drops +N (late tick, GPU busy, failed)" dan "main thread did not answer for X ms" (T-185) |
+| Meter & statistik tetap jalan saat menu terbuka | Implemented | M (kompilasi) | Timer statistik di run loop mode common |
+| CI lebih cepat | Implemented | M | DMG dibuat paralel dengan cek mesin; DMG terbit setelah build app + unit test |
+| Input Radio Online (Radio Browser) | Implemented, belum dites | L (6 unit test) + M (livecore-radio-check: MP3 mono 44,1 kHz dan AAC stereo, judul lagu ICY) | Gratis tanpa API key. Hanya stasiun HTTPS MP3/AAC (bukan HLS/Ogg). Channel mixer sendiri, play/stop, judul lagu, sambung ulang otomatis (T-186..T-189) |
+| Radio: hak siar | Catatan | — | Memutar radio di siaran/rekaman umumnya butuh izin; YouTube/Facebook bisa membisukan stream. Peringatan tampil di jendela cari |
+| Musik bebas royalti (Jamendo dsb.) | Planned | — | Butuh client ID gratis dari pengguna; lebih aman untuk siaran |
+| Uji disk penuh di soak check | Known issue | M (gagal) | Rekaman ke disk 160 MB berakhir "Disk Full" alih-alih ditutup rapi; pemakaian normal berhenti di sisa 1 GB |
+
 ## Fitur 0.37.0
 Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; kolom Verifikasi menyebut uji otomatis.
 "Belum dites" = belum dicoba di Mac oleh pengguna (lihat TEST_PLAN bagian AM).

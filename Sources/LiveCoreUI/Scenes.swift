@@ -41,12 +41,6 @@ public enum LiveCoreScenes {
                 Button(L10n.t("preflight.menu")) { model.showPreflight = true }.keyboardShortcut("p", modifiers: [.command, .shift])
                 Button(L10n.t("outputs.menu")) { model.showOutputsPanel = true }.keyboardShortcut("o", modifiers: [.command, .shift])
             }
-            CommandGroup(after: .sidebar) {
-                Button(model.isOperatorMode ? L10n.t("mode.switch_advanced") : L10n.t("mode.switch_operator")) {
-                    model.setUIMode(model.isOperatorMode ? .advanced : .operatorMode)
-                }
-                .keyboardShortcut("m", modifiers: [.command, .shift])
-            }
             CommandGroup(after: .help) {
                 Button(L10n.t("diagnostics.menu")) { model.exportDiagnostics() }
                 Button(L10n.t("diagnostics.reveal_log")) { model.revealLogFolder() }

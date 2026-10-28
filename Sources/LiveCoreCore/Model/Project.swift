@@ -80,6 +80,8 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
         if let s = doc.stinger?.source, !seen.contains(s) { doc.stinger?.source = nil }
         doc.outputs = outputs?.normalized(existing: seen)
         doc.multiCorder = multiCorder?.keeping(existing: seen)
+        // A project file only ever makes the app open HTTPS MP3/AAC radio streams.
+        doc.audio.radios = audio.radios?.filter { RadioBrowser.isPlayable($0.station) }
         return doc
     }
 }
@@ -391,6 +393,10 @@ public struct ProjectBrowser: Codable, Equatable, Sendable {
         getter(Document.prototype, n, function () { return true; });
       });
       ['fullscreen', 'webkitIsFullScreen'].forEach(function (n) { getter(Document.prototype, n, function () { return current !== null; }); });
+      // The page's "screen" is the input picture: players that size their fullscreen layout from
+      // screen.width/height (the Mac's display) would otherwise look zoomed in or cropped.
+      ['width', 'availWidth'].forEach(function (n) { getter(Screen.prototype, n, function () { return window.innerWidth; }); });
+      ['height', 'availHeight'].forEach(function (n) { getter(Screen.prototype, n, function () { return window.innerHeight; }); });
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && current) exit(); }, true);
       // An embedded player went fullscreen: its iframe fills this page (and this page's parent).
       window.addEventListener('message', function (e) {
@@ -453,6 +459,8 @@ public struct ProjectAudio: Codable, Equatable, Sendable {
     public var tones: [ProjectTone]?
     /// Automatic ducking under the MC (since 0.37.0).
     public var ducking: DuckingSettings?
+    /// Online radio inputs (since 0.38.0). Their mixer settings are in `channel`.
+    public var radios: [ProjectRadio]?
     public init() {}
 }
 
@@ -563,6 +571,16 @@ public struct ProjectTone: Codable, Equatable, Sendable {
     public var channel: ProjectAudioChannel?
     public init(id: String, frequency: Double = 1000, levelDB: Double = -18, channel: ProjectAudioChannel? = nil) {
         self.id = id; self.frequency = frequency; self.levelDB = levelDB; self.channel = channel
+    }
+}
+
+/// Online radio station played into its own mixer channel (0.38.0).
+public struct ProjectRadio: Codable, Equatable, Sendable {
+    public var id: String
+    public var station: RadioStation
+    public var channel: ProjectAudioChannel?
+    public init(id: String, station: RadioStation, channel: ProjectAudioChannel? = nil) {
+        self.id = id; self.station = station; self.channel = channel
     }
 }
 

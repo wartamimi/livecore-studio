@@ -82,7 +82,13 @@ extension ProductionEngine {
             pc.afvInput = afvLinks[t.channel.id]
             return ProjectTone(id: t.id, frequency: t.frequency, levelDB: t.levelDB, channel: pc)
         }
-        for ch in mixer.channelList where !ch.id.hasPrefix(Self.musicChannelPrefix) && !ch.id.hasPrefix(Self.toneChannelPrefix) {
+        doc.audio.radios = radios.isEmpty ? nil : radios.map { r in
+            var pc = Self.projectChannel(r.channel, deviceUniqueID: nil, inputID: nil)
+            pc.afvInput = afvLinks[r.channel.id]
+            return ProjectRadio(id: r.id, station: r.station, channel: pc)
+        }
+        for ch in mixer.channelList where !ch.id.hasPrefix(Self.musicChannelPrefix) && !ch.id.hasPrefix(Self.toneChannelPrefix)
+            && !ch.id.hasPrefix(Self.radioChannelPrefix) {
             let owner = Self.inputOfChannel(ch.id)
             var pc = Self.projectChannel(ch, deviceUniqueID: owner == nil ? ch.id : nil, inputID: owner)
             pc.afvInput = afvLinks[ch.id]
@@ -170,6 +176,11 @@ extension ProductionEngine {
             m.fadeSeconds = pm.fadeSeconds ?? 0
             m.repeatOne = pm.repeatOne ?? false
             if let ch = pm.channel { restore(ch, to: m.channel) }
+        }
+        for r in radios.map(\.id) { removeRadio(id: r) }
+        for pr in doc.audio.radios ?? [] {
+            let r = addRadio(pr.station, id: pr.id)
+            if let ch = pr.channel { restore(ch, to: r.channel) }
         }
         for t in tones.map(\.id) { removeTone(id: t) }
         for pt in doc.audio.tones ?? [] {

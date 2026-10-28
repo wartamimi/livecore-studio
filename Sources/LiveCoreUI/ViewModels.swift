@@ -51,6 +51,7 @@ public final class ChannelVM: ObservableObject, Identifiable {
     public var isFileChannel: Bool { ProductionEngine.inputOfChannel(channel.id) != nil }
     /// Channel of a music input (removed with the music input).
     public var isMusicChannel: Bool { channel.id.hasPrefix(ProductionEngine.musicChannelPrefix) }
+    public var isRadioChannel: Bool { channel.id.hasPrefix(ProductionEngine.radioChannelPrefix) }
 
     public init(channel: MixerChannel) {
         self.channel = channel

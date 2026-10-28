@@ -92,7 +92,13 @@ struct MainView: View {
         .sheet(isPresented: $showSettings) { SettingsView(initialTab: settingsTab).environmentObject(model) }
         .onChange(of: showSettings) { shown in if !shown { settingsTab = 6 } }
         .background(KeyboardShortcuts())
-        .sheet(isPresented: $model.showPreflight) { PreflightSheet().environmentObject(model) }
+        // Pre-flight lives in Settings (0.38.0); the menu command opens that tab.
+        .onChange(of: model.showPreflight) { show in
+            guard show else { return }
+            model.showPreflight = false
+            settingsTab = 9
+            showSettings = true
+        }
         .sheet(isPresented: $model.showOutputsPanel) { OutputsPanelSheet().environmentObject(model) }
         .sheet(isPresented: $model.showTemplates) { TemplatesSheet().environmentObject(model) }
         .onAppear {

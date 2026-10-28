@@ -13,18 +13,6 @@ struct TopBarView: View {
             Text(L10n.t("app.name")).font(.system(size: 15, weight: .heavy))
             Text("\(model.settings.output.label)").font(.system(size: 11)).foregroundStyle(Theme.textDim)
             Spacer()
-            Picker("", selection: Binding(get: { model.uiMode }, set: { model.setUIMode($0) })) {
-                Text(L10n.t("mode.operator")).tag(AppModel.UIMode.operatorMode)
-                Text(L10n.t("mode.advanced")).tag(AppModel.UIMode.advanced)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .frame(width: 170)
-            .help(L10n.t("mode.help"))
-            Button { model.showPreflight = true } label: { Label(L10n.t("preflight.button"), systemImage: "checklist") }
-                .buttonStyle(StudioButtonStyle())
-                .fixedSize()
-                .help(L10n.t("preflight.help"))
             Button { model.showOutputsPanel = true } label: { Label(L10n.t("outputs.button"), systemImage: "square.stack.3d.up") }
                 .buttonStyle(StudioButtonStyle())
                 .fixedSize()
