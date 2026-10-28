@@ -17,11 +17,18 @@ struct SceneEditorSheet: View {
     @State private var lockAspect = true
     @State private var dragStart: NormRect?
 
+    /// The editing area has the canvas aspect (16:9, 9:16 or custom), at most 576 × 420.
+    private var canvasBox: CGSize {
+        let a = max(model.canvasAspect, 0.1)
+        let w = min(576, 420 * a)
+        return CGSize(width: w, height: w / a)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("\(L10n.t("scene.title")) — \(name(input))").font(.headline)
             HStack(alignment: .top, spacing: 12) {
-                canvas.frame(width: 576, height: 324)
+                canvas.frame(width: canvasBox.width, height: canvasBox.height)
                 inspector.frame(width: 280)
             }
             Text(L10n.t("scene.hint")).font(.system(size: 11)).foregroundStyle(Theme.textDim)

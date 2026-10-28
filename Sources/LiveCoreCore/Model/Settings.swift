@@ -12,7 +12,40 @@ public struct OutputFormat: Codable, Equatable, Sendable, Hashable {
     public static let hd1080p60 = OutputFormat(size: PixelSize(width: 1920, height: 1080), frameRate: 60)
     public static let presets: [OutputFormat] = [.hd720p30, .hd720p60, .hd1080p25, .hd1080p30, .hd1080p60]
 
-    public var label: String { "\(size.height)p\(frameRate) (\(size.width)×\(size.height))" }
+    public var label: String { "\(min(size.width, size.height))p\(frameRate) (\(size.width)×\(size.height))" }
+
+    // MARK: Canvas (0.26.0)
+
+    public static let minSide = 240
+    public static let maxSide = 3840
+    public static let frameRates = [24, 25, 30, 50, 60]
+    public static let lineChoices = [720, 1080]
+
+    /// 16:9 horizontal, 9:16 portrait (phones, Reels, Shorts, TikTok) or any other size.
+    public enum Orientation: String, Codable, Sendable, CaseIterable { case horizontal, portrait, custom }
+
+    /// `lines`: 720 or 1080 (the short side).
+    public static func canvas(_ o: Orientation, lines: Int, frameRate: Int) -> OutputFormat {
+        let short = lines, long = lines * 16 / 9
+        switch o {
+        case .horizontal, .custom: return OutputFormat(size: PixelSize(width: long, height: short), frameRate: frameRate)
+        case .portrait: return OutputFormat(size: PixelSize(width: short, height: long), frameRate: frameRate)
+        }
+    }
+
+    /// Any size, made even (H.264) and kept within `minSide...maxSide`.
+    public static func custom(width: Int, height: Int, frameRate: Int) -> OutputFormat {
+        func side(_ v: Int) -> Int { let c = min(max(v, minSide), maxSide); return c - c % 2 }
+        return OutputFormat(size: PixelSize(width: side(width), height: side(height)), frameRate: frameRate)
+    }
+
+    public var orientation: Orientation {
+        for l in Self.lineChoices {
+            if size == Self.canvas(.horizontal, lines: l, frameRate: frameRate).size { return .horizontal }
+            if size == Self.canvas(.portrait, lines: l, frameRate: frameRate).size { return .portrait }
+        }
+        return .custom
+    }
 }
 
 public enum H264Profile: String, Codable, Sendable, CaseIterable { case baseline, main, high }
@@ -141,6 +174,10 @@ public struct ProductionSettings: Codable, Equatable, Sendable {
     public func validationErrors() -> [String] {
         var errs: [String] = []
         if output.size.width % 2 != 0 || output.size.height % 2 != 0 { errs.append("Output size must be even.") }
+        let sides = OutputFormat.minSide...OutputFormat.maxSide
+        if !sides.contains(output.size.width) || !sides.contains(output.size.height) {
+            errs.append("Canvas width and height must be \(OutputFormat.minSide)–\(OutputFormat.maxSide) pixels.")
+        }
         if !(1...120).contains(output.frameRate) { errs.append("Frame rate must be 1–120 fps.") }
         if !(300...50_000).contains(video.bitrateKbps) { errs.append("Video bitrate must be 300–50000 kbps.") }
         if ![64, 96, 128, 160, 192, 256, 320].contains(audio.bitrateKbps) { errs.append("Audio bitrate not supported by AAC encoder.") }

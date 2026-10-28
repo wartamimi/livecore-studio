@@ -51,6 +51,16 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## Z. Tes manual build 0.26.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-101 | Draft Layer Designer | Input Scene di Preview dan juga di Program (atau sebagai overlay); buka LAYER, geser & ubah ukuran layer dengan cepat | Gerakan halus, tidak bergetar; perubahan hanya tampil di Preview; badge DRAFT muncul; Batalkan mengembalikan; Terapkan / tutup / CUT membawa perubahan ke Program |
+| T-102 | FULLSCREEN satu baris | Lihat bar atas pada lebar jendela kecil dan besar, bahasa ID dan EN | Teks FULLSCREEN selalu satu baris |
+| T-103 | Tanpa duplikat | Tambah kamera A; buka menu tambah lagi; tambah capture jendela Zoom lalu buka lembar capture lagi | Kamera A tampil "sudah dipakai (input N)" dan tidak bisa dipilih; jendela Zoom yang sama ditandai dan tombol Tambah mati; mengedit capture yang sudah ada tetap bisa |
+| T-104 | Repeat / Shuffle | Playlist musik 5 lagu dan video playlist 3 klip; nyalakan Repeat dan Shuffle; tekan berikutnya beberapa kali dan biarkan lagu selesai | Tombol menyala biru dengan "ON"; urutan acak tanpa memutar lagu/klip yang sama dua kali berturut-turut; Repeat mati → berhenti di akhir |
+| T-105 | T-bar | Tarik T-bar perlahan dari ujung ke ujung, lepas di tengah, lalu tekan AUTO | Pegangan mengikuti mouse tanpa melompat; jalur biru dan angka persen sesuai posisi; selesai di ujung lain menjadi posisi diam baru; saat AUTO tertulis AUTO |
+| T-106 | Canvas | Settings › Canvas: Portrait 1080p, Terapkan; rekam 10 detik; lalu Custom 1080×1080; lalu kembali Horizontal | Monitor Preview/Program berbentuk 9:16 lalu 1:1; file rekaman 1080×1920; NDI dan fullscreen ikut ukuran baru; saat merekam/stream pengaturan terkunci |
+
 ## Y. Tes manual build 0.25.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

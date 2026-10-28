@@ -94,6 +94,22 @@ public final class ProductionEngine {
         var extraInputs: [InputID] = []
         var fullPreview = false
         var stinger = StingerConfig()
+        /// Layer Designer edits not yet on air: shown on Preview only until committed.
+        var draft: (input: InputID, layers: [Layer])?
+
+        /// Puts the Layer Designer's draft on the input itself (now Program shows it too).
+        mutating func commitDraft() {
+            guard let d = draft else { return }
+            draft = nil
+            if sources[d.input] != nil { layers[d.input] = d.layers }
+        }
+
+        /// Layer 0 stays the input itself; layers of unknown inputs are dropped.
+        func sanitized(_ list: [Layer], of id: InputID) -> [Layer] {
+            var l = list.filter { $0.source != id && sources[$0.source] != nil }
+            l.insert(list.first(where: { $0.source == id }) ?? Layer(source: id), at: 0)
+            return l
+        }
     }
     private let control = Locked(ControlState())
 
@@ -185,8 +201,10 @@ public final class ProductionEngine {
             events = st.switcher.update(now: now)
             let layers = st.layers
             let keys = st.keys.filter { $0.value.enabled }.mapValues { $0.clamped }
+            let draft = st.draft.map { [$0.input: $0.layers] } ?? [:]
             let plan = FramePlanner.plan(snapshot: st.switcher.state, overlays: st.overlays, now: now,
                                          layersFor: { layers[$0] }, keyFor: { keys[$0] },
+                                         previewLayers: draft,
                                          thumbnailsFor: thumbTick ? st.order : [],
                                          composedThumbnails: thumbTick ? Set(st.sources.filter { $0.value is SceneSource }.keys) : [],
                                          detailInput: st.detail,
@@ -463,6 +481,20 @@ public final class ProductionEngine {
 
     public func source(_ id: InputID) -> VideoSource? { control.read { $0.sources[id] } }
 
+    /// The input that already uses this camera / capture card, if any.
+    public func inputUsingCamera(_ uniqueID: String) -> InputID? {
+        control.read { st in st.order.first { (st.sources[$0] as? CameraSource)?.deviceUniqueID == uniqueID } }
+    }
+
+    /// The input (other than `except`) that already captures this window or display, if any.
+    public func inputCapturing(_ c: ProjectScreenCapture, except: InputID? = nil) -> InputID? {
+        control.read { st in
+            st.order.first { id in
+                id != except && (st.sources[id] as? ScreenCaptureSource)?.config.sameTarget(as: c) == true
+            }
+        }
+    }
+
     private func add(_ src: VideoSource) {
         src.onStatusChange = { [weak self] _ in self?.publishInputs() }
         control.mutate { st in
@@ -480,6 +512,8 @@ public final class ProductionEngine {
             for i in st.overlays.indices where st.overlays[i].source == id { st.overlays[i].source = nil }
             for key in st.layers.keys { st.layers[key]?.removeAll { $0.source == id && key != id } }
             st.layers[id] = nil
+            if st.draft?.input == id { st.draft = nil }
+            st.draft?.layers.removeAll { $0.source == id }
             st.keys[id] = nil
             st.locked.remove(id)
             st.adjusts[id] = nil
@@ -567,12 +601,31 @@ public final class ProductionEngine {
     public func setLayers(_ layers: [Layer], of id: InputID) {
         control.mutate { st in
             guard st.sources[id] != nil else { return }
-            var l = layers.filter { $0.source != id && st.sources[$0.source] != nil }
-            let base = layers.first(where: { $0.source == id }) ?? Layer(source: id)
-            l.insert(base, at: 0)
-            st.layers[id] = l
+            if st.draft?.input == id { st.draft = nil }
+            st.layers[id] = st.sanitized(layers, of: id)
         }
     }
+
+    // MARK: Layer Designer draft (Preview only until committed)
+
+    /// Layer Designer edits of `id`: drawn on Preview (and outputs showing Preview) only. A draft
+    /// of another input is committed first. It goes on air on `commitDraftLayers`, or by itself
+    /// when that input is taken to Program (CUT, AUTO, T-bar) or Preview moves to another input.
+    public func setDraftLayers(_ layers: [Layer], of id: InputID) {
+        control.mutate { st in
+            guard st.sources[id] != nil else { return }
+            if let d = st.draft, d.input != id { st.commitDraft() }
+            st.draft = (id, st.sanitized(layers, of: id))
+        }
+    }
+
+    /// The uncommitted Layer Designer layers of `id`, if any.
+    public func draftLayers(of id: InputID) -> [Layer]? {
+        control.read { $0.draft?.input == id ? $0.draft?.layers : nil }
+    }
+
+    public func commitDraftLayers() { control.mutate { $0.commitDraft() } }
+    public func discardDraftLayers() { control.mutate { $0.draft = nil } }
 
     /// Pixel size of an input's current frame (nil until it has produced one).
     public func frameSize(of id: InputID) -> PixelSize? {
@@ -607,10 +660,16 @@ public final class ProductionEngine {
 
     public var switcherState: SwitcherSnapshot { control.read { $0.switcher.state } }
 
-    public func setPreview(_ id: InputID?) { control.mutate { _ = $0.switcher.setPreview(id) } }
+    public func setPreview(_ id: InputID?) {
+        control.mutate { st in
+            if let d = st.draft, d.input != id { st.commitDraft() }
+            _ = st.switcher.setPreview(id)
+        }
+    }
     public func cut() {
         let now = HostClock.now()
         control.mutate { st in
+            st.commitDraft()
             _ = st.switcher.cut()
             for i in st.overlays.indices { st.overlays[i].takeToProgram(now: now) }
         }
@@ -635,6 +694,7 @@ public final class ProductionEngine {
         }
         let now = HostClock.now()
         control.mutate { st in
+            st.commitDraft()
             _ = st.switcher.auto(kind: kind, duration: dur, now: now, stinger: stinger)
             // Overlays waiting on Preview go to Program together with the transition.
             if st.switcher.isTransitioning { for i in st.overlays.indices { st.overlays[i].takeToProgram(now: now) } }
@@ -645,13 +705,14 @@ public final class ProductionEngine {
         let kind = settings.transition
         let now = HostClock.now()
         control.mutate { st in
+            if position > 0.001 && position < 0.999 { st.commitDraft() }
             _ = st.switcher.setTBar(position, kind: kind, now: now)
             if st.switcher.isTransitioning { for i in st.overlays.indices { st.overlays[i].takeToProgram(now: now) } }
         }
     }
     /// "Quick play": cut a specific input straight to program.
     public func cutDirect(_ id: InputID) {
-        control.mutate { st in _ = st.switcher.setPreview(id); _ = st.switcher.cut() }
+        control.mutate { st in st.commitDraft(); _ = st.switcher.setPreview(id); _ = st.switcher.cut() }
     }
 
     // MARK: Auto play (vMix-style)

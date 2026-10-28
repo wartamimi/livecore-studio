@@ -159,6 +159,17 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Perbaikan 0.26.0
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Edit layer tidak langsung tampil di Program (draft) | Implemented (0.26.0), belum dites | L (rencana gambar: draft hanya di Preview, juga untuk input yang di-flatten; unit test) + kompilasi CI | Badge DRAFT + Terapkan / Batalkan di bar Layer Designer; draft masuk Program saat Terapkan, menutup designer, CUT/AUTO/T-bar, atau memilih input lain di Preview (T-101) |
+| Geser & ubah ukuran layer lebih halus | Implemented (0.26.0), belum dites | kompilasi CI | Gerakan diukur di ruang koordinat kanvas yang tetap (sebelumnya ikut bergeser bersama kotak yang sedang ditarik) (T-101) |
+| Label FULLSCREEN satu baris | Implemented (0.26.0), belum dites | kompilasi CI | Tombol utama sedikit lebih lebar, label tidak pernah pindah baris (T-102) |
+| Kamera / capture tidak bisa ditambahkan dua kali | Implemented (0.26.0), belum dites | L (pencocokan jendela/layar yang sama; unit test) + kompilasi CI | Di menu tambah, lembar capture card, dan lembar capture jendela/layar: item yang sudah dipakai ditandai "sudah dipakai (input N)" dan tidak bisa dipilih (T-103) |
+| Repeat / Shuffle playlist dengan penanda aktif | Implemented (0.26.0), belum dites | L (shuffle tidak mengulang klip yang sama) + kompilasi CI | Tombol menyala biru + "ON" saat aktif; musik: repeat & shuffle; video playlist: repeat & shuffle (baru) (T-104) |
+| T-bar profesional | Implemented (0.26.0), belum dites | kompilasi CI | Tuas vertikal dengan jalur, skala, pegangan metal, isi biru sesuai posisi, angka persen / AUTO (T-105) |
+| Settings › Canvas: Horizontal, Portrait, Custom | Implemented (0.26.0), belum dites | L (ukuran preset, ukuran custom genap & dibatasi 240–3840; unit test) + kompilasi CI | Tab pertama di Settings; 720p/1080p untuk Horizontal & Portrait, ukuran bebas untuk Custom; monitor Preview/Program, Multiview dan editor Scene mengikuti bentuk canvas; terkunci selama stream/rekam (T-106) |
+
 ## Layer Designer dan tata letak 0.25.0
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|

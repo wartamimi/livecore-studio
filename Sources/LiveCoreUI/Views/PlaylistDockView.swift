@@ -119,10 +119,12 @@ struct PlaylistDockView: View {
                 Button { playPickedOrToggle(s) } label: { Image(systemName: m.isPlaying && pickedIndex(s) == nil ? "pause.fill" : "play.fill") }
                     .help(L10n.t("playlist.play_help"))
                 Button { m.next() } label: { Image(systemName: "forward.fill") }
-                Toggle(isOn: Binding(get: { m.loopPlaylist }, set: { m.loopPlaylist = $0; model.objectWillChange.send() })) { Image(systemName: "repeat") }
-                    .toggleStyle(.button).help(L10n.t("music.loop"))
-                Toggle(isOn: Binding(get: { m.shuffle }, set: { m.shuffle = $0; model.objectWillChange.send() })) { Image(systemName: "shuffle") }
-                    .toggleStyle(.button).help(L10n.t("music.shuffle"))
+                PlaylistModeButton(icon: "repeat", on: m.loopPlaylist, help: L10n.t("music.loop")) {
+                    m.loopPlaylist.toggle(); model.objectWillChange.send()
+                }
+                PlaylistModeButton(icon: "shuffle", on: m.shuffle, help: L10n.t("music.shuffle")) {
+                    m.shuffle.toggle(); model.objectWillChange.send()
+                }
                 Spacer()
                 m3uMenu(s)
                 Button { model.addTracks(toMusic: m.channel.id) } label: { Image(systemName: "plus") }.help(L10n.t("music.add_tracks"))
@@ -131,8 +133,14 @@ struct PlaylistDockView: View {
                 Button { playPickedOrToggle(s) } label: { Image(systemName: v.isPlaying && pickedIndex(s) == nil ? "pause.fill" : "play.fill") }
                     .help(L10n.t("playlist.play_help"))
                 Button { v.nextClip() } label: { Image(systemName: "forward.fill") }
-                Toggle(isOn: Binding(get: { v.loop }, set: { v.loop = $0; model.objectWillChange.send() })) { Image(systemName: "repeat") }
-                    .toggleStyle(.button).help(L10n.t("playlist.loop"))
+                PlaylistModeButton(icon: "repeat", on: v.loop, help: L10n.t("playlist.loop")) {
+                    v.loop.toggle(); model.objectWillChange.send()
+                }
+                if v.isPlaylist {
+                    PlaylistModeButton(icon: "shuffle", on: v.shuffle, help: L10n.t("playlist.shuffle")) {
+                        v.shuffle.toggle(); model.objectWillChange.send()
+                    }
+                }
                 Spacer()
                 m3uMenu(s)
                 Button { model.addClips(to: id) } label: { Image(systemName: "plus") }.help(L10n.t("playlist.add_clips")).disabled(model.isLocked(id))
@@ -217,6 +225,31 @@ struct PlaylistDockView: View {
         case let .video(_, v): v.removeClip(at: i)
         }
         model.objectWillChange.send()
+    }
+}
+
+/// Repeat / shuffle: an icon button that is clearly lit (accent fill + "ON") while active.
+private struct PlaylistModeButton: View {
+    let icon: String
+    let on: Bool
+    let help: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 3) {
+                Image(systemName: icon).font(.system(size: 10, weight: .bold))
+                if on { Text(L10n.t("playlist.mode_on")).font(.system(size: 8, weight: .heavy)) }
+            }
+            .foregroundStyle(on ? Color.white : Theme.textDim)
+            .padding(.horizontal, 6).frame(height: 18)
+            .background(RoundedRectangle(cornerRadius: 4).fill(on ? Theme.accent : Color.white.opacity(0.06)))
+            .overlay(RoundedRectangle(cornerRadius: 4).stroke(on ? Theme.accent.opacity(0.9) : Color.white.opacity(0.12), lineWidth: 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("\(help) (\(L10n.t(on ? "playlist.mode_on" : "playlist.mode_off")))")
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 #endif

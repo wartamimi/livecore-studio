@@ -16,10 +16,10 @@ struct MultiviewView: View {
             VStack(spacing: 4) {
                 HStack(spacing: 4) {
                     MultiviewTile(feed: model.previewFeed, label: label(model.switcher.preview, prefix: L10n.t("monitor.preview")),
-                                  tally: Theme.preview, large: true)
+                                  tally: Theme.preview, large: true, aspect: model.canvasAspect)
                     MultiviewTile(feed: model.programFeed, label: label(model.switcher.transition?.to ?? model.switcher.program,
                                                                          prefix: L10n.t("monitor.program")),
-                                  tally: Theme.program, large: true,
+                                  tally: Theme.program, large: true, aspect: model.canvasAspect,
                                   onAir: model.isStreamingActive || model.isRecording)
                 }
                 ScrollView {
@@ -58,12 +58,14 @@ struct MultiviewTile: View {
     let label: String
     let tally: Color?
     let large: Bool
+    /// Program / preview follow the canvas (portrait, custom); input tiles stay 16:9.
+    var aspect: Double = 16 / 9
     var onAir = false
     var status: SourceStatus = .live
 
     var body: some View {
         PixelBufferView(feed: feed)
-            .aspectRatio(16 / 9, contentMode: .fit)
+            .aspectRatio(aspect, contentMode: .fit)
             .overlay(alignment: .bottomLeading) {
                 HStack(spacing: 6) {
                     Text(label).font(.system(size: large ? 14 : 11, weight: .bold)).lineLimit(1)

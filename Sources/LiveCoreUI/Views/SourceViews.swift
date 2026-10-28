@@ -60,9 +60,18 @@ struct CaptureCardSheet: View {
             Form {
                 Picker(L10n.t("capturecard.device"), selection: $deviceID) {
                     if model.videoDevices.isEmpty { Text(L10n.t("inputs.no_cameras")).tag("") }
-                    ForEach(model.videoDevices) { d in Text(d.name).tag(d.id) }
+                    ForEach(model.videoDevices) { d in
+                        if editing == nil, let used = model.cameraInUse(d.id) {
+                            Text(L10n.f("inputs.in_use_item", d.name, used)).tag(d.id)
+                        } else {
+                            Text(d.name).tag(d.id)
+                        }
+                    }
                 }
                 .disabled(editing != nil)
+                if editing == nil, let used = model.cameraInUse(deviceID) {
+                    Text(L10n.f("inputs.already_used", used)).font(.system(size: 11)).foregroundStyle(Theme.warning)
+                }
                 Picker(L10n.t("capturecard.resolution"), selection: $size) {
                     Text(L10n.f("capturecard.auto", model.outputFormat.size.width, model.outputFormat.size.height)).tag("auto")
                     ForEach(sizes, id: \.self) { s in Text(s.replacingOccurrences(of: "x", with: " × ")).tag(s) }
@@ -93,7 +102,7 @@ struct CaptureCardSheet: View {
                     else { model.addCamera(uniqueID: deviceID, config: config, audioUID: audioUID.isEmpty ? nil : audioUID) }
                     dismiss()
                 }
-                .disabled(deviceID.isEmpty)
+                .disabled(deviceID.isEmpty || (editing == nil && model.cameraInUse(deviceID) != nil))
                 .keyboardShortcut(.defaultAction)
             }
         }

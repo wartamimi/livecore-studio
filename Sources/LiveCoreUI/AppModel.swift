@@ -218,11 +218,35 @@ public final class AppModel: ObservableObject {
 
     // MARK: Inputs
 
-    public func addCamera(_ d: DeviceManager.Device) { engine?.addCamera(uniqueID: d.id) }
+    public func addCamera(_ d: DeviceManager.Device) {
+        guard !rejectDuplicateCamera(d.id) else { return }
+        engine?.addCamera(uniqueID: d.id)
+    }
+
+    /// "<number> <name>" of the input already using this camera (one device = one input).
+    public func cameraInUse(_ uniqueID: String) -> String? {
+        engine?.inputUsingCamera(uniqueID).flatMap(inputLabel)
+    }
+
+    /// "<number> <name>" of the input already capturing this window / display.
+    public func captureInUse(_ c: ProjectScreenCapture, except: InputID? = nil) -> String? {
+        engine?.inputCapturing(c, except: except).flatMap(inputLabel)
+    }
+
+    private func inputLabel(_ id: InputID) -> String? {
+        inputs.first { $0.id == id }.map { "\($0.number) \($0.name)" }
+    }
+
+    private func rejectDuplicateCamera(_ uniqueID: String) -> Bool {
+        guard let used = cameraInUse(uniqueID) else { return false }
+        report(L10n.f("inputs.already_used", used))
+        return true
+    }
 
     /// Camera / capture card with the format and options chosen in the capture settings sheet;
     /// optionally adds the device's own audio (capture cards) to the mixer.
     public func addCamera(uniqueID: String, config: CaptureConfig, audioUID: String?) {
+        guard !rejectDuplicateCamera(uniqueID) else { return }
         engine?.addCamera(uniqueID: uniqueID, config: config)
         if let audioUID, let d = audioDevices.first(where: { $0.id == audioUID }) { addAudioInput(d) }
     }
@@ -232,6 +256,8 @@ public final class AppModel: ObservableObject {
         DeviceManager.device(uniqueID: uniqueID).map(CameraSource.formats(of:)) ?? []
     }
     public var outputFormat: OutputFormat { settings.output }
+    /// Width / height of the canvas, for the monitors (16:9 when unknown).
+    public var canvasAspect: Double { let a = settings.output.size.aspect; return a > 0 ? a : 16 / 9 }
 
     public func addColorBars() { engine?.addColorBars(name: L10n.t("inputs.colorbars")) }
 
@@ -380,7 +406,10 @@ public final class AppModel: ObservableObject {
 
     public func browserSource(_ id: InputID) -> BrowserSource? { engine?.source(id) as? BrowserSource }
     public func captureSource(_ id: InputID) -> ScreenCaptureSource? { engine?.source(id) as? ScreenCaptureSource }
-    public func addCapture(_ c: ProjectScreenCapture) { engine?.addScreenCapture(c) }
+    public func addCapture(_ c: ProjectScreenCapture) {
+        if let used = captureInUse(c) { report(L10n.f("inputs.already_used", used)); return }
+        engine?.addScreenCapture(c)
+    }
     public func updateCapture(_ id: InputID, _ c: ProjectScreenCapture) {
         guard let src = captureSource(id) else { return }
         if src.name == src.config.displayName { rename(id, c.displayName) }
@@ -503,6 +532,11 @@ public final class AppModel: ObservableObject {
     }
     public func layers(of id: InputID) -> [Layer] { engine?.layers(of: id) ?? [] }
     public func setLayers(_ layers: [Layer], of id: InputID) { engine?.setLayers(layers, of: id) }
+    /// Layer Designer: edits shown on Preview only until committed (see ProductionEngine.setDraftLayers).
+    public func setDraftLayers(_ layers: [Layer], of id: InputID) { engine?.setDraftLayers(layers, of: id) }
+    public func draftLayers(of id: InputID) -> [Layer]? { engine?.draftLayers(of: id) }
+    public func commitDraftLayers() { engine?.commitDraftLayers() }
+    public func discardDraftLayers() { engine?.discardDraftLayers() }
     public func frameSize(_ id: InputID) -> PixelSize? { engine?.frameSize(of: id) }
 
     public func addPiP(source: InputID, preset: LayoutPreset) {

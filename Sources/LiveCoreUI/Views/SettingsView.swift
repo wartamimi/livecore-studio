@@ -13,7 +13,11 @@ struct SettingsView: View {
     @State private var shortcuts = ShortcutSettings()
     @State private var errors: [String] = []
     @State private var tab = 0
-    /// Tab shown first (0 Output, 1 Stream, 2 Record, ...).
+    @State private var canvasMode: OutputFormat.Orientation = .horizontal
+    @State private var canvasLines = 1080
+    @State private var customWidth = 1920
+    @State private var customHeight = 1080
+    /// Tab shown first (6 Canvas, 0 Output, 1 Stream, 2 Record, ...).
     var initialTab = 0
 
     init(initialTab: Int = 0) { self.initialTab = initialTab }
@@ -21,6 +25,7 @@ struct SettingsView: View {
     var body: some View {
         VStack(spacing: 0) {
             TabView(selection: $tab) {
+                canvasTab.tabItem { Text(L10n.t("canvas.title")) }.tag(6)
                 outputTab.tabItem { Text(L10n.t("settings.output")) }.tag(0)
                 streamTab.tabItem { Text(L10n.t("stream.title")) }.tag(1)
                 recordTab.tabItem { Text(L10n.t("record.title")) }.tag(2)
@@ -43,6 +48,7 @@ struct SettingsView: View {
         .frame(width: 560, height: 520)
         .onAppear {
             draft = model.settings
+            loadCanvas()
             tab = initialTab
             shortcuts = model.shortcuts
             keyField = ""
@@ -52,13 +58,108 @@ struct SettingsView: View {
 
     private var outputLocked: Bool { model.isStreamingActive || model.isRecording }
 
-    private var outputTab: some View {
+    // MARK: Canvas
+
+    /// Size and frame rate of everything produced: program, recording, stream, NDI, fullscreen.
+    private var canvasTab: some View {
         Form {
-            Picker(L10n.t("settings.resolution"), selection: $draft.output) {
-                ForEach(OutputFormat.presets, id: \.self) { f in Text(f.label).tag(f) }
+            Section {
+                Picker(L10n.t("canvas.orientation"), selection: $canvasMode) {
+                    Label(L10n.t("canvas.horizontal"), systemImage: "rectangle").tag(OutputFormat.Orientation.horizontal)
+                    Label(L10n.t("canvas.portrait"), systemImage: "rectangle.portrait").tag(OutputFormat.Orientation.portrait)
+                    Label(L10n.t("canvas.custom"), systemImage: "aspectratio").tag(OutputFormat.Orientation.custom)
+                }
+                .pickerStyle(.segmented)
+                if canvasMode == .custom {
+                    HStack {
+                        Text(L10n.t("canvas.size"))
+                        Spacer()
+                        TextField("", value: $customWidth, format: .number.grouping(.never)).frame(width: 70).multilineTextAlignment(.trailing)
+                        Text("×")
+                        TextField("", value: $customHeight, format: .number.grouping(.never)).frame(width: 70).multilineTextAlignment(.trailing)
+                        Text("px").foregroundStyle(Theme.textDim)
+                    }
+                    HStack(spacing: 6) {
+                        Text(L10n.t("canvas.quick")).font(.caption).foregroundStyle(Theme.textDim)
+                        Spacer()
+                        ForEach(Self.quickSizes, id: \.name) { q in
+                            Button(q.name) { customWidth = q.width; customHeight = q.height }.controlSize(.small)
+                        }
+                    }
+                    Text(L10n.f("canvas.custom_help", OutputFormat.minSide, OutputFormat.maxSide))
+                        .font(.caption).foregroundStyle(Theme.textDim)
+                } else {
+                    Picker(L10n.t("canvas.quality"), selection: $canvasLines) {
+                        ForEach(OutputFormat.lineChoices, id: \.self) { l in
+                            let f = OutputFormat.canvas(canvasMode, lines: l, frameRate: draft.output.frameRate)
+                            Text("\(l)p  (\(f.size.width)×\(f.size.height))").tag(l)
+                        }
+                    }
+                }
+                Picker(L10n.t("canvas.frame_rate"), selection: $draft.output.frameRate) {
+                    ForEach(OutputFormat.frameRates, id: \.self) { Text("\($0) fps").tag($0) }
+                }
             }
             .disabled(outputLocked)
-            if outputLocked { Text(L10n.t("settings.locked")).font(.caption).foregroundStyle(Theme.warning) }
+            Section {
+                HStack(alignment: .center, spacing: 14) {
+                    canvasPreview
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(draft.output.label).font(.system(size: 13, weight: .semibold).monospacedDigit())
+                        Text(L10n.t("canvas.help_\(canvasMode.rawValue)")).font(.caption).foregroundStyle(Theme.textDim)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                if outputLocked { Text(L10n.t("settings.locked")).font(.caption).foregroundStyle(Theme.warning) }
+            }
+        }
+        .formStyle(.grouped)
+        .onChange(of: canvasMode) { _ in updateCanvas() }
+        .onChange(of: canvasLines) { _ in updateCanvas() }
+        .onChange(of: customWidth) { _ in updateCanvas() }
+        .onChange(of: customHeight) { _ in updateCanvas() }
+        .onChange(of: draft.output.frameRate) { _ in updateCanvas() }
+    }
+
+    private struct QuickSize { let width: Int, height: Int, name: String }
+    private static let quickSizes = [QuickSize(width: 1080, height: 1080, name: "1:1"), QuickSize(width: 1080, height: 1350, name: "4:5"),
+                                     QuickSize(width: 1440, height: 1080, name: "4:3"), QuickSize(width: 2560, height: 1080, name: "21:9"),
+                                     QuickSize(width: 3840, height: 2160, name: "4K")]
+
+    /// Small picture of the canvas shape.
+    private var canvasPreview: some View {
+        let a = max(draft.output.size.aspect, 0.1)
+        let w = min(96, 64 * a)
+        return RoundedRectangle(cornerRadius: 3)
+            .fill(Theme.accent.opacity(0.18))
+            .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.accent, lineWidth: 1.5))
+            .overlay(Image(systemName: "person.fill").font(.system(size: 16)).foregroundStyle(Theme.accent.opacity(0.7)))
+            .frame(width: w, height: w / a)
+            .frame(width: 100, height: 70)
+    }
+
+    private func loadCanvas() {
+        let f = draft.output
+        canvasMode = f.orientation
+        let short = min(f.size.width, f.size.height)
+        canvasLines = OutputFormat.lineChoices.contains(short) ? short : 1080
+        customWidth = f.size.width
+        customHeight = f.size.height
+    }
+
+    private func updateCanvas() {
+        let fps = draft.output.frameRate
+        let f = canvasMode == .custom
+            ? OutputFormat.custom(width: customWidth, height: customHeight, frameRate: fps)
+            : OutputFormat.canvas(canvasMode, lines: canvasLines, frameRate: fps)
+        if f != draft.output { draft.output = f }
+    }
+
+    private var outputTab: some View {
+        Form {
+            LabeledContent(L10n.t("canvas.title")) {
+                Button("\(draft.output.label)  ›") { tab = 6 }.buttonStyle(.link)
+            }
             Stepper(value: $draft.video.bitrateKbps, in: 500...20_000, step: 250) {
                 LabeledContent(L10n.t("settings.video_bitrate"), value: "\(draft.video.bitrateKbps)")
             }

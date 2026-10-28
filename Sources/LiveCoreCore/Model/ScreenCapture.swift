@@ -21,6 +21,15 @@ public struct ProjectScreenCapture: Codable, Equatable, Sendable {
         self.displayID = displayID; self.captureAudio = captureAudio; self.fps = fps; self.showsCursor = showsCursor
     }
 
+    /// Same window (app + title) or same display: capturing it twice would only duplicate it.
+    public func sameTarget(as o: ProjectScreenCapture) -> Bool {
+        guard target == o.target else { return false }
+        switch target {
+        case .window: return bundleID == o.bundleID && windowTitle == o.windowTitle
+        case .display: return displayID == o.displayID
+        }
+    }
+
     public var displayName: String {
         switch target {
         case .window: return windowTitle.isEmpty ? appName : "\(appName) – \(windowTitle)"
