@@ -259,7 +259,7 @@ struct TitleSheet: View {
             row("") { Toggle(L10n.t("titled.use_overlay_animation"), isOn: $design.useOverlayAnimation) }
             VStack(alignment: .leading, spacing: 6) {
                 row(L10n.t("titled.animation")) {
-                    AnimationPicker(selection: $design.animation)
+                    AnimationPicker(selection: Binding(get: { design.animation }, set: { design.animation = $0 }))
                 }
                 slider(L10n.t("titled.animation_duration"), $design.animationDuration, 0.1...5, step: 0.1)
             }
