@@ -161,6 +161,17 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.41.0
+Permintaan pengguna: animasi GT sehalus vMix, animasi keluar mengikuti template, pasang font dari folder (TEST_PLAN bagian AQ).
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Animasi GT 60 fps, tiap elemen dirender sekali (sprite), easing in-out | Implemented, belum dites | L (kurva) + M | Sebelumnya 30 fps dan seluruh title digambar ulang tiap frame. Kehalusan di Program juga bergantung pada frame rate output |
+| Animasi keluar | Implemented, belum dites | L (parser + fase) | Storyboard "Out" dari template bila ada; bila tidak, animasi masuk diputar terbalik (seperti vMix). Diputar saat overlay title dimatikan; CUT langsung dari Program tetap memotong tanpa animasi keluar |
+| Pasang font dari folder (sub-folder ikut), font yang sudah terpasang dilewati | Implemented, belum dites | M | Juga ditawarkan saat impor; unduhan Google Fonts juga melewati font yang sudah ada |
+
+Belum diketahui pasti: nama elemen XML untuk storyboard "Out" di vMix GT (sampel tidak memilikinya). Parser mengenali storyboard yang nama/atributnya memuat "Out"; bila template Anda punya animasi keluar tapi tidak terbaca, kirim contohnya.
+
 ## Fitur 0.40.0
 Editor title GT lanjutan dan font otomatis. Verifikasi: L = unit test Linux, M = kompilasi CI macOS (TEST_PLAN bagian AP).
 

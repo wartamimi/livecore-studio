@@ -162,4 +162,27 @@ final class GTTemplateTests: XCTestCase {
         """
         XCTAssertEqual(GoogleFonts.fontURLs(css: css).map(\.lastPathComponent), ["a.ttf", "b.ttf"])
     }
+
+    func testOutStoryboardAndPhases() {
+        let doc = Self.document.replacingOccurrences(of: "</Storyboard>", with: """
+        </Storyboard>
+        <Storyboard Name="Out"><Storyboard.Animations><Reveal Object="Bar" Delay="0" Duration="0.4" /></Storyboard.Animations></Storyboard>
+        """)
+        let t = GTReader.parse(document: Data(doc.utf8))
+        XCTAssertEqual(t.animations.count, 3)
+        XCTAssertEqual(t.outAnimations.map(\.object), ["Bar"])
+        XCTAssertEqual(t.outDuration, 0.4, accuracy: 1e-9)
+        XCTAssertNotNil(t.frame(for: "Bar", .leaving(0.1)))
+        XCTAssertNil(t.frame(for: "Bar", .leaving(0.5)))
+        XCTAssertNil(t.frame(for: "Live", .leaving(0.4)))      // no own out: gone when the out ends
+        XCTAssertNil(t.frame(for: "Headline", .entering(0.5))) // its in starts at 0.7
+        // Without an out storyboard the in plays backwards.
+        let plain = GTReader.parse(document: Data(Self.document.utf8))
+        XCTAssertEqual(plain.outDuration, plain.inDuration)
+        XCTAssertNotNil(plain.frame(for: "Logo", .leaving(0.01)))
+        XCTAssertNil(plain.frame(for: "Logo", .leaving(0.35)))  // its in starts at 1.8 of 2.1
+        let a = GTAnimation(type: "Fade", object: "x", duration: 1)
+        XCTAssertEqual(a.progress(at: 0.5), 0.5, accuracy: 1e-9)
+        XCTAssertLessThan(a.progress(at: 0.1), 0.1)
+    }
 }

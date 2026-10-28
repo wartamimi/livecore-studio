@@ -101,9 +101,19 @@ private final class DocumentDelegate: NSObject, XMLParserDelegate {
     private var current: Int?           // index in template.elements
     private var brushTarget = ""        // "Fill" or "Stroke"
     private var inAnimations = false
+    /// Depth of elements whose name or attributes say "Out" (an out storyboard).
+    private var outDepth = 0
+    private var stack: [Bool] = []
 
     func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?, qualifiedName: String?,
                 attributes a: [String: String] = [:]) {
+        // "Storyboard.OutAnimations", <Storyboard Name="Out">, <Storyboard Type="TransitionOut"> …
+        let marksOut = (name.hasPrefix("Storyboard") || inAnimations) && a["Object"] == nil
+            && (name.range(of: "out", options: .caseInsensitive) != nil
+                || a.values.contains { v in let l = v.lowercased(); return l.hasPrefix("out") || l.hasSuffix("out") })
+        stack.append(marksOut)
+        if marksOut { outDepth += 1 }
+        if name.hasPrefix("Storyboard."), name.hasSuffix("Animations") { inAnimations = true }
         switch name {
         case "Composition":
             let w = Double(a["Width"] ?? "") ?? 0, h = Double(a["Height"] ?? "") ?? 0
@@ -184,23 +194,23 @@ private final class DocumentDelegate: NSObject, XMLParserDelegate {
             template.elements[i].fill.stops.append((Double(a["Position"] ?? "") ?? 0, GTColor(hex: a["Color"] ?? "") ?? .clear))
         case "Bitmap":
             if let i = current, let src = a["Source"] { imageSources[i] = src }
-        case "Storyboard.Animations":
-            inAnimations = true
         default:
             if inAnimations, let obj = a["Object"] {
-                template.animations.append(GTAnimation(type: name, object: obj, delay: Double(a["Delay"] ?? "") ?? 0,
-                                                       duration: Double(a["Duration"] ?? "") ?? 0.5, direction: a["Direction"]))
+                let anim = GTAnimation(type: name, object: obj, delay: Double(a["Delay"] ?? "") ?? 0,
+                                       duration: Double(a["Duration"] ?? "") ?? 0.5, direction: a["Direction"])
+                if outDepth > 0 { template.outAnimations.append(anim) } else { template.animations.append(anim) }
             }
         }
     }
 
     func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
+        if stack.popLast() == true { outDepth -= 1 }
+        if name.hasPrefix("Storyboard."), name.hasSuffix("Animations") { inAnimations = false }
         switch name {
         case "Composition":
             if compositionIsSpace.popLast() == true, spaces.count > 1 { spaces.removeLast() }
         case "Rectangle", "Ellipse", "TextBlock", "Text3D", "Image": current = nil
         case _ where name.hasSuffix(".Fill") || name.hasSuffix(".Stroke"): brushTarget = ""
-        case "Storyboard.Animations": inAnimations = false
         default: break
         }
     }

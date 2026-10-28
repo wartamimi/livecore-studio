@@ -1108,4 +1108,12 @@
 "gt.fonts_not_found" = "Tidak ada di Google Fonts (pasang file font secara manual): %@.";
 "gt.fonts_failed" = "Gagal mengunduh (cek koneksi internet): %@.";
 "gt.fonts_banner" = "Font belum terpasang: %@ (sementara memakai font sistem).";
-"gt.fonts_file" = "Pasang file font…";
+"gt.fonts_file" = "Pasang font dari folder…";
+
+/* 0.41.0 */
+"gt.fonts_pick_message" = "Pilih folder font (sub-folder ikut dicari) atau file font. Font yang sudah terpasang dilewati.";
+"gt.fonts_install" = "Pasang";
+"gt.fonts_folder_result" = "Font: %@ dipasang, %@ sudah terpasang (dilewati).";
+"gt.play_out" = "Putar keluar";
+"gt.out_duration" = "keluar: %@ dtk";
+"overlay.anim.hold" = "Animasi title sendiri";

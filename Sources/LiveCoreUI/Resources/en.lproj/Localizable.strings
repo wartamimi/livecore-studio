@@ -1108,4 +1108,12 @@
 "gt.fonts_not_found" = "Not on Google Fonts (install the font file by hand): %@.";
 "gt.fonts_failed" = "Download failed (check the internet connection): %@.";
 "gt.fonts_banner" = "Fonts not installed: %@ (the system font is used meanwhile).";
-"gt.fonts_file" = "Install font file…";
+"gt.fonts_file" = "Install fonts from folder…";
+
+/* 0.41.0 */
+"gt.fonts_pick_message" = "Choose a folder of fonts (sub-folders are searched too) or font files. Fonts already installed are skipped.";
+"gt.fonts_install" = "Install";
+"gt.fonts_folder_result" = "Fonts: %@ installed, %@ already installed (skipped).";
+"gt.play_out" = "Play out";
+"gt.out_duration" = "out: %@ s";
+"overlay.anim.hold" = "Title's own animation";

@@ -18,6 +18,7 @@ struct GTTitleSheet: View {
     @State private var selected: String?
     @State private var images: [String: Data] = [:]
     @State private var playStart: Date?
+    @State private var playingOut = false
     @State private var dragBase: (x: Double, y: Double)?
 
     private var source: GTTitleSource? { model.gtTitleSource(input) }
@@ -92,14 +93,8 @@ struct GTTitleSheet: View {
     }
 
     private func pickFontFile() {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = true
-        panel.allowedContentTypes = [UTType(filenameExtension: "ttf"), UTType(filenameExtension: "otf"),
-                                     UTType(filenameExtension: "ttc")].compactMap { $0 }
-        guard panel.runModal() == .OK else { return }
-        for u in panel.urls { FontInstaller.installFile(u) }
+        model.installFontsFromPicker()
         fonts = NSFontManager.shared.availableFontFamilies
-        model.refreshGTTitles()
     }
 
     private func header(_ s: GTTitleSource) -> some View {
@@ -108,6 +103,7 @@ struct GTTitleSheet: View {
             Text(s.url.lastPathComponent).font(.caption).foregroundStyle(.secondary)
             Spacer()
             Text(L10n.t("gt.note_short")).font(.caption).foregroundStyle(.secondary)
+            Button(L10n.t("gt.fonts_file")) { pickFontFile() }
         }
     }
 
@@ -155,8 +151,7 @@ struct GTTitleSheet: View {
             let w = t.width * scale, h = t.height * scale
             ZStack(alignment: .topLeading) {
                 TimelineView(.animation(paused: playStart == nil)) { ctx in
-                    let elapsed = playStart.map { ctx.date.timeIntervalSince($0) }
-                    if let img = render(t, width: Int(w), height: Int(h), elapsed: elapsed.flatMap { $0 < t.inDuration + 0.5 ? $0 : nil }) {
+                    if let img = render(t, width: Int(w), height: Int(h), phase: phase(t, at: ctx.date)) {
                         Image(decorative: img, scale: 1).resizable().frame(width: w, height: h)
                     }
                 }
@@ -196,25 +191,39 @@ struct GTTitleSheet: View {
         .background(Color.gray.opacity(0.2))
     }
 
-    private func render(_ t: GTTemplate, width: Int, height: Int, elapsed: Double?) -> CGImage? {
+    private func phase(_ t: GTTemplate, at date: Date) -> GTPhase {
+        guard let start = playStart else { return .shown }
+        let e = date.timeIntervalSince(start)
+        if playingOut { return e < t.outDuration + 0.4 ? .leaving(e) : .shown }
+        return e < t.inDuration ? .entering(e) : .shown
+    }
+
+    private func play(out: Bool, _ t: GTTemplate) {
+        playingOut = out
+        let start = Date()
+        playStart = start
+        let total = (out ? applied(t).outDuration : applied(t).inDuration) + 0.6
+        DispatchQueue.main.asyncAfter(deadline: .now() + total) { if playStart == start { playStart = nil } }
+    }
+
+    private func render(_ t: GTTemplate, width: Int, height: Int, phase: GTPhase) -> CGImage? {
         guard width > 0, height > 0, let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                                          space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                                          bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue) else { return nil }
-        GTRenderer.draw(t, fields: texts, in: ctx, width: Double(width), height: Double(height), elapsed: elapsed)
+        GTRenderer.draw(t, fields: texts, in: ctx, width: Double(width), height: Double(height), phase: phase)
         return ctx.makeImage()
     }
 
     private func animationBar(_ t: GTTemplate) -> some View {
         HStack {
-            Button {
-                playStart = Date()
-                DispatchQueue.main.asyncAfter(deadline: .now() + applied(t).inDuration + 0.6) { playStart = nil }
-            } label: { Label(L10n.t("gt.play"), systemImage: "play.fill") }
+            Button { play(out: false, t) } label: { Label(L10n.t("gt.play"), systemImage: "play.fill") }
+            Button { play(out: true, t) } label: { Label(L10n.t("gt.play_out"), systemImage: "arrow.uturn.backward") }
             Text(L10n.t("gt.speed"))
             Slider(value: $speed, in: 0.25...3, step: 0.25).frame(width: 160)
             Text(String(format: "%.2g×", speed)).monospacedDigit().frame(width: 40, alignment: .leading)
             Spacer()
-            Text(L10n.f("gt.duration", String(format: "%.1f", applied(t).inDuration))).font(.caption).foregroundStyle(.secondary)
+            Text(L10n.f("gt.duration", String(format: "%.1f", applied(t).inDuration))
+                 + " · " + L10n.f("gt.out_duration", String(format: "%.1f", applied(t).outDuration))).font(.caption).foregroundStyle(.secondary)
         }
     }
 
