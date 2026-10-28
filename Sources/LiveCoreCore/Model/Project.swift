@@ -125,6 +125,8 @@ public struct ProjectTitleStyle: Codable, Equatable, Sendable {
     public var titleSize: Double?
     public var subtitleSize: Double?
     public var layout: String?
+    /// Template and advanced settings (0.34.0). nil = the 0.3.0 lower-third strip above.
+    public var design: TitleDesign?
     public init(title: String, subtitle: String, showBar: Bool = true,
                 textColor: ProjectColor = ProjectColor(r: 1, g: 1, b: 1),
                 barColor: ProjectColor = ProjectColor(r: 0.05, g: 0.27, b: 0.62, a: 0.88)) {

@@ -51,6 +51,14 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AI. Tes manual build 0.34.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-141 | Galeri template | Tambah Input › Title; buka tiap kategori; pilih beberapa template; ketik nama sendiri lalu ganti template | Gambar contoh tampil untuk 21 template; teks yang diketik tetap saat template diganti; pratinjau sama dengan hasil di Program |
+| T-142 | Setelan lanjutan | Ubah font, HURUF BESAR, jarak huruf, rata kanan, warna kotak, pil, posisi kanan atas + geser, ukuran 150%, outline 3, bayangan | Pratinjau berubah langsung; setelah Tambah/Terapkan hasil di Preview/Program sama; simpan & buka proyek → setelan kembali |
+| T-143 | Overlay & animasi | Pasang title template di overlay 1 (preset Lower third) dengan animasi slide kiri; nyalakan/matikan | Preset otomatis Full screen; title tampil di posisi template (tidak mengecil); masuk/keluar dengan slide |
+| T-144 | Title lama & dock | Buka proyek lama berisi title; edit title itu; lihat dock bawah | Title lama tampil seperti dulu sampai diedit, lalu menjadi template terdekat; dock tanpa teks status, tombol dan ⚙ berjarak, tooltip tombol menampilkan status |
+
 ## AH. Tes manual build 0.33.1
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

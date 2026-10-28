@@ -149,6 +149,11 @@
 62. **Duplikat input (0.26.0)**: satu kamera/capture card = satu input. Capture jendela dicocokkan dari aplikasi + judul
     jendela; jendela dengan judul yang berubah (mis. judul dokumen) dianggap jendela lain. Proyek lama yang sudah berisi
     duplikat tetap dibuka apa adanya.
+71. **Title Designer (0.34.0)**: title template dirender sekali per perubahan (bukan per frame), jadi belum ada
+    animasi per elemen; animasi masuk/keluar memakai animasi overlay (seluruh title bergerak bersama). Font yang tidak
+    terpasang di Mac lain (proyek dibuka di Mac lain) diganti font sistem. Title template berukuran seluruh output: di
+    Scene/Layer Designer letakkan full screen, bukan di kotak kecil, agar ukurannya benar. Mengedit title lama mengubahnya
+    menjadi template (posisi bisa sedikit bergeser dari strip lama).
 70. **MultiCorder & Recorder lanjutan (0.33.0)**: 0 frame terbuang dengan 4 ISO tidak bisa dijamin di semua Mac. Mac
     Apple silicon punya encoder hardware terbatas (M1/M2/M3 biasa satu media engine; Pro/Max dua; Ultra empat); bila
     penuh, macOS memakai encoder software dan frame bisa terbuang (terlihat sebagai "drop" di dock). Untuk 4 ISO 1080p

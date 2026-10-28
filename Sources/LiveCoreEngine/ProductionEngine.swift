@@ -422,9 +422,34 @@ public final class ProductionEngine {
     public func addTitle(_ style: TextSource.Style, id: InputID? = nil) -> InputID {
         let src = TextSource(id: id ?? InputID(UUID().uuidString), style: style, outputSize: settings.output.size)
         add(src)
-        // Titles default to the lower-third area when used as a layer or overlay.
-        control.mutate { $0.layers[src.id] = [Layer(source: src.id, rect: LayoutPreset.lowerThird.rect, scaleMode: .fit)] }
+        // Classic titles default to the lower-third area when used as a layer or overlay;
+        // template titles cover the whole output and place themselves.
+        control.mutate { $0.layers[src.id] = [Self.titleLayer(src)] }
         return src.id
+    }
+
+    private static func titleLayer(_ src: TextSource) -> Layer {
+        Layer(source: src.id, rect: src.isFullCanvas ? .full : LayoutPreset.lowerThird.rect, scaleMode: .fit)
+    }
+
+    /// Changes a title's text and design. When a classic title becomes a template title (or
+    /// back), its own layer and the overlays showing it switch between lower third and full screen.
+    public func updateTitle(_ id: InputID, style: TextSource.Style) {
+        guard let src = source(id) as? TextSource else { return }
+        let wasFull = src.isFullCanvas
+        src.update(style)
+        if wasFull != src.isFullCanvas {
+            control.mutate { st in
+                var layers = st.layers[id] ?? []
+                if layers.isEmpty { layers = [Self.titleLayer(src)] } else { layers[0].rect = Self.titleLayer(src).rect }
+                st.layers[id] = layers
+                for i in st.overlays.indices where st.overlays[i].source == id {
+                    if src.isFullCanvas, st.overlays[i].preset == .lowerThird { st.overlays[i].preset = .fullScreen }
+                    if !src.isFullCanvas, st.overlays[i].preset == .fullScreen { st.overlays[i].preset = .lowerThird }
+                }
+            }
+        }
+        renameInput(id, to: src.name)
     }
 
     /// Web page input. Titles-like default placement: full screen (overlay pages are made for it).
@@ -906,7 +931,13 @@ public final class ProductionEngine {
         control.mutate { st in
             guard let i = st.overlays.firstIndex(where: { $0.index == index }) else { return }
             st.overlays[i].source = source
-            st.overlays[i].preset = preset
+            // A template title already covers the whole output; squeezing it into the
+            // lower-third box would shrink it.
+            if preset == .lowerThird, let id = source, (st.sources[id] as? TextSource)?.isFullCanvas == true {
+                st.overlays[i].preset = .fullScreen
+            } else {
+                st.overlays[i].preset = preset
+            }
         }
     }
 
@@ -1513,6 +1544,7 @@ extension ProjectTitleStyle {
         titleSize = Double(s.titleSize)
         subtitleSize = Double(s.subtitleSize)
         layout = s.layout.rawValue
+        design = s.design
     }
     public var textStyle: TextSource.Style {
         var s = TextSource.Style(title: title, subtitle: subtitle)
@@ -1522,6 +1554,7 @@ extension ProjectTitleStyle {
         if let titleSize { s.titleSize = CGFloat(titleSize) }
         if let subtitleSize { s.subtitleSize = CGFloat(subtitleSize) }
         if let layout, let l = TextSource.Layout(rawValue: layout) { s.layout = l }
+        s.design = design
         return s
     }
 }

@@ -23,7 +23,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Input file video (loop, play/pause/restart) | Implemented | U (video) + M (audio) | M2: audio file masuk kanal mixer sendiri via MTAudioProcessingTap, resample ke 48 kHz |
 | Input gambar (PNG alpha, JPEG, HEIC…) | Implemented | M | |
 | Input warna | Implemented | M | |
-| Text / lower third (CoreText) | Implemented | M | 0.3.0: 3 layout (kotak, bar penuh, caption tengah), ukuran font, warna teks & bar; animasi masuk = fade overlay |
+| Text / lower third (CoreText) | Implemented | M | 0.3.0: 3 layout (kotak, bar penuh, caption tengah), ukuran font, warna teks & bar; animasi masuk = fade overlay. Sejak 0.34.0 diganti Title Designer (lihat bagian Title Designer 0.34.0); title lama tetap tampil sama sampai diedit |
 | Preview/Program terpisah | Implemented | L (logika) + M (render) | `Switcher`, `FramePlanner` teruji |
 | CUT | Implemented | L + U | |
 | AUTO: Dissolve, Fade (dip to black), Wipe | Implemented | L + U | |
@@ -161,11 +161,20 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Title Designer 0.34.0
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| 21 template (12 lower third, 6 judul, 3 pojok) | Implemented (0.34.0), belum dites di Mac pengguna | L (katalog, tata letak tiap template di 1080p/720p/potret tetap di dalam gambar; unit test) + CI `livecore-title-check`: semua template dirender CoreText sungguhan, gagal bila ada yang kosong; lembar contoh `title-templates.png` dilampirkan di rilis | Tambah Input › Title: galeri bergambar per kategori; ganti template tanpa kehilangan teks (T-141) |
+| Setelan lanjutan seperti vMix | Implemented (0.34.0), belum dites | L (batas nilai, simpan/baca, proyek lama; unit test) + kompilasi CI | Teks: font terpasang, ketebalan judul/subjudul, miring, HURUF BESAR, jarak huruf & baris, rata, warna judul/subjudul/label. Kotak: tampil/sembunyi, warna kotak/kotak kedua/aksen, sudut, pil, padding, lebar minimum. Posisi: 9 titik, geser X/Y, margin aman, ukuran 50–200%. Efek: outline, bayangan (blur, jarak, warna). Pratinjau langsung (T-142) |
+| Title layar penuh di overlay | Implemented (0.34.0), belum dites | kompilasi CI | Title template menutupi seluruh output (transparan); overlay yang memakai preset Lower third otomatis jadi Full screen. Animasi masuk/keluar tetap dari overlay (fade, slide, zoom) (T-143) |
+| Title lama (0.3.0–0.33) | Implemented (0.34.0) | L (konversi; unit test) | Tetap tampil sama; saat dibuka di editor menjadi template terdekat (strap klasik / bar selebar layar / headline) |
+| Belum ada | Planned | — | Simpan preset sendiri, gambar/logo di dalam title, field lebih dari 3, animasi per elemen, data dari file/CSV (data source vMix) |
+
 ## Dock bawah 0.33.1
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|
 | Nama MultiCorder → ISOCorder | Implemented (0.33.1) | L (label validasi; unit test) | Tombol ISOCORDER, tab Settings › ISOCorder; file proyek & setelan lama tetap terbaca (kunci internal tidak berubah) |
-| Dock menyesuaikan lebar jendela, teks tidak terpotong | Implemented (0.33.1), belum dites di Mac pengguna | kompilasi CI | ≥1660 pt: status 2 baris di samping tombol + chip OUT bernama; ≥1380 pt: status lebih sempit (mengecil sedikit bila panjang), chip "OUT n" saja; lebih sempit: status singkat di dalam tombol. Status lengkap dan sumber OUT di tooltip (T-140) |
+| Dock menyesuaikan lebar jendela, teks tidak terpotong | Diganti (0.34.0): teks status dihapus atas permintaan, tombol diberi jarak dari ⚙; chip OUT tanpa nama sumber di jendela sempit | kompilasi CI | ≥1660 pt: status 2 baris di samping tombol + chip OUT bernama; ≥1380 pt: status lebih sempit (mengecil sedikit bila panjang), chip "OUT n" saja; lebih sempit: status singkat di dalam tombol. Status lengkap dan sumber OUT di tooltip (T-140) |
 
 ## MultiCorder terpisah & Recorder lanjutan 0.33.0
 | Fitur | Status | Verifikasi | Catatan |
