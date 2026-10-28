@@ -365,4 +365,18 @@ final class M37Tests: XCTestCase {
         try Data("not a zip".utf8).write(to: dir.appendingPathComponent("bad.xlsx"))
         XCTAssertThrowsError(try XLSXReader.table(at: dir.appendingPathComponent("bad.xlsx")))
     }
+
+    func testCompanionRoutesForPTZAndDataRows() {
+        func route(_ path: String, _ q: [String: String], _ m: String = "POST") -> RemoteRoute {
+            RemoteRouter.route(HTTPRequest(method: m, path: path, query: q))
+        }
+        XCTAssertEqual(route("/api/ptz/preset", ["input": "2", "preset": "3"]), .command(.ptzPreset(input: 2, preset: 3)))
+        XCTAssertEqual(route("/api/ptz/preset", ["input": "2", "preset": "9"]), .badRequest("preset"))
+        XCTAssertEqual(route("/api/ptz/home", ["input": "4"]), .command(.ptzHome(input: 4)))
+        XCTAssertEqual(route("/api/data/next", ["input": "5"]), .command(.dataRow(input: 5, delta: 1)))
+        XCTAssertEqual(route("/api/data/previous", ["input": "5"]), .command(.dataRow(input: 5, delta: -1)))
+        XCTAssertEqual(route("/api/data/row", ["input": "5", "row": "3"]), .command(.dataRowSet(input: 5, row: 3)))
+        XCTAssertEqual(route("/api/data/row", ["input": "5", "row": "0"]), .badRequest("row"))
+        XCTAssertEqual(route("/api/data/next", ["input": "5"], "GET"), .methodNotAllowed)
+    }
 }

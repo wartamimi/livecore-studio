@@ -149,6 +149,29 @@
 62. **Duplikat input (0.26.0)**: satu kamera/capture card = satu input. Capture jendela dicocokkan dari aplikasi + judul
     jendela; jendela dengan judul yang berubah (mis. judul dokumen) dianggap jendela lain. Proyek lama yang sudah berisi
     duplikat tetap dibuka apa adanya.
+79. **Autosave & pemulihan (0.37.0)**: simpanan otomatis tiap 30 detik, jadi perubahan hingga 30 detik terakhir sebelum crash
+    bisa hilang. Pemulihan hanya mengembalikan susunan produksi (input, layer, audio, overlay); rekaman yang sedang berjalan
+    saat crash tidak dilanjutkan (file MOV tetap bisa diputar sampai fragmen terakhir, MP4 tidak). Belum dites di Mac.
+80. **Undo (0.37.0)**: undo input mencakup tutup, tambah dan ganti nama input (maks 100 langkah). Pengaturan mixer,
+    overlay, transisi dan setelan aplikasi belum ikut undo. Undo di editor hanya selama editor terbuka.
+81. **Pre-flight (0.37.0)**: uji koneksi hanya membuka TCP ke server RTMP (tanpa mengirim key), jadi key yang salah tidak
+    terdeteksi; tujuan SRT tidak diuji (UDP). Perkiraan disk memakai bitrate rata-rata (ProRes diperkirakan). Hening/
+    clipping diukur dari master 3 detik saja.
+82. **LUFS & ducking (0.37.0)**: LUFS diukur pada master setelah limiter (bukan per bus). Ducking memakai puncak sinyal
+    pemicu (bukan deteksi suara), jadi suara keras lain di mic juga menurunkan musik; atur ambang. Belum dites di Mac.
+83. **Sumber data title (0.37.0)**: Excel hanya sheet pertama, nilai saja (rumus tampil sebagai hasil terakhir yang
+    tersimpan, format angka/tanggal Excel tidak diterapkan). Google Sheets harus dibagikan "siapa saja yang memiliki link".
+    Hanya mengisi judul dan subjudul.
+84. **PTZ (0.37.0)**: perintah dikirim tanpa menunggu balasan kamera; posisi kamera tidak dibaca balik. Belum dites dengan
+    kamera PTZ nyata (merek berbeda bisa memakai port/protokol berbeda: coba VISCA over IP 52381, UDP 1259, TCP 5678).
+85. **SRT (0.37.0)**: hanya output (caller) tanpa enkripsi passphrase; listener/rendezvous dan input SRT belum ada. Kontrol
+    kemacetan sederhana (tanpa pacing bandwidth); di jaringan sangat buruk paket lama dibuang setelah latency + 1 dtk.
+86. **Mode Operator (0.37.0)**: hanya menyembunyikan tombol/menu; shortcut keyboard dan Web Controller tetap bisa
+    menjalankan semua perintah.
+87. **Uji soak di CI (0.37.0)**: berjalan 90 detik di Mac virtual GitHub tanpa kamera/mic nyata; frame drop di CI tidak
+    mewakili Mac pengguna. Soak 2 jam dan cabut LAN/kamera tetap harus diuji manual (T-168, T-169).
+88. **Layar sambutan (0.37.0)**: muncul saat app dibuka tanpa input; bisa dimatikan di layar itu. Template memakai perangkat
+    yang tersambung saat itu (maks 3 kamera).
 78. **Fullscreen halaman (0.36.1)**: ditiru dengan CSS, bukan fullscreen asli WebKit. Situs yang memeriksa fullscreen dengan
     cara lain, atau yang player-nya memakai `position: fixed` di dalam elemen ber-transform yang tidak bisa direset, bisa tampil
     tidak penuh; pakai opsi "Video saja" sebagai cadangan. Belum dites di Mac.
