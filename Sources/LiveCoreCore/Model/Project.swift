@@ -104,6 +104,8 @@ public struct ProjectInput: Codable, Equatable, Sendable {
     /// Colour label / group in the inputs panel, and a minimized tile (since 0.33.0).
     public var colorTag: InputColorTag?
     public var minimized: Bool?
+    /// PTZ camera control (since 0.37.0).
+    public var ptz: PTZConfig?
 
     public init(id: InputID, name: String, source: ProjectSource, layers: [Layer] = [], chromaKey: ChromaKey? = nil) {
         self.id = id; self.name = name; self.source = source
@@ -129,6 +131,8 @@ public struct ProjectTitleStyle: Codable, Equatable, Sendable {
     public var layout: String?
     /// Template and advanced settings (0.34.0). nil = the 0.3.0 lower-third strip above.
     public var design: TitleDesign?
+    /// Rows of a CSV / Google Sheets table filling the text (since 0.37.0).
+    public var dataSource: TitleDataSource?
     public init(title: String, subtitle: String, showBar: Bool = true,
                 textColor: ProjectColor = ProjectColor(r: 1, g: 1, b: 1),
                 barColor: ProjectColor = ProjectColor(r: 0.05, g: 0.27, b: 0.62, a: 0.88)) {
@@ -447,6 +451,8 @@ public struct ProjectAudio: Codable, Equatable, Sendable {
     public var music: [ProjectMusic]?
     /// Test tone generators (since 0.16.0). Their mixer settings are in `channel`.
     public var tones: [ProjectTone]?
+    /// Automatic ducking under the MC (since 0.37.0).
+    public var ducking: DuckingSettings?
     public init() {}
 }
 
@@ -480,6 +486,9 @@ public struct ProjectAudioChannel: Codable, Equatable, Sendable {
     public var delayMs: Float?
     /// Locked against closing from the mixer (since 0.21.0).
     public var locked: Bool?
+    /// Ducking (since 0.37.0): this channel's level turns the ducked channels down / it is turned down.
+    public var duckTrigger: Bool?
+    public var duckTarget: Bool?
     public init(deviceUniqueID: String? = nil, inputID: InputID? = nil, name: String) {
         self.deviceUniqueID = deviceUniqueID; self.inputID = inputID; self.name = name
     }
