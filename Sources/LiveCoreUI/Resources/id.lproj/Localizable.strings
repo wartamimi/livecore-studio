@@ -906,7 +906,7 @@
 "preflight.audio_clipping" = "Master mencapai 0 dBFS (clipping). Turunkan gain.";
 "preflight.audio_ok" = "Audio OK (puncak %@ dBFS).";
 "preflight.stream_none" = "Tidak ada tujuan stream yang aktif.";
-"preflight.stream_url" = "\"%@\": alamat server kosong atau bukan rtmp:// / rtmps://.";
+"preflight.stream_url" = "\"%@\": alamat server kosong atau bukan rtmp://, rtmps:// atau srt://host:port.";
 "preflight.stream_key" = "\"%@\": stream key belum disimpan.";
 "preflight.server_unreachable" = "Server stream tidak dapat dihubungi. Periksa koneksi internet.";
 "preflight.server_ok" = "Server stream terjangkau (%@ ms).";
@@ -1015,3 +1015,4 @@
 "ptz.store_mode" = "Simpan";
 "ptz.store_here" = "Simpan posisi sekarang di sini";
 "ptz.names" = "Nama preset";
+"stream.srt_hint" = "SRT: isi srt://host:port (boleh ditambah ?streamid=…&latency=ms). Kolom key, jika diisi, dipakai sebagai Stream ID. Enkripsi passphrase belum didukung.";

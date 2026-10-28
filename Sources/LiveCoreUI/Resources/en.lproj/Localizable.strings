@@ -906,7 +906,7 @@
 "preflight.audio_clipping" = "The master reached 0 dBFS (clipping). Lower the gain.";
 "preflight.audio_ok" = "Audio OK (peak %@ dBFS).";
 "preflight.stream_none" = "No stream destination is enabled.";
-"preflight.stream_url" = "\"%@\": the server address is missing or not rtmp:// / rtmps://.";
+"preflight.stream_url" = "\"%@\": the server address is missing or not rtmp://, rtmps:// or srt://host:port.";
 "preflight.stream_key" = "\"%@\": no stream key saved.";
 "preflight.server_unreachable" = "A stream server could not be reached. Check the internet connection.";
 "preflight.server_ok" = "Stream servers reachable (%@ ms).";
@@ -1015,3 +1015,4 @@
 "ptz.store_mode" = "Store";
 "ptz.store_here" = "Store current position here";
 "ptz.names" = "Preset names";
+"stream.srt_hint" = "SRT: enter srt://host:port (optionally ?streamid=…&latency=ms). The key field, if filled, is used as the Stream ID. Passphrase encryption is not supported yet.";
