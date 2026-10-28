@@ -51,6 +51,18 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AR. Tes manual build 0.42.0
+
+| ID | Area | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-202 | Vertikal | Klik "9:16"; kamera dengan 1–2 orang di Program; pembicara pindah ke kiri/kanan | Monitor 9:16 menampilkan orang; crop bergeser halus, tidak goyang saat orang bergerak sedikit |
+| T-203 | Mode crop | Ganti Ikuti ke Tengah / Manual dan geser posisi | Crop ke tengah / ke posisi slider |
+| T-204 | Rekam vertikal | Centang "Rekam file vertikal", tekan RECORD 1 menit | Dua file: biasa dan "… - Vertical" (9:16) dengan suara; keduanya bisa diputar |
+| T-205 | Stream vertikal | Isi URL + key (mis. YouTube kedua / TikTok), Mulai stream vertikal bersama stream utama | Kedua stream live bersamaan; FPS Program tetap stabil |
+| T-206 | Rundown | RUNDOWN › Template Pernikahan › Ubah: isi input, title, musik untuk 3 segmen › MULAI › BERIKUTNYA | Tiap segmen: input ke Program, title lama turun dan title baru naik, musik ganti/berhenti; hitung mundur jalan |
+| T-207 | Lanjut otomatis | Segmen 1 menit dengan "Mulai segmen berikutnya saat waktu habis" | Segmen berikutnya mulai sendiri setelah 1 menit |
+| T-208 | Simpan | Simpan proyek, buka lagi | Rundown kembali lengkap |
+
 ## AQ. Tes manual build 0.41.0
 
 | ID | Area | Langkah | Hasil yang diharapkan |

@@ -23,6 +23,8 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
     public var multiCorder: MultiCorderConfig?
     /// Names given to colour groups in the inputs panel, by colour (added in 0.33.0).
     public var groupNames: [String: String]?
+    /// Event rundown (added in 0.42.0).
+    public var rundown: Rundown?
 
     public init(version: Int = ProjectDocument.currentVersion, settings: ProductionSettings = ProductionSettings(),
                 inputs: [ProjectInput] = [], overlays: [ProjectOverlay] = [], audio: ProjectAudio = ProjectAudio(),
