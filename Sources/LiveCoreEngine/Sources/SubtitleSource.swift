@@ -155,9 +155,11 @@ public final class SubtitleSource: VideoSource {
             let maxW = Double(w) * 0.84
             let size = str.boundingRect(with: CGSize(width: maxW, height: .greatestFiniteMagnitude),
                                         options: [.usesLineFragmentOrigin], attributes: attrs).size
-            let pad = 14 * scale
-            let box = CGRect(x: (Double(w) - size.width) / 2 - pad, y: s.bottomMargin * Double(h) - pad / 2,
-                             width: size.width + 2 * pad, height: size.height + pad)
+            let pad = CGFloat(14 * scale)
+            let bw: CGFloat = size.width, bh: CGFloat = size.height
+            let bx: CGFloat = (CGFloat(w) - bw) / 2 - pad
+            let by: CGFloat = CGFloat(s.bottomMargin) * CGFloat(h) - pad / 2
+            let box = CGRect(x: bx, y: by, width: bw + 2 * pad, height: bh + pad)
             ctx.setFillColor(CGColor(gray: 0, alpha: s.boxOpacity))
             ctx.addPath(CGPath(roundedRect: box, cornerWidth: 10 * scale, cornerHeight: 10 * scale, transform: nil))
             ctx.fillPath()
