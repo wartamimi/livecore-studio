@@ -63,8 +63,13 @@ public struct LoudnessMeter {
         z > 0 ? -0.691 + 10 * log10(z) : silence
     }
 
+    /// Starts measuring again (no allocation: safe on the audio thread).
     public mutating func reset() {
-        self = LoudnessMeter()
+        shelfL = Self.shelf(); shelfR = Self.shelf(); hpL = Self.highPass(); hpR = Self.highPass()
+        for i in steps.indices { steps[i] = 0 }
+        for i in binCounts.indices { binCounts[i] = 0; binEnergy[i] = 0 }
+        stepIndex = 0; stepsFilled = 0; acc = 0; accFrames = 0
+        momentary = Self.silence; shortTerm = Self.silence; integrated = Self.silence; integratedBlocks = 0
     }
 
     public mutating func process(left: UnsafePointer<Float>, right: UnsafePointer<Float>, frames: Int) {

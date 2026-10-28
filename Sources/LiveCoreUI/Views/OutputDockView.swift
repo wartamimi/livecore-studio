@@ -55,6 +55,8 @@ struct OutputDockView: View {
                     .padding(12).frame(width: 340)
                 }
             }
+            // Operator mode keeps the dock to RECORD and STREAM unless the others are running.
+            if !model.isOperatorMode || model.isMultiCorderRunning {
             group {
                 mainButton("ISOCORDER", icon: model.isMultiCorderRunning ? "stop.circle.fill" : "square.grid.2x2",
                            status: L10n.t("multicorder.button_help") + "\n" + multiCorderStatus,
@@ -70,6 +72,7 @@ struct OutputDockView: View {
                     .padding(12).frame(width: 440)
                 }
             }
+            }
             group {
                 mainButton(L10n.t("dock.stream"), icon: "dot.radiowaves.left.and.right",
                            status: streamStatus, color: Theme.program, active: model.isStreamingActive) {
@@ -84,6 +87,7 @@ struct OutputDockView: View {
                     .padding(12).frame(width: 360)
                 }
             }
+            if !model.isOperatorMode || model.externalActive {
             group {
                 mainButton(L10n.t("dock.external"), icon: "rectangle.portrait.and.arrow.right",
                            status: L10n.t("dock.external_help") + "\n" + externalStatus, color: Theme.accent, active: model.externalActive) {
@@ -92,6 +96,7 @@ struct OutputDockView: View {
                 gear($showExternal, help: L10n.t("dock.external_settings")) {
                     ExternalSettingsView().padding(12).frame(width: 640)
                 }
+            }
             }
             Spacer(minLength: 0)
             OutputChips(showNames: chipNames)

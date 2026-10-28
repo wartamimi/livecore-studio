@@ -76,6 +76,14 @@ public final class AudioMixerEngine {
     public let auxEncodeRingsR: [SPSCFloatRingBuffer]
     public let anchor = ClockAnchor()
     public let programOverflows = AtomicCounter()
+    /// Automatic ducking (music down while the MC speaks): settings and current reduction.
+    public let ducking = DuckingControls()
+    /// Program loudness (EBU R128, LUFS) measured after the limiter; -inf until there is audio.
+    public let lufsMomentary = AtomicFloat(-.infinity)
+    public let lufsShortTerm = AtomicFloat(-.infinity)
+    public let lufsIntegrated = AtomicFloat(-.infinity)
+    /// Incremented by the UI to restart the integrated measurement.
+    public let loudnessResets = AtomicCounter()
     public private(set) var isRunning = false
     public var onError: ((String) -> Void)?
 
@@ -93,6 +101,14 @@ public final class AudioMixerEngine {
     /// The render thread writes an aux ring only while an output consumes it.
     private let auxRingActive: [AtomicBool]
     private var auxOutputs: [AuxOutput?] = Array(repeating: nil, count: AudioMixerEngine.auxCount)
+    // Render-thread-only state for ducking and loudness.
+    private var ducker = Ducker()
+    private var duckFrom: Float = 1
+    private var duckTo: Float = 1
+    private var duckNext: Float = 1
+    private var triggerPeak: Float = 0
+    private var loudness = LoudnessMeter()
+    private var loudnessResetsSeen: UInt64 = 0
 
     // Pre-allocated scratch (render thread only)
     private let chL, chR, progL, progR, monL, monR: UnsafeMutablePointer<Float>
@@ -225,11 +241,18 @@ public final class AudioMixerEngine {
         // Channel list is only mutated under graphLock by the main thread. If we lose the race
         // (rare: add/remove in progress) this block is rendered silent instead of blocking.
         soloFlag = false
+        duckFrom = duckTo
+        duckTo = duckNext
+        triggerPeak = 0
         _ = graphLock.withTryLock { () -> Bool in
             for ch in channels { mixChannel(ch, frames: frames) }
             return true
         }
         let soloActive = soloFlag
+        let duckDB = ducker.step(triggerPeakDB: AudioMath.linearToDB(triggerPeak), seconds: Float(frames) / Float(sampleRate),
+                                 settings: ducking.settings)
+        duckNext = AudioMath.dbToLinear(duckDB)
+        ducking.reductionDB.value = duckDB
 
         // Master fader + protective limiter on the program bus.
         let masterGain = master.muted.value ? 0 : AudioMath.dbToLinear(master.faderDB.value)
@@ -238,6 +261,12 @@ public final class AudioMixerEngine {
         master.peakL.storeMax(AudioMath.peak(progL, count: frames))
         master.peakR.storeMax(AudioMath.peak(progR, count: frames))
         master.gainReductionDB.value = limiterEnabled.value ? limiter.gainReductionDB : 0
+        let resets = loudnessResets.value
+        if resets != loudnessResetsSeen { loudnessResetsSeen = resets; loudness.reset() }
+        loudness.process(left: progL, right: progR, frames: frames)
+        lufsMomentary.value = Float(loudness.momentary)
+        lufsShortTerm.value = Float(loudness.shortTerm)
+        lufsIntegrated.value = Float(loudness.integrated)
 
         // Aux buses: fader/mute, meters, and the ring of the bus's own output device.
         for b in 0..<Self.auxCount {
@@ -299,6 +328,15 @@ public final class AudioMixerEngine {
         }
         ch.driftPPM.value = Float((ch.drift.ratio - 1) * 1_000_000)
         ch.dsp.process(left: chL, right: chR, frames: frames)
+        if ch.controls.duckTrigger.value {
+            triggerPeak = max(triggerPeak, AudioMath.peak(chL, count: frames), AudioMath.peak(chR, count: frames))
+        }
+        if ch.controls.duckTarget.value, duckFrom != 1 || duckTo != 1 {
+            // Ramp across the block from the previous gain to this block's gain (no zipper noise).
+            let step = (duckTo - duckFrom) / Float(frames)
+            var g = duckFrom
+            for i in 0..<frames { g += step; chL[i] *= g; chR[i] *= g }
+        }
         if ch.controls.toProgram.value {
             for i in 0..<frames { progL[i] += chL[i]; progR[i] += chR[i] }
         }

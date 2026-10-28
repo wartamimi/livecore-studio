@@ -7,6 +7,7 @@ import ImageIO
 import LiveCoreCore
 import LiveCoreEngine
 import LiveCoreRemote
+import LiveCoreServices
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -141,6 +142,7 @@ public final class AppModel: ObservableObject {
             syncAuxFromEngine()
             startMIDI()
             startRemoteIfEnabled()
+            startAutosave()
         } catch {
             startupError = error.localizedDescription
             return
@@ -150,6 +152,7 @@ public final class AppModel: ObservableObject {
 
     public func shutdown() {
         statsTimer?.invalidate()
+        endAutosaveSession()
         outputRouter?.stopAll()
         midi.stop()
         remoteServer?.stop()
@@ -185,6 +188,7 @@ public final class AppModel: ObservableObject {
         e.onInputsChange = { [weak self] list in
             guard let self else { return }
             self.inputs = list
+            self.noteInputsChanged(list)
             let ids = Set(list.map(\.id))
             self.thumbnailFeeds = self.thumbnailFeeds.filter { ids.contains($0.key) }
             self.outputInputsChanged()
@@ -213,6 +217,7 @@ public final class AppModel: ObservableObject {
 
     public func report(_ message: String) {
         Log.app.error("\(message, privacy: .public)")
+        FileLog.shared.error(message)
         if errors.last?.message == message { return }
         errors.append(ErrorItem(message: message))
         if errors.count > 5 { errors.removeFirst() }
@@ -227,6 +232,7 @@ public final class AppModel: ObservableObject {
         guard let e = engine else { return }
         meters.update(channels: e.audioChannels, master: e.mixer.master, aux: e.mixer.aux)
         tickCount += 1
+        if tickCount % 3 == 0 { meters.updateLoudness(e.mixer) }
         if tickCount % 30 == 0 { performance = e.samplePerformance(); refreshExternalStatus() }
         if remoteServer != nil, tickCount % 3 == 0 { pushRemoteState(clients: tickCount % 30 == 0) }
         if remoteServer != nil, tickCount % 10 == 0 { pushRemoteFrames() }
@@ -267,5 +273,31 @@ public final class AppModel: ObservableObject {
     @Published public var midiLearning: ControlAction?
     @Published public internal(set) var midiSources: [String] = []
     @Published public internal(set) var lastMIDI: String = ""
+
+    /// Autosave / crash recovery (0.37.0).
+    var autosave: AutosaveStore?
+    var autosaveTimer: Timer?
+    let launchUptime = ProcessInfo.processInfo.systemUptime
+    /// Undo / redo of input changes, and the inputs known before the last change.
+    var undoSteps: [InputUndo] = []
+    var redoSteps: [InputUndo] = []
+    var undoSuspended = 0
+    var knownInputs: Set<InputID> = []
+    /// The open editor's undo (Layer Designer), used by Edit › Undo.
+    public var editorUndo: EditorUndo?
+    /// Operator (show) or Advanced (set-up) screen.
+    @Published public internal(set) var uiMode: UIMode = AppModel.loadUIMode()
+    /// Title data sources: loaded tables, load errors and link refresh timers, per title input.
+    @Published public internal(set) var dataTables: [InputID: CSVTable] = [:]
+    @Published public internal(set) var dataErrors: [InputID: String] = [:]
+    var dataTimers: [InputID: Timer] = [:]
+    /// PTZ: last connection problem per camera input (nil = fine).
+    @Published public internal(set) var ptzStatus: [InputID: String] = [:]
+    /// Panels opened from the menus.
+    @Published public var showPreflight = false
+    @Published public var showOutputsPanel = false
+    @Published public var showTemplates = false
+    /// True while the crash-recovery question is pending (the welcome screen waits for it).
+    public internal(set) var recoveryPending = false
 }
 #endif

@@ -159,7 +159,7 @@ extension AppModel {
 
     public func remove(_ id: InputID) {
         guard !isLocked(id) else { report(L10n.t("lock.input_locked")); return }
-        engine?.removeInput(id)
+        removeWithUndo(id)
     }
 
     // MARK: Locks (protection against accidental changes)
@@ -394,7 +394,7 @@ extension AppModel {
     public func setChromaKey(_ key: ChromaKey, for id: InputID) { engine?.setChromaKey(key, for: id) }
     public func rename(_ id: InputID, _ name: String) {
         guard !isLocked(id) else { report(L10n.t("lock.input_locked")); return }
-        engine?.renameInput(id, to: name)
+        renameWithUndo(id, name)
     }
     public func layers(of id: InputID) -> [Layer] { engine?.layers(of: id) ?? [] }
     public func setLayers(_ layers: [Layer], of id: InputID) { engine?.setLayers(layers, of: id) }

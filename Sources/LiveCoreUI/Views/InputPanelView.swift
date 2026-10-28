@@ -29,6 +29,8 @@ struct InputPanelView: View {
     @State private var editingTicker: InputID?
     @State private var showSlideshowSheet = false
     @State private var editingSlideshow: InputID?
+    @State private var editingData: InputID?
+    @State private var editingPTZ: InputID?
     @State private var collapsedGroups: Set<String> = []
     @State private var renamingGroup: InputColorTag?
     @State private var groupNameText = ""
@@ -114,6 +116,8 @@ struct InputPanelView: View {
         .sheet(item: $editingTicker) { id in TitleSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showSlideshowSheet) { SlideshowSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingSlideshow) { id in SlideshowSheet(editing: id).environmentObject(model) }
+        .sheet(item: $editingData) { id in DataSourceSheet(input: id).environmentObject(model) }
+        .sheet(item: $editingPTZ) { id in PTZSheet(input: id).environmentObject(model) }
         .alert(L10n.f("inputs.close_confirm", model.inputs.first { $0.id == closing }?.name ?? ""),
                isPresented: Binding(get: { closing != nil }, set: { if !$0 { closing = nil } })) {
             Button(L10n.t("inputs.close"), role: .destructive) { if let id = closing { model.remove(id) }; closing = nil }
@@ -194,22 +198,31 @@ struct InputPanelView: View {
                         Button(d.name) { model.addCamera(d) }
                     }
                 }
-                Button(L10n.t("capturecard.add_menu")) { showCaptureCard = true }
+                if !model.isOperatorMode { Button(L10n.t("capturecard.add_menu")) { showCaptureCard = true } }
             }
-            Button(L10n.t("scene.new")) { if let id = model.addScene() { editingScene = id } }
-            Button(L10n.t("frame.add")) { showFrameSheet = true }
-            Button(L10n.t("media.add")) { model.addMedia() }
-            Button(L10n.t("media.add_playlist")) { model.addMediaPlaylist() }
-            Button(L10n.t("inputs.image")) { model.addImage() }
-            Button(L10n.t("slideshow.add")) { showSlideshowSheet = true }
-            Button(L10n.t("presentation.add")) { model.addPresentation() }
-            // Titles, lower thirds and running text are all made in the Title Designer.
-            Button(L10n.t("inputs.title_menu")) { showTitleSheet = true }
-            Button(L10n.t("capture.add")) { showCaptureSheet = true }
-            Button(L10n.t("ndi.add")) { showNDISheet = true }
-            Button(L10n.t("browser.add")) { showBrowserSheet = true }
-            Button(L10n.t("timer.add")) { showTimerSheet = true }
-            Button(L10n.t("inputs.colorbars")) { model.addColorBars() }
+            // Media files grouped in one place: video, video playlist, image, slideshow, presentation.
+            Section(L10n.t("inputs.media_group")) {
+                Button(L10n.t("media.add")) { model.addMedia() }
+                Button(L10n.t("media.add_playlist")) { model.addMediaPlaylist() }
+                Button(L10n.t("inputs.image")) { model.addImage() }
+                Button(L10n.t("slideshow.add")) { showSlideshowSheet = true }
+                Button(L10n.t("presentation.add")) { model.addPresentation() }
+            }
+            Section(L10n.t("inputs.graphics_group")) {
+                // Titles, lower thirds and running text are all made in the Title Designer.
+                Button(L10n.t("inputs.title_menu")) { showTitleSheet = true }
+                Button(L10n.t("timer.add")) { showTimerSheet = true }
+                Button(L10n.t("frame.add")) { showFrameSheet = true }
+                Button(L10n.t("scene.new")) { if let id = model.addScene() { editingScene = id } }
+            }
+            Section(L10n.t("inputs.other_group")) {
+                Button(L10n.t("browser.add")) { showBrowserSheet = true }
+                if !model.isOperatorMode {
+                    Button(L10n.t("capture.add")) { showCaptureSheet = true }
+                    Button(L10n.t("ndi.add")) { showNDISheet = true }
+                    Button(L10n.t("inputs.colorbars")) { model.addColorBars() }
+                }
+            }
             Menu(L10n.t("inputs.color")) {
                 Button("Black") { model.addColor(.black, name: "Black") }
                 Button("White") { model.addColor(.white, name: "White") }
@@ -250,14 +263,30 @@ struct InputPanelView: View {
                 Button(p.rawValue) { model.addPiP(source: info.id, preset: p) }
             }
         }
-        if info.kind == .camera { Button(L10n.t("capturecard.edit_menu")) { editingCaptureCard = info.id } }
+        if info.kind == .camera && !model.isOperatorMode { Button(L10n.t("capturecard.edit_menu")) { editingCaptureCard = info.id } }
         if info.kind != .scene { Button(L10n.t("adjust.menu")) { adjusting = info.id } }
         if info.kind == .camera || info.kind == .videoFile || info.kind == .image || info.kind == .ndi {
             Button(L10n.t("key.menu")) { keying = info.id }
         }
-        if info.kind == .text { Button("Edit Title…") { editingTitle = info.id } }
+        if info.kind == .text {
+            Button(L10n.t("titled.edit_menu")) { editingTitle = info.id }
+            Button(L10n.t("data.menu")) { editingData = info.id }
+            if model.dataSource(info.id) != nil {
+                Button(L10n.t("data.next")) { model.stepDataRow(info.id, by: 1) }
+                Button(L10n.t("data.previous")) { model.stepDataRow(info.id, by: -1) }
+                if let t = model.dataTables[info.id], let ds = model.dataSource(info.id), !t.rows.isEmpty {
+                    Menu(L10n.f("data.row_menu", t.label(row: ds.row))) {
+                        ForEach(t.rows.indices.prefix(200), id: \.self) { i in
+                            Button((i == ds.row ? "▶ " : "") + t.label(row: i)) { model.setDataRow(info.id, i) }
+                        }
+                    }
+                }
+                Button(L10n.t("data.reload")) { model.loadDataSource(info.id) }
+            }
+        }
+        if info.kind == .camera { Button(L10n.t("ptz.menu")) { editingPTZ = info.id } }
         if info.kind == .browser {
-            Button(L10n.t("browser.interact")) { model.editBrowserPage(info.id) }
+            Button(L10n.experimental("browser.interact")) { model.editBrowserPage(info.id) }
             if let b = model.browserSource(info.id) {
                 Toggle(L10n.t("browser.freeze"), isOn: Binding(get: { b.freezeWhileEditing },
                                                                set: { b.freezeWhileEditing = $0; model.objectWillChange.send() }))
@@ -295,7 +324,7 @@ struct InputPanelView: View {
                 }
             }
             if p.canPlayLive {
-                Toggle(L10n.t("presentation.live"), isOn: Binding(get: { p.prefersLive },
+                Toggle(L10n.experimental("presentation.live"), isOn: Binding(get: { p.prefersLive },
                                                                    set: { p.setLive($0); model.objectWillChange.send() }))
             }
             Menu(L10n.t("presentation.background")) {

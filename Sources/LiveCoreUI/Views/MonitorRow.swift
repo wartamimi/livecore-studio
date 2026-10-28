@@ -14,7 +14,7 @@ struct MonitorRow: View {
             MonitorView(title: L10n.t("monitor.preview"), color: Theme.preview, feed: model.previewFeed,
                         inputName: name(model.switcher.preview), live: false, designer: designer)
                 .onChange(of: model.switcher.preview) { id in if designer.active { designer.load(model, input: id) } }
-                .onChange(of: designer.active) { on in if on { designer.load(model, input: model.switcher.preview) } }
+                .onChange(of: designer.active) { on in if on { designer.load(model, input: model.switcher.preview) } else { model.editorUndo = nil } }
             TransitionControls().frame(width: 170)
             MonitorView(title: L10n.t("monitor.program"), color: Theme.program, feed: model.programFeed,
                         inputName: name(model.switcher.transition?.to ?? model.switcher.program),

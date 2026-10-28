@@ -13,12 +13,24 @@ struct TopBarView: View {
             Text(L10n.t("app.name")).font(.system(size: 15, weight: .heavy))
             Text("\(model.settings.output.label)").font(.system(size: 11)).foregroundStyle(Theme.textDim)
             Spacer()
+            Picker("", selection: Binding(get: { model.uiMode }, set: { model.setUIMode($0) })) {
+                Text(L10n.t("mode.operator")).tag(AppModel.UIMode.operatorMode)
+                Text(L10n.t("mode.advanced")).tag(AppModel.UIMode.advanced)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: 170)
+            .help(L10n.t("mode.help"))
+            Button { model.showPreflight = true } label: { Label(L10n.t("preflight.button"), systemImage: "checklist") }
+                .buttonStyle(StudioButtonStyle())
+                .fixedSize()
+                .help(L10n.t("preflight.help"))
+            Button { model.showOutputsPanel = true } label: { Label(L10n.t("outputs.button"), systemImage: "square.stack.3d.up") }
+                .buttonStyle(StudioButtonStyle())
+                .fixedSize()
+                .help(L10n.t("outputs.help"))
             FullscreenGroup()
-            stat(L10n.t("top.cpu"), String(format: "%.0f%%", model.performance.cpuPercentOfMachine),
-                 warn: model.performance.cpuPercentOfMachine > 70)
-            stat(L10n.t("top.gpu"), String(format: "%.1f ms", model.performance.gpuFrameMs),
-                 warn: model.performance.gpuFrameMs > 1000 / Double(max(model.settings.output.frameRate, 1)) * 0.8)
-            stat(L10n.t("top.mem"), String(format: "%.0f MB", model.performance.memoryMB), warn: false)
+            if !model.isOperatorMode { machineStats }
             stat(L10n.t("top.fps"), String(format: "%.1f", model.performance.renderFPS),
                  warn: model.performance.renderFPS < Double(model.settings.output.frameRate) * 0.95 && model.performance.renderFPS > 0)
             stat(L10n.t("top.dropped"), "\(model.performance.droppedRenderFrames)", warn: false)
@@ -34,12 +46,23 @@ struct TopBarView: View {
             Button { openWindow(id: "program-output") } label: { Image(systemName: "rectangle.on.rectangle") }
                 .help("Open Program output window (drag to an external display)")
                 .buttonStyle(.borderless)
-            Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                .help(L10n.t("settings.title"))
-                .buttonStyle(.borderless)
+            if !model.isOperatorMode {
+                Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                    .help(L10n.t("settings.title"))
+                    .buttonStyle(.borderless)
+            }
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
         .panel()
+    }
+
+    @ViewBuilder
+    private var machineStats: some View {
+        stat(L10n.t("top.cpu"), String(format: "%.0f%%", model.performance.cpuPercentOfMachine),
+             warn: model.performance.cpuPercentOfMachine > 70)
+        stat(L10n.t("top.gpu"), String(format: "%.1f ms", model.performance.gpuFrameMs),
+             warn: model.performance.gpuFrameMs > 1000 / Double(max(model.settings.output.frameRate, 1)) * 0.8)
+        stat(L10n.t("top.mem"), String(format: "%.0f MB", model.performance.memoryMB), warn: false)
     }
 
     private func stat(_ label: String, _ value: String, warn: Bool) -> some View {

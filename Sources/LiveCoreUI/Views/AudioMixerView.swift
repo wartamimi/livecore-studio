@@ -112,6 +112,9 @@ struct ChannelStripView: View {
                     Divider()
                     Button(L10n.f("aux.mix_minus", "A")) { model.makeMixMinus(bus: 0, excluding: vm.id) }
                     Button(L10n.f("aux.mix_minus", "B")) { model.makeMixMinus(bus: 1, excluding: vm.id) }
+                    Divider()
+                    Toggle(L10n.t("duck.trigger"), isOn: $vm.duckTrigger)
+                    Toggle(L10n.t("duck.target"), isOn: $vm.duckTarget)
                     if let m = model.musicPlayer(vm.id) {
                         Divider()
                         Button(L10n.t("music.add_tracks")) { model.addTracks(toMusic: vm.id) }
@@ -181,7 +184,8 @@ struct ChannelStripView: View {
 
     /// "DSP", with a marker for each active processor (G = gate, C = compressor).
     private var dspLabel: String {
-        let active = [vm.highPass || vm.eq ? "EQ" : nil, vm.gate ? "G" : nil, vm.compressor ? "C" : nil].compactMap { $0 }
+        let active = [vm.highPass || vm.eq ? "EQ" : nil, vm.gate ? "G" : nil, vm.compressor ? "C" : nil,
+                      vm.duckTrigger ? "D↑" : nil, vm.duckTarget ? "D↓" : nil].compactMap { $0 }
         return active.isEmpty ? L10n.t("audio.dsp") : "\(L10n.t("audio.dsp")) " + active.joined(separator: "·")
     }
 
@@ -414,6 +418,7 @@ struct MasterStripView: View {
             if meters.master.gr > 0.1 {
                 Text(String(format: "GR %.1f dB", meters.master.gr)).font(.system(size: 9)).foregroundStyle(Theme.warning)
             }
+            LoudnessReadout()
             HStack(spacing: 2) {
                 Image(systemName: "headphones").font(.system(size: 10))
                 Slider(value: $model.monitorVolume, in: 0...1)

@@ -60,6 +60,7 @@ extension ProductionEngine {
             if locked.contains(id) { pi.locked = true }
             if let c = src as? CameraSource, c.config != CaptureConfig() { pi.capture = c.config }
             pi.adjust = adjusts[id]
+            pi.ptz = ptzConfigs[id]
             doc.inputs.append(pi)
         }
         doc.stinger = control.read { $0.stinger.source == nil && $0.stinger.cutPoint == nil ? nil : $0.stinger }
@@ -71,6 +72,8 @@ extension ProductionEngine {
         doc.audio.limiterEnabled = mixer.limiterEnabled.value
         doc.audio.monitorVolume = mixer.monitorVolume.value
         doc.audio.syncOffsetMs = Double(audioPump.syncOffsetSeconds.value) * 1000
+        let ducking = mixer.ducking.settings
+        doc.audio.ducking = ducking == DuckingSettings() ? nil : ducking
         doc.audio.aux = mixer.aux.indices.map { i in
             ProjectAuxBus(faderDB: mixer.aux[i].faderDB.value, muted: mixer.aux[i].muted.value, outputDeviceUID: auxOutputUID(i))
         }
@@ -114,76 +117,12 @@ extension ProductionEngine {
         warnings += apply(doc.settings)
 
         func mediaURL(_ path: String, _ relative: String?) -> URL {
-            let fm = FileManager.default
-            if fm.fileExists(atPath: path) { return URL(fileURLWithPath: path) }
-            if let relative, let dir = projectDirectory {
-                let candidate = ProjectPaths.resolve(relative, againstDirectory: dir.standardizedFileURL.path)
-                if fm.fileExists(atPath: candidate) { return URL(fileURLWithPath: candidate) }
-            }
-            warnings.append("Media file not found: \(path)")
-            return URL(fileURLWithPath: path)
+            Self.resolveMedia(path, relative, projectDirectory: projectDirectory, warnings: &warnings)
         }
 
         var created = Set<InputID>()
         for pi in doc.inputs {
-            switch pi.source {
-            case let .camera(uid, deviceName):
-                guard DeviceManager.device(uniqueID: uid) != nil,
-                      addCamera(uniqueID: uid, id: pi.id, config: pi.capture ?? CaptureConfig()) != nil else {
-                    warnings.append("Camera \"\(deviceName)\" is not connected; input \"\(pi.name)\" was skipped.")
-                    continue
-                }
-            case let .videoFile(path, relative, loop):
-                addVideoFile(urls: [mediaURL(path, relative)], id: pi.id, loop: loop,
-                             autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off,
-                             autoRestart: pi.autoRestart ?? true)
-            case let .videoPlaylist(tracks, loop):
-                guard !tracks.isEmpty else { continue }
-                addVideoFile(urls: tracks.map { mediaURL($0.path, $0.relativePath) }, id: pi.id, loop: loop,
-                             autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off,
-                             autoRestart: pi.autoRestart ?? true)
-            case let .image(path, relative):
-                addImage(url: mediaURL(path, relative), id: pi.id)
-            case .lottie:
-                // Lottie inputs were removed in 0.15.0.
-                warnings.append("Input \"\(pi.name)\" is a Lottie animation; Lottie is no longer supported and it was skipped.")
-                continue
-            case let .color(c):
-                addColor(c.nsColor, name: pi.name, id: pi.id)
-            case .colorBars:
-                addColorBars(id: pi.id, name: pi.name)
-            case .scene:
-                addScene(name: pi.name, id: pi.id)
-            case let .title(t):
-                addTitle(t.textStyle, id: pi.id)
-            case let .browser(b):
-                addBrowser(b, id: pi.id)
-            case let .timer(t, _):
-                addTimer(t, id: pi.id)
-            case let .ticker(t):
-                addTicker(t, id: pi.id)
-            case let .slideshow(sl):
-                // A watched folder that moved with the project is found next to it like the photos.
-                let folder = sl.folder.map { f -> URL in
-                    if FileManager.default.fileExists(atPath: f.path) { return URL(fileURLWithPath: f.path, isDirectory: true) }
-                    if let r = f.relativePath, let dir = projectDirectory {
-                        return URL(fileURLWithPath: ProjectPaths.resolve(r, againstDirectory: dir.standardizedFileURL.path), isDirectory: true)
-                    }
-                    return URL(fileURLWithPath: f.path, isDirectory: true)
-                }
-                let photos = folder.map { SlideshowSource.images(inFolder: $0) }.flatMap { $0.isEmpty ? nil : $0 }
-                addSlideshow(urls: photos ?? sl.images.map { mediaURL($0.path, $0.relativePath) }, interval: sl.interval,
-                             fade: sl.fade, loop: sl.loop, kenBurns: sl.kenBurns ?? false, folder: folder, id: pi.id)
-            case let .screen(c):
-                addScreenCapture(c, id: pi.id)
-            case let .ndi(n):
-                addNDI(n, id: pi.id)
-            case let .frame(d):
-                addFrame(d, id: pi.id)
-            case let .presentation(p):
-                addPresentation(url: mediaURL(p.file.path, p.file.relativePath), slide: p.slide, background: p.background,
-                                live: p.live ?? false, id: pi.id)
-            }
+            guard createInput(pi, projectDirectory: projectDirectory, warnings: &warnings) else { continue }
             created.insert(pi.id)
             renameInput(pi.id, to: pi.name)
         }
@@ -213,6 +152,9 @@ extension ProductionEngine {
         mixer.limiterEnabled.value = doc.audio.limiterEnabled
         mixer.monitorVolume.value = doc.audio.monitorVolume
         audioPump.syncOffsetSeconds.value = Float(doc.audio.syncOffsetMs / 1000)
+        mixer.ducking.settings = doc.audio.ducking ?? DuckingSettings()
+        ptzConfigs = [:]
+        for pi in doc.inputs where created.contains(pi.id) { if let p = pi.ptz { ptzConfigs[pi.id] = p.clamped } }
         for i in mixer.aux.indices {
             let bus = doc.audio.aux.flatMap { i < $0.count ? $0[i] : nil } ?? ProjectAuxBus()
             mixer.aux[i].faderDB.value = bus.faderDB
@@ -261,6 +203,87 @@ extension ProductionEngine {
         return warnings
     }
 
+    /// Media path from a project: the saved absolute path, else the path relative to the project folder.
+    static func resolveMedia(_ path: String, _ relative: String?, projectDirectory: URL?, warnings: inout [String]) -> URL {
+        let fm = FileManager.default
+        if fm.fileExists(atPath: path) { return URL(fileURLWithPath: path) }
+        if let relative, let dir = projectDirectory {
+            let candidate = ProjectPaths.resolve(relative, againstDirectory: dir.standardizedFileURL.path)
+            if fm.fileExists(atPath: candidate) { return URL(fileURLWithPath: candidate) }
+        }
+        warnings.append("Media file not found: \(path)")
+        return URL(fileURLWithPath: path)
+    }
+
+    /// Creates the source of a project input with its saved id (project load, undo of a removal).
+    /// Returns false when it cannot be made (camera not connected, Lottie...), with a warning.
+    func createInput(_ pi: ProjectInput, projectDirectory: URL?, warnings: inout [String]) -> Bool {
+        var found: [String] = []
+        func mediaURL(_ path: String, _ relative: String?) -> URL {
+            Self.resolveMedia(path, relative, projectDirectory: projectDirectory, warnings: &found)
+        }
+        defer { warnings += found }
+        switch pi.source {
+        case let .camera(uid, deviceName):
+            guard DeviceManager.device(uniqueID: uid) != nil,
+                  addCamera(uniqueID: uid, id: pi.id, config: pi.capture ?? CaptureConfig()) != nil else {
+                found.append("Camera \"\(deviceName)\" is not connected; input \"\(pi.name)\" was skipped.")
+                return false
+            }
+        case let .videoFile(path, relative, loop):
+            addVideoFile(urls: [mediaURL(path, relative)], id: pi.id, loop: loop,
+                         autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off,
+                         autoRestart: pi.autoRestart ?? true)
+        case let .videoPlaylist(tracks, loop):
+            guard !tracks.isEmpty else { return false }
+            addVideoFile(urls: tracks.map { mediaURL($0.path, $0.relativePath) }, id: pi.id, loop: loop,
+                         autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off,
+                         autoRestart: pi.autoRestart ?? true)
+        case let .image(path, relative):
+            addImage(url: mediaURL(path, relative), id: pi.id)
+        case .lottie:
+            // Lottie inputs were removed in 0.15.0.
+            found.append("Input \"\(pi.name)\" is a Lottie animation; Lottie is no longer supported and it was skipped.")
+            return false
+        case let .color(c):
+            addColor(c.nsColor, name: pi.name, id: pi.id)
+        case .colorBars:
+            addColorBars(id: pi.id, name: pi.name)
+        case .scene:
+            addScene(name: pi.name, id: pi.id)
+        case let .title(t):
+            addTitle(t.textStyle, id: pi.id)
+        case let .browser(b):
+            addBrowser(b, id: pi.id)
+        case let .timer(t, _):
+            addTimer(t, id: pi.id)
+        case let .ticker(t):
+            addTicker(t, id: pi.id)
+        case let .slideshow(sl):
+            // A watched folder that moved with the project is found next to it like the photos.
+            let folder = sl.folder.map { f -> URL in
+                if FileManager.default.fileExists(atPath: f.path) { return URL(fileURLWithPath: f.path, isDirectory: true) }
+                if let r = f.relativePath, let dir = projectDirectory {
+                    return URL(fileURLWithPath: ProjectPaths.resolve(r, againstDirectory: dir.standardizedFileURL.path), isDirectory: true)
+                }
+                return URL(fileURLWithPath: f.path, isDirectory: true)
+            }
+            let photos = folder.map { SlideshowSource.images(inFolder: $0) }.flatMap { $0.isEmpty ? nil : $0 }
+            addSlideshow(urls: photos ?? sl.images.map { mediaURL($0.path, $0.relativePath) }, interval: sl.interval,
+                         fade: sl.fade, loop: sl.loop, kenBurns: sl.kenBurns ?? false, folder: folder, id: pi.id)
+        case let .screen(c):
+            addScreenCapture(c, id: pi.id)
+        case let .ndi(n):
+            addNDI(n, id: pi.id)
+        case let .frame(d):
+            addFrame(d, id: pi.id)
+        case let .presentation(p):
+            addPresentation(url: mediaURL(p.file.path, p.file.relativePath), slide: p.slide, background: p.background,
+                            live: p.live ?? false, id: pi.id)
+        }
+        return true
+    }
+
     /// Applies saved channel settings, including the AFV link.
     func restore(_ p: ProjectAudioChannel, to ch: MixerChannel) {
         Self.apply(p, to: ch.controls)
@@ -285,6 +308,8 @@ extension ProductionEngine {
         if c.invertPhase.value { p.invertPhase = true }
         if c.delayMs.value > 0 { p.delayMs = c.delayMs.value }
         if ch.locked { p.locked = true }
+        if c.duckTrigger.value { p.duckTrigger = true }
+        if c.duckTarget.value { p.duckTarget = true }
         var eq = ProjectEQ()
         eq.highPassEnabled = c.highPassEnabled.value; eq.highPassHz = c.highPassHz.value
         eq.eqEnabled = c.eqEnabled.value
@@ -323,6 +348,8 @@ extension ProductionEngine {
         c.mode = p.channelMode.flatMap(ChannelMode.init(rawValue:)) ?? .stereo
         c.invertPhase.value = p.invertPhase ?? false
         c.delayMs.value = p.delayMs ?? 0
+        c.duckTrigger.value = p.duckTrigger ?? false
+        c.duckTarget.value = p.duckTarget ?? false
         if let eq = p.eq {
             c.highPassEnabled.value = eq.highPassEnabled; c.highPassHz.value = eq.highPassHz
             c.eqEnabled.value = eq.eqEnabled

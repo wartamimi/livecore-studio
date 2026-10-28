@@ -6,6 +6,7 @@ import CoreImage
 import ImageIO
 import LiveCoreCore
 import LiveCoreEngine
+import LiveCoreServices
 import LiveCoreRemote
 import SwiftUI
 import UniformTypeIdentifiers
@@ -92,6 +93,8 @@ extension AppModel {
                 guard let key = try KeychainStore.load(account: c.account), !key.isEmpty else {
                     report(L10n.f("stream.dest_no_key", label)); continue
                 }
+                // Never let the key reach the log file, even inside an error message.
+                FileLog.shared.addSecret(key)
                 targets.append(.init(id: c.id, name: label, url: try RTMPURL.parse(serverURL: c.url, streamKey: key), audioBus: c.bus))
             } catch let err as RTMPURL.ParseError {
                 report("\(label): \(err.description)")
@@ -104,6 +107,7 @@ extension AppModel {
         streamTargets = targets.map { ($0.id, $0.name) }
         do {
             try e.startStreaming(to: targets)
+            FileLog.shared.info("stream started to \(targets.count) destination(s): \(targets.map(\.name).joined(separator: ", "))")
             if recordWithStream, !isRecording, !recordLocked {
                 e.startRecording()
                 recordingStartedWithStream = true
