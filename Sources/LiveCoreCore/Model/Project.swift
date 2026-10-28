@@ -310,6 +310,8 @@ public struct ProjectMusic: Codable, Equatable, Sendable {
     public var channel: ProjectAudioChannel?
     /// Seconds of fade-out at the end and fade-in at the start of each song (since 0.20.0; nil = 0).
     public var fadeSeconds: Double?
+    /// Repeat One (since 0.27.0; nil = off).
+    public var repeatOne: Bool?
     public init(id: String, name: String, tracks: [ProjectMediaRef], loop: Bool = true, shuffle: Bool = false,
                 channel: ProjectAudioChannel? = nil, fadeSeconds: Double? = nil) {
         self.id = id; self.name = name; self.tracks = tracks; self.loop = loop; self.shuffle = shuffle; self.channel = channel

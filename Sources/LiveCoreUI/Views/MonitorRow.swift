@@ -88,7 +88,7 @@ private struct DesignerToggle: View {
     @EnvironmentObject var model: AppModel
     @ObservedObject var state: LayerDesignerState
     var body: some View {
-        Button { if state.active { state.close(model) } else { state.active = true } } label: {
+        Button { if state.active { state.close() } else { state.active = true } } label: {
             Label(L10n.t("designer.button"), systemImage: "square.on.square.dashed")
                 .font(.system(size: 10, weight: .bold))
                 .padding(.horizontal, 6).padding(.vertical, 1)

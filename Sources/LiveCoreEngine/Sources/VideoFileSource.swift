@@ -37,6 +37,14 @@ public final class VideoFileSource: NSObject, VideoSource {
     public var loop = true
     /// Playlist: pick a random other clip when one ends (and on "next").
     public var shuffle = false
+    /// Repeat One: the current clip starts again when it ends.
+    public var repeatOne = false
+    /// One-shot: when the current clip ends it stays paused on its last frame.
+    public var stopAfterCurrent = false
+    public var repeatMode: RepeatMode {
+        get { RepeatMode(loop: loop, one: repeatOne) }
+        set { repeatOne = newValue == .one; loop = newValue != .off }
+    }
     public var autoPlay: AutoPlay = .off
     /// Clip length in seconds once the file is ready (main thread).
     public private(set) var duration: Double?
@@ -155,7 +163,8 @@ public final class VideoFileSource: NSObject, VideoSource {
     public var onClipChange: (() -> Void)?
 
     private func clipEnded() {
-        if let n = PlaylistMath.next(index: index, count: urls.count, loop: loop, shuffle: shuffle, random: Int.random(in:)) {
+        if stopAfterCurrent { stopAfterCurrent = false; wantsPlay = false; return }
+        if let n = PlaylistMath.afterEnd(index: index, count: urls.count, repeat: repeatMode, shuffle: shuffle, random: Int.random(in:)) {
             if n == index { player.seek(to: .zero); player.play() } else { load(n, play: true) }
         }
         // Otherwise the last clip stays paused on its last frame.

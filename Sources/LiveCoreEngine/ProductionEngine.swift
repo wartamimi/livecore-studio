@@ -94,14 +94,20 @@ public final class ProductionEngine {
         var extraInputs: [InputID] = []
         var fullPreview = false
         var stinger = StingerConfig()
-        /// Layer Designer edits not yet on air: shown on Preview only until committed.
-        var draft: (input: InputID, layers: [Layer])?
+        /// Layer Designer edits not yet on air, per input: Preview shows the draft of its input;
+        /// everything else (Program, overlays, other inputs) keeps the committed layers.
+        var drafts: [InputID: [Layer]] = [:]
 
-        /// Puts the Layer Designer's draft on the input itself (now Program shows it too).
-        mutating func commitDraft() {
-            guard let d = draft else { return }
-            draft = nil
-            if sources[d.input] != nil { layers[d.input] = d.layers }
+        /// The input about to go on air (the one on Preview / being transitioned in) takes its
+        /// draft with it: Layer Designer edits reach Program only through a transition.
+        mutating func commitDraftOfIncoming() {
+            guard let id = switcher.state.transition?.to ?? switcher.state.preview else { return }
+            commitDraft(of: id)
+        }
+
+        mutating func commitDraft(of id: InputID) {
+            guard let d = drafts.removeValue(forKey: id), sources[id] != nil else { return }
+            layers[id] = d
         }
 
         /// Layer 0 stays the input itself; layers of unknown inputs are dropped.
@@ -201,7 +207,7 @@ public final class ProductionEngine {
             events = st.switcher.update(now: now)
             let layers = st.layers
             let keys = st.keys.filter { $0.value.enabled }.mapValues { $0.clamped }
-            let draft = st.draft.map { [$0.input: $0.layers] } ?? [:]
+            let draft = st.drafts
             let plan = FramePlanner.plan(snapshot: st.switcher.state, overlays: st.overlays, now: now,
                                          layersFor: { layers[$0] }, keyFor: { keys[$0] },
                                          thumbnailsFor: thumbTick ? st.order : [],
@@ -512,8 +518,8 @@ public final class ProductionEngine {
             for i in st.overlays.indices where st.overlays[i].source == id { st.overlays[i].source = nil }
             for key in st.layers.keys { st.layers[key]?.removeAll { $0.source == id && key != id } }
             st.layers[id] = nil
-            if st.draft?.input == id { st.draft = nil }
-            st.draft?.layers.removeAll { $0.source == id }
+            st.drafts[id] = nil
+            for key in st.drafts.keys { st.drafts[key]?.removeAll { $0.source == id && key != id } }
             st.keys[id] = nil
             st.locked.remove(id)
             st.adjusts[id] = nil
@@ -592,7 +598,9 @@ public final class ProductionEngine {
     public func addLayer(to id: InputID, source: InputID, preset: LayoutPreset) {
         control.mutate { st in
             guard st.sources[id] != nil, st.sources[source] != nil, id != source else { return }
-            st.layers[id, default: [Layer(source: id)]].append(Layer(source: source, rect: preset.rect, scaleMode: .fill))
+            let layer = Layer(source: source, rect: preset.rect, scaleMode: .fill)
+            st.layers[id, default: [Layer(source: id)]].append(layer)
+            st.drafts[id]?.append(layer)   // also visible while the Layer Designer has a draft
         }
     }
 
@@ -601,31 +609,25 @@ public final class ProductionEngine {
     public func setLayers(_ layers: [Layer], of id: InputID) {
         control.mutate { st in
             guard st.sources[id] != nil else { return }
-            if st.draft?.input == id { st.draft = nil }
+            st.drafts[id] = nil
             st.layers[id] = st.sanitized(layers, of: id)
         }
     }
 
-    // MARK: Layer Designer draft (Preview only until committed)
+    // MARK: Layer Designer draft (Preview only until a transition)
 
-    /// Layer Designer edits of `id`: drawn on Preview (and outputs showing Preview) only. A draft
-    /// of another input is committed first. It goes on air on `commitDraftLayers`, or by itself
-    /// when that input is taken to Program (CUT, AUTO, T-bar) or Preview moves to another input.
+    /// Layer Designer edits of `id`: drawn on Preview (and outputs showing Preview) only. They go
+    /// on air when that input is taken to Program (CUT, AUTO, T-bar, quick play). Each input keeps
+    /// its own draft, so moving Preview elsewhere and back does not lose or publish the edits.
     public func setDraftLayers(_ layers: [Layer], of id: InputID) {
         control.mutate { st in
             guard st.sources[id] != nil else { return }
-            if let d = st.draft, d.input != id { st.commitDraft() }
-            st.draft = (id, st.sanitized(layers, of: id))
+            st.drafts[id] = st.sanitized(layers, of: id)
         }
     }
 
     /// The uncommitted Layer Designer layers of `id`, if any.
-    public func draftLayers(of id: InputID) -> [Layer]? {
-        control.read { $0.draft?.input == id ? $0.draft?.layers : nil }
-    }
-
-    public func commitDraftLayers() { control.mutate { $0.commitDraft() } }
-    public func discardDraftLayers() { control.mutate { $0.draft = nil } }
+    public func draftLayers(of id: InputID) -> [Layer]? { control.read { $0.drafts[id] } }
 
     /// Pixel size of an input's current frame (nil until it has produced one).
     public func frameSize(of id: InputID) -> PixelSize? {
@@ -640,8 +642,9 @@ public final class ProductionEngine {
     public func removeLayer(from id: InputID, at index: Int) {
         control.mutate { st in
             guard var l = st.layers[id], index > 0, index < l.count else { return } // layer 0 = the input itself
-            l.remove(at: index)
+            let removed = l.remove(at: index)
             st.layers[id] = l
+            if let i = st.drafts[id]?.firstIndex(where: { $0.source == removed.source }), i > 0 { st.drafts[id]?.remove(at: i) }
         }
     }
 
@@ -661,15 +664,12 @@ public final class ProductionEngine {
     public var switcherState: SwitcherSnapshot { control.read { $0.switcher.state } }
 
     public func setPreview(_ id: InputID?) {
-        control.mutate { st in
-            if let d = st.draft, d.input != id { st.commitDraft() }
-            _ = st.switcher.setPreview(id)
-        }
+        control.mutate { st in _ = st.switcher.setPreview(id) }
     }
     public func cut() {
         let now = HostClock.now()
         control.mutate { st in
-            st.commitDraft()
+            st.commitDraftOfIncoming()
             _ = st.switcher.cut()
             for i in st.overlays.indices { st.overlays[i].takeToProgram(now: now) }
         }
@@ -694,7 +694,7 @@ public final class ProductionEngine {
         }
         let now = HostClock.now()
         control.mutate { st in
-            st.commitDraft()
+            st.commitDraftOfIncoming()
             _ = st.switcher.auto(kind: kind, duration: dur, now: now, stinger: stinger)
             // Overlays waiting on Preview go to Program together with the transition.
             if st.switcher.isTransitioning { for i in st.overlays.indices { st.overlays[i].takeToProgram(now: now) } }
@@ -705,14 +705,14 @@ public final class ProductionEngine {
         let kind = settings.transition
         let now = HostClock.now()
         control.mutate { st in
-            if position > 0.001 && position < 0.999 { st.commitDraft() }
+            if position > 0.001 && position < 0.999 { st.commitDraftOfIncoming() }
             _ = st.switcher.setTBar(position, kind: kind, now: now)
             if st.switcher.isTransitioning { for i in st.overlays.indices { st.overlays[i].takeToProgram(now: now) } }
         }
     }
     /// "Quick play": cut a specific input straight to program.
     public func cutDirect(_ id: InputID) {
-        control.mutate { st in st.commitDraft(); _ = st.switcher.setPreview(id); _ = st.switcher.cut() }
+        control.mutate { st in st.commitDraft(of: id); _ = st.switcher.setPreview(id); _ = st.switcher.cut() }
     }
 
     // MARK: Auto play (vMix-style)
@@ -1099,7 +1099,8 @@ extension ProductionEngine {
     /// relative to `projectDirectory` so a copied project folder still finds its files.
     public func exportProject(projectDirectory: URL?) -> ProjectDocument {
         let (order, sources, layers, keys, overlays, sw, locked) = control.read { st in
-            (st.order, st.sources, st.layers, st.keys, st.overlays, st.switcher.state, st.locked)
+            // Layer Designer drafts are saved too: the project keeps the layout being worked on.
+            (st.order, st.sources, st.layers.merging(st.drafts) { $1 }, st.keys, st.overlays, st.switcher.state, st.locked)
         }
         let adjusts = control.read { $0.adjusts }
         var doc = ProjectDocument(settings: settings)
@@ -1164,12 +1165,14 @@ extension ProductionEngine {
             doc.audio.channels.append(pc)
         }
         doc.audio.music = musicPlayers.isEmpty ? nil : musicPlayers.map { m in
-            ProjectMusic(id: m.id, name: m.name,
+            var pm = ProjectMusic(id: m.id, name: m.name,
                          tracks: m.tracks.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) },
                          loop: m.loopPlaylist, shuffle: m.shuffle,
                          channel: { var pc = Self.projectChannel(m.channel, deviceUniqueID: nil, inputID: nil)
                                     pc.afvInput = afvLinks[m.channel.id]; return pc }(),
                          fadeSeconds: m.fadeSeconds > 0 ? m.fadeSeconds : nil)
+            pm.repeatOne = m.repeatOne ? true : nil
+            return pm
         }
         return doc
     }
@@ -1256,6 +1259,7 @@ extension ProductionEngine {
         }
 
         control.mutate { st in
+            st.drafts = [:]
             for pi in doc.inputs where created.contains(pi.id) {
                 let layers = pi.layers.filter { created.contains($0.source) }
                 st.layers[pi.id] = layers.isEmpty ? [Layer(source: pi.id)] : layers
@@ -1292,6 +1296,7 @@ extension ProductionEngine {
             m.loopPlaylist = pm.loop
             m.shuffle = pm.shuffle
             m.fadeSeconds = pm.fadeSeconds ?? 0
+            m.repeatOne = pm.repeatOne ?? false
             if let ch = pm.channel { restore(ch, to: m.channel) }
         }
         for t in tones.map(\.id) { removeTone(id: t) }

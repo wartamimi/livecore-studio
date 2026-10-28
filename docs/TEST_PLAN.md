@@ -51,6 +51,15 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AA. Tes manual build 0.27.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-107 | Instant replay | Buka app, biarkan 20 detik, tekan replay di bawah T-bar | App tidak crash; replay diputar |
+| T-108 | Edit layer sampai transisi | Input Scene di Preview; LAYER; geser layer; tutup designer; pilih input lain di Preview lalu kembali; tekan CUT | Tidak ada tombol Terapkan/Batalkan; Program tidak berubah sampai CUT; perubahan masih ada setelah Preview dipindah; setelah CUT Program menampilkan susunan baru |
+| T-109 | T-bar horizontal | Tarik T-bar kiri ↔ kanan, lepas di tengah | Tuas horizontal halus; hanya angka persen yang tampil; selesai di ujung lain menjadi posisi diam baru |
+| T-110 | Repeat One | Playlist musik 3 lagu; tekan tombol Ulangi dua kali (tampil "1"); biarkan lagu selesai; lakukan juga di playlist video | Lagu/klip yang sama diputar lagi; tekan sekali lagi → mati |
+| T-111 | Fitur playlist | Tekan ⏹ (berhenti setelah item ini); biarkan lagu selesai; klik bar waktu di tengah; klik kanan lagu lain → Putar berikutnya | Pemutaran berhenti dan lagu berikutnya siap; ⏹ mati sendiri; klik bar melompat ke tengah; lagu yang dipilih menjadi berikutnya di daftar |
+
 ## Z. Tes manual build 0.26.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|
