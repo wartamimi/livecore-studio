@@ -270,7 +270,7 @@ public enum TickerRenderer {
         ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: false)
-        s.draw(at: NSPoint(x: pad, y: (Double(h) - size.height) / 2))
+        s.draw(at: NSPoint(x: pad, y: (CGFloat(h) - size.height) / 2))
         NSGraphicsContext.restoreGraphicsState()
         return ctx.makeImage()
     }
