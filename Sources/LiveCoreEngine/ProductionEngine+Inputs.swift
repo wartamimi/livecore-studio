@@ -391,15 +391,16 @@ extension ProductionEngine {
 
     /// Imported vMix GT title (.gtzip).
     @discardableResult
-    public func addGTTitle(url: URL, template: GTTemplate, fields: [String: String] = [:], id: InputID? = nil) -> InputID {
+    public func addGTTitle(url: URL, template: GTTemplate, fields: [String: String] = [:],
+                           overrides: [String: GTElementOverride] = [:], speed: Double = 1, id: InputID? = nil) -> InputID {
         let src = GTTitleSource(id: id ?? InputID(UUID().uuidString), url: url, template: template, fields: fields,
-                                outputSize: settings.output.size)
+                                overrides: overrides, speed: speed, outputSize: settings.output.size)
         add(src)
         return src.id
     }
 
-    public func updateGTTitle(_ id: InputID, fields: [String: String]) {
-        (source(id) as? GTTitleSource)?.setFields(fields)
+    public func updateGTTitle(_ id: InputID, fields: [String: String], overrides: [String: GTElementOverride], speed: Double) {
+        (source(id) as? GTTitleSource)?.setEdits(fields: fields, overrides: overrides, speed: speed)
     }
 
     /// New design (and camera) for a frame input; the camera layer follows the template's window.

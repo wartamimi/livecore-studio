@@ -161,6 +161,17 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.40.0
+Editor title GT lanjutan dan font otomatis. Verifikasi: L = unit test Linux, M = kompilasi CI macOS (TEST_PLAN bagian AP).
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Editor GT: daftar elemen, tampil/sembunyi, pratinjau dengan kotak pilihan yang bisa diseret | Implemented, belum dites | M | Klik kanan input › Editor title GT |
+| Properti per elemen: teks, font, ukuran, tebal/miring, rata, warna, garis tepi, sudut, posisi/ukuran, kemiringan, opasitas, ganti gambar | Implemented, belum dites | L (override) + M | Disimpan di proyek sebagai perubahan atas template; file .gtzip tidak diubah. Memilih warna isi mengganti gradasi menjadi warna polos |
+| Animasi per elemen (jenis, arah, jeda, durasi) + kecepatan semua animasi + tombol Putar animasi | Implemented, belum dites | L + M | Hanya animasi masuk |
+| Font tidak terpasang: ditanyakan saat impor, unduh otomatis dari Google Fonts | Implemented, belum dites | L (URL/CSS) + M | Hanya font yang ada di Google Fonts (gratis). Font berbayar/pribadi (mis. "Motion Picture Personal Use", "SerpentineEF") tidak bisa diunduh otomatis: pasang lewat "Pasang file font…" |
+| Font dipasang hanya untuk LiveCore | Implemented | M | Disimpan di Application Support/LiveCore Studio/Fonts, tanpa hak admin |
+
 ## Fitur 0.39.0
 Impor template title vMix GT (.gtzip). Diuji dengan sampel "Blue news.gtzip" dari pengguna: 14 elemen, logo dan
 14 animasi terbaca (uji parser di Linux); gambar hasil render belum dilihat di Mac (TEST_PLAN bagian AO).

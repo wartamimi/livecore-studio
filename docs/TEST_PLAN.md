@@ -51,6 +51,15 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AP. Tes manual build 0.40.0
+
+| ID | Area | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-195 | Font otomatis | Impor .gtzip yang memakai font Google (mis. "Roboto Slab") yang belum terpasang | Muncul pertanyaan; "Unduh font" → font terpasang dan title memakai font itu |
+| T-196 | Font tidak ada | Impor "Blue news.gtzip" | Pesan jujur: font tidak ada di Google Fonts; "Pasang file font…" di editor memasang file .ttf/.otf |
+| T-197 | Editor | Pilih elemen, ubah warna, ukuran font, posisi (seret di pratinjau), sembunyikan satu elemen, Terapkan | Program/Preview sama dengan pratinjau editor; tersimpan di proyek |
+| T-198 | Animasi | Ubah jenis/arah/jeda satu elemen, kecepatan 2×, "Putar animasi" lalu CUT ke Program | Animasi sesuai setelan di editor dan di Program |
+
 ## AO. Tes manual build 0.39.0
 Otomatis di CI: unit test parser GT (GTTemplateTests).
 

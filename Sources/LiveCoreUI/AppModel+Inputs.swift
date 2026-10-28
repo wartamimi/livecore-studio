@@ -276,14 +276,16 @@ extension AppModel {
         do {
             let t = try GTReader.template(at: url)
             guard !t.elements.isEmpty else { report(L10n.t("gt.empty")); return nil }
-            return e.addGTTitle(url: url, template: t)
+            let id = e.addGTTitle(url: url, template: t)
+            offerFontDownload(FontInstaller.missing(in: t))
+            return id
         } catch {
             report(L10n.f("gt.failed", "\(error)"))
             return nil
         }
     }
-    public func updateGTTitle(_ id: InputID, fields: [String: String]) {
-        engine?.updateGTTitle(id, fields: fields)
+    public func updateGTTitle(_ id: InputID, fields: [String: String], overrides: [String: GTElementOverride], speed: Double) {
+        engine?.updateGTTitle(id, fields: fields, overrides: overrides, speed: speed)
         objectWillChange.send()
     }
 

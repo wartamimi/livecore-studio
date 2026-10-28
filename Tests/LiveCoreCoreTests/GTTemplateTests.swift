@@ -128,4 +128,38 @@ final class GTTemplateTests: XCTestCase {
                                                      fields: ["Headline": "Halo"]))
         XCTAssertEqual(try JSONDecoder().decode(ProjectSource.self, from: JSONEncoder().encode(s)), s)
     }
+
+    func testOverridesAndSpeed() {
+        let t = GTReader.parse(document: Data(Self.document.utf8))
+        var head = GTElementOverride()
+        head.fontSize = 40; head.color = "#FFFF0000"; head.x = 10; head.animation = "Fade"; head.duration = 1
+        var bar = GTElementOverride(); bar.hidden = true
+        var logo = GTElementOverride(); logo.animation = "None"
+        logo.image = ProjectMediaRef(path: "/x.png")
+        let a = t.applying(["Headline": head, "Bar": bar, "Logo": logo], speed: 2) { _ in Data([5]) }
+        XCTAssertEqual(a.elements.map(\.name), ["Headline", "Live", "Logo"])
+        let h = a.elements[0]
+        XCTAssertEqual(h.fontSize, 40); XCTAssertEqual(h.x, 10); XCTAssertNil(h.clip)
+        XCTAssertEqual(h.fill.color, GTColor(r: 1, g: 0, b: 0))
+        XCTAssertEqual(a.animation(for: "Headline")?.type, "Fade")
+        XCTAssertEqual(a.animation(for: "Headline")?.duration, 0.5)   // 1 s at double speed
+        XCTAssertEqual(a.animation(for: "Headline")?.delay, 0.35)
+        XCTAssertNil(a.animation(for: "Logo"))
+        XCTAssertEqual(a.elements[2].imageData, Data([5]))
+        XCTAssertEqual(GTColor(r: 1, g: 0, b: 0.5, a: 1).hex, "#FFFF0080")
+        XCTAssertTrue(GTElementOverride().isEmpty)
+    }
+
+    func testGoogleFontsURLs() {
+        XCTAssertEqual(GoogleFonts.cssURLs(family: "Roboto Slab").last?.absoluteString,
+                       "https://fonts.googleapis.com/css2?family=Roboto+Slab")
+        XCTAssertTrue(GoogleFonts.cssURLs(family: "a&b=c").isEmpty)
+        let css = """
+        @font-face { src: url(https://fonts.gstatic.com/s/x/a.ttf) format('truetype'); }
+        @font-face { src: url('https://fonts.gstatic.com/s/x/b.ttf') format('truetype'); }
+        @font-face { src: url(http://evil/c.ttf); } @font-face { src: url(https://x/d.woff2); }
+        @font-face { src: url(https://fonts.gstatic.com/s/x/a.ttf); }
+        """
+        XCTAssertEqual(GoogleFonts.fontURLs(css: css).map(\.lastPathComponent), ["a.ttf", "b.ttf"])
+    }
 }

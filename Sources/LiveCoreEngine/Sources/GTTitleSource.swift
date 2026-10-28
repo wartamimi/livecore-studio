@@ -13,28 +13,46 @@ public final class GTTitleSource: VideoSource {
     public private(set) var status: SourceStatus = .live
     public var onStatusChange: ((SourceStatus) -> Void)?
     public let url: URL
-    public let template: GTTemplate
+    /// The template as imported, and as drawn (with the editor's changes).
+    public let original: GTTemplate
+    public private(set) var template: GTTemplate
     public private(set) var fields: [String: String]
+    public private(set) var overrides: [String: GTElementOverride] = [:]
+    public private(set) var speed = 1.0
     private let outputSize: PixelSize
     private let lock = UnfairLock()
     private var frame: CVPixelBuffer?
     private var animTimer: DispatchSourceTimer?
     private static let animQueue = DispatchQueue(label: "livecore.gt-animation", qos: .userInitiated)
 
-    public init(id: InputID, url: URL, template: GTTemplate, fields: [String: String], outputSize: PixelSize) {
-        self.id = id; self.url = url; self.template = template; self.outputSize = outputSize
-        self.fields = fields
+    public init(id: InputID, url: URL, template: GTTemplate, fields: [String: String],
+                overrides: [String: GTElementOverride] = [:], speed: Double = 1, outputSize: PixelSize) {
+        self.id = id; self.url = url; self.original = template; self.outputSize = outputSize
+        self.fields = fields; self.overrides = overrides; self.speed = speed
+        self.template = template.applying(overrides, speed: speed, image: Self.loadImage)
         name = "GT – " + url.deletingPathExtension().lastPathComponent
         render(at: nil)
     }
 
     /// The text shown in a field: the operator's, else the template's.
     public func text(_ field: String) -> String {
-        fields[field] ?? template.elements.first { $0.name == field }?.text ?? ""
+        fields[field] ?? original.elements.first { $0.name == field }?.text ?? ""
     }
 
-    public func setFields(_ f: [String: String]) {
-        fields = f.filter { k, v in template.elements.first { $0.name == k }?.text != v }
+    public static func loadImage(_ r: ProjectMediaRef) -> Data? { try? Data(contentsOf: URL(fileURLWithPath: r.path)) }
+
+    /// Draws again, e.g. after a missing font was installed.
+    public func refresh() { setEdits(fields: fields, overrides: overrides, speed: speed) }
+
+    /// New texts only (kept for callers that change just the fields).
+    public func setFields(_ f: [String: String]) { setEdits(fields: f, overrides: overrides, speed: speed) }
+
+    /// All editor changes at once: texts, element overrides and animation speed.
+    public func setEdits(fields f: [String: String], overrides o: [String: GTElementOverride], speed sp: Double) {
+        fields = f.filter { k, v in original.elements.first { $0.name == k }?.text != v }
+        overrides = o.filter { !$0.value.isEmpty }
+        speed = sp > 0 ? sp : 1
+        template = original.applying(overrides, speed: speed, image: Self.loadImage)
         if lock.withLock({ animTimer }) == nil { render(at: nil) }
     }
 
@@ -96,10 +114,10 @@ public enum GTRenderer {
                 if p <= 0 { continue }
                 f = a.frame(progress: p)
             }
-            guard f.opacity > 0, f.scale.x > 0, f.scale.y > 0 else { continue }
+            guard f.opacity > 0, e.opacity > 0, f.scale.x > 0, f.scale.y > 0 else { continue }
             ctx.saveGState()
             if let c = e.clip { ctx.clip(to: CGRect(x: c.x, y: c.y, width: c.width, height: c.height)) }
-            ctx.setAlpha(CGFloat(f.opacity))
+            ctx.setAlpha(CGFloat(f.opacity * e.opacity))
             // Local box coordinates: origin at the top left of the element.
             ctx.translateBy(x: e.x + e.width * f.anchor.x, y: e.y + e.height * f.anchor.y)
             ctx.scaleBy(x: f.scale.x, y: f.scale.y)
@@ -176,7 +194,8 @@ public enum GTRenderer {
     }
 
     static func font(_ e: GTElement) -> NSFont {
-        var f = NSFont(name: e.fontFamily, size: e.fontSize) ?? NSFont.systemFont(ofSize: e.fontSize)
+        var f = NSFontManager.shared.font(withFamily: e.fontFamily, traits: [], weight: 5, size: e.fontSize)
+            ?? NSFont(name: e.fontFamily, size: e.fontSize) ?? NSFont.systemFont(ofSize: e.fontSize)
         let fm = NSFontManager.shared
         if e.bold { f = fm.convert(f, toHaveTrait: .boldFontMask) }
         if e.italic { f = fm.convert(f, toHaveTrait: .italicFontMask) }
