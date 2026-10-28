@@ -2,15 +2,14 @@
 import SwiftUI
 import LiveCoreCore
 
-/// Broadcast-style manual T-bar: a vertical lever in a recessed track with tick marks.
-/// Position 0 is the bottom, 1 the top; the bar rests at either end (flip-flop) and the lit
-/// part of the track shows how far the transition has gone from the rest end.
+/// Broadcast-style manual T-bar, horizontal: a lever in a recessed track with tick marks and
+/// only the percentage shown. Position 0 is the left end, 1 the right; the bar rests at either
+/// end (flip-flop) and the lit part of the track shows how far the transition has gone.
 struct TBarControl: View {
     @EnvironmentObject var model: AppModel
-    var height: CGFloat = 150
 
-    private let trackWidth: CGFloat = 34
-    private let handleHeight: CGFloat = 26
+    private let trackHeight: CGFloat = 26
+    private let handleWidth: CGFloat = 18
     private static let space = "tbar"
     /// Where on the handle the drag started, so grabbing it never makes it jump.
     @State private var grab: CGFloat?
@@ -18,77 +17,69 @@ struct TBarControl: View {
     private var rest: Double { model.switcher.tbarRest }
     private var progress: Double { abs(model.tbar - rest) }
     private var auto: Bool { model.switcher.transition.map { $0.manualPosition == nil } ?? false }
+    private var lit: Bool { progress > 0.001 || auto }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 8) {
+        VStack(spacing: 3) {
             lever
-            VStack(alignment: .leading, spacing: 4) {
-                Text("T-BAR").font(.system(size: 9, weight: .heavy)).foregroundStyle(Theme.textDim)
-                Text(auto ? "AUTO" : "\(Int((progress * 100).rounded()))%")
-                    .font(.system(size: 15, weight: .bold, design: .monospaced))
-                    .foregroundStyle(progress > 0.001 || auto ? Theme.accent : Theme.text)
-                Text(L10n.t("tbar.help")).font(.system(size: 9)).foregroundStyle(Theme.textDim)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
+            Text("\(Int((progress * 100).rounded()))%")
+                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .foregroundStyle(lit ? Theme.accent : Theme.textDim)
         }
         .help(L10n.t("tbar.help"))
     }
 
     private var lever: some View {
         GeometryReader { g in
-            let range = g.size.height - handleHeight
-            let y = (1 - model.tbar) * range           // top of the handle
-            let restY = (1 - rest) * range + handleHeight / 2
-            let handleMid = y + handleHeight / 2
-            ZStack(alignment: .top) {
+            let range = max(g.size.width - handleWidth, 1)
+            let x = model.tbar * range                       // left edge of the handle
+            let handleMid = x + handleWidth / 2
+            let restX = rest * range + handleWidth / 2
+            ZStack(alignment: .leading) {
                 // Recessed track
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(LinearGradient(colors: [Color.black.opacity(0.65), Color(white: 0.11)], startPoint: .leading, endPoint: .trailing))
-                    .overlay(RoundedRectangle(cornerRadius: 7).stroke(Color.white.opacity(0.10), lineWidth: 1))
-                // Tick marks (every 10%, longer at 0 / 50 / 100)
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(LinearGradient(colors: [Color.black.opacity(0.65), Color(white: 0.11)], startPoint: .top, endPoint: .bottom))
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.white.opacity(0.10), lineWidth: 1))
+                // Tick marks (every 10 %, longer at 0 / 50 / 100), above and below the slot
                 ForEach(0...10, id: \.self) { i in
-                    let ty = handleHeight / 2 + CGFloat(i) / 10 * range
                     let major = i % 5 == 0
-                    HStack {
-                        tick(major); Spacer(); tick(major)
-                    }
-                    .frame(width: trackWidth - 4)
-                    .offset(y: ty - 0.5)
+                    VStack { tick(major); Spacer(); tick(major) }
+                        .frame(height: trackHeight - 4)
+                        .offset(x: handleWidth / 2 + CGFloat(i) / 10 * range - 0.5)
                 }
                 // Slot + lit progress from the rest end to the handle
-                Capsule().fill(Color.black.opacity(0.8)).frame(width: 5)
-                    .padding(.vertical, handleHeight / 2)
+                Capsule().fill(Color.black.opacity(0.8)).frame(height: 4)
+                    .padding(.horizontal, handleWidth / 2)
                 Capsule().fill(Theme.accent)
-                    .frame(width: 5, height: max(0, abs(handleMid - restY)))
-                    .offset(y: min(handleMid, restY))
+                    .frame(width: max(0, abs(handleMid - restX)), height: 4)
+                    .offset(x: min(handleMid, restX))
                     .shadow(color: Theme.accent.opacity(0.8), radius: 4)
                     .opacity(progress > 0.001 ? 1 : 0)
-                handle.offset(y: y)
+                handle.offset(x: x)
             }
-            .frame(width: trackWidth)
-            .frame(maxWidth: .infinity)
+            .frame(height: trackHeight)
+            .frame(maxHeight: .infinity)
             .contentShape(Rectangle())
             .coordinateSpace(name: Self.space)
             .gesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.space))
                     .onChanged { v in
                         if grab == nil {
-                            let off = v.startLocation.y - y
-                            grab = (0...handleHeight).contains(off) ? off : handleHeight / 2
+                            let off = v.startLocation.x - x
+                            grab = (0...handleWidth).contains(off) ? off : handleWidth / 2
                         }
-                        let top = v.location.y - (grab ?? handleHeight / 2)
-                        let p = 1 - Double(min(max(top / max(range, 1), 0), 1))
+                        let left = v.location.x - (grab ?? handleWidth / 2)
+                        let p = Double(min(max(left / range, 0), 1))
                         if abs(p - model.tbar) > 0.0005 { model.setTBar(p) }
                     }
                     .onEnded { _ in grab = nil }
             )
         }
-        .frame(width: trackWidth + 14, height: height)
+        .frame(height: trackHeight + 10)
     }
 
     private func tick(_ major: Bool) -> some View {
-        Rectangle().fill(Color.white.opacity(major ? 0.45 : 0.2)).frame(width: major ? 6 : 3, height: 1)
+        Rectangle().fill(Color.white.opacity(major ? 0.45 : 0.2)).frame(width: 1, height: major ? 5 : 3)
     }
 
     /// Metallic lever cap with grip lines.
@@ -96,20 +87,20 @@ struct TBarControl: View {
         ZStack {
             RoundedRectangle(cornerRadius: 4)
                 .fill(LinearGradient(colors: [Color(white: 0.92), Color(white: 0.62), Color(white: 0.78)],
-                                     startPoint: .top, endPoint: .bottom))
+                                     startPoint: .leading, endPoint: .trailing))
             RoundedRectangle(cornerRadius: 4).stroke(Color.black.opacity(0.55), lineWidth: 1)
-            VStack(spacing: 3) {
+            HStack(spacing: 3) {
                 ForEach(0..<3, id: \.self) { _ in
-                    Rectangle().fill(Color.black.opacity(0.35)).frame(height: 1)
-                        .overlay(Rectangle().fill(Color.white.opacity(0.6)).frame(height: 1).offset(y: 1))
+                    Rectangle().fill(Color.black.opacity(0.35)).frame(width: 1)
+                        .overlay(Rectangle().fill(Color.white.opacity(0.6)).frame(width: 1).offset(x: 1))
                 }
             }
-            .padding(.horizontal, 7)
-            Rectangle().fill(progress > 0.001 || auto ? Theme.accent : Theme.program.opacity(0.85))
-                .frame(height: 2).padding(.horizontal, 3).offset(y: handleHeight / 2 - 4)
+            .padding(.vertical, 8)
+            Rectangle().fill(lit ? Theme.accent : Theme.program.opacity(0.85))
+                .frame(width: 2).padding(.vertical, 3).offset(x: handleWidth / 2 - 4)
         }
-        .frame(width: trackWidth + 12, height: handleHeight)
-        .shadow(color: .black.opacity(0.6), radius: 3, y: 2)
+        .frame(width: handleWidth, height: trackHeight + 10)
+        .shadow(color: .black.opacity(0.6), radius: 3, x: 1, y: 2)
     }
 }
 #endif

@@ -16,6 +16,14 @@ public final class MusicInput {
     public private(set) var index = 0
     public var loopPlaylist = true
     public var shuffle = false
+    /// Repeat One: the current song starts again when it ends.
+    public var repeatOne = false
+    /// One-shot: when the current song ends, stop (the next song is cued, not played).
+    public var stopAfterCurrent = false
+    public var repeatMode: RepeatMode {
+        get { RepeatMode(loop: loopPlaylist, one: repeatOne) }
+        set { repeatOne = newValue == .one; loopPlaylist = newValue != .off }
+    }
     public private(set) var isPlaying = false
     /// Fade-out at the end and fade-in at the start of each song, in seconds (0 = off).
     public var fadeSeconds: Double = 0 { didSet { fadeSeconds = min(max(fadeSeconds, MusicFade.range.lowerBound), MusicFade.range.upperBound) } }
@@ -188,7 +196,21 @@ public final class MusicInput {
     }
 
     private func trackEnded() {
-        if let n = PlaylistMath.next(index: index, count: tracks.count, loop: loopPlaylist, shuffle: shuffle, random: Int.random(in:)) {
+        if stopAfterCurrent {
+            stopAfterCurrent = false
+            // Cue the song that would have come next, ready for ▶.
+            if let n = PlaylistMath.afterEnd(index: index, count: tracks.count, repeat: repeatMode, shuffle: shuffle,
+                                             random: Int.random(in:)), n != index {
+                load(n, autoplay: false)
+                return
+            }
+            isPlaying = false
+            player.seek(to: .zero)
+            onChange?()
+            return
+        }
+        if let n = PlaylistMath.afterEnd(index: index, count: tracks.count, repeat: repeatMode, shuffle: shuffle,
+                                         random: Int.random(in:)) {
             load(n, autoplay: true)
         } else {
             isPlaying = false

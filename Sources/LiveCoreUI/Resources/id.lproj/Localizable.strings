@@ -509,7 +509,7 @@
 "fullscreen.settings_hint" = "Tiap output bisa ke layarnya sendiri, misalnya Output 1 = Program di proyektor, Output 2 = satu kamera di TV. Tombol di kanan membuka atau menutup satu output saja.";
 "snapshot.button_big" = "FOTO";
 "designer.button" = "LAYER";
-"designer.help" = "Layer Designer: geser, ubah ukuran, dan crop layer input Preview langsung di gambar";
+"designer.help" = "Layer Designer: geser, ubah ukuran, dan crop layer input Preview langsung di gambar. Program baru berubah setelah transisi berikutnya (CUT, AUTO, T-bar)";
 "designer.close" = "Tutup Layer Designer";
 "designer.mode_position" = "Geser dan ubah ukuran";
 "designer.mode_crop" = "Crop";
@@ -533,12 +533,6 @@
 "designer.crop_values" = "Crop: kiri %.0f%%  atas %.0f%%  kanan %.0f%%  bawah %.0f%%";
 "designer.crop_reset" = "Hapus crop";
 
-/* 0.26.0 — Layer Designer draft */
-"designer.draft" = "DRAFT";
-"designer.draft_help" = "Perubahan hanya tampil di Preview. Program berubah saat Anda menekan Terapkan, menutup designer, CUT / AUTO / T-bar, atau memilih input lain.";
-"designer.revert" = "Batalkan perubahan yang belum diterapkan";
-"designer.apply" = "Terapkan";
-"designer.apply_help" = "Terapkan perubahan layer (Program ikut berubah jika input ini sedang on air)";
 
 /* 0.26.0 — duplicate inputs */
 "inputs.already_used" = "Sudah dipakai oleh input %@. Satu kamera / capture hanya bisa ditambahkan sekali.";
@@ -551,7 +545,7 @@
 "playlist.mode_off" = "OFF";
 
 /* 0.26.0 — T-bar */
-"tbar.help" = "Geser untuk mencampur Preview ke Program.";
+"tbar.help" = "T-bar: geser untuk mencampur Preview ke Program";
 
 /* 0.26.0 — Canvas */
 "canvas.title" = "Canvas";
@@ -567,3 +561,10 @@
 "canvas.help_horizontal" = "Standar untuk YouTube, Facebook, Zoom (NDI) dan TV.";
 "canvas.help_portrait" = "Untuk Shorts, Reels, TikTok dan tampilan HP. Monitor, rekaman, stream dan NDI memakai 9:16.";
 "canvas.help_custom" = "Ukuran bebas, misalnya kotak 1:1 atau 4:5 untuk feed. Monitor mengikuti bentuknya.";
+
+/* 0.27.0 — playlist */
+"playlist.repeat_help" = "Ulangi: mati → seluruh playlist (ON) → item ini saja (1)";
+"playlist.repeat_one" = "1";
+"playlist.stop_after_help" = "Berhenti setelah item ini: saat selesai, pemutaran berhenti (musik menyiapkan lagu berikutnya). Mati sendiri setelah dipakai.";
+"playlist.seek_help" = "Klik untuk melompat ke titik itu";
+"playlist.play_next" = "Putar berikutnya";

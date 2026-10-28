@@ -142,14 +142,15 @@
 60. **FULLSCREEN (0.25.0)**: tombol fullscreen Program lama diganti; FULLSCREEN memakai Output 1–4 (default Output 1 =
     Program di layar eksternal pertama). Bila hanya satu layar, fullscreen menutupi layar operator (Esc menutup).
     Transisi selalu mulai dari Dissolve setiap app dibuka (file proyek tetap membawa transisinya sendiri).
-61. **Draft Layer Designer (0.26.0)**: draft hanya ada di memori. Menyimpan proyek saat ada draft menyimpan tata letak yang
-    sudah diterapkan, bukan draft-nya. Overlay atau layer lain yang memakai input yang sedang diedit tetap memakai versi lama
-    sampai diterapkan; hanya monitor Preview yang menampilkan draft.
+61. **Draft Layer Designer (0.26.0, diubah 0.27.0)**: hanya monitor Preview (dan output yang menampilkan Preview) yang
+    menampilkan draft; overlay atau input lain yang memakai input yang sedang diedit tetap memakai versi lama sampai input itu
+    dibawa ke Program dengan transisi. Tidak ada tombol batal: kembalikan posisi secara manual atau pakai template. File
+    proyek menyimpan draft. Scene editor (lembar terpisah) tetap langsung berlaku seperti sebelumnya.
 62. **Duplikat input (0.26.0)**: satu kamera/capture card = satu input. Capture jendela dicocokkan dari aplikasi + judul
     jendela; jendela dengan judul yang berubah (mis. judul dokumen) dianggap jendela lain. Proyek lama yang sudah berisi
     duplikat tetap dibuka apa adanya.
-63. **Shuffle video playlist (0.26.0)**: status Shuffle video belum tersimpan di file proyek (Repeat tersimpan); shuffle musik
-    tersimpan seperti sebelumnya.
+63. **Shuffle / Repeat One video playlist (0.26.0–0.27.0)**: Shuffle dan Repeat One video belum tersimpan di file proyek
+    (Repeat playlist tersimpan); untuk musik keduanya tersimpan. "Berhenti setelah item ini" tidak disimpan (sekali pakai).
 64. **Canvas portrait/custom (0.26.0)**: thumbnail input dan tile input di Multiview tetap 16:9. Posisi layer, overlay dan
     judul memakai koordinat relatif, jadi tata letak yang dibuat untuk 16:9 akan tertarik bila canvas diganti ke 9:16;
     atur ulang di Layer Designer. Platform stream harus mendukung video vertikal (YouTube Shorts, Facebook, TikTok Live).

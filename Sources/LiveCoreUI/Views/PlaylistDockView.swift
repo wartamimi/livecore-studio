@@ -50,7 +50,9 @@ struct PlaylistDockView: View {
                 .labelsHidden()
                 TextField(L10n.t("playlist.search"), text: $query).textFieldStyle(.roundedBorder).controlSize(.small)
                 if let src = current {
-                    TimelineView(.periodic(from: .now, by: 0.5)) { _ in list(src) }
+                    TimelineView(.periodic(from: .now, by: 0.5)) { _ in
+                        VStack(spacing: 4) { list(src); progress(src) }
+                    }
                     controls(src)
                 }
             }
@@ -93,6 +95,8 @@ struct PlaylistDockView: View {
                 .help(u.lastPathComponent)
                 .contextMenu {
                     Button(L10n.t("playlist.play_this")) { play(s, i) }
+                    Button(L10n.t("playlist.play_next")) { move(s, i, i < it.index ? it.index : it.index + 1) }
+                        .disabled(i == it.index || i == it.index + 1)
                     Button(L10n.t("playlist.move_up")) { move(s, i, i - 1) }.disabled(i == 0)
                     Button(L10n.t("playlist.move_down")) { move(s, i, i + 1) }.disabled(i == it.urls.count - 1)
                     Divider()
@@ -119,12 +123,11 @@ struct PlaylistDockView: View {
                 Button { playPickedOrToggle(s) } label: { Image(systemName: m.isPlaying && pickedIndex(s) == nil ? "pause.fill" : "play.fill") }
                     .help(L10n.t("playlist.play_help"))
                 Button { m.next() } label: { Image(systemName: "forward.fill") }
-                PlaylistModeButton(icon: "repeat", on: m.loopPlaylist, help: L10n.t("music.loop")) {
-                    m.loopPlaylist.toggle(); model.objectWillChange.send()
-                }
+                repeatButton(m.repeatMode) { m.repeatMode = m.repeatMode.cycled }
                 PlaylistModeButton(icon: "shuffle", on: m.shuffle, help: L10n.t("music.shuffle")) {
                     m.shuffle.toggle(); model.objectWillChange.send()
                 }
+                stopAfterButton(m.stopAfterCurrent) { m.stopAfterCurrent.toggle() }
                 Spacer()
                 m3uMenu(s)
                 Button { model.addTracks(toMusic: m.channel.id) } label: { Image(systemName: "plus") }.help(L10n.t("music.add_tracks"))
@@ -133,14 +136,13 @@ struct PlaylistDockView: View {
                 Button { playPickedOrToggle(s) } label: { Image(systemName: v.isPlaying && pickedIndex(s) == nil ? "pause.fill" : "play.fill") }
                     .help(L10n.t("playlist.play_help"))
                 Button { v.nextClip() } label: { Image(systemName: "forward.fill") }
-                PlaylistModeButton(icon: "repeat", on: v.loop, help: L10n.t("playlist.loop")) {
-                    v.loop.toggle(); model.objectWillChange.send()
-                }
+                repeatButton(v.repeatMode) { v.repeatMode = v.repeatMode.cycled }
                 if v.isPlaylist {
                     PlaylistModeButton(icon: "shuffle", on: v.shuffle, help: L10n.t("playlist.shuffle")) {
                         v.shuffle.toggle(); model.objectWillChange.send()
                     }
                 }
+                stopAfterButton(v.stopAfterCurrent) { v.stopAfterCurrent.toggle() }
                 Spacer()
                 m3uMenu(s)
                 Button { model.addClips(to: id) } label: { Image(systemName: "plus") }.help(L10n.t("playlist.add_clips")).disabled(model.isLocked(id))
@@ -148,6 +150,63 @@ struct PlaylistDockView: View {
         }
         .buttonStyle(.borderless)
         .font(.system(size: 11))
+    }
+
+    /// Repeat: off → all (ON) → one (1) → off.
+    private func repeatButton(_ mode: RepeatMode, _ cycle: @escaping () -> Void) -> some View {
+        PlaylistModeButton(icon: mode == .one ? "repeat.1" : "repeat", on: mode != .off,
+                           help: L10n.t("playlist.repeat_help"),
+                           label: mode == .one ? L10n.t("playlist.repeat_one") : nil) {
+            cycle(); model.objectWillChange.send()
+        }
+    }
+
+    private func stopAfterButton(_ on: Bool, _ toggle: @escaping () -> Void) -> some View {
+        PlaylistModeButton(icon: "stop.circle", on: on, help: L10n.t("playlist.stop_after_help")) {
+            toggle(); model.objectWillChange.send()
+        }
+    }
+
+    /// Elapsed / progress (click or drag to seek) / remaining time of the item playing now.
+    private func progress(_ s: Source) -> some View {
+        let (pos, dur): (Double, Double?) = {
+            switch s {
+            case let .music(m): return (m.position, m.duration)
+            case let .video(_, v): return (v.position, v.duration)
+            }
+        }()
+        let d = max(dur ?? 0, 0)
+        let f = d > 0 ? min(max(pos / d, 0), 1) : 0
+        return HStack(spacing: 6) {
+            Text(Self.time(pos)).frame(width: 40, alignment: .leading)
+            GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.12))
+                    Capsule().fill(Theme.accent).frame(width: max(4, g.size.width * f))
+                }
+                .frame(height: 4)
+                .frame(maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .gesture(DragGesture(minimumDistance: 0).onEnded { v in
+                    guard d > 0, !isLocked(s) else { return }
+                    let t = min(max(v.location.x / max(g.size.width, 1), 0), 1) * d
+                    switch s {
+                    case let .music(m): m.seek(to: t)
+                    case let .video(_, vs): vs.seek(to: t)
+                    }
+                })
+            }
+            .frame(height: 12)
+            Text(d > 0 ? "-" + Self.time(d - pos) : "--:--").frame(width: 44, alignment: .trailing)
+        }
+        .font(.system(size: 10).monospacedDigit())
+        .foregroundStyle(Theme.textDim)
+        .help(L10n.t("playlist.seek_help"))
+    }
+
+    private static func time(_ t: Double) -> String {
+        let s = Int(max(t, 0).rounded(.down))
+        return s >= 3600 ? String(format: "%d:%02d:%02d", s / 3600, s / 60 % 60, s % 60) : String(format: "%d:%02d", s / 60, s % 60)
     }
 
     private func m3uMenu(_ s: Source) -> some View {
@@ -233,13 +292,15 @@ private struct PlaylistModeButton: View {
     let icon: String
     let on: Bool
     let help: String
+    /// Text shown while on (default "ON").
+    var label: String? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 3) {
                 Image(systemName: icon).font(.system(size: 10, weight: .bold))
-                if on { Text(L10n.t("playlist.mode_on")).font(.system(size: 8, weight: .heavy)) }
+                if on { Text(label ?? L10n.t("playlist.mode_on")).font(.system(size: 8, weight: .heavy)) }
             }
             .foregroundStyle(on ? Color.white : Theme.textDim)
             .padding(.horizontal, 6).frame(height: 18)

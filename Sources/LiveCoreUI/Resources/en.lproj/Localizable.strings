@@ -509,7 +509,7 @@
 "fullscreen.settings_hint" = "Each output can go to its own display: e.g. Output 1 = Program on the projector, Output 2 = one camera on a TV. The button on the right opens or closes a single output.";
 "snapshot.button_big" = "PHOTO";
 "designer.button" = "LAYERS";
-"designer.help" = "Layer Designer: move, resize and crop the layers of the Preview input right on the picture";
+"designer.help" = "Layer Designer: move, resize and crop the layers of the Preview input right on the picture. Program shows the changes after the next transition (CUT, AUTO, T-bar)";
 "designer.close" = "Close the Layer Designer";
 "designer.mode_position" = "Move and resize";
 "designer.mode_crop" = "Crop";
@@ -533,12 +533,6 @@
 "designer.crop_values" = "Crop: left %.0f%%  top %.0f%%  right %.0f%%  bottom %.0f%%";
 "designer.crop_reset" = "Remove crop";
 
-/* 0.26.0 — Layer Designer draft */
-"designer.draft" = "DRAFT";
-"designer.draft_help" = "Changes are shown on Preview only. Program changes when you press Apply, close the designer, CUT / AUTO / T-bar, or select another input.";
-"designer.revert" = "Undo the changes that have not been applied yet";
-"designer.apply" = "Apply";
-"designer.apply_help" = "Apply the layer changes (Program shows them if this input is on air)";
 
 /* 0.26.0 — duplicate inputs */
 "inputs.already_used" = "Already used by input %@. One camera / capture can be added only once.";
@@ -551,7 +545,7 @@
 "playlist.mode_off" = "OFF";
 
 /* 0.26.0 — T-bar */
-"tbar.help" = "Drag to mix Preview into Program.";
+"tbar.help" = "T-bar: drag to mix Preview into Program";
 
 /* 0.26.0 — Canvas */
 "canvas.title" = "Canvas";
@@ -567,3 +561,10 @@
 "canvas.help_horizontal" = "Standard for YouTube, Facebook, Zoom (NDI) and TVs.";
 "canvas.help_portrait" = "For Shorts, Reels, TikTok and phone viewing. Monitors, recording, stream and NDI use 9:16.";
 "canvas.help_custom" = "Any size, e.g. square 1:1 or 4:5 feed posts. Monitors follow the shape.";
+
+/* 0.27.0 — playlist */
+"playlist.repeat_help" = "Repeat: off → whole playlist (ON) → this item (1)";
+"playlist.repeat_one" = "1";
+"playlist.stop_after_help" = "Stop after this item: when it ends, playback stops (music cues the next song). Turns itself off after use.";
+"playlist.seek_help" = "Click to jump to that point";
+"playlist.play_next" = "Play next";

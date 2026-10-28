@@ -115,10 +115,13 @@ public final class ReplayRecorder {
         v.expectsMediaDataInRealTime = true
         guard w.canAdd(v) else { return }
         w.add(v)
+        // The adaptor must exist before startWriting(): AVFoundation throws an Objective-C exception
+        // (an uncatchable crash in Swift) when it is created on a writer that has already started.
+        let a = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: v, sourcePixelBufferAttributes: nil)
         guard w.startWriting() else { return }
         w.startSession(atSourceTime: CMTime(seconds: host, preferredTimescale: 90_000))
         writer = w; input = v
-        adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: v, sourcePixelBufferAttributes: nil)
+        adaptor = a
         segStart = host
         segID = id
     }

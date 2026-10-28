@@ -8,8 +8,8 @@ import LiveCoreEngine
 /// right on the picture. Drag to move, handles to resize (snapping to the canvas, the centre and
 /// the other layers), Crop mode to cut edges (Shift = both sides), plus border, rounded corners,
 /// hide/show, lock, flatten and saved layouts. The Preview picture underneath is the real GPU result.
-/// Edits are a draft shown on Preview only; Program gets them on Apply, when the designer closes,
-/// or when the input is taken to Program.
+/// Edits are a draft shown on Preview only; Program gets them when the input is taken to Program
+/// with a transition (CUT, AUTO, T-bar).
 final class LayerDesignerState: ObservableObject {
     enum Mode: String { case position, crop }
 
@@ -22,16 +22,12 @@ final class LayerDesignerState: ObservableObject {
     /// Snap lines shown while dragging (normalized).
     @Published var guidesX: [Double] = []
     @Published var guidesY: [Double] = []
-    /// Changes not on Program yet.
-    @Published private(set) var dirty = false
     var dragStart: (rect: NormRect, crop: LayerStyle.Crop)?
 
     /// Re-reads the layers of the input on Preview (when it changes or the designer opens).
     func load(_ model: AppModel, input id: InputID?) {
         input = id
-        let draft = id.flatMap { model.draftLayers(of: $0) }
-        dirty = draft != nil
-        layers = draft ?? id.map { model.layers(of: $0) } ?? []
+        layers = id.flatMap { model.draftLayers(of: $0) } ?? id.map { model.layers(of: $0) } ?? []
         if !layers.indices.contains(selected) || selected == 0 { selected = max(layers.count - 1, 0) }
     }
 
@@ -39,33 +35,17 @@ final class LayerDesignerState: ObservableObject {
         guard let input, layers.indices.contains(i) else { return }
         change(&layers[i])
         model.setDraftLayers(layers, of: input)
-        if !dirty { dirty = true }
     }
 
     func replaceAll(_ model: AppModel, _ new: [Layer]) {
         guard let input else { return }
         model.setDraftLayers(new, of: input)
         layers = model.draftLayers(of: input) ?? new
-        dirty = true
         if !layers.indices.contains(selected) { selected = max(layers.count - 1, 0) }
     }
 
-    /// Puts the edits on Program.
-    func apply(_ model: AppModel) {
-        model.commitDraftLayers()
-        dirty = false
-    }
-
-    /// Throws the edits away (back to what is on air).
-    func revert(_ model: AppModel) {
-        model.discardDraftLayers()
-        load(model, input: input)
-    }
-
-    func close(_ model: AppModel) {
-        apply(model)
-        active = false
-    }
+    /// Hides the tools; the edits stay on Preview until the next transition.
+    func close() { active = false }
 
     var selectedLayer: Layer? { layers.indices.contains(selected) ? layers[selected] : nil }
 
@@ -263,19 +243,7 @@ struct LayerDesignerBar: View {
             .disabled(state.layers.count < 2)
             templateMenu
             Spacer(minLength: 0)
-            if state.dirty {
-                Text(L10n.t("designer.draft")).font(.system(size: 9, weight: .heavy))
-                    .padding(.horizontal, 4).padding(.vertical, 1)
-                    .background(Theme.warning.opacity(0.85)).foregroundStyle(Color.black)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
-                    .help(L10n.t("designer.draft_help"))
-                Button { state.revert(model) } label: { Image(systemName: "arrow.uturn.backward") }
-                    .buttonStyle(.borderless).help(L10n.t("designer.revert"))
-                Button(L10n.t("designer.apply")) { state.apply(model) }
-                    .font(.system(size: 10, weight: .bold))
-                    .help(L10n.t("designer.apply_help"))
-            }
-            Button { state.close(model) } label: { Image(systemName: "xmark.circle.fill") }
+            Button { state.close() } label: { Image(systemName: "xmark.circle.fill") }
                 .buttonStyle(.borderless).help(L10n.t("designer.close"))
         }
         .font(.system(size: 11))

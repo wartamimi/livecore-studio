@@ -1,4 +1,13 @@
 /// Track order rules shared by the music player and video playlists.
+/// Repeat button of a playlist: off → all → one → off.
+public enum RepeatMode: String, Codable, Sendable, CaseIterable {
+    case off, all, one
+    public var cycled: RepeatMode {
+        switch self { case .off: return .all; case .all: return .one; case .one: return .off }
+    }
+    public init(loop: Bool, one: Bool) { self = one ? .one : (loop ? .all : .off) }
+}
+
 public enum PlaylistMath {
     /// Index after `index`, or nil at the end of a non-looping list. With `shuffle`, a random
     /// other track (never the same one twice in a row when there is a choice).
@@ -11,6 +20,15 @@ public enum PlaylistMath {
         }
         if index + 1 < count { return index + 1 }
         return loop ? 0 : nil
+    }
+
+    /// What plays when the current item ends by itself: the same item (Repeat One), the next one,
+    /// or nil to stop. "Stop after this item" wins over everything else.
+    public static func afterEnd(index: Int, count: Int, repeat mode: RepeatMode, shuffle: Bool,
+                                stopAfterCurrent: Bool = false, random: (Range<Int>) -> Int) -> Int? {
+        guard count > 0, !stopAfterCurrent else { return nil }
+        if mode == .one { return min(max(index, 0), count - 1) }
+        return next(index: index, count: count, loop: mode == .all, shuffle: shuffle, random: random)
     }
 
     /// Index before `index`, wrapping to the last track.

@@ -535,8 +535,6 @@ public final class AppModel: ObservableObject {
     /// Layer Designer: edits shown on Preview only until committed (see ProductionEngine.setDraftLayers).
     public func setDraftLayers(_ layers: [Layer], of id: InputID) { engine?.setDraftLayers(layers, of: id) }
     public func draftLayers(of id: InputID) -> [Layer]? { engine?.draftLayers(of: id) }
-    public func commitDraftLayers() { engine?.commitDraftLayers() }
-    public func discardDraftLayers() { engine?.discardDraftLayers() }
     public func frameSize(_ id: InputID) -> PixelSize? { engine?.frameSize(of: id) }
 
     public func addPiP(source: InputID, preset: LayoutPreset) {
