@@ -204,11 +204,11 @@ public final class ProductionEngine {
             let draft = st.draft.map { [$0.input: $0.layers] } ?? [:]
             let plan = FramePlanner.plan(snapshot: st.switcher.state, overlays: st.overlays, now: now,
                                          layersFor: { layers[$0] }, keyFor: { keys[$0] },
-                                         previewLayers: draft,
                                          thumbnailsFor: thumbTick ? st.order : [],
                                          composedThumbnails: thumbTick ? Set(st.sources.filter { $0.value is SceneSource }.keys) : [],
                                          detailInput: st.detail,
-                                         extraInputs: st.extraInputs, fullPreview: st.fullPreview)
+                                         extraInputs: st.extraInputs, fullPreview: st.fullPreview,
+                                         previewLayers: draft)
             return (plan, st.sources, st.switcher.state, st.adjusts)
         }
         if !events.isEmpty || snapshot != lastSwitcher {
