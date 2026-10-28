@@ -4,7 +4,7 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.32.0 — Milestone 3 berjalan.** 0.32.0 menambah MultiCorder (rekaman ISO): sampai 4 input pilihan
+> **Status: 0.33.0 — Milestone 3 berjalan.** 0.33.0 memisahkan MultiCorder dari RECORD: tombol MULTICORDER sendiri di dock, pilih input sendiri (maks 4) dan profil rekaman sendiri (bawaan HEVC 25 Mbps MOV). Recorder dan MultiCorder kini punya setelan lanjutan: H.264 / HEVC / ProRes 422 (Proxy, LT, 422, HQ), bitrate 2–150 Mbps, interval keyframe, B-frame, audio AAC 128–320 kbps atau PCM 24-bit, plus perkiraan GB per jam. Encoder hardware diminta untuk setiap file, B-frame mati secara bawaan, dan jumlah frame terbuang tiap file tampil di dock. Panel input mendapat label warna (8 warna): input berwarna sama otomatis masuk satu grup dengan judul yang bisa diganti nama, filter per warna, dan tiap input bisa di-minimize menjadi baris ringkas seperti vMix. 0.32.0 menambah MultiCorder (rekaman ISO): sampai 4 input pilihan
 > ikut direkam ke file masing-masing selama RECORD berjalan ("… - ISO 2 Kamera Wide.mp4"), ukuran penuh dengan
 > layer-nya, audio & format sama dengan rekaman Program — untuk edit ulang wedding/event. Diuji di CI macOS
 > (`livecore-iso-check`: file Program + ISO bersamaan, keduanya bisa diputar dengan video+audio); menunggu tes

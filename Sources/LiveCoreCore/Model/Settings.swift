@@ -145,6 +145,38 @@ public enum RecordingContainer: String, Codable, Sendable, CaseIterable {
     public var fileExtension: String { rawValue }
 }
 
+/// Video codec of a recording (Recorder and MultiCorder, 0.33.0). H.264 / HEVC use the Mac's
+/// hardware encoder at a chosen bitrate; ProRes is intra-frame at a fixed quality (MOV only),
+/// encoded by the ProRes engine on Apple silicon that has one (M1 Pro/Max/Ultra, M2 and later).
+public enum RecordingCodec: String, Codable, Sendable, CaseIterable {
+    case h264, hevc, proRes422Proxy, proRes422LT, proRes422, proRes422HQ
+
+    public var isProRes: Bool { self != .h264 && self != .hevc }
+    public var usesBitrate: Bool { !isProRes }
+
+    public var label: String {
+        switch self {
+        case .h264: return "H.264"
+        case .hevc: return "HEVC (H.265)"
+        case .proRes422Proxy: return "ProRes 422 Proxy"
+        case .proRes422LT: return "ProRes 422 LT"
+        case .proRes422: return "ProRes 422"
+        case .proRes422HQ: return "ProRes 422 HQ"
+        }
+    }
+
+    /// Apple's target ProRes data rates at 1920×1080 29.97 fps (Mbps).
+    var proResMbps1080p30: Double {
+        switch self {
+        case .proRes422Proxy: return 45
+        case .proRes422LT: return 102
+        case .proRes422: return 147
+        case .proRes422HQ: return 220
+        default: return 0
+        }
+    }
+}
+
 public struct RecordingSettings: Codable, Equatable, Sendable {
     public var folderPath: String = ""      // empty = ~/Movies/LiveCore Studio
     public var fileNamePattern: String = "LiveCore {date} {time}"
@@ -154,7 +186,59 @@ public struct RecordingSettings: Codable, Equatable, Sendable {
     /// Added in 0.9.0; nil (older settings) = Master.
     public var audioBus: OutputBus?
     public var bus: OutputBus { audioBus ?? .master }
+    // Advanced (0.33.0); nil in older settings = the previous behaviour.
+    public var codec: RecordingCodec?
+    public var keyframeSeconds: Double?
+    /// B-frames: smaller files at the same quality, but more encoder work and latency.
+    public var frameReordering: Bool?
+    public var audioBitrateKbps: Int?
+    /// Uncompressed 24-bit PCM audio (MOV only) instead of AAC.
+    public var pcmAudio: Bool?
     public init() {}
+
+    public var videoCodec: RecordingCodec { codec ?? .h264 }
+    public var keyframeInterval: Double { keyframeSeconds ?? 2 }
+    public var bFrames: Bool { frameReordering ?? false }
+    public var audioKbps: Int { audioBitrateKbps ?? 192 }
+    /// ProRes and PCM audio need MOV.
+    public var effectiveContainer: RecordingContainer { videoCodec.isProRes || pcmAudio == true ? .mov : container }
+    public var usesPCM: Bool { pcmAudio == true && effectiveContainer == .mov }
+
+    public static let audioBitrates = [128, 160, 192, 256, 320]
+    public static let bitrateRange = 2_000...150_000
+
+    /// Problems with these settings (empty = OK).
+    public func validationErrors(label: String = "Recording") -> [String] {
+        var errs: [String] = []
+        if videoCodec.usesBitrate, !Self.bitrateRange.contains(bitrateKbps) {
+            errs.append("\(label): video bitrate must be 2–150 Mbps.")
+        }
+        if !(0.5...10).contains(keyframeInterval) { errs.append("\(label): keyframe interval must be 0.5–10 seconds.") }
+        if !Self.audioBitrates.contains(audioKbps) { errs.append("\(label): audio bitrate not supported.") }
+        return errs
+    }
+
+    /// Approximate data rate of one file (video + audio), for the disk-space estimate.
+    public func estimatedMbps(output: OutputFormat) -> Double {
+        let audio = usesPCM ? 2.304 : Double(audioKbps) / 1000          // 48 kHz × 24 bit × 2
+        guard videoCodec.isProRes else { return Double(bitrateKbps) / 1000 + audio }
+        let scale = Double(output.size.width * output.size.height) * Double(output.frameRate) / (1920.0 * 1080 * 29.97)
+        return videoCodec.proResMbps1080p30 * scale + audio
+    }
+
+    /// Gigabytes per hour for `files` files with these settings.
+    public func gigabytesPerHour(output: OutputFormat, files: Int = 1) -> Double {
+        estimatedMbps(output: output) * 3600 / 8 / 1000 * Double(max(files, 0))
+    }
+
+    /// MultiCorder default: HEVC at 25 Mbps in MOV (the file stays readable if the Mac stops).
+    public static var multiCorderDefault: RecordingSettings {
+        var r = RecordingSettings()
+        r.codec = .hevc
+        r.bitrateKbps = 25_000
+        r.container = .mov
+        return r
+    }
 }
 
 
@@ -168,6 +252,9 @@ public struct ProductionSettings: Codable, Equatable, Sendable {
     public var transitionDuration: Double = 1.0
     /// Shader used when `transition == .custom` (`CustomTransitionSource` id); added in 0.12.0.
     public var customTransition: String?
+    /// MultiCorder (ISO) recording profile, separate from the Recorder (0.33.0).
+    public var multiCorder: RecordingSettings?
+    public var multiCorderRecording: RecordingSettings { multiCorder ?? .multiCorderDefault }
     public init() {}
 
     /// Validation used before starting outputs. Returns human-readable problems (empty = OK).
@@ -183,6 +270,8 @@ public struct ProductionSettings: Codable, Equatable, Sendable {
         if ![64, 96, 128, 160, 192, 256, 320].contains(audio.bitrateKbps) { errs.append("Audio bitrate not supported by AAC encoder.") }
         if ![44100, 48000].contains(audio.sampleRate) { errs.append("Audio sample rate must be 44.1 or 48 kHz.") }
         errs += stream.destinationErrors()
+        errs += recording.validationErrors(label: "Recorder")
+        errs += multiCorderRecording.validationErrors(label: "MultiCorder")
         return errs
     }
 }

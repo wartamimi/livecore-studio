@@ -12,13 +12,17 @@ extension RecordReminderMode {
 /// and the four outputs. It is always shown (cannot be minimized).
 struct OutputDockView: View {
     @EnvironmentObject var model: AppModel
-    /// Opens the Settings window on a tab (1 = Stream, 2 = Record).
+    /// Opens the Settings window on a tab (1 = Stream, 2 = Record, 8 = MultiCorder).
     let openSettings: (Int) -> Void
     @State private var showRecord = false
     @State private var showStream = false
     @State private var showExternal = false
+    @State private var showMultiCorder = false
 
     init(openSettings: @escaping (Int) -> Void) { self.openSettings = openSettings }
+
+    /// Four output groups (RECORD, MULTICORDER, STREAM, EXTERNAL) fit a 13" screen.
+    static let buttonWidth: CGFloat = 132
 
     var body: some View {
         HStack(spacing: 10) {
@@ -31,7 +35,7 @@ struct OutputDockView: View {
                     Label(L10n.t("dock.record"), systemImage: model.isRecording ? "stop.circle.fill" : "record.circle")
                 }
                 .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isRecording))
-                .frame(width: StudioButtonStyle.mainWidth)
+                .frame(width: Self.buttonWidth)
                 .disabled(model.recordLocked)
                 gear($showRecord, help: L10n.t("dock.record_settings")) {
                     VStack(alignment: .leading, spacing: 10) {
@@ -43,13 +47,30 @@ struct OutputDockView: View {
                 status(recordStatus, live: model.isRecording)
             }
             group {
+                Button { model.requestToggleMultiCorder() } label: {
+                    Label("MULTICORDER", systemImage: model.isMultiCorderRunning ? "stop.circle.fill" : "square.grid.2x2")
+                }
+                .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isMultiCorderRunning))
+                .frame(width: Self.buttonWidth)
+                .disabled(model.recordLocked)
+                .help(L10n.t("multicorder.button_help"))
+                gear($showMultiCorder, help: L10n.t("multicorder.settings")) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        MultiCorderDetails()
+                        Button(L10n.t("dock.more_settings")) { showMultiCorder = false; openSettings(8) }
+                    }
+                    .padding(12).frame(width: 360)
+                }
+                status(multiCorderStatus, live: model.isMultiCorderRunning)
+            }
+            group {
                 Button {
                     if !model.isStreamingActive && model.readyDestinationCount == 0 { openSettings(1) } else { model.requestToggleStream() }
                 } label: {
                     Label(L10n.t("dock.stream"), systemImage: "dot.radiowaves.left.and.right")
                 }
                 .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isStreamingActive))
-                .frame(width: StudioButtonStyle.mainWidth)
+                .frame(width: Self.buttonWidth)
                 .disabled(model.streamLocked)
                 gear($showStream, help: L10n.t("dock.stream_settings")) {
                     VStack(alignment: .leading, spacing: 10) {
@@ -65,7 +86,7 @@ struct OutputDockView: View {
                     Label(L10n.t("dock.external"), systemImage: "rectangle.portrait.and.arrow.right")
                 }
                 .buttonStyle(StudioButtonStyle(color: Theme.accent, active: model.externalActive))
-                .frame(width: StudioButtonStyle.mainWidth)
+                .frame(width: Self.buttonWidth)
                 .help(L10n.t("dock.external_help"))
                 gear($showExternal, help: L10n.t("dock.external_settings")) {
                     ExternalSettingsView().padding(12).frame(width: 640)
@@ -99,12 +120,26 @@ struct OutputDockView: View {
             .font(.system(size: 10, weight: live ? .semibold : .regular).monospacedDigit())
             .foregroundStyle(live ? Theme.text : Theme.textDim)
             .lineLimit(2)
-            .frame(width: 118, alignment: .leading)
+            .frame(width: 108, alignment: .leading)
     }
 
     private var recordStatus: String {
         guard model.isRecording else { return L10n.t("dock.record_off") }
         return "\(formatDuration(model.recordStats.duration)) · \(ByteCountFormatter.string(fromByteCount: model.recordStats.fileBytes, countStyle: .file))"
+    }
+
+    private var multiCorderStatus: String {
+        guard model.isMultiCorderRunning else {
+            return model.multiCorder.inputs.isEmpty ? L10n.t("multicorder.none") : L10n.f("multicorder.ready", model.multiCorder.inputs.count)
+        }
+        let files = model.isoFiles
+        let recording = files.filter { if case .recording = $0.stats.state { return true }; return false }
+        let longest = recording.map(\.stats.duration).max() ?? 0
+        let bytes = recording.reduce(Int64(0)) { $0 + $1.stats.fileBytes }
+        let dropped = recording.reduce(0) { $0 + $1.stats.droppedVideoFrames }
+        var s = "\(formatDuration(longest)) · \(recording.count) ISO · \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))"
+        if dropped > 0 { s += " · \(dropped) drop" }
+        return s
     }
 
     private var streamStatus: String {

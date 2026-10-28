@@ -168,7 +168,6 @@ struct RecordDetails: View {
             Toggle(L10n.t("record.with_stream"), isOn: $model.recordWithStream)
                 .toggleStyle(.checkbox).font(.system(size: 11))
                 .help(L10n.t("record.with_stream_help"))
-            MultiCorderSection()
             if let snap = model.lastSnapshotURL {
                 Button(L10n.f("snapshot.saved", snap.lastPathComponent)) { NSWorkspace.shared.activateFileViewerSelecting([snap]) }
                     .buttonStyle(.link).font(.system(size: 10)).lineLimit(1)
@@ -199,41 +198,36 @@ struct RecordDetails: View {
         model.settings.recording.folderPath.isEmpty ? RecordingEngine.defaultFolder().path : model.settings.recording.folderPath
     }
 }
-/// MultiCorder (ISO): pick up to 4 inputs that RECORD also records to their own files.
-struct MultiCorderSection: View {
+/// MULTICORDER ⚙: pick up to 4 inputs recorded to their own files, see each file's state.
+struct MultiCorderDetails: View {
     @EnvironmentObject var model: AppModel
-    @State private var open = false
 
     var body: some View {
-        DisclosureGroup(isExpanded: $open) {
-            VStack(alignment: .leading, spacing: 4) {
-                Toggle(L10n.t("multicorder.enable"), isOn: Binding(get: { model.multiCorder.enabled }, set: { model.setMultiCorderEnabled($0) }))
-                    .toggleStyle(.checkbox).font(.system(size: 11))
-                ForEach(model.inputs) { i in
-                    let on = model.multiCorder.contains(i.id)
-                    Toggle("\(i.number)  \(i.name)", isOn: Binding(get: { on }, set: { _ in model.toggleISO(i.id) }))
-                        .toggleStyle(.checkbox).font(.system(size: 11)).lineLimit(1)
-                        .disabled(!model.multiCorder.enabled || (!on && model.multiCorder.isFull))
+        VStack(alignment: .leading, spacing: 5) {
+            SectionHeader(title: "MultiCorder (ISO)")
+            let p = model.settings.multiCorderRecording
+            Text("\(p.videoCodec.label)\(p.videoCodec.usesBitrate ? " · \(p.bitrateKbps / 1000) Mbps" : "") · \(p.effectiveContainer.rawValue.uppercased()) · \(model.settings.output.size.width)×\(model.settings.output.size.height) \(model.settings.output.frameRate) fps")
+                .font(.system(size: 10)).foregroundStyle(Theme.textDim)
+            ForEach(model.inputs) { i in
+                let on = model.multiCorder.contains(i.id)
+                Toggle(isOn: Binding(get: { on }, set: { _ in model.toggleISO(i.id) })) {
+                    HStack(spacing: 5) {
+                        if let t = model.inputTags[i.id] { Circle().fill(t.color).frame(width: 7, height: 7) }
+                        Text("\(i.number)  \(i.name)").lineLimit(1)
+                    }
                 }
-                if model.inputs.isEmpty {
-                    Text(L10n.t("multicorder.no_inputs")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
-                }
-                Text(L10n.f("multicorder.help", MultiCorderConfig.maxInputs)).font(.system(size: 10)).foregroundStyle(Theme.textDim)
-                    .fixedSize(horizontal: false, vertical: true)
-                if model.isRecording, !model.multiCorder.active.isEmpty, model.isoStats.isEmpty {
-                    Text(L10n.t("multicorder.next_time")).font(.system(size: 10)).foregroundStyle(Theme.warning)
-                }
-                ForEach(model.isoFiles) { f in isoRow(f.input, f.stats) }
+                .toggleStyle(.checkbox).font(.system(size: 11))
+                .disabled(model.isMultiCorderRunning || (!on && model.multiCorder.isFull))
             }
-            .padding(.leading, 4)
-        } label: {
-            HStack(spacing: 6) {
-                Text("MultiCorder (ISO)").font(.system(size: 11, weight: .semibold))
-                if model.multiCorder.enabled, !model.multiCorder.inputs.isEmpty {
-                    Text(L10n.f("multicorder.count", model.multiCorder.inputs.count))
-                        .font(.system(size: 10)).foregroundStyle(Theme.textDim)
-                }
+            if model.inputs.isEmpty {
+                Text(L10n.t("multicorder.no_inputs")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
             }
+            Text(L10n.f("multicorder.help", MultiCorderConfig.maxInputs)).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(L10n.f("recprofile.estimate", p.gigabytesPerHour(output: model.settings.output, files: model.multiCorder.inputs.count),
+                        model.multiCorder.inputs.count))
+                .font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.textDim)
+            ForEach(model.isoFiles) { f in isoRow(f.input, f.stats) }
         }
     }
 
