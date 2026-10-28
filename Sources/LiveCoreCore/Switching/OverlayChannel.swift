@@ -57,6 +57,11 @@ public enum OverlayAnimation: String, Codable, Sendable, CaseIterable {
     case fade
     case slideFromLeft, slideFromRight, slideFromBottom, slideFromTop
     case zoom
+    /// Fully shown for the whole duration: the source animates itself (vMix GT titles, 0.41.0).
+    case hold
+
+    /// The motions an operator can pick (``hold`` is set by titles that animate themselves).
+    public static var selectable: [OverlayAnimation] { allCases.filter { $0 != .hold } }
 
     public func placement(_ rect: NormRect, progress: Double) -> (rect: NormRect, opacity: Double) {
         let p = min(max(progress, 0), 1)
@@ -65,6 +70,8 @@ public enum OverlayAnimation: String, Codable, Sendable, CaseIterable {
         switch self {
         case .fade:
             return (rect, p)
+        case .hold:
+            return (rect, p > 0 ? 1 : 0)
         case .slideFromLeft:
             r.x = rect.x - (rect.x + rect.width) * (1 - e)
         case .slideFromRight:

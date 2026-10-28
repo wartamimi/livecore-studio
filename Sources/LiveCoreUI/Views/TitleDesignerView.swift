@@ -503,7 +503,7 @@ struct AnimationPicker: View {
     @Binding var selection: OverlayAnimation
     var body: some View {
         Picker("", selection: $selection) {
-            ForEach(OverlayAnimation.allCases, id: \.self) { Text(L10n.t("overlay.anim." + $0.rawValue)).tag($0) }
+            ForEach(OverlayAnimation.selectable, id: \.self) { Text(L10n.t("overlay.anim." + $0.rawValue)).tag($0) }
         }
         .labelsHidden().frame(width: 200)
     }

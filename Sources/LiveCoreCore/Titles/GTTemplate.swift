@@ -8,8 +8,12 @@ public struct GTTemplate: Equatable, Sendable {
     public var height: Double
     public var elements: [GTElement]
     public var animations: [GTAnimation]
-    public init(width: Double, height: Double, elements: [GTElement] = [], animations: [GTAnimation] = []) {
+    /// The template's own "out" storyboard; empty = out plays the "in" backwards (as vMix does).
+    public var outAnimations: [GTAnimation] = []
+    public init(width: Double, height: Double, elements: [GTElement] = [], animations: [GTAnimation] = [],
+                outAnimations: [GTAnimation] = []) {
         self.width = width; self.height = height; self.elements = elements; self.animations = animations
+        self.outAnimations = outAnimations
     }
 
     /// Names of the text elements, in drawing order: the fields the operator can change.
@@ -19,6 +23,35 @@ public struct GTTemplate: Equatable, Sendable {
 
     /// Seconds until the last "in" animation has finished.
     public var inDuration: Double { animations.map { $0.delay + $0.duration }.max() ?? 0 }
+
+    /// Seconds the "out" takes.
+    public var outDuration: Double {
+        outAnimations.isEmpty ? inDuration : (outAnimations.map { $0.delay + $0.duration }.max() ?? 0)
+    }
+
+    /// How element `name` is drawn in `phase`; nil = not drawn.
+    public func frame(for name: String, _ phase: GTPhase) -> GTAnimation.Frame? {
+        switch phase {
+        case .shown:
+            return GTAnimation.Frame()
+        case let .entering(t):
+            guard let a = animation(for: name) else { return GTAnimation.Frame() }
+            let p = a.progress(at: t)
+            return p <= 0 ? nil : a.frame(progress: p)
+        case let .leaving(t):
+            if outAnimations.isEmpty {
+                // The "in" played backwards.
+                let back = inDuration - t
+                guard back > 0 else { return nil }
+                return frame(for: name, .entering(back))
+            }
+            guard let a = outAnimations.first(where: { $0.object == name }) else {
+                return t >= outDuration ? nil : GTAnimation.Frame()
+            }
+            let p = a.progress(at: t)
+            return p >= 1 ? nil : a.frame(progress: 1 - p)
+        }
+    }
 }
 
 public struct GTColor: Equatable, Sendable {
@@ -97,6 +130,13 @@ public struct GTElement: Equatable, Sendable {
     }
 }
 
+/// Where a GT title is in its storyboard.
+public enum GTPhase: Equatable, Sendable {
+    case shown
+    case entering(Double)   // seconds since "in" started
+    case leaving(Double)    // seconds since "out" started
+}
+
 /// One "in" animation of the storyboard. Supported: Reveal (wipe), Expand (grow from the centre or
 /// an edge), Zoom (scale from the centre), Fade. Other types simply appear at their delay.
 public struct GTAnimation: Equatable, Sendable {
@@ -113,7 +153,8 @@ public struct GTAnimation: Equatable, Sendable {
     public func progress(at t: Double) -> Double {
         guard duration > 0 else { return t >= delay ? 1 : 0 }
         let p = min(max((t - delay) / duration, 0), 1)
-        return 1 - pow(1 - p, 3)   // ease out
+        // Ease in and out (cubic): starts and lands softly, like vMix GT.
+        return p < 0.5 ? 4 * p * p * p : 1 - pow(-2 * p + 2, 3) / 2
     }
 
     /// What to draw of the element at progress `p`: a clip of its box (0…1 in each axis), a scale
@@ -251,6 +292,9 @@ public extension GTTemplate {
         }
         let s = speed > 0 ? speed : 1
         t.animations = anims.map { var a = $0; a.delay /= s; a.duration /= s; return a }
+        let shown = Set(t.elements.map(\.name))
+        t.outAnimations = outAnimations.filter { shown.contains($0.object) }
+            .map { var a = $0; a.delay /= s; a.duration /= s; return a }
         return t
     }
 }

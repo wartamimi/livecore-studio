@@ -51,6 +51,14 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AQ. Tes manual build 0.41.0
+
+| ID | Area | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-199 | Kehalusan | Output 1080p60, title GT di overlay 1, tekan 1 | Animasi masuk mulus tanpa patah-patah; bandingkan dengan vMix |
+| T-200 | Animasi keluar | Tekan 1 lagi (overlay off) | Elemen keluar (kebalikan animasi masuk / storyboard Out template), lalu overlay hilang tanpa kedip |
+| T-201 | Font dari folder | Editor GT › Pasang font dari folder… › pilih folder berisi banyak font | Pesan "N dipasang, M dilewati"; font yang sudah ada tidak dipasang ulang; title memakai font baru |
+
 ## AP. Tes manual build 0.40.0
 
 | ID | Area | Langkah | Hasil yang diharapkan |
