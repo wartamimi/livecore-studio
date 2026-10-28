@@ -173,6 +173,9 @@ struct KeyboardShortcuts: View {
             Button("") { model.auto() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.auto), modifiers: [])
             Button("") { model.requestToggleStream() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.stream), modifiers: [.command])
             Button("") { model.requestToggleRecord() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.record), modifiers: [.command])
+            // Presentation clickers send Page Down / Page Up.
+            Button("") { model.presentationStep(forward: true) }.keyboardShortcut(.pageDown, modifiers: [])
+            Button("") { model.presentationStep(forward: false) }.keyboardShortcut(.pageUp, modifiers: [])
             ForEach(1..<10) { n in
                 Button("") { model.previewNumber(n) }.keyboardShortcut(KeyEquivalent(Character("\(n)")), modifiers: [])
             }

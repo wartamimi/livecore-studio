@@ -1,19 +1,26 @@
 #if os(macOS)
 import AppKit
 import CoreVideo
+import ScreenCaptureKit
 import LiveCoreCore
 
 /// PowerPoint / Keynote / OpenDocument / PDF slides. A PDF is shown directly; other files are
 /// first exported to a cached PDF by Keynote, PowerPoint or LibreOffice (whichever is installed).
 /// Each slide is drawn aspect-fit at the output size; the slide on air and its neighbours are kept
-/// rendered so next / previous switch at once. Slides are static: slide animations, transitions and
-/// embedded video are not played.
+/// rendered so next / previous switch at once. These slides are static.
+///
+/// Live mode (vMix PowerPoint input): PowerPoint plays the slide show in a window and the input
+/// captures that window and its sound, so animations, transitions and embedded video play. Needs
+/// Microsoft PowerPoint, the Automation permission and the Screen Recording permission.
 public final class PresentationSource: VideoSource {
     public let id: InputID
     public let kind: InputKind = .presentation
     public var name: String
     public let url: URL
-    public var status: SourceStatus { lock.withLock { st } }
+    public var status: SourceStatus {
+        if let c = lock.withLock({ capture }) { return c.status }
+        return lock.withLock { st }
+    }
     public var onStatusChange: ((SourceStatus) -> Void)?
     /// Called on the main queue when the slide, the slide count or the conversion state changes.
     public var onChange: (() -> Void)?
@@ -38,9 +45,11 @@ public final class PresentationSource: VideoSource {
     private var rendered: [Int: CVPixelBuffer] = [:]
     private var started = false
 
-    public init(id: InputID, url: URL, slide: Int = 0, background: ProjectColor? = nil, outputSize: PixelSize) {
+    public init(id: InputID, url: URL, slide: Int = 0, background: ProjectColor? = nil, live: Bool = false,
+                outputSize: PixelSize) {
         self.id = id; self.url = url; self.outputSize = outputSize
         current = max(0, slide); bg = background
+        wantsLive = live && PresentationSource.canPlayLive(url)
         name = url.deletingPathExtension().lastPathComponent
     }
 
@@ -48,23 +57,178 @@ public final class PresentationSource: VideoSource {
         queue.async { [weak self] in
             guard let self, !self.started else { return }
             self.started = true
-            self.load(force: false)
+            if self.lock.withLock({ self.wantsLive }) { self.startLive() } else { self.load(force: false) }
         }
     }
-    public func stop() {}
-    public func currentFrame() -> CVPixelBuffer? { lock.withLock { frame } }
+    public func stop() {
+        let c: ScreenCaptureSource? = lock.withLock { let c = capture; capture = nil; return c }
+        guard let c else { return }
+        c.stop()
+        queue.async { Self.endSlideShow() }
+    }
+    public func currentFrame() -> CVPixelBuffer? {
+        if let c = lock.withLock({ capture }), let pb = c.currentFrame() { return pb }
+        return lock.withLock { frame }
+    }
 
     public func go(to slide: Int) {
         queue.async { [weak self] in
             guard let self else { return }
+            if self.lock.withLock({ self.capture != nil }) {
+                self.liveCommand("go to slide (slide show view of slide show window 1) number \(slide + 1)")
+                return
+            }
             let n = self.lock.withLock { self.count }
             self.show(SlideMath.clamp(slide, count: n))
         }
     }
-    public func next() { go(to: SlideMath.next(slide, count: slideCount)) }
-    public func previous() { go(to: SlideMath.previous(slide, count: slideCount)) }
+    // In live mode PowerPoint moves on, so builds (click animations) inside a slide play too.
+    public func next() {
+        if isLive { queue.async { [weak self] in self?.liveCommand("go to next slide (slide show view of slide show window 1)") }; return }
+        go(to: SlideMath.next(slide, count: slideCount))
+    }
+    public func previous() {
+        if isLive { queue.async { [weak self] in self?.liveCommand("go to previous slide (slide show view of slide show window 1)") }; return }
+        go(to: SlideMath.previous(slide, count: slideCount))
+    }
     public func first() { go(to: 0) }
     public func last() { go(to: max(0, slideCount - 1)) }
+
+    // MARK: - Live mode
+
+    /// PowerPoint is installed and can open this file.
+    public static func canPlayLive(_ url: URL) -> Bool {
+        let ext = url.pathExtension.lowercased()
+        return (PresentationFiles.powerPoint.contains(ext) || PresentationFiles.openDocument.contains(ext))
+            && PresentationConverter.isInstalled(.powerPoint)
+    }
+    public var canPlayLive: Bool { Self.canPlayLive(url) }
+    /// The slide show is being captured from PowerPoint.
+    public var isLive: Bool { lock.withLock { capture != nil } }
+    /// Live mode was chosen (saved in the project), even while PowerPoint is still starting.
+    public var prefersLive: Bool { lock.withLock { wantsLive } }
+    /// Set by the engine: the mixer channel for the slide show's sound (main thread).
+    public var audioChannelProvider: (() -> MixerChannel)?
+    private var capture: ScreenCaptureSource?
+    private var wantsLive = false
+
+    /// Switches between live (PowerPoint plays) and static slides. Main thread.
+    public func setLive(_ on: Bool) {
+        guard on != prefersLive, !on || canPlayLive else { return }
+        lock.withLock { wantsLive = on }
+        if on {
+            queue.async { [weak self] in self?.startLive() }
+        } else {
+            stop()
+            queue.async { [weak self] in
+                guard let self else { return }
+                if self.document == nil { self.load(force: false) } else { self.show(self.lock.withLock { self.current }) }
+            }
+            notify()
+        }
+    }
+
+    /// Queue. Opens the file in PowerPoint, plays it in a window and captures that window.
+    private func startLive() {
+        lock.withLock { converting = true }
+        setStatus(.starting)
+        notify()
+        let before = Set(Self.powerPointWindows().map(\.windowID))
+        do {
+            try PresentationConverter.osascript([
+                "on run argv",
+                "tell application \"Microsoft PowerPoint\"",
+                "open (POSIX file (item 1 of argv))",
+                "set p to active presentation",
+                "set show type of slide show settings of p to slide show type window",
+                "run slide show slide show settings of p",
+                "end tell",
+                "end run",
+            ], args: [url.path], timeout: 120)
+        } catch {
+            liveFailed("PowerPoint: \(error.localizedDescription)")
+            return
+        }
+        var found: WindowCandidate?
+        for _ in 0..<40 where found == nil {
+            found = Self.powerPointWindows().first { !before.contains($0.windowID) }
+            if found == nil { usleep(250_000) }
+        }
+        guard let window = found else {
+            liveFailed("PowerPoint: the slide show window did not open")
+            return
+        }
+        let start = lock.withLock { current }
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.prefersLive else { return }
+            let cap = ScreenCaptureSource(id: self.id, config: ProjectScreenCapture(
+                target: .window, bundleID: window.bundleID, appName: window.appName, windowTitle: window.title,
+                captureAudio: true, fps: 30, showsCursor: false))
+            cap.audioChannelProvider = self.audioChannelProvider
+            cap.onStatusChange = { [weak self] s in self?.onStatusChange?(s) }
+            self.lock.withLock { self.capture = cap; self.converting = false }
+            cap.start()
+            self.notify()
+            self.queue.async {
+                if start > 0 { self.liveCommand("go to slide (slide show view of slide show window 1) number \(start + 1)") }
+                else { self.refreshLivePosition() }
+            }
+        }
+    }
+
+    private func liveFailed(_ message: String) {
+        lock.withLock { converting = false; wantsLive = false }
+        setStatus(.error(message))
+        notify()
+        // Fall back to the static slides.
+        if document == nil { load(force: false) }
+    }
+
+    /// Queue. Sends one PowerPoint command, then reads the slide on show.
+    private func liveCommand(_ command: String) {
+        _ = try? PresentationConverter.osascript(["tell application \"Microsoft PowerPoint\" to \(command)"], timeout: 10)
+        refreshLivePosition()
+    }
+
+    private func refreshLivePosition() {
+        let script = [
+            "tell application \"Microsoft PowerPoint\"",
+            "set n to current show position of slide show view of slide show window 1",
+            "set c to count of slides of presentation of slide show window 1",
+            "return (n as string) & \"/\" & (c as string)",
+            "end tell",
+        ]
+        guard let out = try? PresentationConverter.osascript(script, timeout: 10) else { return }
+        let parts = out.split(separator: "/").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+        guard parts.count == 2, parts[1] > 0 else { return }
+        lock.withLock { count = parts[1]; current = SlideMath.clamp(parts[0] - 1, count: parts[1]) }
+        notify()
+    }
+
+    private static func endSlideShow() {
+        _ = try? PresentationConverter.osascript([
+            "tell application \"Microsoft PowerPoint\"",
+            "if (count of slide show windows) > 0 then exit slide show (slide show view of slide show window 1)",
+            "end tell",
+        ], timeout: 10)
+    }
+
+    /// PowerPoint's windows as ScreenCaptureKit lists them (blocking; not on the main thread).
+    private static func powerPointWindows() -> [WindowCandidate] {
+        let done = DispatchSemaphore(value: 0)
+        var result: [WindowCandidate] = []
+        SCShareableContent.getExcludingDesktopWindows(true, onScreenWindowsOnly: false) { content, _ in
+            result = (content?.windows ?? []).compactMap { w in
+                guard let app = w.owningApplication, app.bundleIdentifier == "com.microsoft.Powerpoint",
+                      w.frame.width >= 200, w.frame.height >= 150 else { return nil }
+                return WindowCandidate(windowID: w.windowID, bundleID: app.bundleIdentifier,
+                                       appName: app.applicationName, title: w.title ?? "")
+            }
+            done.signal()
+        }
+        _ = done.wait(timeout: .now() + 5)
+        return result
+    }
 
     public func setBackground(_ c: ProjectColor?) {
         lock.withLock { bg = c }
@@ -275,18 +439,22 @@ public enum PresentationConverter {
         try FileManager.default.moveItem(at: pdf, to: out)
     }
 
-    private static func osascript(_ lines: [String], args: [String]) throws {
-        try run(URL(fileURLWithPath: "/usr/bin/osascript"), lines.flatMap { ["-e", $0] } + args)
+    /// Runs an AppleScript (one line per entry) with arguments; returns what it printed.
+    @discardableResult
+    static func osascript(_ lines: [String], args: [String] = [], timeout: Double = 180) throws -> String {
+        try run(URL(fileURLWithPath: "/usr/bin/osascript"), lines.flatMap { ["-e", $0] } + args, timeout: timeout)
     }
 
     /// Runs a tool and waits up to `timeout` seconds (opening a big deck can take a while).
-    private static func run(_ tool: URL, _ args: [String], timeout: Double = 180) throws {
+    @discardableResult
+    private static func run(_ tool: URL, _ args: [String], timeout: Double = 180) throws -> String {
         let p = Process()
         p.executableURL = tool
         p.arguments = args
         let err = Pipe()
+        let out = Pipe()
         p.standardError = err
-        p.standardOutput = FileHandle.nullDevice
+        p.standardOutput = out
         let done = DispatchSemaphore(value: 0)
         p.terminationHandler = { _ in done.signal() }
         try p.run()
@@ -303,6 +471,10 @@ public enum PresentationConverter {
             }
             throw Failure(message: line)
         }
+        let text = String(data: out.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
+
+    static func isInstalled(_ c: Converter) -> Bool { appURL(c) != nil }
 }
 #endif

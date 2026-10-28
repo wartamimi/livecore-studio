@@ -124,6 +124,10 @@ public struct TitleDesign: Codable, Equatable, Sendable {
     public var animationDuration: Double = 0.6
     /// true = use the overlay channel's own animation instead.
     public var useOverlayAnimation = false
+    /// Letter-by-letter text animation (0.36.0), played each time the title goes on air.
+    public var textAnimation: TextAnimation = .off
+    /// Seconds between one letter and the next (0.01…0.3).
+    public var letterDelay: Double = 0.04
 
     public init(template: TitleTemplate) { self.template = template }
 
@@ -148,6 +152,7 @@ public struct TitleDesign: Codable, Equatable, Sendable {
         d.shadowBlur = c(shadowBlur, 0, 60)
         d.shadowOffset = c(shadowOffset, -30, 30)
         d.animationDuration = c(animationDuration, 0.1, 5)
+        d.letterDelay = c(letterDelay, 0.01, 0.3)
         if d.tag.count > 40 { d.tag = String(d.tag.prefix(40)) }
         return d
     }
@@ -197,6 +202,8 @@ public struct TitleDesign: Codable, Equatable, Sendable {
         d.animation = v(.animation, d.animation)
         d.animationDuration = v(.animationDuration, d.animationDuration)
         d.useOverlayAnimation = v(.useOverlayAnimation, d.useOverlayAnimation)
+        d.textAnimation = v(.textAnimation, d.textAnimation)
+        d.letterDelay = v(.letterDelay, d.letterDelay)
         self = d.clamped()
     }
 }
@@ -647,4 +654,74 @@ extension TitleDesign {
         d.subtitleSize = subtitleSize ?? 34
         return d.clamped()
     }
+}
+
+/// Letter-by-letter animation of a title's text (vMix title "text effects").
+public enum TextAnimation: String, Codable, Sendable, CaseIterable {
+    case off
+    /// Letters appear one after another.
+    case typewriter
+    /// Each letter fades in.
+    case fade
+    /// Each letter rises into place while fading in.
+    case rise
+    /// Each letter drops into place while fading in.
+    case drop
+    /// Each letter grows from small.
+    case pop
+
+    /// Seconds one letter takes to settle.
+    public var letterDuration: Double {
+        switch self {
+        case .off, .typewriter: return 0
+        case .fade: return 0.35
+        case .rise, .drop: return 0.4
+        case .pop: return 0.3
+        }
+    }
+}
+
+/// Timing of a letter-by-letter animation: letter `i` starts `i × delay` after the title goes on
+/// air and settles over the animation's letter duration. Letters are counted over title, subtitle
+/// and tag in that order.
+public struct TextReveal: Equatable, Sendable {
+    public var animation: TextAnimation
+    public var delay: Double
+
+    public init(animation: TextAnimation, delay: Double) {
+        self.animation = animation
+        self.delay = delay.isFinite ? min(max(delay, 0.01), 0.3) : 0.04
+    }
+
+    /// 0 = not shown yet, 1 = in place.
+    public func progress(letter i: Int, at t: Double) -> Double {
+        guard animation != .off else { return 1 }
+        let start = Double(i) * delay
+        let d = animation.letterDuration
+        if d <= 0 { return t >= start ? 1 : 0 }
+        return min(max((t - start) / d, 0), 1)
+    }
+
+    /// Seconds until the last of `letters` letters is in place.
+    public func totalDuration(letters: Int) -> Double {
+        guard animation != .off, letters > 0 else { return 0 }
+        return Double(letters - 1) * delay + animation.letterDuration
+    }
+
+    /// Ease-out curve applied to movement and growth.
+    public static func ease(_ p: Double) -> Double { 1 - (1 - p) * (1 - p) * (1 - p) }
+
+    /// Vertical shift of a letter as a fraction of its font size (positive = up, CoreGraphics).
+    public func offset(_ p: Double) -> Double {
+        let e = Self.ease(p)
+        switch animation {
+        case .rise: return -0.45 * (1 - e)
+        case .drop: return 0.45 * (1 - e)
+        default: return 0
+        }
+    }
+
+    /// Scale of a letter (pop) and its opacity.
+    public func scale(_ p: Double) -> Double { animation == .pop ? 0.3 + 0.7 * Self.ease(p) : 1 }
+    public func opacity(_ p: Double) -> Double { animation == .typewriter ? (p > 0 ? 1 : 0) : p }
 }

@@ -161,6 +161,18 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.36.0
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Input Web: jendela edit dengan bar alamat | Implemented, belum dites | kompilasi CI | Memperbaiki bug 0.35.0 (jendela menutupi app tanpa title bar). Halaman pindah ke jendela biasa (80% layar, bisa digeser) dengan back/forward/reload/alamat dan Selesai; alamat terakhir disimpan ke input. Enter di halaman tidak lagi menekan Selesai (T-156) |
+| Input Web: suara ke mixer | Implemented, belum dites | kompilasi CI | macOS 14.2+: Core Audio process tap pada proses WebKit milik app → channel "Web audio" (semua input web berbagi satu channel); suara di speaker dibisukan sehingga hanya lewat mixer. macOS meminta izin Perekaman Audio Sistem. macOS 13–14.1: suara tetap ke speaker (T-157) |
+| Input Web: video saja, zoom, CSS, bisukan | Implemented, belum dites | L (skrip & escape, 2 unit test) | Video saja menyembunyikan semua elemen kecuali video dan memenuhi gambar (YouTube, Facebook, Vimeo); bisa gagal di situs yang memakai transform pada pemutar (T-158) |
+| Animasi title per huruf | Implemented, belum dites | L (timing & gerak, 3 unit test) | Mesin ketik, memudar, naik, turun, membesar; jeda 10–300 ms per huruf. Diputar setiap title masuk Program/overlay; bisa dicoba di pratinjau Title Designer (T-159) |
+| PowerPoint mode Live | Implemented, belum dites | L (proyek, 1 unit test) + kompilasi CI | Butuh Microsoft PowerPoint, izin Automation dan Screen Recording. Slideshow diputar di jendela PowerPoint dan ditangkap beserta suaranya; ◀ ▶ dan Page Up/Down mengendalikan PowerPoint (animasi klik ikut). Satu slideshow live sekaligus (T-160, T-161) |
+| Input Frame kamera, 8 template | Implemented, belum dites | L (tata letak, round-trip, 4 unit test) + kompilasi CI | Bingkai bersih, membulat, lingkaran, polaroid, neon, broadcast (LIVE), vertikal 9:16, sinema. Kamera di layer kedua dengan sudut/lingkaran/border; tanpa kamera bisa dipakai sebagai overlay (T-162, T-163) |
+| Page Down / Page Up untuk slide | Implemented, belum dites | kompilasi CI | Presentasi di Program, lalu Preview, lalu yang pertama (T-164) |
+| PHOTO → input | Implemented, belum dites | kompilasi CI | Tombol "Jadikan input" pada banner foto (T-165) |
+
 ## Fitur 0.35.0
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|

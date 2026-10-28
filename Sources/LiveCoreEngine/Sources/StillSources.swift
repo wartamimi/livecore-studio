@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import CoreText
 import CoreVideo
 import ImageIO
 import LiveCoreCore
@@ -190,11 +191,46 @@ public final class TextSource: VideoSource {
 
     public func update(_ s: Style) { style = s; name = s.title.isEmpty ? "Title" : s.title; render() }
 
-    private func render() {
+    // Letter-by-letter animation (main thread): redrawn 30 times a second until every letter is in place.
+    private var animTimer: Timer?
+    private var animStart = 0.0
+
+    /// Plays the title's text animation from the first letter (when it goes on air).
+    public func playTextAnimation() {
+        guard let d = style.design, d.textAnimation != .off else { return }
+        let total = TextReveal(animation: d.textAnimation, delay: d.letterDelay)
+            .totalDuration(letters: TitleRenderer.letterCount(title: style.title, subtitle: style.subtitle, design: d))
+        animTimer?.invalidate()
+        animStart = HostClock.now()
+        render(elapsed: 0)
+        let t = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] timer in
+            guard let self else { timer.invalidate(); return }
+            let e = HostClock.now() - self.animStart
+            if e >= total {
+                timer.invalidate()
+                self.animTimer = nil
+                self.render()
+            } else {
+                self.render(elapsed: e)
+            }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        animTimer = t
+    }
+
+    /// Stops the animation and shows the finished title (when it leaves the air).
+    public func finishTextAnimation() {
+        guard animTimer != nil else { return }
+        animTimer?.invalidate()
+        animTimer = nil
+        render()
+    }
+
+    private func render(elapsed: Double? = nil) {
         if let design = style.design {
             let pb = PixelBufferFactory.draw(width: outputSize.width, height: outputSize.height) { ctx in
                 TitleRenderer.draw(design, title: style.title, subtitle: style.subtitle, in: ctx,
-                                   width: Double(outputSize.width), height: Double(outputSize.height))
+                                   width: Double(outputSize.width), height: Double(outputSize.height), elapsed: elapsed)
             }
             lock.withLock { frame = pb }
             return
@@ -242,8 +278,10 @@ public final class TextSource: VideoSource {
 /// where boxes and text go, then fills the boxes and draws the text with outline and shadow.
 public enum TitleRenderer {
     /// Draws into a bitmap context of `width` × `height` pixels (CoreGraphics y-up).
+    /// `elapsed`: seconds since the title went on air, for the letter-by-letter animation (nil =
+    /// every letter in place).
     public static func draw(_ design: TitleDesign, title: String, subtitle: String, in ctx: CGContext,
-                            width W: Double, height H: Double) {
+                            width W: Double, height H: Double, elapsed: Double? = nil) {
         let d = design.clamped()
         let u = TitleLayout.unit(d, canvasWidth: W, canvasHeight: H)
         let t = attributed(d.uppercase ? title.uppercased() : title, size: d.titleSize * u, weight: d.titleWeight, color: d.titleColor, d, u)
@@ -274,27 +312,74 @@ public enum TitleRenderer {
         let gctx = NSGraphicsContext(cgContext: ctx, flipped: false)
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = gctx
-        for item in result.texts {
-            let a: NSAttributedString
-            switch item.role {
-            case .title: a = t
-            case .subtitle: a = s
-            case .tag: a = g
+        let reveal = elapsed.map { _ in TextReveal(animation: d.textAnimation, delay: d.letterDelay) }
+        // Letters are counted title first, then subtitle, then tag.
+        let order: [TitleTextRole] = [.title, .subtitle, .tag]
+        var first = 0
+        for role in order {
+            for item in result.texts where item.role == role {
+                let a: NSAttributedString, letterSize: Double
+                switch item.role {
+                case .title: a = t; letterSize = d.titleSize * u
+                case .subtitle: a = s; letterSize = d.subtitleSize * u
+                case .tag: a = g; letterSize = d.titleSize * u * 0.62
+                }
+                let r = flip(item.rect)
+                if let reveal, let elapsed, reveal.animation != .off {
+                    first = drawLetters(a, at: CGPoint(x: r.minX, y: r.minY), in: ctx, first: first,
+                                        reveal: reveal, elapsed: elapsed, fontSize: letterSize)
+                } else {
+                    a.draw(at: NSPoint(x: r.minX, y: r.minY))
+                }
             }
-            let r = flip(item.rect)
-            a.draw(at: NSPoint(x: r.minX, y: r.minY))
         }
         NSGraphicsContext.restoreGraphicsState()
     }
 
+    /// Letters of the three texts together (the animation's length).
+    public static func letterCount(title: String, subtitle: String, design: TitleDesign) -> Int {
+        let tag = design.template.usesTag ? design.tag : ""
+        return [title, subtitle, tag].reduce(0) { $0 + $1.count }
+    }
+
+    /// Draws `a` one letter at a time with each letter's opacity, shift and size; returns the
+    /// index of the next letter. Positions come from one CoreText line, so spacing and kerning
+    /// match the finished title exactly.
+    private static func drawLetters(_ a: NSAttributedString, at origin: CGPoint, in ctx: CGContext, first: Int,
+                                    reveal: TextReveal, elapsed: Double, fontSize: Double) -> Int {
+        let text = a.string
+        let line = CTLineCreateWithAttributedString(a)
+        let height = a.size().height
+        var letter = first
+        text.enumerateSubstrings(in: text.startIndex..<text.endIndex, options: .byComposedCharacterSequences) { _, range, _, _ in
+            let ns = NSRange(range, in: text)
+            let p = reveal.progress(letter: letter, at: elapsed)
+            letter += 1
+            guard p > 0 else { return }
+            let x0 = CTLineGetOffsetForStringIndex(line, ns.location, nil)
+            let x1 = CTLineGetOffsetForStringIndex(line, ns.location + ns.length, nil)
+            let cx = origin.x + (x0 + x1) / 2, cy = origin.y + height / 2
+            let k = CGFloat(reveal.scale(p))
+            ctx.saveGState()
+            ctx.setAlpha(CGFloat(reveal.opacity(p)))
+            ctx.translateBy(x: cx, y: cy + CGFloat(reveal.offset(p) * fontSize))
+            ctx.scaleBy(x: k, y: k)
+            ctx.translateBy(x: -cx, y: -cy)
+            a.attributedSubstring(from: ns).draw(at: NSPoint(x: origin.x + x0, y: origin.y))
+            ctx.restoreGState()
+        }
+        return letter
+    }
+
     /// Picture of a design (gallery thumbnails and the editor preview).
-    public static func image(_ design: TitleDesign, title: String, subtitle: String, width: Int, height: Int) -> CGImage? {
+    public static func image(_ design: TitleDesign, title: String, subtitle: String, width: Int, height: Int,
+                             elapsed: Double? = nil) -> CGImage? {
         guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                   space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                   bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
         else { return nil }
         ctx.clear(CGRect(x: 0, y: 0, width: width, height: height))
-        draw(design, title: title, subtitle: subtitle, in: ctx, width: Double(width), height: Double(height))
+        draw(design, title: title, subtitle: subtitle, in: ctx, width: Double(width), height: Double(height), elapsed: elapsed)
         return ctx.makeImage()
     }
 

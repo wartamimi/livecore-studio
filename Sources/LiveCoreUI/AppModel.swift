@@ -323,6 +323,9 @@ public final class AppModel: ObservableObject {
         pickFile(types: ["public.image"]) { [weak self] url in self?.engine?.addImage(url: url) }
     }
 
+    /// An image file (e.g. a PHOTO just taken) as a new input.
+    public func addImageInput(_ url: URL) { engine?.addImage(url: url) }
+
     /// Media files: video or audio. Several can be picked at once.
     private func pickMedia() -> [URL] {
         let panel = NSOpenPanel()
@@ -437,15 +440,16 @@ public final class AppModel: ObservableObject {
     // MARK: Browser & timer inputs
 
     /// Adds a web page input; returns an error message if the address is not allowed.
-    public func addBrowser(url: String, width: Int, height: Int, fps: Int, transparent: Bool) -> String? {
-        if case let .rejected(reason) = BrowserURLPolicy.check(url) { return reason }
-        engine?.addBrowser(ProjectBrowser(url: url, width: width, height: height, fps: fps, transparent: transparent))
+    public func addBrowser(_ config: ProjectBrowser) -> String? {
+        if case let .rejected(reason) = BrowserURLPolicy.check(config.url) { return reason }
+        engine?.addBrowser(config)
+        reloadAudioChannels()
         return nil
     }
 
-    public func updateBrowser(_ id: InputID, url: String, width: Int, height: Int, fps: Int, transparent: Bool) -> String? {
-        if case let .rejected(reason) = BrowserURLPolicy.check(url) { return reason }
-        browserSource(id)?.update(ProjectBrowser(url: url, width: width, height: height, fps: fps, transparent: transparent))
+    public func updateBrowser(_ id: InputID, _ config: ProjectBrowser) -> String? {
+        if case let .rejected(reason) = BrowserURLPolicy.check(config.url) { return reason }
+        browserSource(id)?.update(config)
         return nil
     }
 
@@ -492,6 +496,19 @@ public final class AppModel: ObservableObject {
     public func updateTicker(_ id: InputID, _ c: TickerConfig) { engine?.updateTicker(id, c); objectWillChange.send() }
     public func slideshowSource(_ id: InputID) -> SlideshowSource? { engine?.source(id) as? SlideshowSource }
     public func presentationSource(_ id: InputID) -> PresentationSource? { engine?.source(id) as? PresentationSource }
+    public func frameSource(_ id: InputID) -> FrameSource? { engine?.source(id) as? FrameSource }
+
+    /// Next / previous slide of the presentation on Program, else on Preview, else the first one
+    /// (presentation clickers: Page Down / Page Up).
+    public func presentationStep(forward: Bool) {
+        let decks = inputs.filter { $0.kind == .presentation }.map(\.id)
+        let target = [switcher.program, switcher.preview].compactMap { $0 }.first { decks.contains($0) } ?? decks.first
+        guard let id = target, let p = presentationSource(id) else { return }
+        forward ? p.next() : p.previous()
+    }
+    public func frameCamera(_ id: InputID) -> InputID? { engine?.frameCamera(id) }
+    public func addFrame(_ d: FrameDesign, camera: InputID?) { engine?.addFrame(d, camera: camera) }
+    public func updateFrame(_ id: InputID, _ d: FrameDesign, camera: InputID?) { engine?.updateFrame(id, d, camera: camera) }
 
     /// PowerPoint, Keynote, OpenDocument or PDF slides; one input per file.
     public func addPresentation() {
@@ -508,8 +525,10 @@ public final class AppModel: ObservableObject {
                 report(L10n.f("presentation.no_converter", ext))
                 continue
             }
-            e.addPresentation(url: url)
+            // With PowerPoint installed, decks play live (animations, transitions, video) like vMix.
+            e.addPresentation(url: url, live: PresentationSource.canPlayLive(url))
         }
+        reloadAudioChannels()
     }
     public func addSlideshow(urls: [URL], interval: Double, fade: Double, loop: Bool, kenBurns: Bool, folder: URL?) {
         engine?.addSlideshow(urls: urls, interval: interval, fade: fade, loop: loop, kenBurns: kenBurns, folder: folder)

@@ -20,6 +20,8 @@ struct InputPanelView: View {
     @State private var editingCapture: InputID?
     @State private var showNDISheet = false
     @State private var editingNDI: InputID?
+    @State private var showFrameSheet = false
+    @State private var editingFrame: InputID?
     @State private var closing: InputID?
     @State private var showCaptureCard = false
     @State private var editingCaptureCard: InputID?
@@ -103,6 +105,8 @@ struct InputPanelView: View {
         .sheet(isPresented: $showCaptureSheet) { CaptureSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCapture) { id in CaptureSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showNDISheet) { NDIInputSheet(editing: nil).environmentObject(model) }
+        .sheet(isPresented: $showFrameSheet) { FrameSheet(editing: nil).environmentObject(model) }
+        .sheet(item: $editingFrame) { id in FrameSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingNDI) { id in NDIInputSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showCaptureCard) { CaptureCardSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCaptureCard) { id in CaptureCardSheet(editing: id).environmentObject(model) }
@@ -193,6 +197,7 @@ struct InputPanelView: View {
                 Button(L10n.t("capturecard.add_menu")) { showCaptureCard = true }
             }
             Button(L10n.t("scene.new")) { if let id = model.addScene() { editingScene = id } }
+            Button(L10n.t("frame.add")) { showFrameSheet = true }
             Button(L10n.t("media.add")) { model.addMedia() }
             Button(L10n.t("media.add_playlist")) { model.addMediaPlaylist() }
             Button(L10n.t("inputs.image")) { model.addImage() }
@@ -265,6 +270,7 @@ struct InputPanelView: View {
             Button(L10n.t("capture.retry")) { model.captureSource(info.id)?.start() }
         }
         if info.kind == .ndi { Button(L10n.t("ndi.edit")) { editingNDI = info.id } }
+        if info.kind == .frame { Button(L10n.t("frame.edit")) { editingFrame = info.id } }
         if info.kind == .timer {
             Button(L10n.t("timer.start")) { model.timerControl(info.id, "play") }
             Button(L10n.t("timer.pause")) { model.timerControl(info.id, "pause") }
@@ -287,6 +293,10 @@ struct InputPanelView: View {
                         Button((i == p.slide ? "▶ " : "") + L10n.f("presentation.slide_n", String(i + 1))) { p.go(to: i) }
                     }
                 }
+            }
+            if p.canPlayLive {
+                Toggle(L10n.t("presentation.live"), isOn: Binding(get: { p.prefersLive },
+                                                                   set: { p.setLive($0); model.objectWillChange.send() }))
             }
             Menu(L10n.t("presentation.background")) {
                 Button(L10n.t("presentation.bg_black")) { p.setBackground(nil) }
@@ -475,6 +485,7 @@ struct InputTile: View {
         case .slideshow: return "photo.stack"
         case .ndi: return "antenna.radiowaves.left.and.right"
         case .presentation: return "rectangle.on.rectangle.angled"
+        case .frame: return "person.crop.rectangle"
         }
     }
 }
@@ -633,36 +644,49 @@ struct CaptureSheet: View {
     }
 }
 
-/// Add or edit a web page input.
+/// Add or edit a web page input (vMix-style options: video only, zoom, CSS, mute).
 struct BrowserSheet: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     let editing: InputID?
-    @State private var url = "https://"
+    @State private var config = ProjectBrowser(url: "https://")
     @State private var size = 1080
-    @State private var fps = 15
-    @State private var transparent = true
     @State private var error: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(L10n.t("browser.title")).font(.headline)
             HStack {
-                TextField("https://…", text: $url)
+                TextField("https://…", text: $config.url)
                 Button(L10n.t("browser.file")) {
                     let p = NSOpenPanel()
                     p.allowedContentTypes = [.html]
-                    if p.runModal() == .OK, let u = p.url { url = u.absoluteString }
+                    if p.runModal() == .OK, let u = p.url { config.url = u.absoluteString }
                 }
             }
             Picker(L10n.t("browser.size"), selection: $size) {
                 Text("1920 × 1080").tag(1080)
                 Text("1280 × 720").tag(720)
             }
-            Picker(L10n.t("browser.fps"), selection: $fps) {
+            Picker(L10n.t("browser.fps"), selection: $config.fps) {
                 ForEach(BrowserURLPolicy.allowedFPS, id: \.self) { Text("\($0) fps").tag($0) }
             }
-            Toggle(L10n.t("browser.transparent"), isOn: $transparent)
+            Toggle(L10n.t("browser.transparent"), isOn: $config.transparent)
+            Toggle(L10n.t("browser.video_only"), isOn: Binding(get: { config.videoOnly ?? false }, set: { config.videoOnly = $0 ? true : nil }))
+            Text(L10n.t("browser.video_only_help")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                .fixedSize(horizontal: false, vertical: true)
+            Toggle(L10n.t("browser.mute"), isOn: Binding(get: { config.muted ?? false }, set: { config.muted = $0 ? true : nil }))
+            HStack {
+                Text(L10n.t("browser.zoom"))
+                Slider(value: Binding(get: { config.pageZoom }, set: { config.zoom = abs($0 - 1) < 0.01 ? nil : $0 }),
+                       in: ProjectBrowser.zoomRange, step: 0.05)
+                Text("\(Int((config.pageZoom * 100).rounded())) %").monospacedDigit().frame(width: 48, alignment: .trailing)
+            }
+            Text(L10n.t("browser.css")).font(.system(size: 11))
+            TextEditor(text: Binding(get: { config.css ?? "" }, set: { config.css = $0.isEmpty ? nil : $0 }))
+                .font(.system(size: 11, design: .monospaced))
+                .frame(height: 70)
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.textDim.opacity(0.4)))
             Text(L10n.t("browser.note")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
             if let error { Text(error).foregroundStyle(Theme.warning).font(.system(size: 11)) }
@@ -670,19 +694,21 @@ struct BrowserSheet: View {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
                 Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
-                    let w = size == 1080 ? 1920 : 1280
-                    let err = editing.map { model.updateBrowser($0, url: url, width: w, height: size, fps: fps, transparent: transparent) }
-                        ?? model.addBrowser(url: url, width: w, height: size, fps: fps, transparent: transparent)
+                    var c = config
+                    c.width = size == 1080 ? 1920 : 1280
+                    c.height = size
+                    let err = editing.map { model.updateBrowser($0, c) } ?? model.addBrowser(c)
                     if let err { error = err } else { dismiss() }
                 }
                 .keyboardShortcut(.defaultAction)
             }
         }
         .padding(16)
-        .frame(width: 460)
+        .frame(width: 480)
         .onAppear {
             if let id = editing, let b = model.browserSource(id)?.config {
-                url = b.url; size = b.height >= 1080 ? 1080 : 720; fps = b.fps; transparent = b.transparent
+                config = b
+                size = b.height >= 1080 ? 1080 : 720
             }
         }
     }
@@ -812,9 +838,14 @@ struct SlideControls: View {
                 .help(L10n.t("presentation.first"))
             Button { source.previous() } label: { Image(systemName: "chevron.left") }
                 .help(L10n.t("presentation.previous"))
+            if source.prefersLive {
+                Text("LIVE").font(.system(size: 8, weight: .heavy)).padding(.horizontal, 3)
+                    .background(Theme.program).foregroundStyle(Color.white).clipShape(RoundedRectangle(cornerRadius: 2))
+                    .help(L10n.t("presentation.live_help"))
+            }
             if let s = info.slide, s.converting {
                 ProgressView().controlSize(.mini)
-                Text(L10n.t("presentation.converting"))
+                Text(L10n.t(source.prefersLive ? "presentation.starting_live" : "presentation.converting"))
             } else if let s = info.slide, s.count > 0 {
                 Text(L10n.f("presentation.counter", String(s.index), String(s.count)))
             } else {

@@ -4,7 +4,7 @@ import Foundation
 import LiveCoreCore
 
 public enum InputKind: String, Codable, Sendable {
-    case camera, image, videoFile, color, text, browser, timer, screen, replay, colorBars, scene, ticker, slideshow, ndi, presentation
+    case camera, image, videoFile, color, text, browser, timer, screen, replay, colorBars, scene, ticker, slideshow, ndi, presentation, frame
 }
 
 public enum SourceStatus: Equatable, Sendable {

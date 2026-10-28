@@ -160,6 +160,11 @@ public final class ProductionEngine {
     /// Mixer settings from a loaded project for video-file channels that appear once the file's
     /// audio track has loaded.
     private var pendingFileChannelSettings: [InputID: ProjectAudioChannel] = [:]
+    /// Sound of the web inputs (macOS 14.2+; a `WebAudioCapture`) and its saved mixer settings.
+    private var webAudio: AnyObject?
+    private var pendingWebAudioSettings: ProjectAudioChannel?
+    /// The one mixer channel all web inputs play into.
+    public static let webAudioChannelID = "webaudio"
 
     public init(settings: ProductionSettings = ProductionSettings()) throws {
         self.settings = settings
@@ -473,7 +478,37 @@ public final class ProductionEngine {
         let src = BrowserSource(id: id ?? InputID(UUID().uuidString), config: c)
         add(src)
         src.start()
+        updateWebAudio()
         return src.id
+    }
+
+    /// Starts the Web audio channel while there are web inputs and removes it when the last goes.
+    private func updateWebAudio() {
+        let browsers = control.read { st in st.order.compactMap { st.sources[$0] as? BrowserSource } }
+        guard #available(macOS 14.2, *) else { return }
+        if browsers.isEmpty {
+            (webAudio as? WebAudioCapture)?.stop()
+            webAudio = nil
+            if mixer.channelList.contains(where: { $0.id == Self.webAudioChannelID }) {
+                mixer.removeChannel(id: Self.webAudioChannelID)
+                afvLinks[Self.webAudioChannelID] = nil
+                onAudioChannelsChange?()
+            }
+            return
+        }
+        guard webAudio == nil else { return }
+        let ch = mixer.addChannel(id: Self.webAudioChannelID, name: "Web audio", primeFrames: 2048, maxBufferedFrames: 9600)
+        if let saved = pendingWebAudioSettings { restore(saved, to: ch); pendingWebAudioSettings = nil }
+        let cap = WebAudioCapture(channel: ch)
+        cap.knownPIDs = { [weak self] in
+            guard let self else { return [] }
+            return self.control.read { st in st.order.compactMap { st.sources[$0] as? BrowserSource } }.flatMap(\.webKitProcessIDs)
+        }
+        cap.onError = { [weak self] msg in self?.onError?(msg) }
+        cap.start()
+        webAudio = cap
+        applyAFV()
+        onAudioChannelsChange?()
     }
 
     /// Window/display capture (Zoom, Teams...). Its audio, when captured, gets a mixer channel.
@@ -580,13 +615,63 @@ public final class ProductionEngine {
 
     /// PowerPoint / Keynote / OpenDocument / PDF slides (0.35.0).
     @discardableResult
-    public func addPresentation(url: URL, slide: Int = 0, background: ProjectColor? = nil, id: InputID? = nil) -> InputID {
+    public func addPresentation(url: URL, slide: Int = 0, background: ProjectColor? = nil, live: Bool = false,
+                                id: InputID? = nil) -> InputID {
         let src = PresentationSource(id: id ?? InputID(UUID().uuidString), url: url, slide: slide,
-                                     background: background, outputSize: settings.output.size)
+                                     background: background, live: live, outputSize: settings.output.size)
+        let srcID = src.id
         src.onChange = { [weak self] in self?.publishInputs() }
+        // Live mode: the slide show's sound (embedded video, narration) gets a mixer channel.
+        src.audioChannelProvider = { [weak self, weak src] in
+            guard let self else { return MixerChannel.detached() }
+            let chID = Self.screenChannelID(srcID)
+            if let existing = self.mixer.channelList.first(where: { $0.id == chID }) { return existing }
+            let ch = self.mixer.addChannel(id: chID, name: src?.name ?? "PowerPoint", primeFrames: 2048, maxBufferedFrames: 9600)
+            if let saved = self.pendingFileChannelSettings.removeValue(forKey: srcID) { self.restore(saved, to: ch) }
+            self.applyAFV()
+            self.onAudioChannelsChange?()
+            return ch
+        }
         add(src)
         src.start()
         return src.id
+    }
+
+    /// Camera frame: the frame picture plus `camera` in its window (second layer).
+    @discardableResult
+    public func addFrame(_ design: FrameDesign, camera: InputID? = nil, id: InputID? = nil) -> InputID {
+        let src = FrameSource(id: id ?? InputID(UUID().uuidString), design: design, outputSize: settings.output.size)
+        add(src)
+        setFrameCamera(src.id, camera)
+        return src.id
+    }
+
+    /// New design (and camera) for a frame input; the camera layer follows the template's window.
+    public func updateFrame(_ id: InputID, _ design: FrameDesign, camera: InputID?) {
+        guard let f = source(id) as? FrameSource else { return }
+        f.update(design)
+        f.name = design.title.isEmpty ? "Frame" : "Frame – \(design.title)"
+        setFrameCamera(id, camera)
+        publishInputs()
+    }
+
+    /// The input shown in a frame's window (nil = none).
+    public func frameCamera(_ id: InputID) -> InputID? {
+        control.read { st in (st.layers[id] ?? []).dropFirst().first?.source }
+    }
+
+    private func setFrameCamera(_ id: InputID, _ camera: InputID?) {
+        guard let f = source(id) as? FrameSource else { return }
+        let l = f.layout
+        control.mutate { st in
+            var layers = [st.layers[id]?.first ?? Layer(source: id)]
+            // Layer 0 (the frame picture) is drawn first; the camera fills the window over it.
+            if let cam = camera, cam != id, st.sources[cam] != nil, !(st.sources[cam] is FrameSource) {
+                layers.append(Layer(source: cam, rect: l.camera, scaleMode: .fill,
+                                    style: l.cameraStyle(accent: f.design.accent)))
+            }
+            st.layers[id] = st.sanitized(layers, of: id)
+        }
     }
 
     public func source(_ id: InputID) -> VideoSource? { control.read { $0.sources[id] } }
@@ -634,7 +719,8 @@ public final class ProductionEngine {
         }
         removed?.stop()
         if let r = removed, r === replaySource { replayRemoved() }
-        if removed is VideoFileSource || removed is ScreenCaptureSource {
+        if removed is BrowserSource { updateWebAudio() }
+        if removed is VideoFileSource || removed is ScreenCaptureSource || removed is PresentationSource {
             mixer.removeChannel(id: Self.fileChannelID(id))
             mixer.removeChannel(id: Self.screenChannelID(id))
             mixer.removeChannel(id: Self.ndiChannelID(id))
@@ -865,6 +951,13 @@ public final class ProductionEngine {
             let was = autoPlayOnAir.contains(r.id), now = visible.contains(r.id)
             if now && !was && r.hasClip { r.play() }
             if !now && was { r.cue() }
+        }
+        // Titles with a letter-by-letter animation play it each time they go on air.
+        for (id, src) in sources {
+            guard let t = src as? TextSource, let d = t.style.design, d.textAnimation != .off else { continue }
+            let was = autoPlayOnAir.contains(id), now = visible.contains(id)
+            if now && !was { t.playTextAnimation() }
+            if !now && was { t.finishTextAnimation() }
         }
         for (id, src) in sources {
             guard let v = src as? VideoFileSource, v.autoPlay != .off, id != stingerID else { continue }
@@ -1330,9 +1423,10 @@ extension ProductionEngine {
                                                  folder: sl.folder.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) }))
             case let c as ScreenCaptureSource: ps = .screen(c.config)
             case let n as NDISource: ps = .ndi(n.config)
+            case let f as FrameSource: ps = .frame(f.design)
             case let p as PresentationSource:
                 ps = .presentation(ProjectPresentation(file: ProjectMediaRef(path: p.url.path, relativePath: rel(p.url)),
-                                                       slide: p.slide, background: p.background))
+                                                       slide: p.slide, background: p.background, live: p.prefersLive ? true : nil))
             default: continue
             }
             let key = keys[id]
@@ -1463,8 +1557,11 @@ extension ProductionEngine {
                 addScreenCapture(c, id: pi.id)
             case let .ndi(n):
                 addNDI(n, id: pi.id)
+            case let .frame(d):
+                addFrame(d, id: pi.id)
             case let .presentation(p):
-                addPresentation(url: mediaURL(p.file.path, p.file.relativePath), slide: p.slide, background: p.background, id: pi.id)
+                addPresentation(url: mediaURL(p.file.path, p.file.relativePath), slide: p.slide, background: p.background,
+                                live: p.live ?? false, id: pi.id)
             }
             created.insert(pi.id)
             renameInput(pi.id, to: pi.name)
@@ -1517,6 +1614,11 @@ extension ProductionEngine {
             if let ch = pt.channel { restore(ch, to: t.channel) }
         }
         for ch in doc.audio.channels {
+            if ch.deviceUniqueID == Self.webAudioChannelID {
+                if let mc = mixer.channelList.first(where: { $0.id == Self.webAudioChannelID }) { restore(ch, to: mc) }
+                else { pendingWebAudioSettings = ch }
+                continue
+            }
             if let uid = ch.deviceUniqueID {
                 guard DeviceManager.device(uniqueID: uid) != nil else {
                     warnings.append("Audio device \"\(ch.name)\" is not connected; its mixer channel was skipped.")

@@ -111,6 +111,18 @@ private struct SnapshotConfirmation: View {
                 }
                 .buttonStyle(.plain)
                 .help(L10n.t("snapshot.show_in_finder"))
+                .overlay(alignment: .topTrailing) {
+                    // The photo as a new image input (vMix "snapshot to input").
+                    Button { model.addImageInput(url); shownAt = nil } label: {
+                        Label(L10n.t("snapshot.as_input"), systemImage: "plus.rectangle.on.rectangle")
+                            .font(.system(size: 10, weight: .semibold))
+                            .padding(.horizontal, 6).padding(.vertical, 3)
+                            .background(Theme.accent).foregroundStyle(Color.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                    }
+                    .buttonStyle(.plain)
+                    .offset(x: 8, y: -16)
+                }
                 .padding(.bottom, 10)
                 .transition(.opacity)
             }
