@@ -48,6 +48,8 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
     private weak var urlField: NSTextField?
     private weak var backButton: NSButton?
     private weak var forwardButton: NSButton?
+    /// Done was pressed while the edit window was full screen (keepAddress value).
+    private var pendingEnd: Bool?
 
     public init(id: InputID, config: ProjectBrowser) {
         self.id = id
@@ -109,6 +111,8 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         wv.pageZoom = CGFloat(config.pageZoom)
         let ucc = wv.configuration.userContentController
         ucc.removeAllUserScripts()
+        // A site's fullscreen button fills the input's picture, never the Mac's screen.
+        ucc.addUserScript(WKUserScript(source: ProjectBrowser.fullscreenScript, injectionTime: .atDocumentStart, forMainFrameOnly: false))
         if let js = config.userScript {
             ucc.addUserScript(WKUserScript(source: js, injectionTime: .atDocumentEnd, forMainFrameOnly: true))
         }
@@ -116,6 +120,13 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
 
     public func stop() {
         if isEditing { endEditing(keepAddress: false) }
+        if let w = editWindow {
+            // Still full screen: close it (closing, unlike ordering out, also leaves its Space).
+            w.delegate = nil
+            w.close()
+            editWindow = nil
+            pendingEnd = nil
+        }
         timer?.invalidate(); timer = nil
         webView?.stopLoading()
         webView?.navigationDelegate = nil
@@ -159,6 +170,9 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         win.title = windowTitle
         win.minSize = NSSize(width: 520, height: 320)
         win.delegate = self
+        // The green button zooms instead of opening a full-screen Space: closing a full-screen window
+        // left macOS on an empty black Space. Auxiliary also lets it open over a full-screen app window.
+        win.collectionBehavior = [.fullScreenAuxiliary, .moveToActiveSpace]
 
         func button(_ symbol: String, _ action: Selector) -> NSButton {
             let b = NSButton(image: NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage(),
@@ -249,6 +263,13 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
     /// input's address (saved with the project). Main thread.
     public func endEditing(keepAddress: Bool = true) {
         guard let win = editWindow, let wv = webView, let host = window else { return }
+        if win.styleMask.contains(.fullScreen) {
+            // Leave full screen first (finished in windowDidExitFullScreen), or the Space stays black.
+            pendingEnd = keepAddress
+            win.toggleFullScreen(nil)
+            return
+        }
+        pendingEnd = nil
         editWindow = nil
         win.delegate = nil
         win.orderOut(nil)
@@ -262,6 +283,10 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
             onConfigChange?()
         }
         onEditingChange?(false)
+    }
+
+    public func windowDidExitFullScreen(_ notification: Notification) {
+        if let keep = pendingEnd { endEditing(keepAddress: keep) }
     }
 
     public func windowShouldClose(_ sender: NSWindow) -> Bool {

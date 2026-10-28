@@ -161,6 +161,12 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.36.1
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Fullscreen halaman di dalam input Web | Implemented, belum dites di Mac | L (skrip diuji di Chromium headless: elemen 1280×720, event, Escape, iframe embed) | Fullscreen API diganti di awal halaman: tombol fullscreen situs membuat player memenuhi gambar input; tetap setelah Selesai. Keluar: tombol situs atau Escape di jendela edit (T-166) |
+| Layar hitam setelah Selesai | Fixed, belum dites di Mac | kompilasi CI | Jendela edit tidak bisa lagi masuk Space layar penuh (tombol hijau = perbesar); bila tetap layar penuh, keluar dulu sebelum ditutup (T-167) |
+
 ## Fitur 0.36.0
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|

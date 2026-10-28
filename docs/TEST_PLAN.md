@@ -51,6 +51,12 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AL. Tes manual build 0.36.1
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-166 | Fullscreen YouTube di input | Input Web youtube.com/watch?v=…; Edit halaman; klik tombol fullscreen YouTube (atau tombol F); Selesai | Video memenuhi seluruh jendela/gambar input (bukan layar Mac), tetap penuh setelah Selesai dan di Program; Escape atau tombol YouTube mengembalikan |
+| T-167 | Tidak ada layar hitam | Edit halaman; klik tombol hijau jendela; Selesai | Jendela hanya membesar (tidak pindah ke Space layar penuh); setelah Selesai app kembali terlihat normal |
+
 ## AK. Tes manual build 0.36.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

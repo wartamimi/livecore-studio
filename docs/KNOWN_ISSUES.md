@@ -149,6 +149,9 @@
 62. **Duplikat input (0.26.0)**: satu kamera/capture card = satu input. Capture jendela dicocokkan dari aplikasi + judul
     jendela; jendela dengan judul yang berubah (mis. judul dokumen) dianggap jendela lain. Proyek lama yang sudah berisi
     duplikat tetap dibuka apa adanya.
+78. **Fullscreen halaman (0.36.1)**: ditiru dengan CSS, bukan fullscreen asli WebKit. Situs yang memeriksa fullscreen dengan
+    cara lain, atau yang player-nya memakai `position: fixed` di dalam elemen ber-transform yang tidak bisa direset, bisa tampil
+    tidak penuh; pakai opsi "Video saja" sebagai cadangan. Belum dites di Mac.
 75. **Suara input Web (0.36.0)**: hanya macOS 14.2 ke atas, dan semua input web berbagi satu channel "Web audio"
     (WebKit memutar suara semua halaman di satu proses). Bisukan per input memakai opsi "Bisukan halaman". Bila izin
     Perekaman Audio Sistem ditolak, suara halaman tidak masuk mixer (pesan muncul sekali). Belum dites di Mac.
