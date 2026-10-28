@@ -627,18 +627,18 @@
 /* MultiCorder (0.32.0) */
 "multicorder.enable" = "Record chosen inputs to their own files with RECORD";
 "multicorder.no_inputs" = "Add inputs first.";
-"multicorder.help" = "Up to %d inputs. Each ISO file holds that input only (full size, with its layers) plus the selected audio bus, using the MultiCorder profile, named after the profile pattern plus \" - ISO <number> <name>\".";
+"multicorder.help" = "Up to %d inputs. Each ISO file holds that input only (full size, with its layers) plus the selected audio bus, using the ISOCorder profile, named after the profile pattern plus \" - ISO <number> <name>\".";
 "multicorder.next_time" = "Changes apply the next time you start recording.";
 "multicorder.count" = "%d input(s)";
-"multicorder.full" = "MultiCorder records up to %d inputs.";
+"multicorder.full" = "ISOCorder records up to %d inputs.";
 
 /* 0.33.0 MultiCorder, recorder profile, input groups */
-"multicorder.stop_confirm" = "Stop MultiCorder?";
-"multicorder.stop" = "Stop MultiCorder";
+"multicorder.stop_confirm" = "Stop ISOCorder?";
+"multicorder.stop" = "Stop ISOCorder";
 "multicorder.stop_message" = "All ISO files are closed. The Program recording keeps running.";
-"multicorder.choose_first" = "Choose the inputs for MultiCorder first (gear button next to MULTICORDER).";
+"multicorder.choose_first" = "Choose the inputs for ISOCorder first (gear button next to ISOCORDER).";
 "multicorder.button_help" = "Start or stop the ISO recordings of the chosen inputs. Independent from RECORD.";
-"multicorder.settings" = "MultiCorder inputs and status";
+"multicorder.settings" = "ISOCorder inputs and status";
 "multicorder.none" = "No input chosen";
 "multicorder.ready" = "%d input ready";
 "multicorder.settings_help" = "Its own recording profile for the ISO files. Default is HEVC 25 Mbps MOV: hardware encoded, light on disk. ProRes gives the best quality and the lightest CPU load but needs a lot of disk space.";
@@ -675,3 +675,8 @@
 "color.blue" = "Blue";
 "color.purple" = "Purple";
 "color.pink" = "Pink";
+
+/* 0.33.1 ISOCorder name, compact dock */
+"dock.off" = "Off";
+"dock.on" = "On";
+"multicorder.short" = "%d input";

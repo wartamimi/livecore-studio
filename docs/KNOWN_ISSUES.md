@@ -155,11 +155,11 @@
     disarankan HEVC 15–25 Mbps, atau ProRes 422 / LT di Mac dengan engine ProRes (M1 Pro/Max/Ultra, M2 ke atas) dan
     disk SSD cepat (4 × ProRes 422 1080p30 ±75 MB/s). B-frame sebaiknya mati saat banyak file. ProRes di Mac Intel atau
     M1 biasa di-encode software dan berat. CI hanya memeriksa bahwa file valid; angka drop di CI (Mac virtual tanpa media
-    engine) bukan ukuran Mac sungguhan. Mengubah profil tidak bisa saat RECORD / MULTICORDER berjalan.
+    engine) bukan ukuran Mac sungguhan. Mengubah profil tidak bisa saat RECORD / ISOCORDER berjalan.
 69. **MultiCorder (0.32.0)**: tiap file ISO memakai bus audio profil MultiCorder (sejak 0.33.0; bawaan Master), belum audio input itu sendiri.
     Tiap ISO menambah satu render ukuran penuh dan satu encoder H.264: di Mac Intel atau 4 ISO 1080p60 bisa membuat
     frame terbuang (lihat "drop" di RECORD ⚙); kurangi jumlah ISO atau bitrate. Sejak 0.33.0 MultiCorder punya tombol
-    sendiri; pilihan input dikunci selama MULTICORDER berjalan. Ruang disk terpakai ±(1 + jumlah ISO)× rekaman biasa.
+    sendiri; pilihan input dikunci selama ISOCORDER berjalan. Ruang disk terpakai ±(1 + jumlah ISO)× rekaman biasa.
     Input yang tidak punya gambar (mis. kamera terputus) menghasilkan file ISO pendek/berhenti; rekaman Program tetap.
 68. **Panel Web Controller (0.31.0)**: gambar Program/Preview adalah JPEG kecil ±3 fps (bukan video, tanpa audio) dan
     menambah sedikit beban CPU Mac selama halaman terbuka; meter audio di HP diperbarui ±4× per detik sehingga terlihat

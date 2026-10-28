@@ -204,7 +204,7 @@ struct MultiCorderDetails: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            SectionHeader(title: "MultiCorder (ISO)")
+            SectionHeader(title: "ISOCorder")
             let p = model.settings.multiCorderRecording
             Text("\(p.videoCodec.label)\(p.videoCodec.usesBitrate ? " · \(p.bitrateKbps / 1000) Mbps" : "") · \(p.effectiveContainer.rawValue.uppercased()) · \(model.settings.output.size.width)×\(model.settings.output.size.height) \(model.settings.output.frameRate) fps")
                 .font(.system(size: 10)).foregroundStyle(Theme.textDim)

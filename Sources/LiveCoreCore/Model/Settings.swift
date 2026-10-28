@@ -271,7 +271,7 @@ public struct ProductionSettings: Codable, Equatable, Sendable {
         if ![44100, 48000].contains(audio.sampleRate) { errs.append("Audio sample rate must be 44.1 or 48 kHz.") }
         errs += stream.destinationErrors()
         errs += recording.validationErrors(label: "Recorder")
-        errs += multiCorderRecording.validationErrors(label: "MultiCorder")
+        errs += multiCorderRecording.validationErrors(label: "ISOCorder")
         return errs
     }
 }

@@ -51,13 +51,18 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AH. Tes manual build 0.33.1
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-140 | Dock tidak terpotong | Jendela penuh di layar 13"; perkecil jendela pelan-pelan sampai lebar minimum; jalankan RECORD, ISOCORDER, STREAM, EXTERNAL | Tidak ada teks berakhiran "…" di dock pada lebar mana pun; di jendela sempit status singkat muncul di dalam tombol; arahkan kursor ke tombol → status lengkap muncul; tombol bernama ISOCORDER |
+
 ## AG. Tes manual build 0.33.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|
-| T-134 | MULTICORDER terpisah | MULTICORDER ⚙ › centang 2 kamera; tekan MULTICORDER (tanpa RECORD); 1 menit kemudian RECORD; hentikan MULTICORDER dulu, lalu RECORD | ISO mulai tanpa RECORD; menghentikan MULTICORDER minta konfirmasi dan tidak menghentikan RECORD; file ISO memakai profil MultiCorder; MULTICORDER tanpa input → pesan "Pilih dulu input" |
-| T-135 | Profil MultiCorder | Settings › MultiCorder: ProRes 422, folder lain; Settings › Record: H.264 MP4; rekam keduanya | File Program H.264 .mp4 di folder Record, file ISO ProRes .mov di folder MultiCorder (cek di QuickTime › Show Movie Inspector) |
+| T-134 | ISOCORDER terpisah | ISOCORDER ⚙ › centang 2 kamera; tekan ISOCORDER (tanpa RECORD); 1 menit kemudian RECORD; hentikan ISOCORDER dulu, lalu RECORD | ISO mulai tanpa RECORD; menghentikan ISOCORDER minta konfirmasi dan tidak menghentikan RECORD; file ISO memakai profil MultiCorder; ISOCORDER tanpa input → pesan "Pilih dulu input" |
+| T-135 | Profil MultiCorder | Settings › ISOCorder: ProRes 422, folder lain; Settings › Record: H.264 MP4; rekam keduanya | File Program H.264 .mp4 di folder Record, file ISO ProRes .mov di folder MultiCorder (cek di QuickTime › Show Movie Inspector) |
 | T-136 | Setelan lanjutan | Recorder: HEVC 40 Mbps, keyframe 1 s, PCM; rekam 1 menit | File .mov HEVC, audio Linear PCM 24-bit; perkiraan GB/jam di Settings mendekati ukuran file × 60 |
-| T-137 | 4 ISO tanpa drop | 1080p30, 4 kamera/capture, MULTICORDER HEVC 25 Mbps + RECORD, 10 menit; ulangi dengan ProRes 422 | Angka drop di dock 0 atau sangat kecil; Program tetap mulus. Catat model Mac, codec dan angka drop |
+| T-137 | 4 ISO tanpa drop | 1080p30, 4 kamera/capture, ISOCORDER HEVC 25 Mbps + RECORD, 10 menit; ulangi dengan ProRes 422 | Angka drop di dock 0 atau sangat kecil; Program tetap mulus. Catat model Mac, codec dan angka drop |
 | T-138 | Label warna & grup | Klik kanan 2 input › Label warna › Biru, 1 input › Merah; ganti nama grup Biru jadi "Kamera"; klik chip Merah | Panel menampilkan grup "Kamera" (2) dan Merah (1), input tanpa label paling bawah; chip Merah hanya menampilkan grup merah; judul grup bisa dilipat |
 | T-139 | Minimize | Klik − pada 2 tile; klik baris ringkas, klik ganda; simpan & buka lagi proyek | Tile jadi baris ringkas; klik = Preview, klik ganda = CUT; + membuka lagi; label, minimize dan nama grup kembali setelah proyek dibuka |
 
