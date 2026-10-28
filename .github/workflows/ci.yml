@@ -51,7 +51,9 @@ jobs:
       - run: scripts/ci_run.sh macos-title-check swift run livecore-title-check
       - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
       # Engine run with recording + streaming, a stream drop in the middle and a full disk.
+      # Not blocking the DMG for now (user's call, 0.37.0); its result is still reported.
       - run: scripts/ci_run.sh macos-soak-check swift run livecore-soak-check
+        continue-on-error: true
         env:
           SOAK_SECONDS: "90"
       - run: scripts/ci_run.sh macos-app-build scripts/build_macos.sh release
