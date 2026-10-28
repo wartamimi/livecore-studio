@@ -71,20 +71,32 @@ grep "^error" "$WORK/drop.log"
 grep -q "$KEY" "$WORK/drop.log" "$WORK/refused.log" && { echo "FAIL: key leaked in error output"; exit 1; }
 echo "connection errors detected and reported without leaking the key: OK"
 
+# SRT receiver: ffmpeg when it was built with libsrt, otherwise srt-live-transmit (Homebrew "srt").
+SRTPORT=$((PORT + 50))
 if ffmpeg -hide_banner -protocols 2>/dev/null | grep -qw srt; then
-  echo "== SRT publish (MPEG-TS, caller) to ffmpeg/libsrt listener, with 4 % simulated loss"
-  SRTPORT=$((PORT + 50))
+  SRT_RX="ffmpeg/libsrt"
   ffmpeg -loglevel warning -y -i "srt://127.0.0.1:$SRTPORT?mode=listener&latency=300000" -c copy "$WORK/srt.ts" > "$WORK/srt-server.log" 2>&1 &
   SERVER=$!
+elif command -v srt-live-transmit > /dev/null; then
+  SRT_RX="srt-live-transmit"
+  srt-live-transmit -q -a:no "srt://:$SRTPORT?mode=listener&latency=300" file://con > "$WORK/srt.ts" 2> "$WORK/srt-server.log" &
+  SERVER=$!
+else
+  SRT_RX=""
+fi
+if [ -n "$SRT_RX" ]; then
+  echo "== SRT publish (MPEG-TS, caller) to $SRT_RX listener, with 4 % simulated loss"
   sleep 1
   "$TOOL" --h264 "$WORK/in.h264" --aac "$WORK/in.aac" --fps 30 --srt "srt://127.0.0.1:$SRTPORT?latency=300" --key "$KEY" --srt-loss 25 \
     | tee "$WORK/srt-client.log"
+  for _ in 1 2 3 4 5; do kill -0 $SERVER 2> /dev/null || break; sleep 1; done
+  kill -INT $SERVER 2> /dev/null || true
   wait $SERVER || true
   check "$WORK/srt.ts" "SRT-received transport stream"
   grep -q "retransmitted" "$WORK/srt-client.log"
   grep -q "$KEY" "$WORK/srt-client.log" && { echo "FAIL: SRT stream id printed"; exit 1; }
   echo "SRT: every frame received despite loss: OK"
 else
-  echo "== SRT skipped: this ffmpeg has no libsrt"
+  echo "== SRT skipped: no SRT receiver (ffmpeg without libsrt and no srt-live-transmit)"
 fi
 echo "E2E PASSED"

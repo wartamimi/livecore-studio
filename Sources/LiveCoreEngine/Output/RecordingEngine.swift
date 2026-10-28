@@ -58,9 +58,13 @@ public final class RecordingEngine {
         return movies.appendingPathComponent("LiveCore Studio", isDirectory: true)
     }
 
+    /// Free space on the folder's volume. The "important usage" figure (which counts purgeable
+    /// space) is 0 or missing on many external and disk-image volumes (HFS+, exFAT), so fall back
+    /// to the plain available capacity there.
     public static func freeBytes(at folder: URL) -> Int64 {
-        let values = try? folder.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-        return values?.volumeAvailableCapacityForImportantUsage ?? 0
+        let values = try? folder.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey])
+        if let important = values?.volumeAvailableCapacityForImportantUsage, important > 0 { return important }
+        return Int64(values?.volumeAvailableCapacity ?? 0)
     }
 
     // MARK: Control

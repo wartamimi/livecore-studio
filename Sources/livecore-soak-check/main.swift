@@ -5,7 +5,7 @@
 //  2. Stream drop: halfway the RTMP server is killed and started again. The stream must
 //     reconnect, and the recording must carry on through the drop without a gap.
 //  3. The recording must be a valid file as long as the run, with video and audio.
-//  3b. SRT: the same engine streams MPEG-TS over SRT to ffmpeg's SRT listener for 8 s.
+//  3b. SRT: the same engine streams MPEG-TS over SRT to an SRT listener (ffmpeg/libsrt or srt-live-transmit) for 8 s.
 //  4. Disk full: a recorder writes into a 64 MB disk image; it must stop on its own before the
 //     disk is full and leave a playable file.
 // Long soak on a real Mac: SOAK_SECONDS=7200 swift run -c release livecore-soak-check
@@ -182,13 +182,22 @@ server.kill()
 
 // MARK: 3b. SRT output from the same engine (MPEG-TS over SRT to ffmpeg/libsrt)
 
+// Receiver: ffmpeg when it was built with libsrt, otherwise srt-live-transmit (Homebrew "srt").
 let (_, protocols) = run(ffmpeg, ["-hide_banner", "-protocols"])
+let srtFile = work.appendingPathComponent("srt.ts")
+let listener = Process()
+listener.standardError = FileHandle.nullDevice
 if protocols.split(separator: "\n").contains(where: { $0.trimmingCharacters(in: .whitespaces) == "srt" }) {
-    let srtFile = work.appendingPathComponent("srt.ts")
-    let listener = Process()
     listener.executableURL = URL(fileURLWithPath: ffmpeg)
     listener.arguments = ["-loglevel", "error", "-y", "-i", "srt://127.0.0.1:\(port + 1)?mode=listener&latency=300000", "-c", "copy", srtFile.path]
-    listener.standardError = FileHandle.nullDevice
+} else if let slt = which("srt-live-transmit") {
+    FileManager.default.createFile(atPath: srtFile.path, contents: nil)
+    listener.executableURL = URL(fileURLWithPath: slt)
+    listener.arguments = ["-q", "-a:no", "srt://:\(port + 1)?mode=listener&latency=300", "file://con"]
+    listener.standardOutput = try? FileHandle(forWritingTo: srtFile)
+}
+if listener.executableURL != nil {
+    log("SRT receiver: \(listener.executableURL!.lastPathComponent)")
     try? listener.run()
     pump(seconds: 1)
     stream = StreamingEngine.Stats()
@@ -203,14 +212,15 @@ if protocols.split(separator: "\n").contains(where: { $0.trimmingCharacters(in: 
     log(String(format: "SRT live: %.0f kbps, states %@", stream.bitrateKbps, streamStates.joined(separator: " → ")))
     engine.stopStreaming()
     pump(seconds: 3) { !listener.isRunning }
+    if listener.isRunning { listener.interrupt(); pump(seconds: 2) { !listener.isRunning } }
     if listener.isRunning { listener.terminate() }
     let (_, probe) = run(which("ffprobe") ?? "/usr/bin/false", ["-v", "error", "-count_frames", "-select_streams", "v:0",
                                                                   "-show_entries", "stream=nb_read_frames", "-of", "csv=p=0", srtFile.path])
     let frames = Int(probe.split(separator: "\n").first.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? "") ?? 0
-    log("SRT: ffmpeg received \(frames) video frames")
+    log("SRT: received \(frames) video frames")
     guard frames >= 150 else { fail("SRT: only \(frames) frames received") }
 } else {
-    log("SRT skipped: this ffmpeg has no libsrt")
+    log("SRT skipped: no SRT receiver (ffmpeg without libsrt and no srt-live-transmit)")
 }
 engine.shutdown()
 
@@ -246,7 +256,7 @@ guard as_ == 0, let mount = ao.split(separator: "\n").compactMap({ line -> Strin
     guard let r = line.range(of: work.path) else { return nil }
     return String(line[r.lowerBound...]).trimmingCharacters(in: .whitespaces)
 }).first else { fail("hdiutil attach: \(ao)") }
-log("disk-full test on \(mount)")
+log("disk-full test on \(mount), \(RecordingEngine.freeBytes(at: URL(fileURLWithPath: mount)) / 1_000_000) MB free")
 
 var small = RecordingSettings()
 small.folderPath = mount

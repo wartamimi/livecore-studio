@@ -359,8 +359,8 @@ extension AppModel {
     }
 
     static func freeDiskBytes(_ url: URL) -> Int64? {
-        let v = try? url.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-        return v?.volumeAvailableCapacityForImportantUsage
+        guard (try? url.checkResourceIsReachable()) == true else { return nil }
+        return RecordingEngine.freeBytes(at: url)
     }
 }
 
