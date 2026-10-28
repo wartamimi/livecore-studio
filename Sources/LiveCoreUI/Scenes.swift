@@ -61,6 +61,18 @@ public enum LiveCoreScenes {
                 .preferredColorScheme(.dark)
         }
 
+        Window(L10n.t("vertical.window"), id: "vertical") {
+            VerticalOutputView()
+                .environmentObject(model)
+                .preferredColorScheme(.dark)
+        }
+
+        Window(L10n.t("rundown.title"), id: "rundown") {
+            RundownView()
+                .environmentObject(model)
+                .preferredColorScheme(.dark)
+        }
+
         Window("Program Output", id: "program-output") {
             ProgramOutputWindow()
                 .environmentObject(model)

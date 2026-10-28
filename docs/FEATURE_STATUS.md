@@ -161,6 +161,20 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.42.0
+Dua fitur pembeda (usulan yang disetujui pengguna): output vertikal 9:16 bersamaan dengan 16:9, dan rundown acara.
+Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Belum ada yang dites di Mac (TEST_PLAN bagian AR).
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Output vertikal 9:16 (720×1280 / 1080×1920) dari Program | Implemented, belum dites | L (crop) + M | Crop dari Program di GPU (Core Image). Tombol "9:16" di bar atas membuka monitor + setelan |
+| Crop mengikuti wajah | Implemented, belum dites | L (pelacak) + M | Vision di Mac, ±6 deteksi/detik, badan atas sebagai cadangan, gerak halus + dead zone; mode Tengah dan Manual |
+| Stream vertikal terpisah (1 tujuan RTMP/RTMPS) | Implemented, belum dites | M | Encoder H.264 + AAC sendiri; key di Keychain (akun "vertical"). Belum: SRT, multi-tujuan vertikal |
+| Rekaman vertikal bersama RECORD | Implemented, belum dites | M | File "… - Vertical" di folder rekaman, setelan codec sama dengan Recorder |
+| Title/overlay khusus vertikal | Planned | – | Sekarang title ikut ter-crop dari Program; title di tepi kiri/kanan terpotong |
+| Rundown acara: segmen, GO / BERIKUTNYA (⌘↩), hitung mundur | Implemented, belum dites | L (aksi) + M | Tombol RUNDOWN di bar atas; template Pernikahan dan Seminar; disimpan di proyek |
+| Per segmen: input ke Program (CUT/AUTO), title di overlay 1–4, musik putar/stop, lanjut otomatis saat waktu habis | Implemented, belum dites | L + M | Title dari segmen sebelumnya dimatikan otomatis; musik dari input Musik di mixer |
+
 ## Fitur 0.41.0
 Permintaan pengguna: animasi GT sehalus vMix, animasi keluar mengikuti template, pasang font dari folder (TEST_PLAN bagian AQ).
 

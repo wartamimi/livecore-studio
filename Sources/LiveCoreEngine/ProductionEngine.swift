@@ -164,6 +164,10 @@ public final class ProductionEngine {
         var iso: [(InputID, RecordingEngine)] = []
     }
     let outputs = Locked(Outputs())
+    /// Portrait 9:16 output and its stream (0.42.0).
+    public let vertical = VerticalOutput()
+    var verticalStream: (StreamingEngine, AACEncoder)?
+    public var onVerticalStreamStats: ((StreamingEngine.Stats) -> Void)?
     var aacEncoders: [AACEncoder] = []
     var audioInputs: [String: AudioCaptureInput] = [:]
     var lastSwitcher = SwitcherSnapshot()
@@ -180,6 +184,7 @@ public final class ProductionEngine {
         self.settings = settings
         compositor = try MetalCompositor(outputSize: settings.output.size)
         mixer.onError = { [weak self] msg in DispatchQueue.main.async { self?.onError?(msg) } }
+        vertical.settings = settings.verticalOutput
         recorder.onStats = { [weak self] s in
             if case .recording = s.state {} else { self?.recordingEnded(s) }
             self?.onRecordStats?(s)
@@ -289,6 +294,7 @@ public final class ProductionEngine {
             outs.streamEncoder?.encode(program, pts: pts)
             if outs.recording { self.recorder.append(video: program, pts: pts) }
             for (id, r) in outs.iso { if let pb = result.extra[id] { r.append(video: pb, pts: pts) } }
+            if self.vertical.isActive { self.vertical.process(program, pts: pts) }
             if outs.replay { self.replay.append(program, hostTime: pts.seconds) }
             self.outputFrameHandler?(OutputFrames(program: program, preview: result.fullPreview, inputs: result.extra, pts: pts))
             let preview = result.preview

@@ -41,6 +41,9 @@ extension AppModel {
     }
 
     func applyInputGroups(from doc: ProjectDocument) {
+        rundown = doc.rundown ?? Rundown()
+        rundownIndex = nil
+        rundownStart = nil
         inputTags = Dictionary(uniqueKeysWithValues: doc.inputs.compactMap { i in i.colorTag.map { (i.id, $0) } })
         minimizedInputs = Set(doc.inputs.filter { $0.minimized == true }.map(\.id))
         groupNames = Dictionary(uniqueKeysWithValues: (doc.groupNames ?? [:]).compactMap { k, v in
@@ -50,6 +53,7 @@ extension AppModel {
     }
 
     func storeInputGroups(in doc: inout ProjectDocument) {
+        doc.rundown = rundown.segments.isEmpty ? nil : rundown
         for k in doc.inputs.indices {
             let id = doc.inputs[k].id
             doc.inputs[k].colorTag = inputTags[id]

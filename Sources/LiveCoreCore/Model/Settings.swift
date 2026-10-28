@@ -255,6 +255,9 @@ public struct ProductionSettings: Codable, Equatable, Sendable {
     /// MultiCorder (ISO) recording profile, separate from the Recorder (0.33.0).
     public var multiCorder: RecordingSettings?
     public var multiCorderRecording: RecordingSettings { multiCorder ?? .multiCorderDefault }
+    /// Portrait 9:16 output next to Program (0.42.0).
+    public var vertical: VerticalSettings?
+    public var verticalOutput: VerticalSettings { vertical ?? VerticalSettings() }
     public init() {}
 
     /// Validation used before starting outputs. Returns human-readable problems (empty = OK).

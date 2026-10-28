@@ -28,6 +28,14 @@ struct TopBarView: View {
             Divider().frame(height: 18)
             StatusPill(text: streamText, color: streamColor, systemImage: "dot.radiowaves.left.and.right")
             StatusPill(text: recordText, color: model.isRecording ? Theme.program : Theme.panelRaised, systemImage: "record.circle")
+            Button { openWindow(id: "rundown") } label: { Label(L10n.t("rundown.button"), systemImage: "list.number") }
+                .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.rundownIndex != nil))
+                .fixedSize()
+                .help(L10n.t("rundown.title"))
+            Button { openWindow(id: "vertical") } label: { Label("9:16", systemImage: "rectangle.portrait") }
+                .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isVerticalStreaming))
+                .fixedSize()
+                .help(L10n.t("vertical.window"))
             Button { openWindow(id: "multiview") } label: { Image(systemName: "square.grid.3x2") }
                 .help(L10n.t("multiview.open"))
                 .buttonStyle(.borderless)
