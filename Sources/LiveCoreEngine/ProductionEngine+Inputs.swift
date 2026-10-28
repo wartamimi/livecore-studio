@@ -389,6 +389,19 @@ extension ProductionEngine {
         return src.id
     }
 
+    /// Imported vMix GT title (.gtzip).
+    @discardableResult
+    public func addGTTitle(url: URL, template: GTTemplate, fields: [String: String] = [:], id: InputID? = nil) -> InputID {
+        let src = GTTitleSource(id: id ?? InputID(UUID().uuidString), url: url, template: template, fields: fields,
+                                outputSize: settings.output.size)
+        add(src)
+        return src.id
+    }
+
+    public func updateGTTitle(_ id: InputID, fields: [String: String]) {
+        (source(id) as? GTTitleSource)?.setFields(fields)
+    }
+
     /// New design (and camera) for a frame input; the camera layer follows the template's window.
     public func updateFrame(_ id: InputID, _ design: FrameDesign, camera: InputID?) {
         guard let f = source(id) as? FrameSource else { return }

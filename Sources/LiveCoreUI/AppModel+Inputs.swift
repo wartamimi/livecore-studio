@@ -7,6 +7,7 @@ import ImageIO
 import LiveCoreCore
 import LiveCoreEngine
 import LiveCoreRemote
+import LiveCoreServices
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -263,6 +264,28 @@ extension AppModel {
     public func frameCamera(_ id: InputID) -> InputID? { engine?.frameCamera(id) }
     public func addFrame(_ d: FrameDesign, camera: InputID?) { engine?.addFrame(d, camera: camera) }
     public func updateFrame(_ id: InputID, _ d: FrameDesign, camera: InputID?) { engine?.updateFrame(id, d, camera: camera) }
+
+    public func gtTitleSource(_ id: InputID) -> GTTitleSource? { engine?.source(id) as? GTTitleSource }
+    /// Imports a vMix GT title (.gtzip); returns the new input to edit its texts.
+    public func addGTTitle() -> InputID? {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [UTType(filenameExtension: "gtzip") ?? .zip]
+        guard panel.runModal() == .OK, let url = panel.url, let e = engine else { return nil }
+        do {
+            let t = try GTReader.template(at: url)
+            guard !t.elements.isEmpty else { report(L10n.t("gt.empty")); return nil }
+            return e.addGTTitle(url: url, template: t)
+        } catch {
+            report(L10n.f("gt.failed", "\(error)"))
+            return nil
+        }
+    }
+    public func updateGTTitle(_ id: InputID, fields: [String: String]) {
+        engine?.updateGTTitle(id, fields: fields)
+        objectWillChange.send()
+    }
 
     /// PowerPoint, Keynote, OpenDocument or PDF slides; one input per file.
     public func addPresentation() {

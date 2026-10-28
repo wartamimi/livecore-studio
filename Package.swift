@@ -45,7 +45,7 @@ let package = Package(
         .target(name: "LiveCoreRemote", dependencies: ["LiveCoreCore"]),
         .target(name: "LiveCoreServices", dependencies: ["LiveCoreCore"]),
         .target(name: "LiveCoreEngine", dependencies: [
-            "LiveCoreCore", "CAtomics", "CObjCSupport", "CSyphon", "CNDI",
+            "LiveCoreCore", "LiveCoreServices", "CAtomics", "CObjCSupport", "CSyphon", "CNDI",
         ]),
         .target(
             name: "LiveCoreUI",

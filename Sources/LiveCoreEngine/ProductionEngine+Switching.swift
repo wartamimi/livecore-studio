@@ -107,6 +107,12 @@ extension ProductionEngine {
             if !now && was { t.finishTextAnimation() }
         }
         for (id, src) in sources {
+            guard let g = src as? GTTitleSource else { continue }
+            let was = autoPlayOnAir.contains(id), now = visible.contains(id)
+            if now && !was { g.playIn() }
+            if !now && was { g.finishIn() }
+        }
+        for (id, src) in sources {
             guard let v = src as? VideoFileSource, v.autoPlay != .off, id != stingerID else { continue }
             let was = autoPlayOnAir.contains(id), now = visible.contains(id)
             if now && !was { v.autoRestart ? v.restart() : v.play() }

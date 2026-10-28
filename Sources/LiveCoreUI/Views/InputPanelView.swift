@@ -22,6 +22,7 @@ struct InputPanelView: View {
     @State private var editingNDI: InputID?
     @State private var showFrameSheet = false
     @State private var editingFrame: InputID?
+    @State private var editingGT: InputID?
     @State private var closing: InputID?
     @State private var showCaptureCard = false
     @State private var editingCaptureCard: InputID?
@@ -109,6 +110,7 @@ struct InputPanelView: View {
         .sheet(isPresented: $showNDISheet) { NDIInputSheet(editing: nil).environmentObject(model) }
         .sheet(isPresented: $showFrameSheet) { FrameSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingFrame) { id in FrameSheet(editing: id).environmentObject(model) }
+        .sheet(item: $editingGT) { id in GTTitleSheet(input: id).environmentObject(model) }
         .sheet(item: $editingNDI) { id in NDIInputSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showCaptureCard) { CaptureCardSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCaptureCard) { id in CaptureCardSheet(editing: id).environmentObject(model) }
@@ -213,6 +215,7 @@ struct InputPanelView: View {
                 Button(L10n.t("inputs.title_menu")) { showTitleSheet = true }
                 Button(L10n.t("timer.add")) { showTimerSheet = true }
                 Button(L10n.t("frame.add")) { showFrameSheet = true }
+                Button(L10n.t("gt.add")) { if let id = model.addGTTitle() { editingGT = id } }
                 Button(L10n.t("scene.new")) { if let id = model.addScene() { editingScene = id } }
             }
             Section(L10n.t("inputs.other_group")) {
@@ -300,6 +303,7 @@ struct InputPanelView: View {
         }
         if info.kind == .ndi { Button(L10n.t("ndi.edit")) { editingNDI = info.id } }
         if info.kind == .frame { Button(L10n.t("frame.edit")) { editingFrame = info.id } }
+        if info.kind == .gtTitle { Button(L10n.t("gt.edit")) { editingGT = info.id } }
         if info.kind == .timer {
             Button(L10n.t("timer.start")) { model.timerControl(info.id, "play") }
             Button(L10n.t("timer.pause")) { model.timerControl(info.id, "pause") }
@@ -515,6 +519,7 @@ struct InputTile: View {
         case .ndi: return "antenna.radiowaves.left.and.right"
         case .presentation: return "rectangle.on.rectangle.angled"
         case .frame: return "person.crop.rectangle"
+        case .gtTitle: return "rectangle.bottomthird.inset.filled"
         }
     }
 }

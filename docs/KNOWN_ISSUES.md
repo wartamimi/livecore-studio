@@ -247,3 +247,5 @@
 64. **Canvas portrait/custom (0.26.0)**: thumbnail input dan tile input di Multiview tetap 16:9. Posisi layer, overlay dan
     judul memakai koordinat relatif, jadi tata letak yang dibuat untuk 16:9 akan tertarik bila canvas diganti ke 9:16;
     atur ulang di Layer Designer. Platform stream harus mendukung video vertikal (YouTube Shorts, Facebook, TikTok Live).
+94. **Title vMix GT (0.39.0)**: hasil render bisa sedikit berbeda dari vMix (posisi teks, ukuran font, arah skew). Text3D
+    datar, Feather/crop gambar diabaikan, animasi keluar dan data source belum ada. File .gtzip harus tetap ada di tempatnya.
