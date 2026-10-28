@@ -90,6 +90,11 @@ public final class ProductionEngine {
     public static let toneChannelPrefix = "tone:"
     public var onMusicChange: (() -> Void)?
     public static let musicChannelPrefix = "music:"
+    public static let radioChannelPrefix = "radio:"
+    /// Online radio stations (0.38.0), each in its own mixer channel.
+    public internal(set) var radios: [RadioInput] = []
+    /// Main thread: a station started, stopped, failed or changed song.
+    public var onRadioChange: (() -> Void)?
     public let performance = PerformanceMonitor()
 
     struct ControlState {
@@ -142,6 +147,11 @@ public final class ProductionEngine {
     let inFlight = Locked(0)
     var frameCounter: Int64 = 0
     public let droppedRenderFrames = AtomicCounter()
+    /// Why frames were dropped (diagnostics): the render tick came late (CPU), the GPU still had
+    /// frames in flight, or the compositor could not encode the frame.
+    public let droppedLate = AtomicCounter()
+    public let droppedGPUBusy = AtomicCounter()
+    public let droppedFailed = AtomicCounter()
     let gpuMsAverage = AtomicFloat(0)
     let renderedFrames = AtomicCounter()
     var lastFPSSample: (time: Double, frames: UInt64) = (0, 0)
@@ -193,6 +203,7 @@ public final class ProductionEngine {
         renderTimer = nil
         control.read { $0.sources.values.forEach { $0.stop() } }
         musicPlayers.forEach { $0.stop() }
+        radios.forEach { $0.stop() }
         tones.forEach { $0.stop() }
         audioInputs.values.forEach { $0.stop() }
         mixer.stop()
@@ -218,7 +229,10 @@ public final class ProductionEngine {
         let now = HostClock.now()
         let index = Int64(((now - clockStart) * fps).rounded(.down))
         guard index > lastFrameIndex else { return }
-        if lastFrameIndex >= 0 && index > lastFrameIndex + 1 { droppedRenderFrames.add(UInt64(index - lastFrameIndex - 1)) }
+        if lastFrameIndex >= 0 && index > lastFrameIndex + 1 {
+            droppedRenderFrames.add(UInt64(index - lastFrameIndex - 1))
+            droppedLate.add(UInt64(index - lastFrameIndex - 1))
+        }
         lastFrameIndex = index
         let frameHost = clockStart + Double(index) / fps
 
@@ -249,8 +263,11 @@ public final class ProductionEngine {
             }
         }
 
-        guard inFlight.mutate({ n -> Bool in if n >= 2 { return false }; n += 1; return true }) else {
+        // Up to three frames queued on the GPU: rides out short GPU stalls (window animations,
+        // other apps) at the cost of at most one more frame of latency.
+        guard inFlight.mutate({ n -> Bool in if n >= 3 { return false }; n += 1; return true }) else {
             droppedRenderFrames.add()
+            droppedGPUBusy.add()
             return
         }
 
@@ -267,7 +284,7 @@ public final class ProductionEngine {
             self.renderedFrames.add()
             let avg = self.gpuMsAverage.value
             self.gpuMsAverage.value = avg == 0 ? Float(result.gpuMs) : avg * 0.95 + Float(result.gpuMs) * 0.05
-            guard let program = result.program else { self.droppedRenderFrames.add(); return }
+            guard let program = result.program else { self.droppedRenderFrames.add(); self.droppedFailed.add(); return }
             let outs = self.outputs.current
             outs.streamEncoder?.encode(program, pts: pts)
             if outs.recording { self.recorder.append(video: program, pts: pts) }
@@ -287,6 +304,7 @@ public final class ProductionEngine {
         if !ok {
             inFlight.mutate { $0 -= 1 }
             droppedRenderFrames.add()
+            droppedFailed.add()
         }
         if frameCounter % Int64(fps) == 0 { compositor.flushCache() }
     }

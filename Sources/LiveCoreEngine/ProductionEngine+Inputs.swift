@@ -128,6 +128,33 @@ extension ProductionEngine {
         return musicPlayers.first { Self.musicChannelPrefix + $0.id == channelID }
     }
 
+    /// Adds an online radio station in a new mixer channel (stopped until Play).
+    @discardableResult
+    public func addRadio(_ station: RadioStation, id: String? = nil) -> RadioInput {
+        let rid = id ?? String(UUID().uuidString.prefix(8)).lowercased()
+        let ch = mixer.addChannel(id: Self.radioChannelPrefix + rid, name: station.name)
+        let r = RadioInput(id: rid, station: station, channel: ch)
+        r.onChange = { [weak self] in self?.onRadioChange?() }
+        radios.append(r)
+        onAudioChannelsChange?()
+        onRadioChange?()
+        return r
+    }
+
+    public func removeRadio(id: String) {
+        guard let i = radios.firstIndex(where: { $0.id == id }) else { return }
+        radios.remove(at: i).stop()
+        mixer.removeChannel(id: Self.radioChannelPrefix + id)
+        afvLinks[Self.radioChannelPrefix + id] = nil
+        onAudioChannelsChange?()
+        onRadioChange?()
+    }
+
+    public func radio(channelID: String) -> RadioInput? {
+        guard channelID.hasPrefix(Self.radioChannelPrefix) else { return nil }
+        return radios.first { Self.radioChannelPrefix + $0.id == channelID }
+    }
+
     /// Mixer channel id used for the audio of a video-file input.
     public static func fileChannelID(_ id: InputID) -> String { "file:\(id.raw)" }
 

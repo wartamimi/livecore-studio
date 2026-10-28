@@ -27,8 +27,11 @@ fi
 echo "== Environment"
 sw_vers; uname -m; xcodebuild -version; swift --version
 
-echo "== Unit tests (LiveCoreCore)"
-swift test
+# CI runs the tests in a parallel job (LIVECORE_SKIP_TESTS=1) so the DMG is ready sooner.
+if [ "${LIVECORE_SKIP_TESTS:-0}" != "1" ]; then
+  echo "== Unit tests (LiveCoreCore)"
+  swift test
+fi
 
 echo "== Generate Xcode project"
 command -v xcodegen >/dev/null || { echo "Install XcodeGen: brew install xcodegen"; exit 1; }

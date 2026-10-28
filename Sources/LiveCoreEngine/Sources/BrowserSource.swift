@@ -17,6 +17,34 @@ import LiveCoreCore
 /// local page the operator picked).
 /// Audio: on macOS 14.2+ the pages' sound is taken into the mixer's "Web audio" channel
 /// (see `WebAudioCapture`); on older systems it plays on the system output.
+/// Edit-window container: shows the web view scaled to fit, keeping the output's CSS viewport.
+final class PageFitView: NSView {
+    let pageSize: NSSize
+    var baseZoom: CGFloat { didSet { needsLayout = true } }
+    private weak var webView: WKWebView?
+
+    init(webView: WKWebView, pageSize: NSSize, baseZoom: CGFloat) {
+        self.webView = webView
+        self.pageSize = pageSize
+        self.baseZoom = baseZoom
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.black.cgColor
+    }
+
+    required init?(coder: NSCoder) { nil }
+
+    override func layout() {
+        super.layout()
+        guard let wv = webView, pageSize.width > 0, pageSize.height > 0, bounds.width > 0, bounds.height > 0 else { return }
+        let scale = min(bounds.width / pageSize.width, bounds.height / pageSize.height)
+        let size = NSSize(width: (pageSize.width * scale).rounded(), height: (pageSize.height * scale).rounded())
+        wv.frame = NSRect(x: ((bounds.width - size.width) / 2).rounded(), y: ((bounds.height - size.height) / 2).rounded(),
+                          width: size.width, height: size.height)
+        wv.pageZoom = max(0.1, baseZoom * scale)
+    }
+}
+
 public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, NSWindowDelegate {
     public let id: InputID
     public let kind: InputKind = .browser
@@ -108,7 +136,11 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
     /// Zoom, CSS, video-only and mute (main thread; scripts apply from the next page load).
     private func applyPageOptions() {
         guard let wv = webView else { return }
-        wv.pageZoom = CGFloat(config.pageZoom)
+        if let fit = wv.superview as? PageFitView {
+            fit.baseZoom = CGFloat(config.pageZoom)
+        } else {
+            wv.pageZoom = CGFloat(config.pageZoom)
+        }
         let ucc = wv.configuration.userContentController
         ucc.removeAllUserScripts()
         // A site's fullscreen button fills the input's picture, never the Mac's screen.
@@ -198,30 +230,26 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         bar.edgeInsets = NSEdgeInsets(top: 6, left: 8, bottom: 6, right: 8)
         bar.translatesAutoresizingMaskIntoConstraints = false
 
-        // The page keeps its output size (what the audience sees); a larger page scrolls.
-        let scroll = NSScrollView()
-        scroll.hasVerticalScroller = true
-        scroll.hasHorizontalScroller = true
-        scroll.autohidesScrollers = true
-        scroll.drawsBackground = true
-        scroll.backgroundColor = .black
-        scroll.translatesAutoresizingMaskIntoConstraints = false
+        // The page keeps its output layout (same CSS viewport as what the audience sees) but is
+        // scaled down to fit the window with page zoom, letterboxed. The whole page is visible and
+        // its own scrolling works; a larger window (green button) shows it larger.
+        let fit = PageFitView(webView: wv, pageSize: page, baseZoom: CGFloat(config.pageZoom))
+        fit.translatesAutoresizingMaskIntoConstraints = false
         wv.removeFromSuperview()
-        wv.frame = NSRect(origin: .zero, size: page)
-        scroll.documentView = wv
+        fit.addSubview(wv)
 
         let root = NSView(frame: NSRect(origin: .zero, size: content))
         root.addSubview(bar)
-        root.addSubview(scroll)
+        root.addSubview(fit)
         NSLayoutConstraint.activate([
             bar.topAnchor.constraint(equalTo: root.topAnchor),
             bar.leadingAnchor.constraint(equalTo: root.leadingAnchor),
             bar.trailingAnchor.constraint(equalTo: root.trailingAnchor),
             bar.heightAnchor.constraint(equalToConstant: barHeight),
-            scroll.topAnchor.constraint(equalTo: bar.bottomAnchor),
-            scroll.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            scroll.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            scroll.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            fit.topAnchor.constraint(equalTo: bar.bottomAnchor),
+            fit.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            fit.trailingAnchor.constraint(equalTo: root.trailingAnchor),
+            fit.bottomAnchor.constraint(equalTo: root.bottomAnchor),
         ])
         win.contentView = root
         win.center()
@@ -230,11 +258,7 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         backButton = back
         forwardButton = forward
         updateNavigationButtons()
-        // Show the top of the page (the clip view is not flipped).
         root.layoutSubtreeIfNeeded()
-        let visibleHeight = scroll.contentSize.height
-        scroll.contentView.scroll(to: NSPoint(x: 0, y: max(0, page.height - visibleHeight)))
-        scroll.reflectScrolledClipView(scroll.contentView)
         NSApp.activate(ignoringOtherApps: true)
         win.makeKeyAndOrderFront(nil)
         win.makeFirstResponder(wv)
@@ -273,8 +297,10 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         editWindow = nil
         win.delegate = nil
         win.orderOut(nil)
+        let page = (wv.superview as? PageFitView)?.pageSize ?? wv.frame.size
         wv.removeFromSuperview()
-        wv.frame = NSRect(origin: .zero, size: wv.frame.size)
+        wv.frame = NSRect(origin: .zero, size: page)
+        wv.pageZoom = CGFloat(config.pageZoom)
         host.contentView = wv
         host.orderBack(nil)
         win.contentView = nil

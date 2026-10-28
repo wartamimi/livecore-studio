@@ -9,6 +9,30 @@ import OSLog
 /// Stability tools (0.37.0): autosave with crash recovery, undo of input changes, the on-disk
 /// log and "Export Logs & Diagnostics".
 extension AppModel {
+    // MARK: Stutter log
+
+    /// Writes what makes the show stutter into the log file (Help › Export Logs & Diagnostics):
+    /// main-thread stalls and, once a second, dropped render frames by cause.
+    func startStutterLog() {
+        var lastLogged = 0.0
+        watchdog.onStall = { ms in
+            let now = HostClock.now()
+            guard now - lastLogged > 1 else { return }   // at most one line a second
+            lastLogged = now
+            FileLog.shared.warning("main thread did not answer for \(ms) ms")
+        }
+        watchdog.start()
+    }
+
+    func logRenderDrops(_ e: ProductionEngine) {
+        let now = (late: e.droppedLate.value, busy: e.droppedGPUBusy.value, failed: e.droppedFailed.value)
+        let late = now.late &- lastDropCounts.late, busy = now.busy &- lastDropCounts.busy, failed = now.failed &- lastDropCounts.failed
+        lastDropCounts = now
+        guard late + busy + failed > 0 else { return }
+        FileLog.shared.warning(String(format: "render drops +%llu (late tick %llu, GPU busy %llu, failed %llu), %.1f fps, GPU %.1f ms, CPU %.0f%%",
+                                      late + busy + failed, late, busy, failed, performance.renderFPS, performance.gpuFrameMs, performance.cpuPercent))
+    }
+
     // MARK: Autosave and crash recovery
 
     static let autosaveInterval: TimeInterval = 30

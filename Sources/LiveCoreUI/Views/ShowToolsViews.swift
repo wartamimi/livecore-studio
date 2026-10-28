@@ -29,6 +29,8 @@ extension L10n {
 struct PreflightSheet: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
+    /// Shown as a tab inside Settings: no Close button and no Return/Escape shortcuts (Settings has them).
+    var embedded = false
     @State private var plan: AppModel.PreflightPlan?
     @State private var items: [PreflightItem] = []
     @State private var running = false
@@ -77,14 +79,19 @@ struct PreflightSheet: View {
             HStack {
                 Text(L10n.t("preflight.privacy")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
                 Spacer()
-                Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.cancelAction)
-                Button(items.isEmpty ? L10n.t("preflight.run") : L10n.t("preflight.run_again")) { run() }
-                    .keyboardShortcut(.defaultAction)
-                    .disabled(running || plan == nil)
+                if embedded {
+                    Button(items.isEmpty ? L10n.t("preflight.run") : L10n.t("preflight.run_again")) { run() }
+                        .disabled(running || plan == nil)
+                } else {
+                    Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.cancelAction)
+                    Button(items.isEmpty ? L10n.t("preflight.run") : L10n.t("preflight.run_again")) { run() }
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(running || plan == nil)
+                }
             }
         }
-        .padding(18)
-        .frame(width: 620, height: 520)
+        .padding(embedded ? 4 : 18)
+        .frame(width: embedded ? nil : 620, height: embedded ? nil : 520)
         .onAppear {
             if plan == nil { plan = model.defaultPreflightPlan }
             run()

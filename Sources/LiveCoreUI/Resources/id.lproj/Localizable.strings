@@ -1016,3 +1016,27 @@
 "ptz.store_here" = "Simpan posisi sekarang di sini";
 "ptz.names" = "Nama preset";
 "stream.srt_hint" = "SRT: isi srt://host:port (boleh ditambah ?streamid=…&latency=ms). Kolom key, jika diisi, dipakai sebagai Stream ID. Enkripsi passphrase belum didukung.";
+
+/* 0.38.0: online radio */
+"radio.menu" = "Radio Online…";
+"radio.title" = "Radio Online";
+"radio.intro" = "Stasiun radio internet dari direktori gratis Radio Browser (tanpa akun atau API key). Hanya stasiun HTTPS dengan MP3 atau AAC yang ditampilkan. Stasiun diputar ke channel mixer sendiri.";
+"radio.name" = "Nama stasiun";
+"radio.genre" = "Genre (mis. pop)";
+"radio.country" = "Negara";
+"radio.country_help" = "Kode negara dua huruf, mis. ID, US, GB. Kosong = semua negara.";
+"radio.search" = "Cari";
+"radio.add" = "Tambah ke Mixer";
+"radio.none" = "Tidak ada stasiun yang bisa diputar. Coba nama atau genre lain, atau kosongkan negara.";
+"radio.search_failed" = "Tidak bisa menghubungi direktori radio: %@";
+"radio.copyright" = "Hak cipta: memutar stasiun radio di live stream atau rekaman biasanya butuh izin dari stasiun dan pemegang hak musik. YouTube dan Facebook bisa membisukan atau menghapus stream yang berisi musik berhak cipta.";
+"radio.source" = "Direktori: radio-browser.info";
+"radio.stopped" = "Berhenti";
+"radio.connecting" = "Menyambung…";
+"radio.buffering" = "Memuat…";
+"radio.playing" = "Diputar";
+"radio.reconnecting" = "Menyambung ulang dalam %@ dtk";
+"radio.failed" = "Gagal: %@";
+"radio.error" = "Radio \"%@\" berhenti: %@";
+"radio.play" = "Putar stasiun";
+"radio.stop" = "Hentikan stasiun";

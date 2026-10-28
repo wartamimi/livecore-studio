@@ -60,6 +60,7 @@ let package = Package(
         .executableTarget(name: "livecore-iso-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-title-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-soak-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
+        .executableTarget(name: "livecore-radio-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .testTarget(name: "LiveCoreCoreTests", dependencies: ["LiveCoreCore", "LiveCoreRemote", "LiveCoreServices"]),
     ]
 )

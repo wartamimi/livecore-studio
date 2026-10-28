@@ -380,3 +380,22 @@ final class M37Tests: XCTestCase {
         XCTAssertEqual(route("/api/data/next", ["input": "5"], "GET"), .methodNotAllowed)
     }
 }
+
+final class WatchdogTests: XCTestCase {
+    func testReportsABlockedQueueAndStaysQuietOtherwise() {
+        let target = DispatchQueue(label: "watched")
+        let dog = MainThreadWatchdog(target: target, interval: 0.02, threshold: 0.15)
+        let lock = NSLock()
+        var list: [Int] = []
+        dog.onStall = { ms in lock.lock(); list.append(ms); lock.unlock() }
+        func stalls() -> [Int] { lock.lock(); defer { lock.unlock() }; return list }
+        dog.start()
+        Thread.sleep(forTimeInterval: 0.3)
+        XCTAssertTrue(stalls().isEmpty, "no stall while the queue answers")
+        target.async { Thread.sleep(forTimeInterval: 0.4) }
+        Thread.sleep(forTimeInterval: 0.7)
+        dog.stop()
+        XCTAssertEqual(stalls().count, 1)
+        XCTAssertGreaterThanOrEqual(stalls().first ?? 0, 300)
+    }
+}

@@ -149,6 +149,21 @@
 62. **Duplikat input (0.26.0)**: satu kamera/capture card = satu input. Capture jendela dicocokkan dari aplikasi + judul
     jendela; jendela dengan judul yang berubah (mis. judul dokumen) dianggap jendela lain. Proyek lama yang sudah berisi
     duplikat tetap dibuka apa adanya.
+89. **Jendela edit Web (0.38.0)**: halaman ditampilkan diperkecil agar muat (sama persis dengan yang dilihat penonton); pada
+    jendela kecil teks bisa terlihat kecil, perbesar jendela atau tekan tombol hijau. Penggantian `screen.width/height` hanya
+    membantu player yang mengukur layar; situs yang memaksa ukuran sendiri bisa tetap berbeda.
+90. **FPS drop (0.38.0)**: penyebab pastinya belum terbukti di Mac pengguna. Yang diperbaiki: animasi title tidak lagi
+    bergantung pada thread UI, antrean GPU 3 frame, statistik tetap jalan saat menu terbuka. Bila masih drop, ekspor log
+    (Bantuan › Ekspor Log & Diagnostik): baris "render drops" dan "main thread did not answer" menunjukkan penyebabnya.
+91. **Radio Online (0.38.0)**: hanya HTTPS + MP3/AAC/AAC+; stasiun HLS, Ogg/Opus, FLAC dan HTTP biasa tidak ditampilkan.
+    Server SHOUTcast v1 lama yang menjawab "ICY 200 OK" tidak didukung. Jeda awal ±1,5 dtk (buffer); bila jaringan lambat,
+    suara berhenti sampai buffer terisi lagi. Jam stasiun dan jam mixer bisa berbeda sedikit; kelebihan buffer dibuang
+    (maks 10 dtk) sehingga sesekali bisa terdengar lompatan sangat kecil. Belum ada pratinjau suara sebelum ditambahkan.
+92. **Radio & hak cipta (0.38.0)**: memutar siaran radio di live stream/rekaman biasanya butuh izin stasiun dan pemegang hak
+    musik; platform bisa membisukan atau menurunkan stream.
+93. **Uji disk penuh (0.37.0–0.38.0)**: di CI, rekaman ke disk image 160 MB yang diisi cepat masih berakhir dengan error
+    "Disk Full" (file mungkin tidak bisa diputar). Pemakaian normal tidak terdampak (rekaman berhenti sendiri saat sisa 1 GB),
+    tapi hindari merekam ke drive yang hampir penuh. Langkah soak check ini tidak menahan pembuatan DMG.
 79. **Autosave & pemulihan (0.37.0)**: simpanan otomatis tiap 30 detik, jadi perubahan hingga 30 detik terakhir sebelum crash
     bisa hilang. Pemulihan hanya mengembalikan susunan produksi (input, layer, audio, overlay); rekaman yang sedang berjalan
     saat crash tidak dilanjutkan (file MOV tetap bisa diputar sampai fragmen terakhir, MP4 tidak). Belum dites di Mac.

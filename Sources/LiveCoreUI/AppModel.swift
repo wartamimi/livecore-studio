@@ -147,11 +147,16 @@ public final class AppModel: ObservableObject {
             startupError = error.localizedDescription
             return
         }
-        statsTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in self?.tick() }
+        // Common modes: meters and stats keep moving while a menu is open.
+        let t = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] _ in self?.tick() }
+        RunLoop.main.add(t, forMode: .common)
+        statsTimer = t
+        startStutterLog()
     }
 
     public func shutdown() {
         statsTimer?.invalidate()
+        watchdog.stop()
         endAutosaveSession()
         outputRouter?.stopAll()
         midi.stop()
@@ -205,6 +210,19 @@ public final class AppModel: ObservableObject {
             self?.objectWillChange.send()
             if let err = e.musicPlayers.compactMap(\.error).first, self?.lastMusicError != err { self?.lastMusicError = err; self?.report(err) }
         }
+        e.onRadioChange = { [weak self] in
+            guard let self else { return }
+            self.objectWillChange.send()
+            for r in e.radios {
+                if case let .failed(reason) = r.state, self.lastRadioErrors[r.id] != reason {
+                    self.lastRadioErrors[r.id] = reason
+                    self.report(L10n.f("radio.error", r.station.name, reason))
+                    FileLog.shared.warning("online radio \(r.station.name) failed: \(reason)")
+                } else if r.state == .playing {
+                    self.lastRadioErrors[r.id] = nil
+                }
+            }
+        }
         e.devices.onChange = { [weak self] in self?.refreshDevices() }
     }
 
@@ -228,12 +246,15 @@ public final class AppModel: ObservableObject {
     // MARK: Ticks (30 Hz meters, 1 Hz performance)
 
     var tickCount = 0
+    let watchdog = MainThreadWatchdog()
+    var lastRadioErrors: [String: String] = [:]
+    var lastDropCounts: (late: UInt64, busy: UInt64, failed: UInt64) = (0, 0, 0)
     func tick() {
         guard let e = engine else { return }
         meters.update(channels: e.audioChannels, master: e.mixer.master, aux: e.mixer.aux)
         tickCount += 1
         if tickCount % 3 == 0 { meters.updateLoudness(e.mixer) }
-        if tickCount % 30 == 0 { performance = e.samplePerformance(); refreshExternalStatus() }
+        if tickCount % 30 == 0 { performance = e.samplePerformance(); refreshExternalStatus(); logRenderDrops(e) }
         if remoteServer != nil, tickCount % 3 == 0 { pushRemoteState(clients: tickCount % 30 == 0) }
         if remoteServer != nil, tickCount % 10 == 0 { pushRemoteFrames() }
     }

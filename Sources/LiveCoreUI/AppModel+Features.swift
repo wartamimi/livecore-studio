@@ -14,8 +14,11 @@ extension AppModel {
 
     static let uiModeKey = "uiMode"
 
+    /// The Operator/Advanced switch was removed in 0.38.0 (user's call): always the full interface,
+    /// also for anyone who had switched to Operator mode in 0.37.0.
     static func loadUIMode() -> UIMode {
-        UserDefaults.standard.string(forKey: uiModeKey).flatMap(UIMode.init(rawValue:)) ?? .advanced
+        UserDefaults.standard.removeObject(forKey: uiModeKey)
+        return .advanced
     }
 
     /// Operator mode hides set-up tools (codecs, capture card options, ISO, MIDI, NDI, shaders,
