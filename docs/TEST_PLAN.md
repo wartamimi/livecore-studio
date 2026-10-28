@@ -51,6 +51,17 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AS. Tes manual build 0.43.0
+
+| ID | Area | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-209 | Hapus background | Kamera › klik kanan › AI › Hapus background; jadikan layer di atas gambar lain | Orang tampil tanpa latar; FPS Program stabil (catat Mac yang dipakai) |
+| T-210 | Auto-framing | AI › Auto-framing, zoom Sedang; orang berjalan pelan | Gambar mengikuti wajah dengan halus |
+| T-211 | Subtitle | + › Subtitle live (AI), taruh di overlay, bicara Bahasa Indonesia | Teks muncul; status menyebut "di Mac ini" atau pesan jelas bila model tidak ada |
+| T-212 | iPhone | iPhone dekat Mac (Apple ID sama) › + › kamera | iPhone muncul di daftar kamera dan bisa dipakai |
+| T-213 | Paket klien | RECORD + ISO + vertikal, jalankan 3 segmen rundown, tekan ★ HIGHLIGHT 2×, stop RECORD, Paket klien | Folder berisi rekaman, bab YouTube yang benar, 2 klip highlight 9:16 yang bisa diputar |
+| T-214 | Responsif | Perkecil jendela utama ke ±900 px lebar | Bar atas menjadi ikon, tidak ada yang terpotong/bertumpuk |
+
 ## AR. Tes manual build 0.42.0
 
 | ID | Area | Langkah | Hasil yang diharapkan |

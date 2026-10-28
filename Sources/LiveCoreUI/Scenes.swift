@@ -10,7 +10,7 @@ public enum LiveCoreScenes {
             MainView()
                 .environmentObject(model)
                 .environmentObject(model.meters)
-                .frame(minWidth: 1180, minHeight: 720)
+                .frame(minWidth: 900, minHeight: 600)
                 .preferredColorScheme(.dark)
         }
         .windowStyle(.hiddenTitleBar)
@@ -40,6 +40,10 @@ public enum LiveCoreScenes {
                 Divider()
                 Button(L10n.t("preflight.menu")) { model.showPreflight = true }.keyboardShortcut("p", modifiers: [.command, .shift])
                 Button(L10n.t("outputs.menu")) { model.showOutputsPanel = true }.keyboardShortcut("o", modifiers: [.command, .shift])
+                Divider()
+                Button(L10n.f("package.highlight_button", "\(model.highlightCount)")) { model.markHighlight() }
+                    .keyboardShortcut("h", modifiers: [.command, .shift])
+                Button(L10n.t("package.menu")) { model.makeClientPackage() }
             }
             CommandGroup(after: .help) {
                 Button(L10n.t("diagnostics.menu")) { model.exportDiagnostics() }

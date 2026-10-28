@@ -8,31 +8,48 @@ struct TopBarView: View {
     @Binding var showSettings: Bool
     @Environment(\.openWindow) private var openWindow
 
+    /// Full bar when the window is wide; on narrow windows labels become icons and the machine
+    /// stats move to the tooltip (0.43.0).
     var body: some View {
-        HStack(spacing: 14) {
-            Text(L10n.t("app.name")).font(.system(size: 15, weight: .heavy))
-            Text("\(model.settings.output.label)").font(.system(size: 11)).foregroundStyle(Theme.textDim)
-            Spacer()
-            Button { model.showOutputsPanel = true } label: { Label(L10n.t("outputs.button"), systemImage: "square.stack.3d.up") }
+        ViewThatFits(in: .horizontal) {
+            bar(compact: false)
+            bar(compact: true)
+        }
+    }
+
+    private func bar(compact: Bool) -> some View {
+        HStack(spacing: compact ? 8 : 14) {
+            if !compact {
+                Text(L10n.t("app.name")).font(.system(size: 15, weight: .heavy))
+                Text("\(model.settings.output.label)").font(.system(size: 11)).foregroundStyle(Theme.textDim)
+            }
+            Spacer(minLength: 0)
+            Button { model.showOutputsPanel = true } label: {
+                Label(L10n.t("outputs.button"), systemImage: "square.stack.3d.up").labelStyle(AdaptiveLabelStyle(iconOnly: compact))
+            }
                 .buttonStyle(StudioButtonStyle())
                 .fixedSize()
                 .help(L10n.t("outputs.help"))
             FullscreenGroup()
-            if !model.isOperatorMode { machineStats }
+            if !model.isOperatorMode && !compact { machineStats }
             stat(L10n.t("top.fps"), String(format: "%.1f", model.performance.renderFPS),
                  warn: model.performance.renderFPS < Double(model.settings.output.frameRate) * 0.95 && model.performance.renderFPS > 0)
-            stat(L10n.t("top.dropped"), "\(model.performance.droppedRenderFrames)", warn: false)
+            if !compact { stat(L10n.t("top.dropped"), "\(model.performance.droppedRenderFrames)", warn: false) }
             if model.performance.thermalState == .serious || model.performance.thermalState == .critical {
                 Label("Thermal", systemImage: "thermometer.high").foregroundStyle(Theme.warning).font(.system(size: 11, weight: .bold))
             }
             Divider().frame(height: 18)
             StatusPill(text: streamText, color: streamColor, systemImage: "dot.radiowaves.left.and.right")
             StatusPill(text: recordText, color: model.isRecording ? Theme.program : Theme.panelRaised, systemImage: "record.circle")
-            Button { openWindow(id: "rundown") } label: { Label(L10n.t("rundown.button"), systemImage: "list.number") }
+            Button { openWindow(id: "rundown") } label: {
+                Label(L10n.t("rundown.button"), systemImage: "list.number").labelStyle(AdaptiveLabelStyle(iconOnly: compact))
+            }
                 .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.rundownIndex != nil))
                 .fixedSize()
                 .help(L10n.t("rundown.title"))
-            Button { openWindow(id: "vertical") } label: { Label("9:16", systemImage: "rectangle.portrait") }
+            Button { openWindow(id: "vertical") } label: {
+                Label("9:16", systemImage: "rectangle.portrait").labelStyle(AdaptiveLabelStyle(iconOnly: compact))
+            }
                 .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isVerticalStreaming))
                 .fixedSize()
                 .help(L10n.t("vertical.window"))

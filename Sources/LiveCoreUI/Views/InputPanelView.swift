@@ -23,6 +23,7 @@ struct InputPanelView: View {
     @State private var showFrameSheet = false
     @State private var editingFrame: InputID?
     @State private var editingGT: InputID?
+    @State private var editingSubtitles: InputID?
     @State private var closing: InputID?
     @State private var showCaptureCard = false
     @State private var editingCaptureCard: InputID?
@@ -111,6 +112,7 @@ struct InputPanelView: View {
         .sheet(isPresented: $showFrameSheet) { FrameSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingFrame) { id in FrameSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingGT) { id in GTTitleSheet(input: id).environmentObject(model) }
+        .sheet(item: $editingSubtitles) { id in SubtitleSheet(input: id).environmentObject(model) }
         .sheet(item: $editingNDI) { id in NDIInputSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showCaptureCard) { CaptureCardSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCaptureCard) { id in CaptureCardSheet(editing: id).environmentObject(model) }
@@ -216,6 +218,7 @@ struct InputPanelView: View {
                 Button(L10n.t("timer.add")) { showTimerSheet = true }
                 Button(L10n.t("frame.add")) { showFrameSheet = true }
                 Button(L10n.t("gt.add")) { if let id = model.addGTTitle() { editingGT = id } }
+                Button(L10n.t("subtitles.add")) { if let id = model.addSubtitles() { editingSubtitles = id } }
                 Button(L10n.t("scene.new")) { if let id = model.addScene() { editingScene = id } }
             }
             Section(L10n.t("inputs.other_group")) {
@@ -239,6 +242,27 @@ struct InputPanelView: View {
         .fixedSize()
         .help(L10n.t("inputs.add"))
         .onAppear { model.refreshDevices() }
+    }
+
+    /// On-device AI per input (0.43.0); Apple Silicon only.
+    @ViewBuilder
+    private func aiMenu(_ id: InputID) -> some View {
+        Menu(L10n.t("ai.menu")) {
+            if model.aiAvailable {
+                let ai = model.inputAI(id)
+                Toggle(L10n.t("ai.remove_bg"), isOn: Binding(get: { ai.removeBackground },
+                                                             set: { v in var a = ai; a.removeBackground = v; model.setInputAI(id, a) }))
+                Toggle(L10n.t("ai.auto_frame"), isOn: Binding(get: { ai.autoFrame },
+                                                              set: { v in var a = ai; a.autoFrame = v; model.setInputAI(id, a) }))
+                Picker(L10n.t("ai.zoom"), selection: Binding(get: { ai.zoom }, set: { v in var a = ai; a.zoom = v; model.setInputAI(id, a) })) {
+                    Text(L10n.t("ai.zoom.wide")).tag(1.25)
+                    Text(L10n.t("ai.zoom.medium")).tag(1.5)
+                    Text(L10n.t("ai.zoom.close")).tag(2.0)
+                }
+            } else {
+                Text(L10n.t("ai.needs_apple_silicon"))
+            }
+        }
     }
 
     @ViewBuilder
@@ -304,6 +328,8 @@ struct InputPanelView: View {
         if info.kind == .ndi { Button(L10n.t("ndi.edit")) { editingNDI = info.id } }
         if info.kind == .frame { Button(L10n.t("frame.edit")) { editingFrame = info.id } }
         if info.kind == .gtTitle { Button(L10n.t("gt.edit")) { editingGT = info.id } }
+        if info.kind == .subtitles { Button(L10n.t("subtitles.edit")) { editingSubtitles = info.id } }
+        if [.camera, .ndi, .videoFile, .screen].contains(info.kind) { aiMenu(info.id) }
         if info.kind == .timer {
             Button(L10n.t("timer.start")) { model.timerControl(info.id, "play") }
             Button(L10n.t("timer.pause")) { model.timerControl(info.id, "pause") }
@@ -520,6 +546,7 @@ struct InputTile: View {
         case .presentation: return "rectangle.on.rectangle.angled"
         case .frame: return "person.crop.rectangle"
         case .gtTitle: return "rectangle.bottomthird.inset.filled"
+        case .subtitles: return "captions.bubble"
         }
     }
 }

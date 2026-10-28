@@ -166,6 +166,10 @@ public final class ProductionEngine {
     let outputs = Locked(Outputs())
     /// Portrait 9:16 output and its stream (0.42.0).
     public let vertical = VerticalOutput()
+    /// When the current / last RECORD started (client package chapters, 0.43.0).
+    public internal(set) var recordingStartDate: Date?
+    /// On-device AI per input (0.43.0), only on Apple Silicon.
+    let aiProcessors = Locked([InputID: AIProcessor]())
     var verticalStream: (StreamingEngine, AACEncoder)?
     public var onVerticalStreamStats: ((StreamingEngine.Stats) -> Void)?
     var aacEncoders: [AACEncoder] = []
@@ -279,7 +283,11 @@ public final class ProductionEngine {
         var needed = Set<InputID>()
         for list in plan.allCommandLists { for c in list { needed.insert(c.source) } }
         var frames: [InputID: CVPixelBuffer] = [:]
-        for id in needed { if let pb = sources[id]?.currentFrame() { frames[id] = pb } }
+        let ai = aiProcessors.current
+        for id in needed {
+            guard let pb = sources[id]?.currentFrame() else { continue }
+            frames[id] = ai[id]?.process(pb) ?? pb
+        }
 
         let pts = CMTime(seconds: frameHost, preferredTimescale: 90_000)
         let detailID = plan.detail == nil ? nil : control.read { $0.detail }

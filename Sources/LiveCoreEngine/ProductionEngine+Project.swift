@@ -46,6 +46,7 @@ extension ProductionEngine {
             case let c as ScreenCaptureSource: ps = .screen(c.config)
             case let n as NDISource: ps = .ndi(n.config)
             case let f as FrameSource: ps = .frame(f.design)
+            case let sub as SubtitleSource: ps = .subtitles(sub.style)
             case let g as GTTitleSource:
                 ps = .gtTitle(ProjectGTTitle(file: ProjectMediaRef(path: g.url.path, relativePath: rel(g.url)), fields: g.fields,
                                               overrides: g.overrides.isEmpty ? nil : g.overrides, speed: g.speed == 1 ? nil : g.speed))
@@ -57,6 +58,8 @@ extension ProductionEngine {
             let key = keys[id]
             var pi = ProjectInput(id: id, name: src.name, source: ps, layers: layers[id] ?? [],
                                   chromaKey: key == ChromaKey() ? nil : key)
+            let ai = inputAI(id)
+            if ai.isActive { pi.ai = ai }
             if let v = src as? VideoFileSource {
                 if v.autoPlay != .off { pi.autoPlay = v.autoPlay.rawValue }
                 pi.autoRestart = v.autoRestart ? nil : false
@@ -137,6 +140,8 @@ extension ProductionEngine {
             renameInput(pi.id, to: pi.name)
         }
 
+        aiProcessors.mutate { $0 = [:] }
+        for pi in doc.inputs where created.contains(pi.id) { if let ai = pi.ai { setInputAI(pi.id, ai) } }
         control.mutate { st in
             st.drafts = [:]
             for pi in doc.inputs where created.contains(pi.id) {
@@ -292,6 +297,8 @@ extension ProductionEngine {
             addNDI(n, id: pi.id)
         case let .frame(d):
             addFrame(d, id: pi.id)
+        case let .subtitles(st):
+            addSubtitles(st, id: pi.id)
         case let .gtTitle(g):
             // A missing or broken .gtzip keeps its place as an empty title.
             let url = mediaURL(g.file.path, g.file.relativePath)

@@ -161,6 +161,19 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.43.0
+AI di Mac, kamera iPhone, paket klien, UI responsif. Verifikasi: L = unit test Linux, M = kompilasi CI macOS.
+Belum ada yang dites di Mac (TEST_PLAN bagian AS).
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Hapus background tanpa green screen (per input: klik kanan › AI) | Implemented, belum dites | M | Vision person segmentation (kualitas "balanced"), hasil transparan untuk ditumpuk di layer/scene. Tepi rambut tidak sehalus green screen. Hanya Apple Silicon; di Intel menu AI nonaktif |
+| Auto-framing (zoom + mengikuti wajah) | Implemented, belum dites | L (perhitungan) + M | Lebar/Sedang/Dekat; gerak halus dengan dead zone. Diproses di antrean sendiri: tambah 1 frame jeda, frame dilewati bila Mac sibuk (Program tidak turun FPS) |
+| Subtitle live (input baru) | Partial, belum dites | L (pemotongan teks) + M | Apple Speech. Bahasa Indonesia **di perangkat tergantung Mac/macOS** (model dikte); bila tidak ada, subtitle tidak jalan kecuali "izinkan server Apple" dicentang (butuh internet). Butuh izin Speech Recognition |
+| iPhone sebagai kamera nirkabel | Implemented (Continuity Camera), belum dites | M | macOS 13+, satu iPhone per Mac (batas Apple), Apple ID sama. Beberapa iPhone sekaligus: pakai aplikasi NDI di iPhone + input NDI LiveCore. Aplikasi pendamping LiveCore: belum (butuh akun Apple Developer) |
+| Paket klien (Rundown › Paket klien, menu Production) | Implemented, belum dites | L (bab + rentang) + M | Folder berisi: Rekaman (Program, ISO, Vertikal; hard link bila satu disk), "Bab (chapters YouTube).txt" dari segmen rundown, "Highlight 9x16" (20 dtk sebelum s/d 10 dtk sesudah tiap ★ HIGHLIGHT ⇧⌘H), BACA SAYA.txt. Bab belum disematkan ke dalam file video |
+| UI responsif | Partial | M | Jendela utama bisa sampai 900×600; bar atas berubah jadi ikon bila sempit; panel input, monitor, mixer dan playlist bisa lebih kecil. Belum: tata letak khusus layar kecil/portrait |
+
 ## Fitur 0.42.0
 Dua fitur pembeda (usulan yang disetujui pengguna): output vertikal 9:16 bersamaan dengan 16:9, dan rundown acara.
 Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Belum ada yang dites di Mac (TEST_PLAN bagian AR).

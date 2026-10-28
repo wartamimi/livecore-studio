@@ -475,6 +475,8 @@ extension ProductionEngine {
             return st.sources.removeValue(forKey: id)
         }
         removed?.stop()
+        (removed as? SubtitleSource)?.onRemove?()
+        aiProcessors.mutate { $0[id] = nil }
         ptzConfigs[id] = nil
         if let r = removed, r === replaySource { replayRemoved() }
         if removed is BrowserSource { updateWebAudio() }
