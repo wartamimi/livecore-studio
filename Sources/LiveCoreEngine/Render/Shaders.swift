@@ -37,13 +37,21 @@ enum ShaderSource {
     }
 
     // Input colour correction (LiveCoreCore.InputAdjust, same math): output is premultiplied.
-    struct AdjustParams { float brightness; float contrast; float saturation; float invGamma; int straight; int pad0; int pad1; int pad2; };
+    struct AdjustParams { float brightness; float contrast; float saturation; float invGamma; int straight; int range; int deinterlace; int pad2; };
     fragment float4 adjust_fragment(VOut in [[stage_in]], texture2d<float> tex [[texture(0)]],
                                     constant AdjustParams &p [[buffer(0)]]) {
         constexpr sampler s(address::clamp_to_edge, filter::linear);
         float4 c = tex.sample(s, in.uv);
+        if (p.deinterlace != 0) {
+            // Blend deinterlace: average with the neighbouring line (the other field).
+            float dv = 1.0 / float(max(tex.get_height(), 1u));
+            constexpr sampler n(address::clamp_to_edge, filter::nearest);
+            c = 0.5 * (tex.sample(n, in.uv) + tex.sample(n, in.uv + float2(0.0, dv)));
+        }
         float a = c.a;
         float3 rgb = p.straight != 0 ? c.rgb : (a > 0.0 ? c.rgb / a : float3(0.0));
+        if (p.range == 1) { rgb = clamp((rgb - 16.0 / 255.0) * (255.0 / 219.0), 0.0, 1.0); }
+        else if (p.range == 2) { rgb = rgb * (219.0 / 255.0) + 16.0 / 255.0; }
         rgb = pow(max(rgb, float3(0.0)), float3(p.invGamma));
         rgb = (rgb - 0.5) * p.contrast + 0.5 + p.brightness;
         float l = dot(rgb, float3(0.2126, 0.7152, 0.0722));

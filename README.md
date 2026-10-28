@@ -4,7 +4,10 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.27.0 — Milestone 3 berjalan.** 0.27.0 memperbaiki crash instant replay (macOS 27), menghapus tombol
+> **Status: 0.28.0 — Milestone 3 berjalan.** 0.28.0 menambah bagian "Lanjutan" di pengaturan capture card: format video
+> perangkat (mis. YUY2/NV12 uncompressed atau MJPEG/H.264), perbaikan rentang warna (limited ↔ full), deinterlace,
+> buffer frame, info sinyal (format aktif, fps terukur, frame terbuang) dan tombol mulai ulang perangkat — menunggu tes
+> T-112..T-115. 0.27.0 memperbaiki crash instant replay (macOS 27), menghapus tombol
 > Terapkan/Batalkan Layer Designer — edit layer tetap hanya di Preview dan baru masuk Program saat transisi (CUT, AUTO,
 > T-bar) —, mengganti T-bar menjadi horizontal dengan angka persen saja, dan menambah Repeat One, "Berhenti setelah item
 > ini", bar waktu dengan seek (berjalan/sisa), serta "Putar berikutnya" di playlist — menunggu tes T-107..T-111. 0.26.0: edit di Layer Designer kini berupa draft yang hanya tampil di Preview

@@ -159,6 +159,15 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Capture card lanjutan 0.28.0
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Format video perangkat (uncompressed YUY2/UYVY/NV12/v210, MJPEG, H.264) | Implemented (0.28.0), belum dites | L (pemilihan format per codec; unit test) + kompilasi CI | Daftar diambil dari format yang dilaporkan perangkat untuk resolusi terpilih; gambar tetap diubah ke BGRA 8-bit untuk compositor (lihat KNOWN_ISSUES 65) (T-112) |
+| Perbaikan rentang warna limited ↔ full | Implemented (0.28.0), belum dites | L (rumus level; unit test) + kompilasi CI (shader) | Berjalan di GPU bersama koreksi warna input; tidak ikut ter-reset oleh tombol reset koreksi warna (T-113) |
+| Deinterlace (blend) | Implemented (0.28.0), belum dites | kompilasi CI (shader) | Mencampur baris tetangga; sederhana, sedikit melembutkan detail vertikal (T-113) |
+| Buffer frame (mulus vs latensi rendah) | Implemented (0.28.0), belum dites | kompilasi CI | Default tetap latensi rendah (T-114) |
+| Info sinyal + Mulai ulang perangkat | Implemented (0.28.0), belum dites | kompilasi CI | Ukuran, format, fps terukur, frame terbuang; diperbarui tiap detik saat mengedit input (T-115) |
+
 ## Perbaikan 0.27.0
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|

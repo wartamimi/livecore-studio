@@ -209,7 +209,8 @@ public final class MetalCompositor {
             enc.setVertexBytes(&verts, length: MemoryLayout<Float>.stride * verts.count, index: 0)
             var params = AdjustParamsGPU(brightness: Float(a.brightness), contrast: Float(a.contrast),
                                          saturation: Float(a.saturation), invGamma: Float(1 / a.gamma),
-                                         straight: straightSources.contains(id) ? 1 : 0)
+                                         straight: straightSources.contains(id) ? 1 : 0,
+                                         range: Int32(a.range.rawValue), deinterlace: a.deinterlace ? 1 : 0)
             enc.setFragmentBytes(&params, length: MemoryLayout<AdjustParamsGPU>.stride, index: 0)
             enc.setFragmentTexture(src, index: 0)
             enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
@@ -342,7 +343,7 @@ public final class MetalCompositor {
     /// Matches `AdjustParams` in the shader (4 floats, 4 ints).
     private struct AdjustParamsGPU {
         var brightness: Float, contrast: Float, saturation: Float, invGamma: Float
-        var straight: Int32, pad0: Int32 = 0, pad1: Int32 = 0, pad2: Int32 = 0
+        var straight: Int32, range: Int32 = 0, deinterlace: Int32 = 0, pad2: Int32 = 0
     }
 
     private func flattenTexture(_ id: InputID) -> MTLTexture? {

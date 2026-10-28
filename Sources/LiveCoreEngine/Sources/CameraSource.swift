@@ -55,8 +55,35 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
             guard let self, let device = AVCaptureDevice(uniqueID: self.deviceUniqueID) else { return }
             self.selectFormat(device, config: c)
             self.applyMirror(c.mirror)
+            self.output.alwaysDiscardsLateVideoFrames = c.bufferFrames != true
         }
     }
+
+    /// Closes and reopens the device (capture cards that froze or lost the signal format).
+    public func restartDevice() {
+        queue.async { [weak self] in
+            guard let self else { return }
+            if self.session.isRunning { self.session.stopRunning() }
+            self.setStatus(.starting)
+            self.configureAndRun()
+        }
+    }
+
+    // MARK: Signal statistics (capture queue writes, any thread reads)
+
+    /// What the device actually delivers: measured frames per second and frames dropped since
+    /// the input started (late frames, or frames the app could not take in time).
+    public struct SignalStats: Equatable, Sendable {
+        public var fps: Double = 0
+        public var dropped: Int = 0
+        public var codec: String = ""
+        public var size: String = ""
+    }
+    public var signalStats: SignalStats { statsLock.withLock { _stats } }
+    private var _stats = SignalStats()
+    private let statsLock = UnfairLock()
+    private var windowStart: Double = 0
+    private var windowFrames = 0
 
     /// Formats the device reports, for the capture settings sheet.
     public static func formats(of device: AVCaptureDevice) -> [CaptureFormatCandidate] {
@@ -65,7 +92,8 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
             out = device.formats.map { f in
                 let d = CMVideoFormatDescriptionGetDimensions(f.formatDescription)
                 return CaptureFormatCandidate(width: Int(d.width), height: Int(d.height),
-                                              frameRateRanges: f.videoSupportedFrameRateRanges.map { min($0.minFrameRate, $0.maxFrameRate)...max($0.minFrameRate, $0.maxFrameRate) })
+                                              frameRateRanges: f.videoSupportedFrameRateRanges.map { min($0.minFrameRate, $0.maxFrameRate)...max($0.minFrameRate, $0.maxFrameRate) },
+                                              codec: CaptureCodec.fourCC(CMFormatDescriptionGetMediaSubType(f.formatDescription)))
             }
         }
         return out
@@ -120,7 +148,7 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
                 kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
                 kCVPixelBufferMetalCompatibilityKey as String: true,
             ]
-            output.alwaysDiscardsLateVideoFrames = true
+            output.alwaysDiscardsLateVideoFrames = config.bufferFrames != true
             output.setSampleBufferDelegate(self, queue: queue)
             if session.canAddOutput(output) { session.addOutput(output) }
         }
@@ -170,11 +198,13 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
         } catch {
             Log.devices.error("lockForConfiguration failed: \(error.localizedDescription, privacy: .public)")
         }
-        var desc = "default"
+        var desc = "default", codec = ""
         _ = lc_catch_objc_exception {
             let d = CMVideoFormatDescriptionGetDimensions(device.activeFormat.formatDescription)
             desc = "\(d.width)×\(d.height)"
+            codec = CaptureCodec.fourCC(CMFormatDescriptionGetMediaSubType(device.activeFormat.formatDescription))
         }
+        statsLock.withLock { _stats.codec = codec; _stats.size = desc }
         activeFormatDescription = desc
         Log.devices.info("camera \(self.name, privacy: .public) format \(desc, privacy: .public)")
     }
@@ -230,10 +260,22 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
         guard let pb = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         slot.put(pb)
         if !liveReported.value { liveReported.value = true; setStatus(.live) }
+        // Measured frame rate over ~1 s windows.
+        let now = HostClock.now()
+        windowFrames += 1
+        if windowStart == 0 { windowStart = now }
+        let span = now - windowStart
+        if span >= 1 {
+            let fps = Double(windowFrames - 1) / span
+            statsLock.withLock { _stats.fps = max(fps, 0) }
+            windowStart = now; windowFrames = 1
+        }
     }
 
     public func captureOutput(_ output: AVCaptureOutput, didDrop sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // Late frames are dropped by design (alwaysDiscardsLateVideoFrames).
+        // Late frames are dropped by design (alwaysDiscardsLateVideoFrames); counted for the
+        // signal info in the capture settings.
+        statsLock.withLock { _stats.dropped += 1 }
     }
 }
 #endif

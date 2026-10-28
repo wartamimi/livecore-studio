@@ -568,3 +568,24 @@
 "playlist.stop_after_help" = "Berhenti setelah item ini: saat selesai, pemutaran berhenti (musik menyiapkan lagu berikutnya). Mati sendiri setelah dipakai.";
 "playlist.seek_help" = "Klik untuk melompat ke titik itu";
 "playlist.play_next" = "Putar berikutnya";
+
+/* 0.28.0 — capture card advanced */
+"capturecard.advanced" = "Lanjutan";
+"capturecard.codec" = "Format video perangkat";
+"capturecard.codec_auto" = "Otomatis";
+"capturecard.codec_help" = "Format yang dikirim perangkat lewat USB/Thunderbolt. Uncompressed memberi gambar paling bersih tetapi butuh bandwidth lebih besar (sering resolusi atau frame rate lebih rendah); MJPEG / H.264 memungkinkan mode lebih tinggi dengan sedikit kompresi.";
+"capturecard.codec_uncompressed_note" = "Uncompressed: tanpa artefak kompresi. Jika gambar patah-patah atau hitam, port USB atau hub mungkin kurang bandwidth — pakai port USB 3 langsung, resolusi/frame rate lebih rendah, atau MJPEG.";
+"capturecard.codec_compressed_note" = "Dikompresi oleh perangkat: resolusi dan frame rate lebih tinggi lewat USB, dengan sedikit artefak kompresi dan latensi sedikit lebih besar.";
+"capturecard.range" = "Perbaikan rentang warna";
+"capturecard.range_none" = "Tidak ada (sesuai perangkat)";
+"capturecard.range_expand" = "Limited → full (gambar pucat / hitam keabu-abuan)";
+"capturecard.range_compress" = "Full → limited (gambar terlalu kontras / hitam pekat)";
+"capturecard.range_help" = "Beberapa sumber HDMI dan capture card salah menandai rentang level video. Pilih perbaikan yang membuat hitam benar-benar hitam dan putih benar-benar putih.";
+"capturecard.deinterlace" = "Deinterlace (1080i / 576i)";
+"capturecard.deinterlace_help" = "Mencampur dua field sinyal interlaced untuk menghilangkan garis sisir saat ada gerakan. Biarkan mati untuk sinyal progresif (1080p, 720p).";
+"capturecard.buffer" = "Buffer frame (lebih mulus, latensi sedikit lebih besar)";
+"capturecard.buffer_help" = "Mati: frame yang terlambat dibuang agar latensi paling kecil. Nyala: antrean pendek menyimpan semua frame, berguna untuk capture card yang timing-nya tidak rata.";
+"capturecard.signal" = "Sinyal";
+"capturecard.signal_value" = "%@ · %@ · %.1f fps · %ld terbuang";
+"capturecard.restart" = "Mulai ulang perangkat";
+"capturecard.restart_help" = "Menutup dan membuka lagi capture card (gambar macet, atau format sinyal dari sumber HDMI berubah).";

@@ -568,3 +568,24 @@
 "playlist.stop_after_help" = "Stop after this item: when it ends, playback stops (music cues the next song). Turns itself off after use.";
 "playlist.seek_help" = "Click to jump to that point";
 "playlist.play_next" = "Play next";
+
+/* 0.28.0 — capture card advanced */
+"capturecard.advanced" = "Advanced";
+"capturecard.codec" = "Device video format";
+"capturecard.codec_auto" = "Automatic";
+"capturecard.codec_help" = "What the device sends over USB/Thunderbolt. Uncompressed gives the cleanest picture but needs more bandwidth (often lower resolution or frame rate); MJPEG / H.264 allow higher modes with some compression.";
+"capturecard.codec_uncompressed_note" = "Uncompressed: no compression artefacts. If the picture stutters or stays black, the USB port or hub may lack bandwidth — use a direct USB 3 port, a lower resolution/frame rate, or MJPEG.";
+"capturecard.codec_compressed_note" = "Compressed by the device: higher resolutions and frame rates over USB, with slight compression artefacts and a little more latency.";
+"capturecard.range" = "Colour range fix";
+"capturecard.range_none" = "None (as the device reports)";
+"capturecard.range_expand" = "Limited → full (picture looks washed out / grey blacks)";
+"capturecard.range_compress" = "Full → limited (picture too contrasty / crushed blacks)";
+"capturecard.range_help" = "Some HDMI sources and capture cards flag the video level range wrongly. Pick the fix that makes blacks black and whites white.";
+"capturecard.deinterlace" = "Deinterlace (1080i / 576i)";
+"capturecard.deinterlace_help" = "Blends the two fields of an interlaced signal to remove comb lines on movement. Leave off for progressive signals (1080p, 720p).";
+"capturecard.buffer" = "Buffer frames (smoother, slightly more latency)";
+"capturecard.buffer_help" = "Off: late frames are dropped for the lowest latency. On: a short queue keeps every frame, useful for capture cards with uneven timing.";
+"capturecard.signal" = "Signal";
+"capturecard.signal_value" = "%@ · %@ · %.1f fps · %ld dropped";
+"capturecard.restart" = "Restart device";
+"capturecard.restart_help" = "Closes and reopens the capture device (frozen picture, signal format changed on the HDMI source).";
