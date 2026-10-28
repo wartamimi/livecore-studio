@@ -33,11 +33,6 @@ public final class RecordingEngine {
         public var freeBytes: Int64 = 0
         public var fileBytes: Int64 = 0
         public init() {}
-
-    private let fileLock = UnfairLock()
-    private var lastFile: URL?
-    /// The file of the current or last recording.
-    public var lastFileURL: URL? { fileLock.withLock { lastFile } }
     }
 
     public var onStats: ((Stats) -> Void)?   // main thread
@@ -54,6 +49,10 @@ public final class RecordingEngine {
     private var monitorTimer: DispatchSourceTimer?
     private var settings = RecordingSettings()
     private var url: URL?
+    private let fileLock = UnfairLock()
+    private var lastFile: URL?
+    /// The file of the current or last recording.
+    public var lastFileURL: URL? { fileLock.withLock { lastFile } }
 
     public init() {}
 
