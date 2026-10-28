@@ -136,7 +136,8 @@ public final class SubtitleSource: VideoSource {
 
     private func redraw() {
         let t = transcript
-        let maxChars = max(12, Int(Double(outputSize.width) * 0.8 / (style.fontSize * Double(outputSize.height) / 1080 * 0.52)))
+        let charWidth: Double = style.fontSize * Double(outputSize.height) / 1080.0 * 0.52
+        let maxChars = max(12, Int(Double(outputSize.width) * 0.8 / max(charWidth, 1)))
         let lines = SubtitleText.tail(t, maxChars: maxChars, lines: max(1, style.maxLines))
         renderQueue.async { [weak self] in self?.render(lines) }
     }
