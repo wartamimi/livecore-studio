@@ -154,7 +154,15 @@ public final class TextSource: VideoSource {
         public var textColor: NSColor = .white
         public var barColor: NSColor = NSColor(calibratedRed: 0.05, green: 0.27, blue: 0.62, alpha: 0.88)
         public var showBar = true
+        /// Template-based title (0.34.0): full-output canvas, see `TitleDesign`. nil = the
+        /// classic lower-third strip drawn from the fields above.
+        public var design: TitleDesign?
         public init(title: String, subtitle: String = "") { self.title = title; self.subtitle = subtitle }
+        public init(template: TitleTemplate, title: String? = nil, subtitle: String? = nil) {
+            self.title = title ?? template.sample.title
+            self.subtitle = subtitle ?? template.sample.subtitle
+            design = template.defaultDesign
+        }
     }
 
     public let id: InputID
@@ -167,18 +175,30 @@ public final class TextSource: VideoSource {
     private let lock = UnfairLock()
     private var frame: CVPixelBuffer?
 
-    /// Canvas: full program width, 25% of program height (matches `LayoutPreset.lowerThird`).
+    private let outputSize: PixelSize
+    private var canvasHeight: Int { isFullCanvas ? outputSize.height : max(64, outputSize.height / 4) }
+    /// Template titles cover the whole output (placed full screen); classic titles are a strip
+    /// of full width and 25% height (matches `LayoutPreset.lowerThird`).
+    public var isFullCanvas: Bool { style.design != nil }
+
     public init(id: InputID, style: Style, outputSize: PixelSize) {
         self.id = id; self.style = style; self.name = style.title.isEmpty ? "Title" : style.title
         self.canvasWidth = outputSize.width
-        self.canvasHeight = max(64, outputSize.height / 4)
+        self.outputSize = outputSize
         render()
     }
-    private let canvasHeight: Int
 
     public func update(_ s: Style) { style = s; name = s.title.isEmpty ? "Title" : s.title; render() }
 
     private func render() {
+        if let design = style.design {
+            let pb = PixelBufferFactory.draw(width: outputSize.width, height: outputSize.height) { ctx in
+                TitleRenderer.draw(design, title: style.title, subtitle: style.subtitle, in: ctx,
+                                   width: Double(outputSize.width), height: Double(outputSize.height))
+            }
+            lock.withLock { frame = pb }
+            return
+        }
         let w = canvasWidth, h = canvasHeight, st = style
         let pb = PixelBufferFactory.draw(width: w, height: h) { ctx in
             let scale = CGFloat(w) / 1920
@@ -216,5 +236,111 @@ public final class TextSource: VideoSource {
     public func start() {}
     public func stop() {}
     public func currentFrame() -> CVPixelBuffer? { lock.withLock { frame } }
+}
+
+/// Draws a template title (`TitleDesign`) with CoreText: measures the text, asks `TitleLayout`
+/// where boxes and text go, then fills the boxes and draws the text with outline and shadow.
+public enum TitleRenderer {
+    /// Draws into a bitmap context of `width` × `height` pixels (CoreGraphics y-up).
+    public static func draw(_ design: TitleDesign, title: String, subtitle: String, in ctx: CGContext,
+                            width W: Double, height H: Double) {
+        let d = design.clamped()
+        let u = TitleLayout.unit(d, canvasWidth: W, canvasHeight: H)
+        let t = attributed(d.uppercase ? title.uppercased() : title, size: d.titleSize * u, weight: d.titleWeight, color: d.titleColor, d, u)
+        let s = attributed(d.uppercase ? subtitle.uppercased() : subtitle, size: d.subtitleSize * u, weight: d.subtitleWeight, color: d.subtitleColor, d, u)
+        let showTag = d.template.usesTag && !d.tag.isEmpty
+        let g = attributed(d.tag.uppercased(), size: d.titleSize * u * 0.62, weight: .heavy, color: d.tagColor, d, u)
+        func size(_ a: NSAttributedString, _ on: Bool) -> TitleSize {
+            guard on, a.length > 0 else { return .zero }
+            let r = a.size()
+            return TitleSize(ceil(r.width), ceil(r.height))
+        }
+        let result = TitleLayout.layout(d, canvasWidth: W, canvasHeight: H,
+                                        title: size(t, !title.isEmpty), subtitle: size(s, !subtitle.isEmpty), tag: size(g, showTag))
+        func flip(_ r: TitleRect) -> CGRect { CGRect(x: r.x, y: H - r.y - r.height, width: r.width, height: r.height) }
+        for b in result.boxes {
+            let c: ProjectColor
+            switch b.fill {
+            case .box: c = d.boxColor
+            case .box2: c = d.box2Color
+            case .accent: c = d.accentColor
+            }
+            ctx.setFillColor(c.nsColor.cgColor)
+            let rect = flip(b.rect)
+            let rad = min(b.radius, rect.height / 2, rect.width / 2)
+            ctx.addPath(CGPath(roundedRect: rect, cornerWidth: rad, cornerHeight: rad, transform: nil))
+            ctx.fillPath()
+        }
+        let gctx = NSGraphicsContext(cgContext: ctx, flipped: false)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = gctx
+        for item in result.texts {
+            let a: NSAttributedString
+            switch item.role {
+            case .title: a = t
+            case .subtitle: a = s
+            case .tag: a = g
+            }
+            let r = flip(item.rect)
+            a.draw(at: NSPoint(x: r.minX, y: r.minY))
+        }
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    /// Picture of a design (gallery thumbnails and the editor preview).
+    public static func image(_ design: TitleDesign, title: String, subtitle: String, width: Int, height: Int) -> CGImage? {
+        guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
+        else { return nil }
+        ctx.clear(CGRect(x: 0, y: 0, width: width, height: height))
+        draw(design, title: title, subtitle: subtitle, in: ctx, width: Double(width), height: Double(height))
+        return ctx.makeImage()
+    }
+
+    /// Font families offered in the editor (installed fonts).
+    public static var fontFamilies: [String] { NSFontManager.shared.availableFontFamilies }
+
+    static func font(family: String?, size: Double, weight: TitleWeight, italic: Bool) -> NSFont {
+        let w: NSFont.Weight
+        let managerWeight: Int   // NSFontManager scale: 5 = regular, 9 = bold
+        switch weight {
+        case .light: w = .light; managerWeight = 3
+        case .regular: w = .regular; managerWeight = 5
+        case .medium: w = .medium; managerWeight = 6
+        case .semibold: w = .semibold; managerWeight = 8
+        case .bold: w = .bold; managerWeight = 9
+        case .heavy: w = .heavy; managerWeight = 11
+        }
+        let sz = CGFloat(max(size, 1))
+        if let family, let f = NSFontManager.shared.font(withFamily: family, traits: italic ? .italicFontMask : [],
+                                                          weight: managerWeight, size: sz) {
+            return f
+        }
+        let base = NSFont.systemFont(ofSize: sz, weight: w)
+        return italic ? NSFontManager.shared.convert(base, toHaveTrait: .italicFontMask) : base
+    }
+
+    static func attributed(_ text: String, size: Double, weight: TitleWeight, color: ProjectColor,
+                           _ d: TitleDesign, _ u: Double) -> NSAttributedString {
+        var attrs: [NSAttributedString.Key: Any] = [
+            .font: font(family: d.fontFamily, size: size, weight: weight, italic: d.italic),
+            .foregroundColor: color.nsColor,
+            .kern: d.tracking * u,
+        ]
+        if d.outlineWidth > 0, size > 0 {
+            // Negative stroke width = fill and outline; the value is a percentage of the font size.
+            attrs[.strokeWidth] = -(d.outlineWidth * u) / size * 100
+            attrs[.strokeColor] = d.outlineColor.nsColor
+        }
+        if d.shadow {
+            let sh = NSShadow()
+            sh.shadowColor = d.shadowColor.nsColor
+            sh.shadowBlurRadius = d.shadowBlur * u
+            sh.shadowOffset = NSSize(width: d.shadowOffset * u, height: -d.shadowOffset * u)
+            attrs[.shadow] = sh
+        }
+        return NSAttributedString(string: text, attributes: attrs)
+    }
 }
 #endif

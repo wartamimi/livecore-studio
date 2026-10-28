@@ -21,40 +21,29 @@ struct OutputDockView: View {
 
     init(openSettings: @escaping (Int) -> Void) { self.openSettings = openSettings }
 
-    /// How much fits next to the four output buttons. The dock picks the widest layout that fits
-    /// the window, so no text is cut off: wide = status beside each button and named output
-    /// chips; medium = narrower status and short chips; compact = status inside the button.
-    enum Layout {
-        case wide, medium, compact
-
-        /// Smallest dock width (points, inside its padding) each layout needs.
-        static func fitting(_ width: CGFloat) -> Layout {
-            width >= 1660 ? .wide : width >= 1380 ? .medium : .compact
-        }
-        var buttonWidth: CGFloat { self == .compact ? 116 : 124 }
-        var statusWidth: CGFloat { self == .wide ? 150 : 104 }
-        var chipNames: Bool { self == .wide }
-    }
+    /// RECORD, ISOCORDER, STREAM and EXTERNAL share one width; each ⚙ sits a little apart.
+    static let buttonWidth: CGFloat = 140
 
     var body: some View {
+        // Output chips show their source name when the window is wide enough for it.
         GeometryReader { geo in
-            content(Layout.fitting(geo.size.width))
+            content(chipNames: geo.size.width >= 1200)
                 .frame(width: geo.size.width, height: geo.size.height)
         }
-        .padding(.horizontal, 8).padding(.vertical, 4)
-        .frame(height: 48)
+        .padding(.horizontal, 8).padding(.vertical, 5)
+        .frame(height: 46)
         .panel()
     }
 
-    private func content(_ layout: Layout) -> some View {
-        HStack(spacing: 8) {
+    private func content(chipNames: Bool) -> some View {
+        HStack(spacing: 12) {
             // One padlock for the whole dock: while locked RECORD and STREAM cannot start or stop.
             LockButton(locked: Binding(get: { model.recordLocked && model.streamLocked },
                                        set: { model.recordLocked = $0; model.streamLocked = $0 }),
                        help: L10n.t("lock.dock_help"))
             group {
                 mainButton(L10n.t("dock.record"), icon: model.isRecording ? "stop.circle.fill" : "record.circle",
-                           status: recordStatus, short: recordShort, color: Theme.program, active: model.isRecording, layout: layout) {
+                           status: recordStatus, color: Theme.program, active: model.isRecording) {
                     model.requestToggleRecord()
                 }
                 .disabled(model.recordLocked)
@@ -65,15 +54,14 @@ struct OutputDockView: View {
                     }
                     .padding(12).frame(width: 340)
                 }
-                status(recordStatus, live: model.isRecording, layout: layout)
             }
             group {
                 mainButton("ISOCORDER", icon: model.isMultiCorderRunning ? "stop.circle.fill" : "square.grid.2x2",
-                           status: multiCorderStatus, short: multiCorderShort, color: Theme.program, active: model.isMultiCorderRunning, layout: layout) {
+                           status: L10n.t("multicorder.button_help") + "\n" + multiCorderStatus,
+                           color: Theme.program, active: model.isMultiCorderRunning) {
                     model.requestToggleMultiCorder()
                 }
                 .disabled(model.recordLocked)
-                .help(L10n.t("multicorder.button_help"))
                 gear($showMultiCorder, help: L10n.t("multicorder.settings")) {
                     VStack(alignment: .leading, spacing: 10) {
                         MultiCorderDetails()
@@ -81,11 +69,10 @@ struct OutputDockView: View {
                     }
                     .padding(12).frame(width: 360)
                 }
-                status(multiCorderStatus, live: model.isMultiCorderRunning, layout: layout)
             }
             group {
                 mainButton(L10n.t("dock.stream"), icon: "dot.radiowaves.left.and.right",
-                           status: streamStatus, short: streamShort, color: Theme.program, active: model.isStreamingActive, layout: layout) {
+                           status: streamStatus, color: Theme.program, active: model.isStreamingActive) {
                     if !model.isStreamingActive && model.readyDestinationCount == 0 { openSettings(1) } else { model.requestToggleStream() }
                 }
                 .disabled(model.streamLocked)
@@ -96,94 +83,45 @@ struct OutputDockView: View {
                     }
                     .padding(12).frame(width: 360)
                 }
-                status(streamStatus, live: model.isStreamingActive, layout: layout)
             }
             group {
                 mainButton(L10n.t("dock.external"), icon: "rectangle.portrait.and.arrow.right",
-                           status: externalStatus, short: externalShort, color: Theme.accent, active: model.externalActive, layout: layout) {
+                           status: L10n.t("dock.external_help") + "\n" + externalStatus, color: Theme.accent, active: model.externalActive) {
                     model.toggleExternal()
                 }
-                .help(L10n.t("dock.external_help"))
                 gear($showExternal, help: L10n.t("dock.external_settings")) {
                     ExternalSettingsView().padding(12).frame(width: 640)
                 }
-                status(externalStatus, live: model.externalActive, layout: layout)
             }
             Spacer(minLength: 0)
-            OutputChips(showNames: layout.chipNames)
+            OutputChips(showNames: chipNames)
         }
     }
 
-    /// RECORD / ISOCORDER / STREAM / EXTERNAL. In the compact layout the button carries a short
-    /// status line under its name; the full status is always in the tooltip.
-    private func mainButton(_ title: String, icon: String, status: String, short: String, color: Color, active: Bool,
-                            layout: Layout, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            if layout == .compact {
-                VStack(spacing: 0) {
-                    Label(title, systemImage: icon).font(.system(size: 12, weight: .bold))
-                    Text(short).font(.system(size: 9, weight: active ? .semibold : .regular).monospacedDigit())
-                        .foregroundStyle(active ? Theme.text : Theme.textDim)
-                }
-                .padding(.vertical, -5)
-            } else {
-                Label(title, systemImage: icon)
-            }
-        }
-        .buttonStyle(StudioButtonStyle(color: color, active: active))
-        .frame(width: layout.buttonWidth)
-        .help(status)
+    /// RECORD / ISOCORDER / STREAM / EXTERNAL. The status (time, size, destinations) is in the
+    /// tooltip and in the ⚙ panel, so the dock itself stays uncluttered.
+    private func mainButton(_ title: String, icon: String, status: String, color: Color, active: Bool,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) { Label(title, systemImage: icon) }
+            .buttonStyle(StudioButtonStyle(color: color, active: active))
+            .frame(width: Self.buttonWidth)
+            .help(status)
     }
 
+    /// Button and ⚙ with room between them, then a divider before the next group.
     private func group<C: View>(@ViewBuilder _ content: () -> C) -> some View {
-        HStack(spacing: 4) { content() }
-            .padding(.trailing, 6)
+        HStack(spacing: 8) { content() }
+            .padding(.trailing, 12)
             .overlay(alignment: .trailing) { Rectangle().fill(Theme.border).frame(width: 1, height: 26) }
     }
 
     private func gear<P: View>(_ shown: Binding<Bool>, help: String, @ViewBuilder content: @escaping () -> P) -> some View {
         Button { shown.wrappedValue.toggle() } label: { Image(systemName: "gearshape.fill") }
             .buttonStyle(StudioButtonStyle())
-            .frame(width: 32)
+            .frame(width: 36)
             .help(help)
             .popover(isPresented: shown, arrowEdge: .top) { content().environmentObject(model) }
     }
-
-    /// Status beside the button: up to two lines, shrinking a little before anything is cut.
-    @ViewBuilder private func status(_ text: String, live: Bool, layout: Layout) -> some View {
-        if layout != .compact {
-            Text(text)
-                .font(.system(size: 10, weight: live ? .semibold : .regular).monospacedDigit())
-                .foregroundStyle(live ? Theme.text : Theme.textDim)
-                .lineLimit(2)
-                .minimumScaleFactor(0.7)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(width: layout.statusWidth, alignment: .leading)
-                .help(text)
-        }
-    }
-
-    private var recordShort: String {
-        model.isRecording ? formatDuration(model.recordStats.duration) : L10n.t("dock.off")
-    }
-
-    private var multiCorderShort: String {
-        guard model.isMultiCorderRunning else { return L10n.f("multicorder.short", model.multiCorder.inputs.count) }
-        let longest = model.isoFiles.map(\.stats.duration).max() ?? 0
-        let dropped = model.isoFiles.reduce(0) { $0 + $1.stats.droppedVideoFrames }
-        return formatDuration(longest) + (dropped > 0 ? " · \(dropped) drop" : "")
-    }
-
-    private var streamShort: String {
-        let s = model.streamStats
-        switch s.state {
-        case .live: return formatDuration(s.uptime)
-        case .idle: return L10n.t("dock.off")
-        default: return streamStatus
-        }
-    }
-
-    private var externalShort: String { model.externalActive ? L10n.t("dock.on") : L10n.t("dock.off") }
 
     private var recordStatus: String {
         guard model.isRecording else { return L10n.t("dock.record_off") }

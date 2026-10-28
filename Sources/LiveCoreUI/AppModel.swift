@@ -374,11 +374,7 @@ public final class AppModel: ObservableObject {
 
     public func addTitle(_ style: TextSource.Style) { engine?.addTitle(style) }
 
-    public func updateTitle(_ id: InputID, style: TextSource.Style) {
-        guard let src = engine?.source(id) as? TextSource else { return }
-        src.update(style)
-        engine?.renameInput(id, to: src.name)
-    }
+    public func updateTitle(_ id: InputID, style: TextSource.Style) { engine?.updateTitle(id, style: style) }
 
     public func remove(_ id: InputID) {
         guard !isLocked(id) else { report(L10n.t("lock.input_locked")); return }
