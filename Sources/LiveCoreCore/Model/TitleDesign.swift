@@ -118,6 +118,13 @@ public struct TitleDesign: Codable, Equatable, Sendable {
     public var shadowOffset: Double = 3
     public var shadowColor = ProjectColor(r: 0, g: 0, b: 0, a: 0.75)
 
+    // Animation (0.35.0): how the title comes in and goes out when its overlay number is pressed.
+    public var animation: OverlayAnimation = .fade
+    /// Seconds (0.1…5).
+    public var animationDuration: Double = 0.6
+    /// true = use the overlay channel's own animation instead.
+    public var useOverlayAnimation = false
+
     public init(template: TitleTemplate) { self.template = template }
 
     /// Values kept inside what the renderer and the editor allow.
@@ -140,6 +147,7 @@ public struct TitleDesign: Codable, Equatable, Sendable {
         d.outlineWidth = c(outlineWidth, 0, 20)
         d.shadowBlur = c(shadowBlur, 0, 60)
         d.shadowOffset = c(shadowOffset, -30, 30)
+        d.animationDuration = c(animationDuration, 0.1, 5)
         if d.tag.count > 40 { d.tag = String(d.tag.prefix(40)) }
         return d
     }
@@ -186,6 +194,9 @@ public struct TitleDesign: Codable, Equatable, Sendable {
         d.shadowBlur = v(.shadowBlur, d.shadowBlur)
         d.shadowOffset = v(.shadowOffset, d.shadowOffset)
         d.shadowColor = v(.shadowColor, d.shadowColor)
+        d.animation = v(.animation, d.animation)
+        d.animationDuration = v(.animationDuration, d.animationDuration)
+        d.useOverlayAnimation = v(.useOverlayAnimation, d.useOverlayAnimation)
         self = d.clamped()
     }
 }
@@ -251,9 +262,27 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
         ProjectColor(r: r, g: g, b: b, a: a)
     }
 
+    /// In / out motion that suits the template (used when its overlay number is pressed).
+    public var defaultAnimation: OverlayAnimation {
+        switch self {
+        case .classicStrap, .roundedStrap, .twoTone, .boxedName, .accentLine, .modernGlass, .newsLive, .pill, .chapterCard, .locationTag:
+            return .slideFromLeft
+        case .rightStrap, .socialHandle, .cornerBug:
+            return .slideFromRight
+        case .fullWidthBar, .breakingBanner:
+            return .slideFromBottom
+        case .headline, .liveBadge:
+            return .zoom
+        case .minimalUnderline, .fullScreenTitle, .quote, .endCard:
+            return .fade
+        }
+    }
+
     public var defaultDesign: TitleDesign {
         var d = TitleDesign(template: self)
         d.tag = sample.tag
+        d.animation = defaultAnimation
+        d.animationDuration = category == .title ? 0.8 : 0.5
         let white = Self.rgb(1, 1, 1)
         switch self {
         case .classicStrap:

@@ -16,7 +16,7 @@ import LiveCoreCore
 /// pop-up windows, and navigation limited to http/https (and file URLs inside the folder of a
 /// local page the operator picked).
 /// Audio from the page plays on the system output and is not captured by the mixer.
-public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate {
+public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, NSWindowDelegate {
     public let id: InputID
     public let kind: InputKind = .browser
     public var name: String
@@ -32,6 +32,16 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate {
     private var snapshotInFlight = false
     private let slot = FrameSlot()
     private var activity: NSObjectProtocol?
+
+    /// Edit mode (vMix "interact"): the page is shown in a normal window where the operator can
+    /// click and type (log in, pick a match, fill a form). While `freezeWhileEditing` is on the
+    /// input keeps showing the last picture, so the audience does not see the editing; "Done"
+    /// shows the page again.
+    public private(set) var isEditing = false
+    public var freezeWhileEditing = true
+    /// Main thread; called when edit mode ends (Done button or closing the window).
+    public var onEditingChange: ((Bool) -> Void)?
+    private var savedFrame: NSRect?
 
     public init(id: InputID, config: ProjectBrowser) {
         self.id = id
@@ -75,6 +85,7 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate {
     }
 
     public func stop() {
+        if isEditing { endEditing() }
         timer?.invalidate(); timer = nil
         webView?.stopLoading()
         webView?.navigationDelegate = nil
@@ -99,6 +110,74 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate {
 
     public func reload() { webView?.reloadFromOrigin() }
 
+    /// Shows the page in a window the operator can use (main thread).
+    public func beginEditing(doneTitle: String, windowTitle: String) {
+        guard let win = window, let wv = webView, !isEditing else { window?.makeKeyAndOrderFront(nil); return }
+        isEditing = true
+        savedFrame = win.frame
+        let page = wv.frame.size
+        let visible = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        // A page larger than the screen scrolls inside the window instead of being scaled.
+        let scroll = NSScrollView(frame: NSRect(origin: .zero, size: page))
+        scroll.hasVerticalScroller = page.height > visible.height * 0.9
+        scroll.hasHorizontalScroller = page.width > visible.width * 0.9
+        scroll.drawsBackground = true
+        scroll.backgroundColor = .darkGray
+        scroll.documentView = wv
+        win.styleMask = [.titled, .closable, .resizable, .miniaturizable]
+        win.title = windowTitle
+        win.contentView = scroll
+        win.isOpaque = true
+        win.backgroundColor = .windowBackgroundColor
+        win.hasShadow = true
+        win.ignoresMouseEvents = false
+        win.delegate = self
+        let size = NSSize(width: min(page.width, visible.width * 0.9), height: min(page.height, visible.height * 0.9))
+        win.setContentSize(size)
+        win.contentMaxSize = page
+        win.center()
+        let done = NSButton(title: doneTitle, target: self, action: #selector(doneEditing))
+        done.bezelStyle = .rounded
+        done.keyEquivalent = "\r"
+        let accessory = NSTitlebarAccessoryViewController()
+        accessory.layoutAttribute = .trailing
+        let holder = NSView(frame: NSRect(x: 0, y: 0, width: done.intrinsicContentSize.width + 16, height: 28))
+        done.frame = NSRect(x: 8, y: 2, width: done.intrinsicContentSize.width, height: 24)
+        holder.addSubview(done)
+        accessory.view = holder
+        win.addTitlebarAccessoryViewController(accessory)
+        NSApp.activate(ignoringOtherApps: true)
+        win.makeKeyAndOrderFront(nil)
+        onEditingChange?(true)
+    }
+
+    @objc private func doneEditing() { endEditing() }
+
+    /// Back to off-screen rendering; the page is shown on the input again (main thread).
+    public func endEditing() {
+        guard isEditing, let win = window, let wv = webView else { return }
+        while !win.titlebarAccessoryViewControllers.isEmpty { win.removeTitlebarAccessoryViewController(at: 0) }
+        win.delegate = nil
+        win.orderOut(nil)
+        (win.contentView as? NSScrollView)?.documentView = nil
+        wv.frame = NSRect(origin: .zero, size: wv.frame.size)
+        win.styleMask = [.borderless]
+        win.contentView = wv
+        win.hasShadow = false
+        win.backgroundColor = .clear
+        win.isOpaque = false
+        win.ignoresMouseEvents = true
+        win.setFrame(savedFrame ?? NSRect(x: -20_000, y: -20_000, width: wv.frame.width, height: wv.frame.height), display: false)
+        win.orderBack(nil)
+        isEditing = false
+        onEditingChange?(false)
+    }
+
+    public func windowShouldClose(_ sender: NSWindow) -> Bool {
+        endEditing()
+        return false
+    }
+
     private func load() {
         guard let wv = webView else { return }
         switch BrowserURLPolicy.check(config.url) {
@@ -122,7 +201,7 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate {
     }
 
     private func snapshot() {
-        guard let wv = webView, !snapshotInFlight else { return }
+        guard let wv = webView, !snapshotInFlight, !(isEditing && freezeWhileEditing) else { return }
         snapshotInFlight = true
         let sc = WKSnapshotConfiguration()
         sc.afterScreenUpdates = false

@@ -93,6 +93,8 @@ public struct ProjectInput: Codable, Equatable, Sendable {
     public var chromaKey: ChromaKey?
     /// Video inputs: "off", "playPause" or "restartPause" (absent before 0.8.0 = off).
     public var autoPlay: String?
+    /// Video: auto restart off = resume where it stopped (since 0.35.0; absent = on).
+    public var autoRestart: Bool?
     /// Protected against closing / editing in the UI (since 0.14.0; absent = unlocked).
     public var locked: Bool?
     /// Camera / capture card format and options (since 0.15.0; absent = automatic).
@@ -164,6 +166,84 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case slideshow(ProjectSlideshow)
     /// NDI® source from the network (since 0.29.0).
     case ndi(ProjectNDI)
+    /// PowerPoint / Keynote / PDF slides (since 0.35.0).
+    case presentation(ProjectPresentation)
+}
+
+/// A presentation input: the file and the slide on air.
+public struct ProjectPresentation: Codable, Equatable, Sendable {
+    public var file: ProjectMediaRef
+    /// 0-based.
+    public var slide: Int
+    /// Behind slides that do not fill the picture; nil = black.
+    public var background: ProjectColor?
+    public init(file: ProjectMediaRef, slide: Int = 0, background: ProjectColor? = nil) {
+        self.file = file; self.slide = slide; self.background = background
+    }
+}
+
+/// Which presentation files are read directly and which are converted to PDF first.
+public enum PresentationFiles {
+    public static let pdf: Set<String> = ["pdf"]
+    public static let powerPoint: Set<String> = ["pptx", "ppt", "pps", "ppsx", "pptm", "potx"]
+    public static let keynote: Set<String> = ["key"]
+    public static let openDocument: Set<String> = ["odp"]
+    public static var all: Set<String> { pdf.union(powerPoint).union(keynote).union(openDocument) }
+
+    /// Apps that can turn a file into PDF, best first.
+    public enum Converter: String, Sendable, Equatable { case powerPoint, keynote, libreOffice }
+
+    public static func needsConversion(_ ext: String) -> Bool { !pdf.contains(ext.lowercased()) }
+
+    public static func converters(for ext: String) -> [Converter] {
+        let e = ext.lowercased()
+        if keynote.contains(e) { return [.keynote] }
+        if powerPoint.contains(e) { return [.powerPoint, .keynote, .libreOffice] }
+        if openDocument.contains(e) { return [.libreOffice, .keynote] }
+        return []
+    }
+
+    /// First converter in `converters(for:)` that is installed.
+    public static func converter(for ext: String, installed: Set<Converter>) -> Converter? {
+        converters(for: ext).first { installed.contains($0) }
+    }
+}
+
+public enum SlideMath {
+    /// Slide index kept inside 0..<count (0 when there are no slides).
+    public static func clamp(_ i: Int, count: Int) -> Int { count <= 0 ? 0 : min(max(i, 0), count - 1) }
+    /// Next slide; at the end it stays on the last one unless `loop`.
+    public static func next(_ i: Int, count: Int, loop: Bool = false) -> Int {
+        guard count > 0 else { return 0 }
+        return i + 1 < count ? i + 1 : (loop ? 0 : count - 1)
+    }
+    public static func previous(_ i: Int, count: Int) -> Int { clamp(i - 1, count: count) }
+
+    /// Affine transform x' = a·x + c·y + tx, y' = b·x + d·y + ty (CoreGraphics order).
+    public struct Affine: Equatable, Sendable {
+        public var a, b, c, d, tx, ty: Double
+        public func apply(_ x: Double, _ y: Double) -> (Double, Double) { (a * x + c * y + tx, b * x + d * y + ty) }
+    }
+
+    /// Maps a PDF page box (rotated clockwise by `rotation` degrees, a multiple of 90) onto
+    /// (0, 0)-(width, height) of the page as it is shown, y up. Returns the shown size too.
+    public static func pageTransform(minX: Double, minY: Double, maxX: Double, maxY: Double,
+                                     rotation: Int) -> (Affine, width: Double, height: Double) {
+        let w = maxX - minX, h = maxY - minY
+        switch ((rotation % 360) + 360) % 360 {
+        case 90: return (Affine(a: 0, b: -1, c: 1, d: 0, tx: -minY, ty: maxX), h, w)
+        case 180: return (Affine(a: -1, b: 0, c: 0, d: -1, tx: maxX, ty: maxY), w, h)
+        case 270: return (Affine(a: 0, b: 1, c: -1, d: 0, tx: maxY, ty: -minX), h, w)
+        default: return (Affine(a: 1, b: 0, c: 0, d: 1, tx: -minX, ty: -minY), w, h)
+        }
+    }
+
+    /// Aspect-fit of a `w`×`h` page centred in a `boxW`×`boxH` picture: scale and origin.
+    public static func fit(_ w: Double, _ h: Double, into boxW: Double, _ boxH: Double) -> (scale: Double, x: Double, y: Double) {
+        guard w > 0, h > 0 else { return (0, 0, 0) }
+        let s = min(boxW / w, boxH / h)
+        return (s, (boxW - w * s) / 2, (boxH - h * s) / 2)
+    }
 }
 
 public struct ProjectBrowser: Codable, Equatable, Sendable {

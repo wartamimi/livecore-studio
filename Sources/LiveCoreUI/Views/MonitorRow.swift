@@ -1,4 +1,5 @@
 #if os(macOS)
+import AppKit
 import SwiftUI
 import LiveCoreCore
 
@@ -62,6 +63,7 @@ struct MonitorView: View {
                 .overlay(Rectangle().stroke(color, lineWidth: 2))
                 .overlay(alignment: .top) { if notRecording { NotRecordingBadge().padding(.top, 8) } }
                 .overlay { if let designer { DesignerCanvasIfActive(state: designer) } }
+                .overlay { if snapshot != nil { SnapshotConfirmation() } }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             if let designer { DesignerBarIfActive(state: designer) }
             if let snapshot {
@@ -80,6 +82,48 @@ struct MonitorView: View {
         }
         .padding(4)
         .panel()
+    }
+}
+
+/// PHOTO feedback on the Program monitor: a short white flash and a banner with the file name
+/// (click it to show the file in Finder). Never drawn on the real output.
+private struct SnapshotConfirmation: View {
+    @EnvironmentObject var model: AppModel
+    @State private var flash = 0.0
+    @State private var shownAt: Date?
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            Color.white.opacity(flash).allowsHitTesting(false)
+            if let at = shownAt, let url = model.lastSnapshotURL, at == model.lastSnapshotAt {
+                Button { NSWorkspace.shared.activateFileViewerSelecting([url]) } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.preview)
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(L10n.t("snapshot.saved_title")).font(.system(size: 12, weight: .bold))
+                            Text(url.lastPathComponent).font(.system(size: 10)).foregroundStyle(Theme.textDim).lineLimit(1)
+                        }
+                        Image(systemName: "folder").font(.system(size: 11)).foregroundStyle(Theme.textDim)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(.black.opacity(0.8))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+                .buttonStyle(.plain)
+                .help(L10n.t("snapshot.show_in_finder"))
+                .padding(.bottom, 10)
+                .transition(.opacity)
+            }
+        }
+        .onChange(of: model.lastSnapshotAt) { at in
+            guard let at else { return }
+            flash = 0.7
+            withAnimation(.easeOut(duration: 0.35)) { flash = 0 }
+            withAnimation(.easeOut(duration: 0.2)) { shownAt = at }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                if shownAt == at { withAnimation(.easeIn(duration: 0.3)) { shownAt = nil } }
+            }
+        }
     }
 }
 

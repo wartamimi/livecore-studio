@@ -29,6 +29,14 @@ public final class ProductionEngine {
         public var number: Int
         /// Locked inputs cannot be closed, renamed or edited from the UI (protection on air).
         public var locked: Bool = false
+        /// Presentation inputs: slide on air (1-based) and slide count; 0 slides while converting.
+        public var slide: (index: Int, count: Int, converting: Bool)? = nil
+
+        public static func == (l: InputInfo, r: InputInfo) -> Bool {
+            l.id == r.id && l.name == r.name && l.kind == r.kind && l.status == r.status && l.number == r.number
+                && l.locked == r.locked && l.slide?.index == r.slide?.index && l.slide?.count == r.slide?.count
+                && l.slide?.converting == r.slide?.converting
+        }
     }
 
     // MARK: Callbacks (main thread)
@@ -284,8 +292,10 @@ public final class ProductionEngine {
         control.read { st in
             st.order.enumerated().compactMap { i, id in
                 guard let s = st.sources[id] else { return nil }
-                return InputInfo(id: id, name: s.name, kind: s.kind, status: s.status, number: i + 1,
-                                 locked: st.locked.contains(id))
+                var info = InputInfo(id: id, name: s.name, kind: s.kind, status: s.status, number: i + 1,
+                                     locked: st.locked.contains(id))
+                if let p = s as? PresentationSource { info.slide = (p.slide + 1, p.slideCount, p.isConverting) }
+                return info
             }
         }
     }
@@ -312,16 +322,18 @@ public final class ProductionEngine {
     }
 
     @discardableResult
-    public func addVideoFile(url: URL, id: InputID? = nil, loop: Bool = true) -> InputID {
-        addVideoFile(urls: [url], id: id, loop: loop)
+    public func addVideoFile(url: URL, id: InputID? = nil, loop: Bool = true, autoPlay: VideoFileSource.AutoPlay = .off) -> InputID {
+        addVideoFile(urls: [url], id: id, loop: loop, autoPlay: autoPlay)
     }
 
     /// A video input; several URLs make a playlist played in order.
     @discardableResult
-    public func addVideoFile(urls: [URL], id: InputID? = nil, loop: Bool = true, autoPlay: VideoFileSource.AutoPlay = .off) -> InputID {
+    public func addVideoFile(urls: [URL], id: InputID? = nil, loop: Bool = true, autoPlay: VideoFileSource.AutoPlay = .off,
+                             autoRestart: Bool = true) -> InputID {
         let src = VideoFileSource(id: id ?? InputID(UUID().uuidString), urls: urls)
         src.loop = loop
         src.autoPlay = autoPlay
+        src.autoRestart = autoRestart
         let srcID = src.id
         // The file's audio gets its own mixer channel once AVFoundation reports an audio track.
         // AVPlayer taps deliver blocks of up to ~90 ms, so this channel buffers more than a mic.
@@ -335,6 +347,8 @@ public final class ProductionEngine {
             return ch
         }
         src.start()
+        // Auto play inputs wait on their first frame until they go on Program.
+        if src.autoPlayEnabled { src.cue() }
         add(src)
         return src.id
     }
@@ -445,7 +459,6 @@ public final class ProductionEngine {
                 st.layers[id] = layers
                 for i in st.overlays.indices where st.overlays[i].source == id {
                     if src.isFullCanvas, st.overlays[i].preset == .lowerThird { st.overlays[i].preset = .fullScreen }
-                    if !src.isFullCanvas, st.overlays[i].preset == .fullScreen { st.overlays[i].preset = .lowerThird }
                 }
             }
         }
@@ -540,11 +553,37 @@ public final class ProductionEngine {
         return src.id
     }
 
+    /// New text / style for a running text; its band moves when the height or position changed.
+    public func updateTicker(_ id: InputID, _ config: TickerConfig) {
+        guard let src = source(id) as? TickerSource else { return }
+        let oldRect = src.config.layerRect
+        src.update(config)
+        let rect = config.clamped.layerRect
+        guard rect != oldRect else { return }
+        control.mutate { st in
+            var layers = st.layers[id] ?? []
+            if layers.isEmpty { layers = [Layer(source: id, rect: rect, scaleMode: .fit)] }
+            else if layers[0].rect == oldRect { layers[0].rect = rect }
+            st.layers[id] = layers
+        }
+    }
+
     @discardableResult
     public func addSlideshow(urls: [URL], interval: Double, fade: Double, loop: Bool, kenBurns: Bool = false,
                              folder: URL? = nil, id: InputID? = nil) -> InputID {
         let src = SlideshowSource(id: id ?? InputID(UUID().uuidString), urls: urls, interval: interval, fade: fade,
                                   loop: loop, kenBurns: kenBurns, folder: folder, outputSize: settings.output.size)
+        add(src)
+        src.start()
+        return src.id
+    }
+
+    /// PowerPoint / Keynote / OpenDocument / PDF slides (0.35.0).
+    @discardableResult
+    public func addPresentation(url: URL, slide: Int = 0, background: ProjectColor? = nil, id: InputID? = nil) -> InputID {
+        let src = PresentationSource(id: id ?? InputID(UUID().uuidString), url: url, slide: slide,
+                                     background: background, outputSize: settings.output.size)
+        src.onChange = { [weak self] in self?.publishInputs() }
         add(src)
         src.start()
         return src.id
@@ -830,10 +869,18 @@ public final class ProductionEngine {
         for (id, src) in sources {
             guard let v = src as? VideoFileSource, v.autoPlay != .off, id != stingerID else { continue }
             let was = autoPlayOnAir.contains(id), now = visible.contains(id)
-            if now && !was { v.autoPlay == .restartPause ? v.restart() : v.play() }
-            if !now && was { v.pause() }
+            if now && !was { v.autoRestart ? v.restart() : v.play() }
+            // Leaving Program: pause; with auto restart also back to the first frame, so the
+            // next CUT / AUTO (and Preview meanwhile) starts clean.
+            if !now && was { v.autoRestart ? v.cue() : v.pause() }
         }
         autoPlayOnAir = visible
+    }
+
+    /// Auto restart on/off (kept while auto play is off).
+    public func setAutoRestart(_ on: Bool, for id: InputID) {
+        guard let v = source(id) as? VideoFileSource else { return }
+        v.autoRestart = on
     }
 
     /// Changes a video input's auto play mode; an input set to auto play that is not on air pauses.
@@ -931,9 +978,11 @@ public final class ProductionEngine {
         control.mutate { st in
             guard let i = st.overlays.firstIndex(where: { $0.index == index }) else { return }
             st.overlays[i].source = source
-            // A template title already covers the whole output; squeezing it into the
-            // lower-third box would shrink it.
-            if preset == .lowerThird, let id = source, (st.sources[id] as? TextSource)?.isFullCanvas == true {
+            // A template title already covers the whole output and a running-text band has its
+            // own position; full screen shows them as on Program instead of squeezing them
+            // into the lower-third box.
+            if preset == .lowerThird, let id = source,
+               (st.sources[id] as? TextSource)?.isFullCanvas == true || st.sources[id] is TickerSource {
                 st.overlays[i].preset = .fullScreen
             } else {
                 st.overlays[i].preset = preset
@@ -950,10 +999,22 @@ public final class ProductionEngine {
         }
     }
 
+    /// The in / out motion a template title or running text asks for (nil = the channel's own).
+    private static func sourceAnimation(_ src: VideoSource?) -> (OverlayAnimation, Double)? {
+        if let t = src as? TextSource, let d = t.style.design, !d.useOverlayAnimation { return (d.animation, d.animationDuration) }
+        if let k = src as? TickerSource, let a = k.config.animation { return (a, k.config.animationDuration ?? 0.5) }
+        return nil
+    }
+
     public func setOverlay(_ index: Int, on: Bool) {
         let now = HostClock.now()
         control.mutate { st in
-            guard let i = st.overlays.firstIndex(where: { $0.index == index }), st.overlays[i].source != nil else { return }
+            guard let i = st.overlays.firstIndex(where: { $0.index == index }), let id = st.overlays[i].source else { return }
+            // Pressing the overlay number plays the title's own animation (vMix title In/Out).
+            if on, !st.overlays[i].isOn, let (a, d) = Self.sourceAnimation(st.sources[id]) {
+                st.overlays[i].animation = a
+                st.overlays[i].fadeDuration = d
+            }
             st.overlays[i].set(on: on, now: now)
             if on { st.overlays[i].onPreview = false }
         }
@@ -963,7 +1024,12 @@ public final class ProductionEngine {
     /// Shows or hides an overlay on Preview only; CUT/AUTO then takes it to Program.
     public func setOverlayPreview(_ index: Int, on: Bool) {
         control.mutate { st in
-            guard let i = st.overlays.firstIndex(where: { $0.index == index }), st.overlays[i].source != nil else { return }
+            guard let i = st.overlays.firstIndex(where: { $0.index == index }), let id = st.overlays[i].source else { return }
+            // The next CUT / AUTO brings it in with the title's own animation.
+            if on, let (a, d) = Self.sourceAnimation(st.sources[id]) {
+                st.overlays[i].animation = a
+                st.overlays[i].fadeDuration = d
+            }
             st.overlays[i].onPreview = on
         }
     }
@@ -1154,11 +1220,14 @@ public final class ProductionEngine {
         guard !iso.isEmpty else { return 0 }
         control.mutate { $0.isoInputs = iso.map(\.0) }
         outputs.mutate { $0.iso = iso }
-        let recorders = iso.map(\.1)
-        let bus = profile.bus
+        // Each ISO file records its own bus (Master, Bus A or Bus B); each bus is mixed once.
+        let config = multiCorder
+        let routed = iso.map { (config.bus(for: $0.0, profile: profile.bus), $0.1) }
+        let buses = Array(Set(routed.map(\.0)))
         audioPump.addSink("multicorder") { chunk in
-            let c = chunk.bus(bus)
-            for r in recorders { r.append(audio: c) }
+            var mixed: [OutputBus: ProgramAudioPump.Chunk] = [:]
+            for b in buses { mixed[b] = chunk.bus(b) }
+            for (b, r) in routed { if let c = mixed[b] { r.append(audio: c) } }
         }
         return iso.count
     }
@@ -1261,12 +1330,18 @@ extension ProductionEngine {
                                                  folder: sl.folder.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) }))
             case let c as ScreenCaptureSource: ps = .screen(c.config)
             case let n as NDISource: ps = .ndi(n.config)
+            case let p as PresentationSource:
+                ps = .presentation(ProjectPresentation(file: ProjectMediaRef(path: p.url.path, relativePath: rel(p.url)),
+                                                       slide: p.slide, background: p.background))
             default: continue
             }
             let key = keys[id]
             var pi = ProjectInput(id: id, name: src.name, source: ps, layers: layers[id] ?? [],
                                   chromaKey: key == ChromaKey() ? nil : key)
-            if let v = src as? VideoFileSource, v.autoPlay != .off { pi.autoPlay = v.autoPlay.rawValue }
+            if let v = src as? VideoFileSource {
+                if v.autoPlay != .off { pi.autoPlay = v.autoPlay.rawValue }
+                pi.autoRestart = v.autoRestart ? nil : false
+            }
             if locked.contains(id) { pi.locked = true }
             if let c = src as? CameraSource, c.config != CaptureConfig() { pi.capture = c.config }
             pi.adjust = adjusts[id]
@@ -1345,11 +1420,13 @@ extension ProductionEngine {
                 }
             case let .videoFile(path, relative, loop):
                 addVideoFile(urls: [mediaURL(path, relative)], id: pi.id, loop: loop,
-                             autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off)
+                             autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off,
+                             autoRestart: pi.autoRestart ?? true)
             case let .videoPlaylist(tracks, loop):
                 guard !tracks.isEmpty else { continue }
                 addVideoFile(urls: tracks.map { mediaURL($0.path, $0.relativePath) }, id: pi.id, loop: loop,
-                             autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off)
+                             autoPlay: pi.autoPlay.flatMap(VideoFileSource.AutoPlay.init(rawValue:)) ?? .off,
+                             autoRestart: pi.autoRestart ?? true)
             case let .image(path, relative):
                 addImage(url: mediaURL(path, relative), id: pi.id)
             case .lottie:
@@ -1386,6 +1463,8 @@ extension ProductionEngine {
                 addScreenCapture(c, id: pi.id)
             case let .ndi(n):
                 addNDI(n, id: pi.id)
+            case let .presentation(p):
+                addPresentation(url: mediaURL(p.file.path, p.file.relativePath), slide: p.slide, background: p.background, id: pi.id)
             }
             created.insert(pi.id)
             renameInput(pi.id, to: pi.name)

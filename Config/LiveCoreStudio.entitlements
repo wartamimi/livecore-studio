@@ -10,5 +10,8 @@
 	<!-- Load the NDI runtime installed by NDI Tools / NDI Runtime (signed by NDI, not by us). -->
 	<key>com.apple.security.cs.disable-library-validation</key>
 	<true/>
+	<!-- Ask Keynote / PowerPoint to export a presentation input to PDF (0.35.0). -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
 </dict>
 </plist>

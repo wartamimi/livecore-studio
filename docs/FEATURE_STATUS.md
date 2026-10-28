@@ -161,6 +161,18 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.35.0
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Animasi saat nomor overlay ditekan, per template title | Implemented, belum dites | L (default & decode animasi, 1 unit test) + kompilasi CI | Tab Animasi di Title Designer: jenis animasi + durasi, atau pakai animasi kanal overlay. Seluruh title bergerak bersama (bukan per huruf/elemen); keluar = gerakan yang sama dibalik (T-145) |
+| Teks berjalan di Title Designer + setelan lanjutan | Implemented, belum dites | L (config, clamp, template, teks gulir, 4 unit test) | Menu "Teks berjalan" lama dihapus; kini kategori di Title Designer dengan 6 template, label, pemisah, font, ketebalan, miring, huruf besar, posisi pita, bayangan, animasi. Proyek lama tampil sama (T-146) |
+| Media: AUTO play + restart on/off | Implemented, belum dites | L (proyek, 1 unit test) + kompilasi CI | Media baru: AUTO aktif + restart ON (mulai dari awal tiap ke Program, kembali ke awal saat keluar). Restart OFF = jeda saat keluar dan lanjut dari posisi terakhir (T-147) |
+| ISOCorder: bus audio per input | Implemented, belum dites | L (simpan/buka, 1 unit test) + kompilasi CI | Tiap file ISO bisa Master / Aux A / Aux B; bawaan = bus profil. Tiap bus dicampur sekali walau dipakai beberapa file (T-148) |
+| Tombol minimize input di baris atas | Implemented, belum dites | kompilasi CI | Muncul saat kursor di atas tile, di antara tombol fullscreen (viewer) dan X (T-149) |
+| Konfirmasi tombol PHOTO | Implemented, belum dites | kompilasi CI | Kilat putih + bunyi + banner "Foto tersimpan" 3 detik; klik banner = tampilkan di Finder (T-150) |
+| Input Web: edit halaman sebelum tampil | Implemented, belum dites | kompilasi CI | Menu/ikon tangan: halaman dibuka di jendela untuk klik dan mengetik; Program menahan gambar terakhir (bisa dimatikan) sampai "Selesai — tampilkan". Login tidak tersimpan setelah app ditutup (T-151, T-152) |
+| Input PowerPoint / Keynote / PDF | Implemented, belum dites | L (jenis file, navigasi, rotasi & fit halaman, proyek, 5 unit test) + kompilasi CI | PDF dibaca langsung. .pptx/.ppt/.key/.odp diekspor ke PDF (cache) oleh Keynote, PowerPoint atau LibreOffice yang terpasang; macOS meminta izin Automation sekali. Slide statis: animasi, transisi dan video di dalam slide tidak diputar (T-153..T-155) |
+
 ## Title Designer 0.34.0
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|
