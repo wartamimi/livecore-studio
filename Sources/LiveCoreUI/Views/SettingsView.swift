@@ -192,6 +192,7 @@ struct SettingsView: View {
                 OutputBusPicker(selection: $draft.stream.primaryAudioBus)
                 SecureField(L10n.t("stream.key"), text: $keyField,
                             prompt: Text(model.hasStreamKey ? "•••••••• (\(L10n.t("stream.key_saved")))" : ""))
+                Text(L10n.t("stream.srt_hint")).font(.caption).foregroundStyle(Theme.textDim)
                 if model.hasStreamKey {
                     Button(L10n.t("stream.delete_key"), role: .destructive) { model.saveStreamKey("") }
                 }

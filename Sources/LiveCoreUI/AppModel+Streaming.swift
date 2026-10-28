@@ -57,8 +57,10 @@ extension AppModel {
 
     /// Number of destinations that would go live now (enabled, URL set, key saved).
     public var readyDestinationCount: Int {
-        var n = settings.stream.primaryEnabled && !settings.stream.serverURL.isEmpty && hasStreamKey ? 1 : 0
-        n += settings.stream.additional.filter { $0.enabled && !$0.serverURL.isEmpty && hasKey(account: $0.keychainAccount) }.count
+        // SRT destinations need no key (the Stream ID can be in the address).
+        let st = settings.stream
+        var n = st.primaryEnabled && !st.serverURL.isEmpty && (hasStreamKey || SRTURL.isSRT(st.serverURL)) ? 1 : 0
+        n += st.additional.filter { $0.enabled && !$0.serverURL.isEmpty && (hasKey(account: $0.keychainAccount) || SRTURL.isSRT($0.serverURL)) }.count
         return n
     }
 
@@ -90,6 +92,15 @@ extension AppModel {
             let label = c.name.isEmpty ? c.id : c.name
             do {
                 guard !c.url.isEmpty else { report(L10n.f("stream.dest_no_url", label)); continue }
+                // SRT: the key field (optional) is the Stream ID when the address has none.
+                if SRTURL.isSRT(c.url) {
+                    let key = (try KeychainStore.load(account: c.account)) ?? ""
+                    if !key.isEmpty { FileLog.shared.addSecret(key) }
+                    let srt = try SRTURL.parse(c.url, key: key)
+                    if let sid = srt.streamID, sid.count >= 4 { FileLog.shared.addSecret(sid) }
+                    targets.append(.init(id: c.id, name: label, srt: srt, audioBus: c.bus))
+                    continue
+                }
                 guard let key = try KeychainStore.load(account: c.account), !key.isEmpty else {
                     report(L10n.f("stream.dest_no_key", label)); continue
                 }
@@ -97,6 +108,8 @@ extension AppModel {
                 FileLog.shared.addSecret(key)
                 targets.append(.init(id: c.id, name: label, url: try RTMPURL.parse(serverURL: c.url, streamKey: key), audioBus: c.bus))
             } catch let err as RTMPURL.ParseError {
+                report("\(label): \(err.description)")
+            } catch let err as SRTURL.ParseError {
                 report("\(label): \(err.description)")
             } catch {
                 report("\(label): \(error.localizedDescription)")

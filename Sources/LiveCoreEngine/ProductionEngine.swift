@@ -77,7 +77,7 @@ public final class ProductionEngine {
     public let devices = DeviceManager()
     public internal(set) lazy var audioPump = ProgramAudioPump(mixer: mixer)
     /// One RTMP/RTMPS publisher per destination, all fed by the same encoders. Main thread.
-    public internal(set) var streamers: [String: StreamingEngine] = [:]
+    public internal(set) var streamers: [String: StreamOutput] = [:]
     var streamTerminal: [String: Bool] = [:]
     public let recorder = RecordingEngine()
     /// Instant replay buffer and its input (nil while replay is off).

@@ -63,6 +63,11 @@ extension AppModel {
         for d in st.additional where d.enabled { dests.append((d.name, d.serverURL, d.keychainAccount)) }
         f.streamDestinations = dests.count
         for d in dests {
+            if SRTURL.isSRT(d.url) {
+                // SRT runs over UDP: no connection test without a handshake; the key is optional.
+                if (try? SRTURL.parse(d.url)) == nil { f.destinationsMissingURL.append(d.name) }
+                continue
+            }
             if let u = try? RTMPURL.parse(serverURL: d.url, streamKey: "probe") {
                 if !servers.contains(where: { $0.host == u.host && $0.port == u.port }) { servers.append((u.host, u.port)) }
             } else {

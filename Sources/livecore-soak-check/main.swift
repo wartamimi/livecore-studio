@@ -5,6 +5,7 @@
 //  2. Stream drop: halfway the RTMP server is killed and started again. The stream must
 //     reconnect, and the recording must carry on through the drop without a gap.
 //  3. The recording must be a valid file as long as the run, with video and audio.
+//  3b. SRT: the same engine streams MPEG-TS over SRT to ffmpeg's SRT listener for 8 s.
 //  4. Disk full: a recorder writes into a 64 MB disk image; it must stop on its own before the
 //     disk is full and leave a playable file.
 // Long soak on a real Mac: SOAK_SECONDS=7200 swift run -c release livecore-soak-check
@@ -68,15 +69,17 @@ guard let ffmpeg = which("ffmpeg") else { fail("ffmpeg not found (brew install f
 
 /// ffmpeg as the RTMP server; it exits when the publisher disconnects.
 final class RTMPServer {
+    let tool: String, port: Int, key: String, folder: URL
     var process: Process?
     var segment = 0
+    init(tool: String, port: Int, key: String, folder: URL) { self.tool = tool; self.port = port; self.key = key; self.folder = folder }
     func start() {
         segment += 1
         let p = Process()
-        p.executableURL = URL(fileURLWithPath: ffmpeg)
+        p.executableURL = URL(fileURLWithPath: tool)
         p.arguments = ["-loglevel", "error", "-y", "-listen", "1", "-timeout", "60",
                        "-i", "rtmp://127.0.0.1:\(port)/live/\(key)", "-c", "copy",
-                       work.appendingPathComponent("received-\(segment).flv").path]
+                       folder.appendingPathComponent("received-\(segment).flv").path]
         p.standardOutput = FileHandle.nullDevice
         p.standardError = FileHandle(forWritingAtPath: "/dev/null")
         try? p.run()
@@ -123,7 +126,7 @@ engine.setPreview(bars)
 engine.cut()
 pump(seconds: 1)
 
-let server = RTMPServer()
+let server = RTMPServer(tool: ffmpeg, port: port, key: key, folder: work)
 server.start()
 pump(seconds: 1)
 let url: RTMPURL
@@ -176,6 +179,39 @@ func finished() -> (URL, Int64)? { if case let .finished(u, n) = rec.state { ret
 pump(seconds: 30) { finished() != nil }
 guard let (file, bytes) = finished() else { fail("recording did not finish: \(rec.state)") }
 server.kill()
+
+// MARK: 3b. SRT output from the same engine (MPEG-TS over SRT to ffmpeg/libsrt)
+
+let (_, protocols) = run(ffmpeg, ["-hide_banner", "-protocols"])
+if protocols.split(separator: "\n").contains(where: { $0.trimmingCharacters(in: .whitespaces) == "srt" }) {
+    let srtFile = work.appendingPathComponent("srt.ts")
+    let listener = Process()
+    listener.executableURL = URL(fileURLWithPath: ffmpeg)
+    listener.arguments = ["-loglevel", "error", "-y", "-i", "srt://127.0.0.1:\(port + 1)?mode=listener&latency=300000", "-c", "copy", srtFile.path]
+    listener.standardError = FileHandle.nullDevice
+    try? listener.run()
+    pump(seconds: 1)
+    stream = StreamingEngine.Stats()
+    streamStates = []
+    do {
+        let srt = try SRTURL.parse("srt://127.0.0.1:\(port + 1)?latency=300", key: "soak-stream-id")
+        try engine.startStreaming(to: [.init(id: "srt", name: "SRT", srt: srt)])
+    } catch { fail("SRT start: \(error)") }
+    pump(seconds: 10) { isLive() }
+    guard isLive() else { fail("SRT did not go live: \(streamStates)") }
+    pump(seconds: 8)
+    log(String(format: "SRT live: %.0f kbps, states %@", stream.bitrateKbps, streamStates.joined(separator: " → ")))
+    engine.stopStreaming()
+    pump(seconds: 3) { !listener.isRunning }
+    if listener.isRunning { listener.terminate() }
+    let (_, probe) = run(which("ffprobe") ?? "/usr/bin/false", ["-v", "error", "-count_frames", "-select_streams", "v:0",
+                                                                  "-show_entries", "stream=nb_read_frames", "-of", "csv=p=0", srtFile.path])
+    let frames = Int(probe.split(separator: "\n").first.map(String.init)?.trimmingCharacters(in: .whitespaces) ?? "") ?? 0
+    log("SRT: ffmpeg received \(frames) video frames")
+    guard frames >= 150 else { fail("SRT: only \(frames) frames received") }
+} else {
+    log("SRT skipped: this ffmpeg has no libsrt")
+}
 engine.shutdown()
 
 let asset = AVURLAsset(url: file)

@@ -63,12 +63,16 @@ extension ProductionEngine {
 
     /// A stream destination with its key already resolved (from the Keychain).
     public struct StreamTarget {
+        public enum Endpoint { case rtmp(RTMPURL), srt(SRTURL) }
         public var id: String
         public var name: String
-        public var url: RTMPURL
+        public var endpoint: Endpoint
         public var audioBus: OutputBus
         public init(id: String, name: String, url: RTMPURL, audioBus: OutputBus = .master) {
-            self.id = id; self.name = name; self.url = url; self.audioBus = audioBus
+            self.id = id; self.name = name; self.endpoint = .rtmp(url); self.audioBus = audioBus
+        }
+        public init(id: String, name: String, srt: SRTURL, audioBus: OutputBus = .master) {
+            self.id = id; self.name = name; self.endpoint = .srt(srt); self.audioBus = audioBus
         }
     }
 
@@ -92,9 +96,13 @@ extension ProductionEngine {
         streamers.values.forEach { $0.stop() }
         streamers = [:]
         streamTerminal = [:]
-        var engines: [StreamingEngine] = []
+        var engines: [StreamOutput] = []
         for t in targets {
-            let s = StreamingEngine()
+            let s: StreamOutput
+            switch t.endpoint {
+            case .rtmp: s = StreamingEngine()
+            case .srt: s = SRTStreamingEngine()
+            }
             s.onStats = { [weak self] st in self?.streamStatsChanged(t.id, st) }
             s.encoderStatsProvider = { [weak self] in
                 guard let enc = self?.outputs.read({ $0.streamEncoder }) else { return (false, 0) }
@@ -112,7 +120,7 @@ extension ProductionEngine {
         var firstHost: Double?
         var packetIndex: Int64 = 0
         let sr = Double(settings.audio.sampleRate)
-        let groups: [(bus: OutputBus, aac: AACEncoder, engines: [StreamingEngine])] = aacByBus.map { bus, aac in
+        let groups: [(bus: OutputBus, aac: AACEncoder, engines: [StreamOutput])] = aacByBus.map { bus, aac in
             (bus, aac, zip(engines, targets).filter { $0.1.audioBus == bus }.map(\.0))
         }
         audioPump.addSink("stream") { chunk in
@@ -128,7 +136,11 @@ extension ProductionEngine {
         }
         outputs.mutate { $0.streamEncoder = enc }
         for (s, t) in zip(engines, targets) {
-            s.start(url: t.url, settings: settings, audioSpecificConfig: aacByBus[t.audioBus]!.audioSpecificConfig)
+            let asc = aacByBus[t.audioBus]!.audioSpecificConfig
+            switch t.endpoint {
+            case let .rtmp(url): (s as? StreamingEngine)?.start(url: url, settings: settings, audioSpecificConfig: asc)
+            case let .srt(url): (s as? SRTStreamingEngine)?.start(url: url, settings: settings, audioSpecificConfig: asc)
+            }
         }
     }
 
