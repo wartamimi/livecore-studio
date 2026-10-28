@@ -67,6 +67,12 @@ public final class RecordingEngine {
         return Int64(values?.volumeAvailableCapacity ?? 0)
     }
 
+    /// Free space below which a running recording is closed: half the start minimum, plus four
+    /// seconds at the current write rate.
+    public static func stopThreshold(minimumFree: Int64, bytesPerSecond: Int64) -> Int64 {
+        minimumFree / 2 + 4 * bytesPerSecond
+    }
+
     // MARK: Control
 
     /// `fileSuffix` (MultiCorder ISO files) goes before the extension; `date` names the file, so
@@ -266,20 +272,22 @@ public final class RecordingEngine {
     private func startMonitor(folder: URL) {
         let t = DispatchSource.makeTimerSource(queue: queue)
         t.schedule(deadline: .now() + 1, repeating: 1)
-        var tick = 0
+        var lastFileBytes: Int64 = 0
         t.setEventHandler { [weak self] in
             guard let self, let w = self.writer, let url = self.url else { return }
-            tick += 1
             if let start = self.sessionStart, self.lastVideoPTS.isValid {
                 self.stats.duration = CMTimeGetSeconds(CMTimeSubtract(self.lastVideoPTS, start))
             }
-            if tick % 5 == 0 {
-                self.stats.freeBytes = Self.freeBytes(at: folder)
-                self.stats.fileBytes = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
-                if self.stats.freeBytes < self.settings.minimumFreeBytes / 2 {
-                    self.finish(reason: "Disk space is running out.")
-                    return
-                }
+            // Checked every second: at high bitrates (ProRes, or a small drive) a slower check can
+            // let the disk fill up between two looks. Keep room for a few seconds of writing plus
+            // what the writer still has buffered, so the file is closed before the disk is full.
+            self.stats.freeBytes = Self.freeBytes(at: folder)
+            self.stats.fileBytes = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
+            let perSecond = max(0, self.stats.fileBytes - lastFileBytes)
+            lastFileBytes = self.stats.fileBytes
+            if self.stats.freeBytes < Self.stopThreshold(minimumFree: self.settings.minimumFreeBytes, bytesPerSecond: perSecond) {
+                self.finish(reason: "Disk space is running out.")
+                return
             }
             if w.status == .failed { self.checkWriterFailure(); return }
             self.publish()

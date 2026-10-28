@@ -6,7 +6,7 @@
 //     reconnect, and the recording must carry on through the drop without a gap.
 //  3. The recording must be a valid file as long as the run, with video and audio.
 //  3b. SRT: the same engine streams MPEG-TS over SRT to an SRT listener (ffmpeg/libsrt or srt-live-transmit) for 8 s.
-//  4. Disk full: a recorder writes into a 64 MB disk image; it must stop on its own before the
+//  4. Disk full: a recorder writes into a 160 MB disk image; it must stop on its own before the
 //     disk is full and leave a playable file.
 // Long soak on a real Mac: SOAK_SECONDS=7200 swift run -c release livecore-soak-check
 #if os(macOS)
@@ -249,7 +249,7 @@ for f in [file] + received { try? FileManager.default.removeItem(at: f) }
 // MARK: 4. Disk full
 
 let image = work.appendingPathComponent("small.dmg")
-let (cs, co) = run("/usr/bin/hdiutil", ["create", "-size", "64m", "-fs", "HFS+", "-volname", "LiveCoreSoak", "-ov", image.path])
+let (cs, co) = run("/usr/bin/hdiutil", ["create", "-size", "160m", "-fs", "HFS+", "-volname", "LiveCoreSoak", "-ov", image.path])
 guard cs == 0 else { fail("hdiutil create: \(co)") }
 let (as_, ao) = run("/usr/bin/hdiutil", ["attach", "-nobrowse", "-mountrandom", work.path, image.path])
 guard as_ == 0, let mount = ao.split(separator: "\n").compactMap({ line -> String? in
@@ -305,7 +305,7 @@ case let .finished(u, n):
 case let .failed(m):
     fail("recorder failed instead of stopping cleanly on a full disk: \(m)")
 default:
-    fail("recorder still \(fs.state) after \(i) frames on a 64 MB disk")
+    fail("recorder still \(fs.state) after \(i) frames on a 160 MB disk")
 }
 run("/usr/bin/hdiutil", ["detach", "-force", mount])
 try? FileManager.default.removeItem(at: work)
