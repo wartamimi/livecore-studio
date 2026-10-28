@@ -15,6 +15,7 @@
 //   LiveCoreStudio    App entry point (App/). On other platforms it prints a notice and exits.
 //   livecore-syphon-check  CI check: another process discovers a LiveCore Syphon server and reads a frame.
 //   livecore-ndi-check     CI check: an NDI receiver finds a LiveCore-style NDI source and reads a frame.
+//   livecore-iso-check     CI check: Program + MultiCorder ISO recorders write two playable files.
 //   livecore-rtmp-push  CLI that pushes H.264/AAC elementary streams through the LiveCoreCore RTMP
 //                     client (used for protocol validation against a real RTMP server).
 import PackageDescription
@@ -53,6 +54,7 @@ let package = Package(
         .executableTarget(name: "livecore-transition-dump", dependencies: ["LiveCoreCore"]),
         .executableTarget(name: "livecore-syphon-check", dependencies: ["CSyphon"]),
         .executableTarget(name: "livecore-ndi-check", dependencies: ["CNDI", "LiveCoreCore", "LiveCoreEngine"]),
+        .executableTarget(name: "livecore-iso-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .testTarget(name: "LiveCoreCoreTests", dependencies: ["LiveCoreCore", "LiveCoreRemote"]),
     ]
 )

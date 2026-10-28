@@ -135,6 +135,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 |---|---|---|---|
 | Shortcut keyboard yang bisa diatur | Implemented | M | |
 | Kontrol MIDI dengan Learn (CUT, AUTO, T-bar, preview/cut 1–8, overlay 1–4, stream, rekam, snapshot) | Implemented (0.7.0) | L (parser MIDI 1.0/UMP, pemetaan, 6 unit test) + kompilasi CI | Semua sumber CoreMIDI tersambung otomatis; pemetaan disimpan di Mac (bukan proyek). Belum dites dengan controller (T-35) |
+| MultiCorder: rekaman ISO per input (maks 4) | Implemented (0.32.0) | lihat bagian MultiCorder 0.32.0 | Jalan bersama RECORD |
 | Web Controller (remote dari browser HP/tablet di jaringan yang sama) | Implemented (0.30.0) | lihat bagian Web Controller 0.30.0 | PIN, mati secara default |
 | Input tangkap jendela / layar (Zoom, Teams, Meet, slide) | Implemented (0.10.0) | L (pencocokan jendela, 5 unit test) + kompilasi CI | ScreenCaptureKit; audio aplikasi (jendela) atau sistem (layar) ke channel mixer sendiri; audio & jendela LiveCore sendiri dikecualikan; jendela ditemukan lagi lewat aplikasi + judul saat proyek dibuka. Perlu izin Perekaman Layar. Belum dites (T-46) |
 | Input Zoom via Zoom Meeting SDK (peserta terpisah, seperti vMix) | Ditunda (dihapus dari build publik di 0.10.1) | — | Pernah dibuat di 0.11.x dan dikompilasi dengan SDK, lalu ditarik dari repo & rilis publik atas keputusan pemilik; diarsipkan secara privat. Join meeting akun lain gagal (kode 63) sampai aplikasi SDK lolos review Zoom Marketplace. Untuk sekarang pakai input tangkap jendela |
@@ -159,6 +160,12 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Shortcut keyboard dapat diubah | Implemented | M |
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
+
+## MultiCorder 0.32.0
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Rekam input pilihan ke file sendiri (ISO) bersama RECORD | Implemented (0.32.0), belum dites di Mac pengguna | L (pilihan, batas 4, nama file, proyek; unit test) + CI `livecore-iso-check`: rekaman Program + ISO berjalan bersamaan dan keduanya bisa diputar dengan video+audio | RECORD ⚙ › MultiCorder (ISO): centang input (maks 4). Input dirender ukuran output penuh dengan layer-nya; H.264 dengan bitrate/format rekaman; nama = file Program + " - ISO <nomor> <nama>" dengan waktu yang sama; pilihan tersimpan di proyek (T-131..T-132) |
+| Status tiap file ISO | Implemented (0.32.0), belum dites | kompilasi CI | Ukuran file, frame terbuang, gagal (tidak menghentikan rekaman Program), tombol tampilkan di Finder (T-133) |
 
 ## Web Controller 0.31.0 (panel switcher)
 | Fitur | Status | Verifikasi | Catatan |

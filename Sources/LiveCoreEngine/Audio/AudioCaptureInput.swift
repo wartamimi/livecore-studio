@@ -152,6 +152,10 @@ public final class ProgramAudioPump {
         public var auxRight: [[Float]] = []
         public var frames: Int { left.count }
 
+        public init(left: [Float], right: [Float], hostTime: Double, auxLeft: [[Float]] = [], auxRight: [[Float]] = []) {
+            self.left = left; self.right = right; self.hostTime = hostTime; self.auxLeft = auxLeft; self.auxRight = auxRight
+        }
+
         /// The same chunk carrying the chosen bus in `left`/`right`.
         public func bus(_ bus: OutputBus) -> Chunk {
             guard let i = bus.auxIndex, auxLeft.indices.contains(i), auxRight.indices.contains(i) else { return self }

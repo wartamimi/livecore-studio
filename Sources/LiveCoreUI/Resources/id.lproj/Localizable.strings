@@ -623,3 +623,11 @@
 "remote.qr.help" = "Pindai dengan kamera HP untuk membuka remote dan langsung masuk. Jangan tampilkan kode ini saat siaran atau saat berbagi layar.";
 "remote.clients" = "Perangkat tersambung: %d";
 "remote.security" = "Koneksinya HTTP biasa (tidak terenkripsi): gunakan hanya di jaringan yang Anda percaya. Siapa pun yang tahu PIN bisa memindah tampilan siaran Anda. Setelah 5 kali PIN salah, perangkat dikunci sementara.";
+
+/* MultiCorder (0.32.0) */
+"multicorder.enable" = "Rekam input pilihan ke file masing-masing saat RECORD";
+"multicorder.no_inputs" = "Tambahkan input dulu.";
+"multicorder.help" = "Maksimal %d input. Tiap file ISO berisi input itu saja (ukuran penuh, dengan layer-nya), audio, format dan bitrate sama dengan rekaman Program, dengan nama file Program ditambah \" - ISO <nomor> <nama>\".";
+"multicorder.next_time" = "Perubahan berlaku saat rekaman berikutnya dimulai.";
+"multicorder.count" = "%d input";
+"multicorder.full" = "MultiCorder merekam maksimal %d input.";

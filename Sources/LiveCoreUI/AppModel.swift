@@ -86,6 +86,9 @@ public final class AppModel: ObservableObject {
     /// Destinations of the current/last stream session, in display order.
     @Published public private(set) var streamTargets: [(id: String, name: String)] = []
     @Published public var recordStats = RecordingEngine.Stats()
+    /// MultiCorder: inputs also recorded to their own files, and those files' states.
+    @Published public internal(set) var multiCorder = MultiCorderConfig() { didSet { engine?.multiCorder = multiCorder } }
+    @Published public internal(set) var isoStats: [InputID: RecordingEngine.Stats] = [:]
     @Published public var hasStreamKey = false
     @Published public var performance = PerformanceSnapshot.zero
     @Published public var shortcuts = ShortcutSettings.load()
@@ -182,6 +185,7 @@ public final class AppModel: ObservableObject {
         }
         e.onStreamStats = { [weak self] id, s in self?.destinationStats[id] = s }
         e.onRecordStats = { [weak self] s in self?.recordStats = s }
+        e.onISOStats = { [weak self] s in self?.isoStats = s }
         e.onError = { [weak self] msg in self?.report(msg) }
         e.onAudioChannelsChange = { [weak self] in self?.reloadAudioChannels() }
         e.replay.onAvailableChange = { [weak self] a in self?.replayAvailable = a }
@@ -1127,6 +1131,7 @@ public final class AppModel: ObservableObject {
             projectURL = url
             afterProjectLoad()
             setOutputRouting(doc.sanitized().outputs ?? OutputRouting())
+            multiCorder = doc.sanitized().multiCorder ?? MultiCorderConfig()
             if !warnings.isEmpty { report("\(L10n.t("project.warnings")): " + warnings.joined(separator: " · ")) }
         } catch {
             report("Cannot open project: \(error.localizedDescription)")
@@ -1149,6 +1154,7 @@ public final class AppModel: ObservableObject {
         guard let e = engine else { return }
         var doc = e.exportProject(projectDirectory: url.deletingLastPathComponent())
         doc.outputs = outputRouting
+        doc.multiCorder = multiCorder
         do {
             let enc = JSONEncoder()
             enc.outputFormatting = [.prettyPrinted, .sortedKeys]

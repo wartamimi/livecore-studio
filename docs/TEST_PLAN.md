@@ -51,6 +51,13 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AF. Tes manual build 0.32.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-131 | Rekaman ISO | RECORD ⚙ › MultiCorder (ISO) › centang 2 kamera; RECORD 2 menit sambil CUT antar kamera; stop | Di folder rekaman ada 3 file dengan waktu sama: Program dan "… - ISO <n> <nama>" per kamera; tiap ISO berisi kamera itu saja sepanjang rekaman (tidak ikut CUT) dengan suara Program |
+| T-132 | Batas & proyek | Coba centang input ke-5; simpan proyek, buka lagi | Input ke-5 tidak bisa dicentang; pilihan ISO kembali setelah proyek dibuka |
+| T-133 | Beban & status | 1080p30, 4 ISO, rekam 10 menit; lihat RECORD ⚙ dan Performance | Ukuran tiap file ISO bertambah; tidak ada/ sedikit "drop"; Program tetap mulus. Catat model Mac dan angka drop |
+
 ## AE. Tes manual build 0.31.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|

@@ -168,6 +168,7 @@ struct RecordDetails: View {
             Toggle(L10n.t("record.with_stream"), isOn: $model.recordWithStream)
                 .toggleStyle(.checkbox).font(.system(size: 11))
                 .help(L10n.t("record.with_stream_help"))
+            MultiCorderSection()
             if let snap = model.lastSnapshotURL {
                 Button(L10n.f("snapshot.saved", snap.lastPathComponent)) { NSWorkspace.shared.activateFileViewerSelecting([snap]) }
                     .buttonStyle(.link).font(.system(size: 10)).lineLimit(1)
@@ -196,6 +197,66 @@ struct RecordDetails: View {
 
     private var folderLabel: String {
         model.settings.recording.folderPath.isEmpty ? RecordingEngine.defaultFolder().path : model.settings.recording.folderPath
+    }
+}
+/// MultiCorder (ISO): pick up to 4 inputs that RECORD also records to their own files.
+struct MultiCorderSection: View {
+    @EnvironmentObject var model: AppModel
+    @State private var open = false
+
+    var body: some View {
+        DisclosureGroup(isExpanded: $open) {
+            VStack(alignment: .leading, spacing: 4) {
+                Toggle(L10n.t("multicorder.enable"), isOn: Binding(get: { model.multiCorder.enabled }, set: { model.setMultiCorderEnabled($0) }))
+                    .toggleStyle(.checkbox).font(.system(size: 11))
+                ForEach(model.inputs) { i in
+                    let on = model.multiCorder.contains(i.id)
+                    Toggle("\(i.number)  \(i.name)", isOn: Binding(get: { on }, set: { _ in model.toggleISO(i.id) }))
+                        .toggleStyle(.checkbox).font(.system(size: 11)).lineLimit(1)
+                        .disabled(!model.multiCorder.enabled || (!on && model.multiCorder.isFull))
+                }
+                if model.inputs.isEmpty {
+                    Text(L10n.t("multicorder.no_inputs")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                }
+                Text(L10n.f("multicorder.help", MultiCorderConfig.maxInputs)).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                    .fixedSize(horizontal: false, vertical: true)
+                if model.isRecording, !model.multiCorder.active.isEmpty, model.isoStats.isEmpty {
+                    Text(L10n.t("multicorder.next_time")).font(.system(size: 10)).foregroundStyle(Theme.warning)
+                }
+                ForEach(model.isoFiles) { f in isoRow(f.input, f.stats) }
+            }
+            .padding(.leading, 4)
+        } label: {
+            HStack(spacing: 6) {
+                Text("MultiCorder (ISO)").font(.system(size: 11, weight: .semibold))
+                if model.multiCorder.enabled, !model.multiCorder.inputs.isEmpty {
+                    Text(L10n.f("multicorder.count", model.multiCorder.inputs.count))
+                        .font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func isoRow(_ i: ProductionEngine.InputInfo, _ s: RecordingEngine.Stats) -> some View {
+        HStack(spacing: 4) {
+            switch s.state {
+            case .recording:
+                Circle().fill(Theme.program).frame(width: 6, height: 6)
+                Text("ISO \(i.number)  \(ByteCountFormatter.string(fromByteCount: s.fileBytes, countStyle: .file))")
+                if s.droppedVideoFrames > 0 { Text("· \(s.droppedVideoFrames) drop").foregroundStyle(Theme.warning) }
+            case let .finished(url, bytes):
+                Text("ISO \(i.number)  \(ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))")
+                Button(L10n.t("record.reveal")) { NSWorkspace.shared.activateFileViewerSelecting([url]) }.buttonStyle(.link)
+            case let .failed(msg):
+                Text("ISO \(i.number): \(msg)").foregroundStyle(Theme.warning).lineLimit(2)
+            case .finishing:
+                Text("ISO \(i.number)"); ProgressView().controlSize(.mini)
+            case .idle:
+                EmptyView()
+            }
+        }
+        .font(.system(size: 10).monospacedDigit())
     }
 }
 /// Transparent click target that tells a primary click from a secondary one (two-finger click

@@ -149,6 +149,11 @@
 62. **Duplikat input (0.26.0)**: satu kamera/capture card = satu input. Capture jendela dicocokkan dari aplikasi + judul
     jendela; jendela dengan judul yang berubah (mis. judul dokumen) dianggap jendela lain. Proyek lama yang sudah berisi
     duplikat tetap dibuka apa adanya.
+69. **MultiCorder (0.32.0)**: tiap file ISO memakai audio rekaman Program (bus yang sama), belum audio input itu sendiri.
+    Tiap ISO menambah satu render ukuran penuh dan satu encoder H.264: di Mac Intel atau 4 ISO 1080p60 bisa membuat
+    frame terbuang (lihat "drop" di RECORD ⚙); kurangi jumlah ISO atau bitrate. Pilihan berlaku saat RECORD dimulai
+    (mengubah centang saat merekam berlaku di rekaman berikutnya). Ruang disk terpakai ±(1 + jumlah ISO)× rekaman biasa.
+    Input yang tidak punya gambar (mis. kamera terputus) menghasilkan file ISO pendek/berhenti; rekaman Program tetap.
 68. **Panel Web Controller (0.31.0)**: gambar Program/Preview adalah JPEG kecil ±3 fps (bukan video, tanpa audio) dan
     menambah sedikit beban CPU Mac selama halaman terbuka; meter audio di HP diperbarui ±4× per detik sehingga terlihat
     kasar dibanding meter di Mac. Getaran tombol tidak ada di iPhone (Safari tidak mendukung). Master tidak punya mute.

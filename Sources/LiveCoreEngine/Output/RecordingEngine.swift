@@ -64,15 +64,19 @@ public final class RecordingEngine {
 
     // MARK: Control
 
-    public func start(settings: RecordingSettings, output: OutputFormat, audio: AudioEncoderSettings) {
-        queue.async { self.startOnQueue(settings: settings, output: output, audio: audio) }
+    /// `fileSuffix` (MultiCorder ISO files) goes before the extension; `date` names the file, so
+    /// the Program file and its ISO files share one time stamp.
+    public func start(settings: RecordingSettings, output: OutputFormat, audio: AudioEncoderSettings,
+                      fileSuffix: String? = nil, date: Date = Date()) {
+        queue.async { self.startOnQueue(settings: settings, output: output, audio: audio, fileSuffix: fileSuffix, date: date) }
     }
 
     public func stop() {
         queue.async { self.finish(reason: nil) }
     }
 
-    private func startOnQueue(settings: RecordingSettings, output: OutputFormat, audio: AudioEncoderSettings) {
+    private func startOnQueue(settings: RecordingSettings, output: OutputFormat, audio: AudioEncoderSettings,
+                              fileSuffix: String?, date: Date) {
         guard writer == nil else { return }
         self.settings = settings
         stats = Stats()
@@ -87,13 +91,14 @@ public final class RecordingEngine {
             return report(.failed("Not enough disk space (\(ByteCountFormatter.string(fromByteCount: free, countStyle: .file)) free)."))
         }
         // Unique file name.
-        let c = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: Date())
+        let c = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
         var fileURL: URL
         var n = 1
         repeat {
-            let name = FileNaming.fileName(pattern: settings.fileNamePattern, year: c.year ?? 0, month: c.month ?? 0, day: c.day ?? 0,
+            var name = FileNaming.fileName(pattern: settings.fileNamePattern, year: c.year ?? 0, month: c.month ?? 0, day: c.day ?? 0,
                                            hour: c.hour ?? 0, minute: c.minute ?? 0, second: c.second ?? 0, counter: n,
                                            ext: settings.container.fileExtension)
+            if let fileSuffix { name = MultiCorderConfig.isoFileName(name, suffix: fileSuffix) }
             fileURL = folder.appendingPathComponent(n == 1 ? name : name.replacingOccurrences(of: ".\(settings.container.fileExtension)", with: " (\(n)).\(settings.container.fileExtension)"))
             n += 1
         } while FileManager.default.fileExists(atPath: fileURL.path)
