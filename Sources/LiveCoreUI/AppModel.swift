@@ -245,10 +245,19 @@ public final class AppModel: ObservableObject {
 
     /// Camera / capture card with the format and options chosen in the capture settings sheet;
     /// optionally adds the device's own audio (capture cards) to the mixer.
-    public func addCamera(uniqueID: String, config: CaptureConfig, audioUID: String?) {
-        guard !rejectDuplicateCamera(uniqueID) else { return }
-        engine?.addCamera(uniqueID: uniqueID, config: config)
+    @discardableResult
+    public func addCamera(uniqueID: String, config: CaptureConfig, audioUID: String?) -> InputID? {
+        guard !rejectDuplicateCamera(uniqueID) else { return nil }
+        let id = engine?.addCamera(uniqueID: uniqueID, config: config)
         if let audioUID, let d = audioDevices.first(where: { $0.id == audioUID }) { addAudioInput(d) }
+        return id
+    }
+
+    /// Capture-card signal fixes (level range, deinterlace) kept with the input's colour settings.
+    public func setSignalFixes(_ id: InputID, range: InputAdjust.RangeFix, deinterlace: Bool) {
+        var a = adjust(of: id)
+        a.range = range; a.deinterlace = deinterlace
+        setAdjust(id, a)
     }
     public func updateCamera(_ id: InputID, config: CaptureConfig) { engine?.updateCamera(id, config: config) }
     public func cameraSource(_ id: InputID) -> CameraSource? { engine?.source(id) as? CameraSource }

@@ -53,6 +53,12 @@ struct CaptureCardSheet: View {
     @State private var fps: Double = 0               // 0 = automatic
     @State private var mirror = false
     @State private var audioUID: String = ""
+    // Advanced
+    @State private var showAdvanced = false
+    @State private var codec = ""                    // "" = automatic
+    @State private var bufferFrames = false
+    @State private var range: InputAdjust.RangeFix = .none
+    @State private var deinterlace = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -90,6 +96,7 @@ struct CaptureCardSheet: View {
                 if let id = editing, let cam = model.cameraSource(id) {
                     LabeledContent(L10n.t("capturecard.status")) { Text(cam.status.label).foregroundStyle(Theme.textDim) }
                 }
+                DisclosureGroup(L10n.t("capturecard.advanced"), isExpanded: $showAdvanced) { advanced }
             }
             .formStyle(.grouped)
             Text(L10n.t("capturecard.note")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
@@ -98,8 +105,9 @@ struct CaptureCardSheet: View {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
                 Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
-                    if let id = editing { model.updateCamera(id, config: config) }
-                    else { model.addCamera(uniqueID: deviceID, config: config, audioUID: audioUID.isEmpty ? nil : audioUID) }
+                    let id = editing ?? model.addCamera(uniqueID: deviceID, config: config, audioUID: audioUID.isEmpty ? nil : audioUID)
+                    if editing != nil, let id { model.updateCamera(id, config: config) }
+                    if let id { model.setSignalFixes(id, range: range, deinterlace: deinterlace) }
                     dismiss()
                 }
                 .disabled(deviceID.isEmpty || (editing == nil && model.cameraInUse(deviceID) != nil))
@@ -107,16 +115,61 @@ struct CaptureCardSheet: View {
             }
         }
         .padding(16)
-        .frame(width: 460)
+        .frame(width: 500)
         .onAppear(perform: load)
+        .onChange(of: size) { _ in if !codecs.contains(codec) { codec = "" } }
         .onChange(of: deviceID) { _ in
             formats = model.captureFormats(uniqueID: deviceID)
+            if !codecs.contains(codec) { codec = "" }
             if !sizes.contains(size) { size = "auto" }
             // Capture cards usually expose their audio as a device with a similar name.
             if editing == nil, let name = model.videoDevices.first(where: { $0.id == deviceID })?.name {
                 audioUID = model.audioDevices.first(where: { $0.name.localizedCaseInsensitiveContains(name) || name.localizedCaseInsensitiveContains($0.name) })?.id ?? ""
             }
         }
+    }
+
+    // MARK: Advanced
+
+    @ViewBuilder private var advanced: some View {
+        Picker(L10n.t("capturecard.codec"), selection: $codec) {
+            Text(L10n.t("capturecard.codec_auto")).tag("")
+            ForEach(codecs, id: \.self) { c in Text(CaptureCodec.label(c)).tag(c) }
+        }
+        .help(L10n.t("capturecard.codec_help"))
+        if !codec.isEmpty {
+            Text(L10n.t(CaptureCodec.isUncompressed(codec) ? "capturecard.codec_uncompressed_note" : "capturecard.codec_compressed_note"))
+                .font(.system(size: 10)).foregroundStyle(Theme.textDim).fixedSize(horizontal: false, vertical: true)
+        }
+        Picker(L10n.t("capturecard.range"), selection: $range) {
+            Text(L10n.t("capturecard.range_none")).tag(InputAdjust.RangeFix.none)
+            Text(L10n.t("capturecard.range_expand")).tag(InputAdjust.RangeFix.limitedToFull)
+            Text(L10n.t("capturecard.range_compress")).tag(InputAdjust.RangeFix.fullToLimited)
+        }
+        .help(L10n.t("capturecard.range_help"))
+        Toggle(L10n.t("capturecard.deinterlace"), isOn: $deinterlace).help(L10n.t("capturecard.deinterlace_help"))
+        Toggle(L10n.t("capturecard.buffer"), isOn: $bufferFrames).help(L10n.t("capturecard.buffer_help"))
+        if let id = editing, let cam = model.cameraSource(id) {
+            TimelineView(.periodic(from: .now, by: 1)) { _ in
+                let s = cam.signalStats
+                LabeledContent(L10n.t("capturecard.signal")) {
+                    Text(L10n.f("capturecard.signal_value", s.size, CaptureCodec.label(s.codec), s.fps, s.dropped as Int))
+                        .font(.system(size: 11).monospacedDigit()).foregroundStyle(Theme.textDim)
+                        .multilineTextAlignment(.trailing)
+                }
+            }
+            Button(L10n.t("capturecard.restart")) { cam.restartDevice() }.help(L10n.t("capturecard.restart_help"))
+        }
+    }
+
+    /// Device formats offered at the chosen size (all sizes when automatic).
+    private var codecs: [String] {
+        let chosen = parsedSize
+        var out: [String] = []
+        for f in formats where !f.codec.isEmpty && (chosen == nil || (f.width == chosen!.0 && f.height == chosen!.1)) {
+            if !out.contains(f.codec) { out.append(f.codec) }
+        }
+        return out.sorted { (CaptureCodec.isUncompressed($0) ? 0 : 1, $0) < (CaptureCodec.isUncompressed($1) ? 0 : 1, $1) }
     }
 
     private var sizes: [String] {
@@ -140,7 +193,8 @@ struct CaptureCardSheet: View {
     }
 
     private var config: CaptureConfig {
-        CaptureConfig(width: parsedSize?.0, height: parsedSize?.1, frameRate: fps > 0 ? fps : nil, mirror: mirror)
+        CaptureConfig(width: parsedSize?.0, height: parsedSize?.1, frameRate: fps > 0 ? fps : nil, mirror: mirror,
+                      codec: codec.isEmpty ? nil : codec, bufferFrames: bufferFrames ? true : nil)
     }
 
     private func load() {
@@ -151,6 +205,12 @@ struct CaptureCardSheet: View {
             if let w = c.width, let h = c.height { size = "\(w)x\(h)" }
             fps = c.frameRate ?? 0
             mirror = c.mirror
+            codec = c.codec ?? ""
+            bufferFrames = c.bufferFrames == true
+            let a = model.adjust(of: id)
+            range = a.range
+            deinterlace = a.deinterlace
+            showAdvanced = !codec.isEmpty || bufferFrames || range != .none || deinterlace
         } else if deviceID.isEmpty {
             deviceID = model.videoDevices.first?.id ?? ""
         }
@@ -182,7 +242,7 @@ struct InputAdjustSheet: View {
             }
             .formStyle(.grouped)
             HStack {
-                Button(L10n.t("adjust.reset")) { a = InputAdjust(); model.setAdjust(input, a) }
+                Button(L10n.t("adjust.reset")) { a = a.resetKeepingSignalFixes; model.setAdjust(input, a) }
                 Spacer()
                 Button(L10n.t("common.ok")) { dismiss() }.keyboardShortcut(.defaultAction)
             }

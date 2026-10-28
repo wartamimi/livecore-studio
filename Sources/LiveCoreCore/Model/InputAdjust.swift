@@ -14,14 +14,31 @@ public struct InputAdjust: Codable, Equatable, Sendable {
     public var flipVertical: Bool
     /// Clockwise rotation in degrees: 0, 90, 180 or 270 (since 0.17.0). 90 / 270 swap width and height.
     public var rotation: Int
+    /// Capture-card fix for a wrongly flagged signal (since 0.28.0).
+    public var range: RangeFix
+    /// Blend the two fields of an interlaced signal (1080i) to remove combing (since 0.28.0).
+    public var deinterlace: Bool
 
-    public init(brightness: Double = 0, contrast: Double = 1, saturation: Double = 1, gamma: Double = 1,
-                flipHorizontal: Bool = false, flipVertical: Bool = false, rotation: Int = 0) {
-        self.brightness = brightness; self.contrast = contrast; self.saturation = saturation; self.gamma = gamma
-        self.flipHorizontal = flipHorizontal; self.flipVertical = flipVertical; self.rotation = rotation
+    /// Video level correction: "limited" (16–235) pictures shown as full range look washed out;
+    /// full range pictures treated as limited look crushed.
+    public enum RangeFix: Int, Codable, Sendable, CaseIterable {
+        case none = 0, limitedToFull = 1, fullToLimited = 2
     }
 
-    private enum CodingKeys: String, CodingKey { case brightness, contrast, saturation, gamma, flipHorizontal, flipVertical, rotation }
+    public init(brightness: Double = 0, contrast: Double = 1, saturation: Double = 1, gamma: Double = 1,
+                flipHorizontal: Bool = false, flipVertical: Bool = false, rotation: Int = 0,
+                range: RangeFix = .none, deinterlace: Bool = false) {
+        self.brightness = brightness; self.contrast = contrast; self.saturation = saturation; self.gamma = gamma
+        self.flipHorizontal = flipHorizontal; self.flipVertical = flipVertical; self.rotation = rotation
+        self.range = range; self.deinterlace = deinterlace
+    }
+
+    /// The same settings with colour correction and orientation reset, keeping the capture fixes.
+    public var resetKeepingSignalFixes: InputAdjust { InputAdjust(range: range, deinterlace: deinterlace) }
+
+    private enum CodingKeys: String, CodingKey {
+        case brightness, contrast, saturation, gamma, flipHorizontal, flipVertical, rotation, range, deinterlace
+    }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.init(brightness: try c.decodeIfPresent(Double.self, forKey: .brightness) ?? 0,
@@ -30,7 +47,9 @@ public struct InputAdjust: Codable, Equatable, Sendable {
                   gamma: try c.decodeIfPresent(Double.self, forKey: .gamma) ?? 1,
                   flipHorizontal: try c.decodeIfPresent(Bool.self, forKey: .flipHorizontal) ?? false,
                   flipVertical: try c.decodeIfPresent(Bool.self, forKey: .flipVertical) ?? false,
-                  rotation: try c.decodeIfPresent(Int.self, forKey: .rotation) ?? 0)
+                  rotation: try c.decodeIfPresent(Int.self, forKey: .rotation) ?? 0,
+                  range: try c.decodeIfPresent(RangeFix.self, forKey: .range) ?? .none,
+                  deinterlace: try c.decodeIfPresent(Bool.self, forKey: .deinterlace) ?? false)
     }
 
     /// Rotation snapped to 0 / 90 / 180 / 270.
@@ -61,7 +80,8 @@ public struct InputAdjust: Codable, Equatable, Sendable {
     public var clamped: InputAdjust {
         InputAdjust(brightness: min(max(brightness, -0.5), 0.5), contrast: min(max(contrast, 0), 2),
                     saturation: min(max(saturation, 0), 2), gamma: min(max(gamma, 0.5), 2),
-                    flipHorizontal: flipHorizontal, flipVertical: flipVertical, rotation: normalizedRotation)
+                    flipHorizontal: flipHorizontal, flipVertical: flipVertical, rotation: normalizedRotation,
+                    range: range, deinterlace: deinterlace)
     }
 
     /// True when the picture is unchanged (the compositor then skips the adjustment pass).
@@ -69,6 +89,7 @@ public struct InputAdjust: Codable, Equatable, Sendable {
         let a = clamped
         return abs(a.brightness) < 1e-4 && abs(a.contrast - 1) < 1e-4 && abs(a.saturation - 1) < 1e-4
             && abs(a.gamma - 1) < 1e-4 && !flipHorizontal && !flipVertical && a.rotation == 0
+            && range == .none && !deinterlace
     }
 
     public var hasColorChange: Bool {
@@ -77,16 +98,27 @@ public struct InputAdjust: Codable, Equatable, Sendable {
     }
 
     /// The colour math of the GPU pass (`adjust_fragment`), on straight (unpremultiplied) 0...1
-    /// values: gamma, then contrast around 0.5 plus brightness, then saturation around Rec. 709 luma.
+    /// values: level range fix, gamma, then contrast around 0.5 plus brightness, then saturation
+    /// around Rec. 709 luma.
     public func apply(r: Double, g: Double, b: Double) -> (r: Double, g: Double, b: Double) {
         let a = clamped
+        func lv(_ v: Double) -> Double { Self.levels(v, a.range) }
         func gam(_ v: Double) -> Double { Self.pow(max(v, 0), 1 / a.gamma) }
-        var c = (gam(r), gam(g), gam(b))
+        var c = (gam(lv(r)), gam(lv(g)), gam(lv(b)))
         func con(_ v: Double) -> Double { (v - 0.5) * a.contrast + 0.5 + a.brightness }
         c = (con(c.0), con(c.1), con(c.2))
         let luma = 0.2126 * c.0 + 0.7152 * c.1 + 0.0722 * c.2
         func sat(_ v: Double) -> Double { min(max(luma + (v - luma) * a.saturation, 0), 1) }
         return (sat(c.0), sat(c.1), sat(c.2))
+    }
+
+    /// 16–235 ↔ 0–255 level mapping (same formula as the shader).
+    public static func levels(_ v: Double, _ fix: RangeFix) -> Double {
+        switch fix {
+        case .none: return v
+        case .limitedToFull: return min(max((v - 16.0 / 255) * (255.0 / 219), 0), 1)
+        case .fullToLimited: return v * (219.0 / 255) + 16.0 / 255
+        }
     }
 
     /// pow without Foundation (exp/log series are not needed: x^y = e^(y ln x)).

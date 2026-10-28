@@ -51,6 +51,14 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AB. Tes manual build 0.28.0
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-112 | Format perangkat | Edit input capture card › Lanjutan › Format video perangkat: pilih YUY2 (uncompressed), lalu MJPEG | Info Sinyal menampilkan format yang dipilih; gambar tetap tampil; dengan MJPEG resolusi/fps tinggi tersedia |
+| T-113 | Rentang & deinterlace | Sumber HDMI dengan hitam pucat: pilih Limited → full; sumber 1080i: nyalakan Deinterlace | Hitam menjadi hitam; garis sisir hilang saat gerakan; reset koreksi warna tidak menghapus pilihan ini |
+| T-114 | Buffer frame | Nyalakan Buffer frame, lihat gerakan cepat | Gerakan lebih mulus; latensi naik sedikit; mati → seperti sebelumnya |
+| T-115 | Info sinyal & mulai ulang | Buka pengaturan input capture card yang sedang jalan; tekan Mulai ulang perangkat | fps terukur mendekati fps sumber; frame terbuang bertambah hanya saat beban berat; gambar kembali dalam beberapa detik |
+
 ## AA. Tes manual build 0.27.0
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|
