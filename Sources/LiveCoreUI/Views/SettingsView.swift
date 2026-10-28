@@ -22,21 +22,43 @@ struct SettingsView: View {
 
     init(initialTab: Int = 0) { self.initialTab = initialTab }
 
+    static var sections: [(tag: Int, title: String, icon: String)] {
+        [(6, L10n.t("canvas.title"), "rectangle.dashed"), (0, L10n.t("settings.output"), "display"),
+         (1, L10n.t("stream.title"), "dot.radiowaves.left.and.right"), (2, L10n.t("record.title"), "record.circle"),
+         (8, "ISOCorder", "square.grid.2x2"), (3, L10n.t("audio.title"), "speaker.wave.2"),
+         (4, L10n.t("settings.shortcuts"), "keyboard"), (5, "MIDI", "pianokeys"), (7, "Remote", "iphone"),
+         (9, L10n.t("preflight.button"), "checklist")]
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            TabView(selection: $tab) {
-                canvasTab.tabItem { Text(L10n.t("canvas.title")) }.tag(6)
-                outputTab.tabItem { Text(L10n.t("settings.output")) }.tag(0)
-                streamTab.tabItem { Text(L10n.t("stream.title")) }.tag(1)
-                recordTab.tabItem { Text(L10n.t("record.title")) }.tag(2)
-                multiCorderTab.tabItem { Text("ISOCorder") }.tag(8)
-                audioTab.tabItem { Text(L10n.t("audio.title")) }.tag(3)
-                shortcutTab.tabItem { Text(L10n.t("settings.shortcuts")) }.tag(4)
-                MIDISettingsView().tabItem { Text("MIDI") }.tag(5)
-                RemoteSettingsView().tabItem { Text("Remote") }.tag(7)
-                PreflightSheet(embedded: true).tabItem { Text(L10n.t("preflight.button")) }.tag(9)
+            // OBS-style list on the left: full names, never cut off like tabs were.
+            HStack(spacing: 0) {
+                List(selection: Binding(get: { tab }, set: { if let t = $0 { tab = t } })) {
+                    ForEach(Self.sections, id: \.tag) { s in
+                        Label(s.title, systemImage: s.icon).tag(s.tag)
+                    }
+                }
+                .listStyle(.sidebar)
+                .frame(width: 170)
+                Divider()
+                Group {
+                    switch tab {
+                    case 6: canvasTab
+                    case 1: streamTab
+                    case 2: recordTab
+                    case 8: multiCorderTab
+                    case 3: audioTab
+                    case 4: shortcutTab
+                    case 5: MIDISettingsView()
+                    case 7: RemoteSettingsView()
+                    case 9: PreflightSheet(embedded: true)
+                    default: outputTab
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            .padding()
             if !errors.isEmpty {
                 VStack(alignment: .leading) { ForEach(errors, id: \.self) { Text($0).foregroundStyle(Theme.warning) } }
                     .padding(.horizontal)
@@ -48,7 +70,7 @@ struct SettingsView: View {
             }
             .padding()
         }
-        .frame(width: 680, height: 600)
+        .frame(width: 820, height: 600)
         .onAppear {
             draft = model.settings
             loadCanvas()
