@@ -6,7 +6,7 @@ import LiveCoreEngine
 struct MainView: View {
     @EnvironmentObject var model: AppModel
     @State private var showSettings = false
-    @State private var settingsTab = 0
+    @State private var settingsTab = 6   // Canvas, the first tab
     // Docked panels that are minimized to a slim bar (remembered between launches).
     @AppStorage("dock.inputs.minimized") private var inputsMin = false
     @AppStorage("dock.mixer.minimized") private var mixerMin = false
@@ -89,7 +89,7 @@ struct MainView: View {
         .background(Theme.background)
         .foregroundStyle(Theme.text)
         .sheet(isPresented: $showSettings) { SettingsView(initialTab: settingsTab).environmentObject(model) }
-        .onChange(of: showSettings) { shown in if !shown { settingsTab = 0 } }
+        .onChange(of: showSettings) { shown in if !shown { settingsTab = 6 } }
         .background(KeyboardShortcuts())
         .alert(model.pendingStop == .record ? L10n.t("record.stop_confirm") : L10n.t("stream.stop_confirm"),
                isPresented: Binding(get: { model.pendingStop != nil }, set: { if !$0 { model.pendingStop = nil } }),

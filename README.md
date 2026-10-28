@@ -4,7 +4,11 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: 0.25.0 — Milestone 3 berjalan.** 0.25.0 menambah Layer Designer di monitor Preview (geser/ubah ukuran
+> **Status: 0.26.0 — Milestone 3 berjalan.** 0.26.0: edit di Layer Designer kini berupa draft yang hanya tampil di Preview
+> sampai Terapkan / tutup / CUT / AUTO / T-bar, geser & ubah ukuran layer lebih halus, label FULLSCREEN satu baris, kamera
+> dan capture yang sudah dipakai tidak bisa ditambahkan dua kali, tombol Repeat/Shuffle playlist menyala saat aktif (video
+> playlist juga bisa diacak), T-bar baru bergaya tuas broadcast, dan Settings › Canvas (Horizontal 16:9, Portrait 9:16,
+> Custom) dengan monitor yang mengikuti bentuk canvas — menunggu tes T-101..T-106. 0.25.0 menambah Layer Designer di monitor Preview (geser/ubah ukuran
 > langsung dengan snapping, crop dengan menarik tepi — Shift untuk simetris —, bingkai, sudut melengkung, sembunyikan/kunci
 > layer, Flatten Layers, dan tata letak tersimpan sebagai template), tombol FULLSCREEN ala vMix di bar atas dengan ⚙ untuk
 > memilih layar dan gambar tiap output (layar ke-2/ke-3), tombol FOTO seukuran RECORD, transisi awal Dissolve, dan dock

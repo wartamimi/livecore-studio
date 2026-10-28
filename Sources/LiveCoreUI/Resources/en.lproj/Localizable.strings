@@ -532,3 +532,38 @@
 "designer.template_delete" = "Delete layout";
 "designer.crop_values" = "Crop: left %.0f%%  top %.0f%%  right %.0f%%  bottom %.0f%%";
 "designer.crop_reset" = "Remove crop";
+
+/* 0.26.0 — Layer Designer draft */
+"designer.draft" = "DRAFT";
+"designer.draft_help" = "Changes are shown on Preview only. Program changes when you press Apply, close the designer, CUT / AUTO / T-bar, or select another input.";
+"designer.revert" = "Undo the changes that have not been applied yet";
+"designer.apply" = "Apply";
+"designer.apply_help" = "Apply the layer changes (Program shows them if this input is on air)";
+
+/* 0.26.0 — duplicate inputs */
+"inputs.already_used" = "Already used by input %@. One camera / capture can be added only once.";
+"inputs.in_use" = "Already used: %@";
+"inputs.in_use_item" = "%@ — already used (%@)";
+
+/* 0.26.0 — playlist modes */
+"playlist.shuffle" = "Shuffle clips";
+"playlist.mode_on" = "ON";
+"playlist.mode_off" = "OFF";
+
+/* 0.26.0 — T-bar */
+"tbar.help" = "Drag to mix Preview into Program.";
+
+/* 0.26.0 — Canvas */
+"canvas.title" = "Canvas";
+"canvas.orientation" = "Orientation";
+"canvas.horizontal" = "Horizontal 16:9";
+"canvas.portrait" = "Portrait 9:16";
+"canvas.custom" = "Custom";
+"canvas.quality" = "Resolution";
+"canvas.size" = "Size";
+"canvas.quick" = "Quick:";
+"canvas.frame_rate" = "Frame rate";
+"canvas.custom_help" = "Width and height: %d–%d px, rounded to an even number.";
+"canvas.help_horizontal" = "Standard for YouTube, Facebook, Zoom (NDI) and TVs.";
+"canvas.help_portrait" = "For Shorts, Reels, TikTok and phone viewing. Monitors, recording, stream and NDI use 9:16.";
+"canvas.help_custom" = "Any size, e.g. square 1:1 or 4:5 feed posts. Monitors follow the shape.";

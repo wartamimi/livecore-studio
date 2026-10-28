@@ -91,7 +91,14 @@ struct InputPanelView: View {
         Menu {
             Section(L10n.t("inputs.camera")) {
                 if model.videoDevices.isEmpty { Text(L10n.t("inputs.no_cameras")) }
-                ForEach(model.videoDevices) { d in Button(d.name) { model.addCamera(d) } }
+                // One camera = one input: a device already in use is shown but cannot be added again.
+                ForEach(model.videoDevices) { d in
+                    if let used = model.cameraInUse(d.id) {
+                        Button(L10n.f("inputs.in_use_item", d.name, used)) {}.disabled(true)
+                    } else {
+                        Button(d.name) { model.addCamera(d) }
+                    }
+                }
                 Button(L10n.t("capturecard.add_menu")) { showCaptureCard = true }
             }
             Button(L10n.t("scene.new")) { if let id = model.addScene() { editingScene = id } }
@@ -358,11 +365,17 @@ struct CaptureSheet: View {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(w.appName).font(.system(size: 12, weight: .semibold))
                             Text(w.title).font(.system(size: 11)).foregroundStyle(Theme.textDim).lineLimit(1)
+                            if let used = inUse(windowConfig(w)) { usedLabel(used) }
                         }.tag("w\(w.windowID)")
                     }
                 }
                 Section(L10n.t("capture.displays")) {
-                    ForEach(displays, id: \.id) { d in Text(d.name).tag("d\(d.id)") }
+                    ForEach(displays, id: \.id) { d in
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(d.name)
+                            if let used = inUse(displayConfig(d.id)) { usedLabel(used) }
+                        }.tag("d\(d.id)")
+                    }
                 }
             }
             .frame(height: 260)
@@ -382,7 +395,7 @@ struct CaptureSheet: View {
                     if let id = editing { model.updateCapture(id, cfg) } else { model.addCapture(cfg) }
                     dismiss()
                 }
-                .disabled(config == nil)
+                .disabled(config == nil || config.flatMap(inUse) != nil)
                 .keyboardShortcut(.defaultAction)
             }
         }
@@ -399,13 +412,26 @@ struct CaptureSheet: View {
     private var config: ProjectScreenCapture? {
         guard let selection else { return nil }
         if selection.hasPrefix("w"), let id = UInt32(selection.dropFirst()), let w = windows.first(where: { $0.windowID == id }) {
-            return ProjectScreenCapture(target: .window, bundleID: w.bundleID, appName: w.appName, windowTitle: w.title,
-                                        captureAudio: audio, fps: fps, showsCursor: cursor)
+            return windowConfig(w)
         }
-        if selection.hasPrefix("d"), let id = UInt32(selection.dropFirst()) {
-            return ProjectScreenCapture(target: .display, displayID: id, captureAudio: audio, fps: fps, showsCursor: cursor)
-        }
+        if selection.hasPrefix("d"), let id = UInt32(selection.dropFirst()) { return displayConfig(id) }
         return nil
+    }
+
+    private func windowConfig(_ w: WindowCandidate) -> ProjectScreenCapture {
+        ProjectScreenCapture(target: .window, bundleID: w.bundleID, appName: w.appName, windowTitle: w.title,
+                             captureAudio: audio, fps: fps, showsCursor: cursor)
+    }
+
+    private func displayConfig(_ id: UInt32) -> ProjectScreenCapture {
+        ProjectScreenCapture(target: .display, displayID: id, captureAudio: audio, fps: fps, showsCursor: cursor)
+    }
+
+    /// Another input already captures this window / display (the one being edited does not count).
+    private func inUse(_ c: ProjectScreenCapture) -> String? { model.captureInUse(c, except: editing) }
+
+    private func usedLabel(_ used: String) -> some View {
+        Text(L10n.f("inputs.in_use", used)).font(.system(size: 10, weight: .semibold)).foregroundStyle(Theme.warning)
     }
 
     private func load() {

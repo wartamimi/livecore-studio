@@ -532,3 +532,38 @@
 "designer.template_delete" = "Hapus tata letak";
 "designer.crop_values" = "Crop: kiri %.0f%%  atas %.0f%%  kanan %.0f%%  bawah %.0f%%";
 "designer.crop_reset" = "Hapus crop";
+
+/* 0.26.0 — Layer Designer draft */
+"designer.draft" = "DRAFT";
+"designer.draft_help" = "Perubahan hanya tampil di Preview. Program berubah saat Anda menekan Terapkan, menutup designer, CUT / AUTO / T-bar, atau memilih input lain.";
+"designer.revert" = "Batalkan perubahan yang belum diterapkan";
+"designer.apply" = "Terapkan";
+"designer.apply_help" = "Terapkan perubahan layer (Program ikut berubah jika input ini sedang on air)";
+
+/* 0.26.0 — duplicate inputs */
+"inputs.already_used" = "Sudah dipakai oleh input %@. Satu kamera / capture hanya bisa ditambahkan sekali.";
+"inputs.in_use" = "Sudah dipakai: %@";
+"inputs.in_use_item" = "%@ — sudah dipakai (%@)";
+
+/* 0.26.0 — playlist modes */
+"playlist.shuffle" = "Acak klip";
+"playlist.mode_on" = "ON";
+"playlist.mode_off" = "OFF";
+
+/* 0.26.0 — T-bar */
+"tbar.help" = "Geser untuk mencampur Preview ke Program.";
+
+/* 0.26.0 — Canvas */
+"canvas.title" = "Canvas";
+"canvas.orientation" = "Orientasi";
+"canvas.horizontal" = "Horizontal 16:9";
+"canvas.portrait" = "Portrait 9:16";
+"canvas.custom" = "Custom";
+"canvas.quality" = "Resolusi";
+"canvas.size" = "Ukuran";
+"canvas.quick" = "Cepat:";
+"canvas.frame_rate" = "Frame rate";
+"canvas.custom_help" = "Lebar dan tinggi: %d–%d px, dibulatkan ke angka genap.";
+"canvas.help_horizontal" = "Standar untuk YouTube, Facebook, Zoom (NDI) dan TV.";
+"canvas.help_portrait" = "Untuk Shorts, Reels, TikTok dan tampilan HP. Monitor, rekaman, stream dan NDI memakai 9:16.";
+"canvas.help_custom" = "Ukuran bebas, misalnya kotak 1:1 atau 4:5 untuk feed. Monitor mengikuti bentuknya.";

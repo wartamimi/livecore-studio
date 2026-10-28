@@ -80,11 +80,22 @@ public enum FramePlanner {
                             composedThumbnails: Set<InputID> = [],
                             detailInput: InputID? = nil,
                             extraInputs: [InputID] = [],
-                            fullPreview: Bool = false) -> FramePlan {
+                            fullPreview: Bool = false,
+                            previewLayers: [InputID: [Layer]] = [:]) -> FramePlan {
         /// Flattened inputs draw as their one pre-composed picture (see `FlattenPass`).
         func isFlat(_ id: InputID) -> Bool {
             guard let l = layersFor(id), l.count > 1 else { return false }
             return l.first?.flatten == true
+        }
+        /// Preview of an input with a Layer Designer draft: the draft's layers, drawn directly
+        /// (a draft is never flattened, so every edit shows at once).
+        func previewComposition(_ id: InputID?) -> [DrawCommand] {
+            guard let id, let draft = previewLayers[id], layersFor(id) != nil else { return composition(id) }
+            return draft.compactMap { l in
+                guard !l.isHidden, l.source == id || layersFor(l.source) != nil else { return nil }
+                return DrawCommand(source: l.source, rect: l.rect, scaleMode: l.scaleMode, opacity: l.opacity,
+                                   key: l.source == id ? rawKey(id) : key(l.source), style: l.style?.clamped)
+            }
         }
         func rawKey(_ id: InputID) -> ChromaKey? {
             guard let k = keyFor(id), k.enabled else { return nil }
@@ -126,7 +137,7 @@ public enum FramePlanner {
         } else {
             plan.program = composition(snapshot.program)
         }
-        plan.preview = composition(snapshot.preview)
+        plan.preview = previewComposition(snapshot.preview)
         // Overlays waiting on Preview are drawn over the preview picture at full opacity.
         for ch in overlays.sorted(by: { $0.index < $1.index }) where ch.onPreview {
             guard let src = ch.source, layersFor(src) != nil else { continue }

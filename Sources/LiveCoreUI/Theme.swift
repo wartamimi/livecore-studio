@@ -47,12 +47,15 @@ struct SectionHeader: View {
 /// Big console-style button.
 struct StudioButtonStyle: ButtonStyle {
     /// Width shared by the big labelled buttons (RECORD, STREAM, EXTERNAL, FULLSCREEN, PHOTO).
-    static let mainWidth: CGFloat = 132
+    static let mainWidth: CGFloat = 148
     var color: Color = Theme.panelRaised
     var active = false
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13, weight: .bold))
+            // Always one line ("FULLSCREEN" must not wrap); shrinks a little instead.
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
             .foregroundStyle(Theme.text)
             .padding(.vertical, 8).padding(.horizontal, 12)
             .frame(maxWidth: .infinity)

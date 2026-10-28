@@ -8,6 +8,8 @@ import LiveCoreEngine
 /// right on the picture. Drag to move, handles to resize (snapping to the canvas, the centre and
 /// the other layers), Crop mode to cut edges (Shift = both sides), plus border, rounded corners,
 /// hide/show, lock, flatten and saved layouts. The Preview picture underneath is the real GPU result.
+/// Edits are a draft shown on Preview only; Program gets them on Apply, when the designer closes,
+/// or when the input is taken to Program.
 final class LayerDesignerState: ObservableObject {
     enum Mode: String { case position, crop }
 
@@ -20,26 +22,49 @@ final class LayerDesignerState: ObservableObject {
     /// Snap lines shown while dragging (normalized).
     @Published var guidesX: [Double] = []
     @Published var guidesY: [Double] = []
+    /// Changes not on Program yet.
+    @Published private(set) var dirty = false
     var dragStart: (rect: NormRect, crop: LayerStyle.Crop)?
 
     /// Re-reads the layers of the input on Preview (when it changes or the designer opens).
     func load(_ model: AppModel, input id: InputID?) {
         input = id
-        layers = id.map { model.layers(of: $0) } ?? []
+        let draft = id.flatMap { model.draftLayers(of: $0) }
+        dirty = draft != nil
+        layers = draft ?? id.map { model.layers(of: $0) } ?? []
         if !layers.indices.contains(selected) || selected == 0 { selected = max(layers.count - 1, 0) }
     }
 
     func update(_ model: AppModel, _ i: Int, _ change: (inout Layer) -> Void) {
         guard let input, layers.indices.contains(i) else { return }
         change(&layers[i])
-        model.setLayers(layers, of: input)
+        model.setDraftLayers(layers, of: input)
+        if !dirty { dirty = true }
     }
 
     func replaceAll(_ model: AppModel, _ new: [Layer]) {
         guard let input else { return }
-        model.setLayers(new, of: input)
-        layers = model.layers(of: input)
+        model.setDraftLayers(new, of: input)
+        layers = model.draftLayers(of: input) ?? new
+        dirty = true
         if !layers.indices.contains(selected) { selected = max(layers.count - 1, 0) }
+    }
+
+    /// Puts the edits on Program.
+    func apply(_ model: AppModel) {
+        model.commitDraftLayers()
+        dirty = false
+    }
+
+    /// Throws the edits away (back to what is on air).
+    func revert(_ model: AppModel) {
+        model.discardDraftLayers()
+        load(model, input: input)
+    }
+
+    func close(_ model: AppModel) {
+        apply(model)
+        active = false
     }
 
     var selectedLayer: Layer? { layers.indices.contains(selected) ? layers[selected] : nil }
@@ -74,8 +99,13 @@ struct LayerDesignerCanvas: View {
                         .offset(x: canvas.minX, y: canvas.minY + y * canvas.height)
                 }
             }
+            // Drags are measured in this fixed space: a box that moves under the mouse would
+            // otherwise feed its own movement back into the drag and jitter.
+            .coordinateSpace(name: Self.space)
         }
     }
+
+    static let space = "layer-designer"
 
     /// The picture's rectangle inside the monitor (output aspect, centred).
     private func fitted(_ size: CGSize) -> CGRect {
@@ -119,7 +149,7 @@ struct LayerDesignerCanvas: View {
     }
 
     private func moveGesture(_ i: Int, _ canvas: CGRect) -> some Gesture {
-        DragGesture(minimumDistance: 2)
+        DragGesture(minimumDistance: 1, coordinateSpace: .named(Self.space))
             .onChanged { g in
                 state.selected = i
                 guard state.layers.indices.contains(i), !state.layers[i].isLocked, !state.layers[i].isHidden else { return }
@@ -151,7 +181,7 @@ struct LayerDesignerCanvas: View {
         .frame(width: 18, height: 18)
         .contentShape(Rectangle())
         .offset(x: a.x * f.width - 9, y: a.y * f.height - 9)
-        .gesture(DragGesture(minimumDistance: 0)
+        .gesture(DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.space))
             .onChanged { g in
                 guard state.layers.indices.contains(i) else { return }
                 if state.dragStart == nil { state.dragStart = (state.layers[i].rect, state.layers[i].style?.crop ?? .none) }
@@ -233,7 +263,19 @@ struct LayerDesignerBar: View {
             .disabled(state.layers.count < 2)
             templateMenu
             Spacer(minLength: 0)
-            Button { state.active = false } label: { Image(systemName: "xmark.circle.fill") }
+            if state.dirty {
+                Text(L10n.t("designer.draft")).font(.system(size: 9, weight: .heavy))
+                    .padding(.horizontal, 4).padding(.vertical, 1)
+                    .background(Theme.warning.opacity(0.85)).foregroundStyle(Color.black)
+                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .help(L10n.t("designer.draft_help"))
+                Button { state.revert(model) } label: { Image(systemName: "arrow.uturn.backward") }
+                    .buttonStyle(.borderless).help(L10n.t("designer.revert"))
+                Button(L10n.t("designer.apply")) { state.apply(model) }
+                    .font(.system(size: 10, weight: .bold))
+                    .help(L10n.t("designer.apply_help"))
+            }
+            Button { state.close(model) } label: { Image(systemName: "xmark.circle.fill") }
                 .buttonStyle(.borderless).help(L10n.t("designer.close"))
         }
         .font(.system(size: 11))

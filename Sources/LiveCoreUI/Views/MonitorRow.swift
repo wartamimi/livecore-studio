@@ -31,6 +31,7 @@ struct MonitorRow: View {
 }
 
 struct MonitorView: View {
+    @EnvironmentObject var model: AppModel
     let title: String
     let color: Color
     let feed: FrameFeed
@@ -57,7 +58,7 @@ struct MonitorView: View {
             }
             .padding(.horizontal, 8).padding(.vertical, 4)
             PixelBufferView(feed: feed)
-                .aspectRatio(16 / 9, contentMode: .fit)
+                .aspectRatio(model.canvasAspect, contentMode: .fit)   // follows Settings › Canvas
                 .overlay(Rectangle().stroke(color, lineWidth: 2))
                 .overlay(alignment: .top) { if notRecording { NotRecordingBadge().padding(.top, 8) } }
                 .overlay { if let designer { DesignerCanvasIfActive(state: designer) } }
@@ -87,7 +88,7 @@ private struct DesignerToggle: View {
     @EnvironmentObject var model: AppModel
     @ObservedObject var state: LayerDesignerState
     var body: some View {
-        Button { state.active.toggle() } label: {
+        Button { if state.active { state.close(model) } else { state.active = true } } label: {
             Label(L10n.t("designer.button"), systemImage: "square.on.square.dashed")
                 .font(.system(size: 10, weight: .bold))
                 .padding(.horizontal, 6).padding(.vertical, 1)
@@ -163,13 +164,7 @@ struct TransitionControls: View {
                 .buttonStyle(StudioButtonStyle(color: Theme.accent, active: model.switcher.transition != nil))
                 .help("Shortcut: \(model.shortcuts.auto)")
             // Manual T-bar
-            VStack(spacing: 2) {
-                Text("T-BAR").font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.textDim)
-                Slider(value: Binding(get: { model.tbar }, set: { model.setTBar($0) }), in: 0...1)
-            }
-            if let t = model.switcher.transition {
-                ProgressView(value: t.manualPosition ?? 0).opacity(t.manualPosition == nil ? 0 : 1)
-            }
+            TBarControl()
             Divider()
             ReplaySection()
             Spacer(minLength: 0)
