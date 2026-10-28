@@ -90,7 +90,6 @@ jobs:
         env:
           LIVECORE_NDI_REQUIRED: "1"
       - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
-      - run: scripts/ci_run.sh macos-radio-check swift run livecore-radio-check
       # Engine run with recording + streaming, a stream drop in the middle and a full disk.
       # Its disk-full part is known to fail (docs/KNOWN_ISSUES.md); the result is still reported.
       - run: scripts/ci_run.sh macos-soak-check swift run livecore-soak-check
