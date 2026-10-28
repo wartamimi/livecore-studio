@@ -51,6 +51,17 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AT. Tes manual build 0.44.0
+
+| ID | Area | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-215 | Capture USB 3 | Colok capture card USB 3 ke port USB 3 langsung; tambah input, buka Properti › Capture; tutup dan buka app lagi | Format tetap uncompressed (YUY2/NV12) di 1080p, tidak berubah ke MJPEG setelah restart |
+| T-216 | Web responsif | Buka Web Controller di HP Android, iPhone (portrait + landscape), iPad, dan browser desktop | Tidak ada scroll ke samping; tombol, T-bar dan fader bisa dipakai di semua ukuran |
+| T-217 | Gambar web | Lihat monitor Program/Preview di Web Controller lewat Wi-Fi | Gerakan terlihat lancar (±10–15 fps), tanpa tertunda makin lama |
+| T-218 | Fader app | Tarik fader channel dan master pelan-pelan saat audio berbunyi | Fader bergerak mulus mengikuti mouse, tidak lompat; klik dua kali = 0 dB |
+| T-219 | Fader web | Tarik fader di Web Controller, lalu lepas | Tidak lompat balik; fader lain tidak ikut berubah |
+| T-220 | CPU | Activity Monitor: bandingkan CPU LiveCore 0.43 dan 0.44 dengan 4 input + mixer terlihat, lalu jalankan AUTO | CPU 0.44 lebih rendah atau sama; UI tetap responsif saat transisi |
+
 ## AS. Tes manual build 0.43.0
 
 | ID | Area | Langkah | Hasil yang diharapkan |

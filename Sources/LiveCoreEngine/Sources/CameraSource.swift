@@ -53,7 +53,10 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
         configLock.withLock { _config = c }
         queue.async { [weak self] in
             guard let self, let device = AVCaptureDevice(uniqueID: self.deviceUniqueID) else { return }
-            self.selectFormat(device, config: c)
+            if (try? device.lockForConfiguration()) != nil {
+                self.selectFormat(device, config: c)
+                device.unlockForConfiguration()
+            }
             self.applyMirror(c.mirror)
             self.output.alwaysDiscardsLateVideoFrames = c.bufferFrames != true
         }
@@ -154,10 +157,19 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
         }
         session.commitConfiguration()
         let cfg = config
-        selectFormat(device, config: cfg)
+        // The format is set with the device locked and the lock is held across startRunning:
+        // otherwise the session preset can replace it with its own choice on start (seen as a
+        // USB 3 card opening in a compressed, USB 2 class mode after a restart).
+        let locked: Bool
+        do { try device.lockForConfiguration(); locked = true } catch {
+            Log.devices.error("lockForConfiguration failed: \(error.localizedDescription, privacy: .public)")
+            locked = false
+        }
+        if locked { selectFormat(device, config: cfg) }
         applyMirror(cfg.mirror)
         installObservers(device)
         session.startRunning()
+        if locked { device.unlockForConfiguration() }
         if !session.isRunning { setStatus(.error("Capture session failed to start")) }
     }
 
@@ -168,6 +180,7 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
     /// (e.g. 29.97 vs 30, or legacy DAL plug-ins that reject any explicit duration). Durations are
     /// therefore taken from the range itself, and every setter runs inside an Objective-C
     /// exception guard: if the driver refuses, the device keeps its own default and is still used.
+    /// The caller holds the device's configuration lock.
     private func selectFormat(_ device: AVCaptureDevice, config: CaptureConfig) {
         let fps = config.frameRate ?? Double(target.frameRate)
         let formats = device.formats
@@ -182,8 +195,6 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
         }
         let best = (format: formats[index], range: Self.matchingRange(formats[index].videoSupportedFrameRateRanges, fps: fps))
         do {
-            try device.lockForConfiguration()
-            defer { device.unlockForConfiguration() }
             if let err = lc_catch_objc_exception({ device.activeFormat = best.format }) {
                 Log.devices.error("camera \(self.name, privacy: .public): activeFormat rejected: \(err, privacy: .public)")
             } else if let range = best.range {
@@ -195,8 +206,6 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
                     Log.devices.error("camera \(self.name, privacy: .public): frame duration rejected, keeping driver default: \(err, privacy: .public)")
                 }
             }
-        } catch {
-            Log.devices.error("lockForConfiguration failed: \(error.localizedDescription, privacy: .public)")
         }
         var desc = "default", codec = ""
         _ = lc_catch_objc_exception {

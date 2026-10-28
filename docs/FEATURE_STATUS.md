@@ -161,6 +161,18 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.44.0
+Kelancaran dan capture card. Verifikasi: L = unit test Linux, M = kompilasi CI macOS.
+Belum ada yang dites di Mac (TEST_PLAN bagian AT).
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Capture card: mode uncompressed (kelas USB 3) dipilih lebih dulu | Partial | L, M | Tanpa codec yang dipilih manual, YUY2/NV12 menang atas MJPEG/H.264 pada ukuran dan fps yang sama. Format dipasang dengan perangkat terkunci sampai sesi capture berjalan, supaya tidak diganti preset saat start. Kecepatan port USB fisik tidak bisa dibaca aplikasi. |
+| Web Controller responsif | Partial | L (sintaks JS) | Breakpoint untuk HP kecil, HP landscape, tablet portrait, tablet landscape, dan desktop (3 kolom). Belum dicoba di perangkat sungguhan. |
+| Gambar Program/Preview di Web Controller lebih lancar | Partial | M | Hingga ±15 fps per monitor (sebelumnya ±3); request berikutnya menunggu gambar selesai, jadi jaringan lambat menurunkan fps, tidak menumpuk. Masih JPEG, bukan video, dan ada jeda jaringan. |
+| Fader audio mulus | Partial | M | App: geser relatif (tidak lompat ke posisi kursor) dan meter tidak lagi menggambar ulang strip. Web: bug nilai fader tertimpa strip lain diperbaiki; nilai lama dari server diabaikan sebentar. |
+| CPU UI lebih rendah | Partial | M | Meter 30 Hz hanya menggambar ulang meter; update switcher selama transisi dibatasi 30/detik. Belum diukur di Mac. |
+
 ## Fitur 0.43.0
 AI di Mac, kamera iPhone, paket klien, UI responsif. Verifikasi: L = unit test Linux, M = kompilasi CI macOS.
 Belum ada yang dites di Mac (TEST_PLAN bagian AS).

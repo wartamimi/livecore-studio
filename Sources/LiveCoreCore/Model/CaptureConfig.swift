@@ -46,6 +46,12 @@ public enum CaptureCodec {
         }
     }
 
+    /// True for formats the device compresses (MJPEG, H.264, HEVC), the modes a USB 2 link
+    /// falls back to; uncompressed formats need a USB 3 (or faster) link.
+    public static func isCompressed(_ fourCC: String) -> Bool {
+        ["dmb1", "jpeg", "mjpa", "mjpb", "MJPG", "avc1", "H264", "hvc1", "hev1"].contains(fourCC)
+    }
+
     /// FourCC of a CoreMedia media subtype (e.g. 0x79757673 → "yuvs").
     public static func fourCC(_ code: UInt32) -> String {
         let bytes = [UInt8(code >> 24 & 0xff), UInt8(code >> 16 & 0xff), UInt8(code >> 8 & 0xff), UInt8(code & 0xff)]
@@ -96,8 +102,14 @@ public enum CaptureFormatPicker {
             let withCodec = list.filter { formats[$0].codec == c }
             return withCodec.isEmpty ? list : withCodec
         }
+        // Without a chosen codec, uncompressed (USB 3 class) modes come first; compressed
+        // modes are only used when no uncompressed mode delivers the size and frame rate.
+        func preferUncompressed(_ list: [Int]) -> [Int] {
+            guard config.codec?.isEmpty ?? true else { return list }
+            return list.filter { !CaptureCodec.isCompressed(formats[$0].codec) } + list.filter { CaptureCodec.isCompressed(formats[$0].codec) }
+        }
         if let w = config.width, let h = config.height {
-            let same = preferCodec(formats.indices.filter { formats[$0].width == w && formats[$0].height == h })
+            let same = preferUncompressed(preferCodec(formats.indices.filter { formats[$0].width == w && formats[$0].height == h }))
             if let i = same.first(where: { formats[$0].supports(fps) }) ?? same.first { return i }
         }
         let pool = preferCodec(Array(formats.indices))
@@ -110,6 +122,7 @@ public enum CaptureFormatPicker {
             let px = Double(f.width * f.height)
             var score = px >= want ? px - want : (want - px) * 4
             if !f.supports(fps) { score += 1e12 }
+            if (config.codec?.isEmpty ?? true) && CaptureCodec.isCompressed(f.codec) { score += 0.5 }
             if score < bestScore { bestScore = score; best = i }
         }
         return best

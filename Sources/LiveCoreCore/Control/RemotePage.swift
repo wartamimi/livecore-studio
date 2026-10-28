@@ -139,11 +139,11 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 .fz{display:flex;gap:6px;height:190px}
 .meter{position:relative;width:5px;border-radius:2px;overflow:hidden;
  background:linear-gradient(0deg,#16c35f 0,#16c35f 66%,#e5c41a 83%,#ff3b45 100%)}
-.meter i{position:absolute;left:0;right:0;top:0;background:#0b0c0f;transition:height .08s linear}
+.meter i{position:absolute;left:0;right:0;top:0;height:100%;background:#0b0c0f;transform-origin:top;will-change:transform}
 .fader{position:relative;width:34px;touch-action:none;cursor:grab}
 .fader::before{content:"";position:absolute;left:50%;top:12px;bottom:12px;width:4px;margin-left:-2px;border-radius:2px;background:#050607;
  box-shadow:inset 0 1px 2px #000,0 0 0 1px #262a31}
-.fader .cap{position:absolute;left:1px;right:1px;height:24px;margin-top:-12px;border-radius:5px;
+.fader .cap{position:absolute;left:1px;right:1px;top:0;height:24px;border-radius:5px;will-change:transform;
  background:linear-gradient(180deg,#474c55,#2b2f36 48%,#d9dde2 50%,#2b2f36 52%,#202328);
  box-shadow:0 4px 8px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.2)}
 .strip .key{min-height:30px;width:100%;font:800 10px/1 -apple-system,sans-serif;letter-spacing:.08em}
@@ -184,6 +184,49 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
  .tbar .pct{width:auto;text-align:center}
  .fz{height:220px}
 }
+
+/* Small phones (narrow Android / iPhone SE / mini) */
+@media (max-width:420px){
+ body{padding-left:8px;padding-right:8px}
+ .mod{padding:10px;border-radius:12px}
+ .monitors{gap:6px}
+ .busrow{grid-template-columns:30px 1fr}
+ .keys{grid-template-columns:repeat(auto-fill,minmax(58px,1fr));gap:8px 6px}
+ .key{min-height:46px}
+ .key .num{font-size:16px}
+ .go .key{min-height:58px;font-size:17px}
+ .grp{grid-template-columns:repeat(2,1fr)}
+ .strip{width:60px}
+ .fz{height:170px}
+}
+/* Very small phones: Program above Preview, full width */
+@media (max-width:340px){ .monitors{grid-template-columns:1fr} }
+/* Phones in landscape: short screen, wide surface */
+@media (orientation:landscape) and (max-height:500px){
+ body{padding-top:calc(4px + env(safe-area-inset-top));padding-left:calc(10px + env(safe-area-inset-left));padding-right:calc(10px + env(safe-area-inset-right))}
+ .deck{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);grid-template-areas:"mon trans" "bus bus" "keys out" "audio audio"}
+ .a-mon{grid-area:mon}.a-bus{grid-area:bus}.a-trans{grid-area:trans}.a-keys{grid-area:keys}.a-out{grid-area:out}.a-audio{grid-area:audio}
+ .go .key{min-height:50px}
+ .slot{height:52px}
+ .fz{height:150px}
+}
+/* Tablets in portrait (iPad, Android tablets) */
+@media (min-width:600px) and (max-width:899px) and (min-height:501px){
+ .deck{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"mon mon" "bus bus" "trans keys" "out out" "audio audio"}
+ .a-mon{grid-area:mon}.a-bus{grid-area:bus}.a-trans{grid-area:trans}.a-keys{grid-area:keys}.a-out{grid-area:out}.a-audio{grid-area:audio}
+ .keys{grid-template-columns:repeat(auto-fill,minmax(80px,1fr))}
+ .fz{height:210px}
+}
+/* Desktop browsers: three columns, centred, Program/Preview kept large */
+@media (min-width:1280px){
+ .bar,.deck,.foot{max-width:1680px;margin-left:auto;margin-right:auto}
+ .deck{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr) minmax(300px,.8fr);
+  grid-template-areas:"mon mon trans" "bus bus keys" "audio audio out"}
+ .keys{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))}
+ .fz{height:240px}
+}
+@media (hover:hover){ .key:hover:not(:disabled){filter:brightness(1.12)} }
+@media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
 </style>
 </head>
 <body>
@@ -301,16 +344,24 @@ async function poll(){
   catch(e){if(++failures>3)$("conn").className="led bad"}
 }
 
-/* Pictures: alternate Program / Preview, about 3 per second each, only while visible */
-let frameTimer=null, frameBus=0;
+/* Pictures: Program and Preview each fetched in their own loop (up to ~15 per second), the
+   next request only after the last picture is decoded, so a slow network lowers the rate
+   instead of piling up requests. Paused while the page is hidden. */
+let frameTimer=null;
 const urls={};
-function startFrames(){stopFrames();frameTimer=setInterval(frame,170)}
-function stopFrames(){clearInterval(frameTimer);frameTimer=null}
-async function frame(){
-  if(!st||!st.frames||document.hidden)return;
-  const bus=(frameBus^=1)?"program":"preview", img=$(bus==="program"?"imgPgm":"imgPvw");
-  try{const r=await api("/api/frame?bus="+bus);if(r.status!==200)return;
-    const u=URL.createObjectURL(await r.blob());img.onload=()=>{img.classList.add("ready");if(urls[bus])URL.revokeObjectURL(urls[bus]);urls[bus]=u};img.src=u}catch(e){}
+function startFrames(){stopFrames();const gen=frameTimer={};frameLoop("program",gen);frameLoop("preview",gen)}
+function stopFrames(){frameTimer=null}
+async function frameLoop(bus,gen){
+  if(frameTimer!==gen)return;
+  const t0=performance.now();
+  if(st&&st.frames&&!document.hidden){
+    const img=$(bus==="program"?"imgPgm":"imgPvw");
+    try{const r=await api("/api/frame?bus="+bus);
+      if(r.status===200){const u=URL.createObjectURL(await r.blob());img.src=u;
+        try{await img.decode()}catch(e){}
+        img.classList.add("ready");if(urls[bus])URL.revokeObjectURL(urls[bus]);urls[bus]=u}}catch(e){}
+  }
+  setTimeout(()=>frameLoop(bus,gen),Math.max(document.hidden||!st||!st.frames?300:0,66-(performance.now()-t0)));
 }
 
 const name=n=>{const i=st.inputs.find(x=>x.n===n);return i?n+"  "+i.name:"—"};
@@ -390,7 +441,10 @@ $("slot").addEventListener("pointerup",tbEnd);$("slot").addEventListener("pointe
 addEventListener("resize",()=>{if(st)setLever(tb.drag?tb.val:st.tbar)});
 
 /* Audio mixer strips */
-const fz={id:null,val:0,last:0,timer:null};
+const fz={id:null,val:0,last:0,timer:null,y0:0,v0:0};
+/* Last value sent per fader: state polls that still carry an older value are ignored for a
+   moment, so the cap never jumps back while the app catches up. */
+const held={};
 const dbPct=d=>Math.min(1,Math.max(0,(d+60)/60));
 /* Same fader law as the app (FaderLaw): 0.75 = 0 dB, top = +10 dB, 0.25 = -30 dB */
 function faderDB(p){if(p<=0.0001)return"-∞";const d=p>=0.75?(p-0.75)/0.25*10:(p>=0.25?(p-0.75)/0.5*30:-30-(0.25-p)/0.25*60);return(d>0?"+":"")+d.toFixed(1)}
@@ -405,11 +459,19 @@ function buildStrips(){
     if(c.master)mute.style.visibility="hidden";
     mute.onclick=()=>{const on=!mute.classList.contains("on");mute.classList.toggle("on",on);send("/api/audio/mute?id="+encodeURIComponent(c.id)+"&on="+(on?1:0))};
     const pos=e=>{const r=fd.getBoundingClientRect();return Math.min(1,Math.max(0,1-(e.clientY-r.top-12)/(r.height-24)))};
-    const put=v=>{fz.val=v;cap.style.top=(12+(1-v)*(fd.clientHeight-24))+"px";db.textContent=faderDB(v)};
-    const go=()=>{fz.last=Date.now();fz.timer=null;send(c.master?"/api/audio/master?fader="+fz.val.toFixed(3):"/api/audio/fader?id="+encodeURIComponent(c.id)+"&value="+fz.val.toFixed(3))};
-    fd.addEventListener("pointerdown",e=>{e.preventDefault();fz.id=c.id;capture(fd,e);put(pos(e));go();buzz()});
-    fd.addEventListener("pointermove",e=>{if(fz.id!==c.id)return;put(pos(e));if(Date.now()-fz.last>60)go();else if(!fz.timer)fz.timer=setTimeout(go,60)});
-    const end=()=>{if(fz.id!==c.id)return;clearTimeout(fz.timer);go();setTimeout(()=>{if(fz.id===c.id)fz.id=null},400)};
+    // put only draws; the dragged value lives in fz (other strips redraw while one is dragged).
+    let shown=-1;
+    const put=v=>{if(Math.abs(v-shown)<0.0005)return;shown=v;cap.style.transform="translateY("+((1-v)*(fd.clientHeight-24))+"px)";db.textContent=faderDB(v)};
+    const go=()=>{fz.last=Date.now();fz.timer=null;held[c.id]={v:fz.val,t:Date.now()};
+      api(c.master?"/api/audio/master?fader="+fz.val.toFixed(3):"/api/audio/fader?id="+encodeURIComponent(c.id)+"&value="+fz.val.toFixed(3),"POST").catch(()=>{})};
+    fd.addEventListener("pointerdown",e=>{e.preventDefault();fz.id=c.id;capture(fd,e);
+      // Grabbing the cap moves it by the drag distance; a press on the track jumps there first.
+      const capY=fd.getBoundingClientRect().top+12+(1-shown)*(fd.clientHeight-24);
+      fz.y0=e.clientY;fz.v0=Math.abs(e.clientY-capY)<=16?shown:pos(e);fz.val=fz.v0;put(fz.val);go();buzz()});
+    fd.addEventListener("pointermove",e=>{if(fz.id!==c.id)return;
+      fz.val=Math.min(1,Math.max(0,fz.v0-(e.clientY-fz.y0)/Math.max(1,fd.clientHeight-24)));put(fz.val);
+      if(Date.now()-fz.last>50)go();else if(!fz.timer)fz.timer=setTimeout(go,50)});
+    const end=()=>{if(fz.id!==c.id)return;clearTimeout(fz.timer);go();fz.id=null};
     fd.addEventListener("pointerup",end);fd.addEventListener("pointercancel",end);
     s._put=put;s._mute=mute;s._ml=ml.firstChild;s._mr=mr.firstChild;
     s.append(nm,fzw,db,mute);box.appendChild(s)});
@@ -420,8 +482,10 @@ function renderAudio(){
   if(ss!==stripSig){stripSig=ss;buildStrips()}
   const all=[st.master].concat(st.channels);
   [...$("strips").querySelectorAll(".strip")].forEach((s,k)=>{const c=all[k];if(!c)return;
-    if(fz.id!==c.id)s._put(c.fader);s._mute.classList.toggle("on",!!c.muted);
-    s._ml.style.height=(100-dbPct(c.l)*100)+"%";s._mr.style.height=(100-dbPct(c.r)*100)+"%"});
+    const h=held[c.id];
+    if(h&&(Math.abs(h.v-c.fader)<0.01||Date.now()-h.t>1500))delete held[c.id];
+    if(fz.id!==c.id&&!held[c.id])s._put(c.fader);s._mute.classList.toggle("on",!!c.muted);
+    s._ml.style.transform="scaleY("+(1-dbPct(c.l))+")";s._mr.style.transform="scaleY("+(1-dbPct(c.r))+")"});
 }
 
 /* Buttons */

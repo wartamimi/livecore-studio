@@ -38,6 +38,18 @@ final class CaptureFormatTests: XCTestCase {
         XCTAssertEqual(CaptureFormatPicker.pick(formats, config: CaptureConfig(), outputWidth: 1280, outputHeight: 720, outputFPS: 60), 2)
     }
 
+    func testUncompressedUSB3ModeIsPreferred() {
+        let card = [
+            CaptureFormatCandidate(width: 1920, height: 1080, frameRateRanges: [60...60], codec: "MJPG"),
+            CaptureFormatCandidate(width: 1920, height: 1080, frameRateRanges: [60...60], codec: "yuvs"),
+            CaptureFormatCandidate(width: 1920, height: 1080, frameRateRanges: [30...30], codec: "420v"),
+        ]
+        XCTAssertEqual(CaptureFormatPicker.pick(card, config: CaptureConfig(), outputWidth: 1920, outputHeight: 1080, outputFPS: 60), 1)
+        XCTAssertEqual(CaptureFormatPicker.pick(card, config: CaptureConfig(width: 1920, height: 1080), outputWidth: 1920, outputHeight: 1080, outputFPS: 60), 1)
+        // An explicit codec still wins.
+        XCTAssertEqual(CaptureFormatPicker.pick(card, config: CaptureConfig(codec: "MJPG"), outputWidth: 1920, outputHeight: 1080, outputFPS: 60), 0)
+    }
+
     func testExplicitFormatWins() {
         let c = CaptureConfig(width: 3840, height: 2160, frameRate: 30)
         XCTAssertEqual(CaptureFormatPicker.pick(formats, config: c, outputWidth: 1920, outputHeight: 1080, outputFPS: 30), 3)

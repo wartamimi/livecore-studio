@@ -190,7 +190,7 @@ public final class AppModel: ObservableObject {
             guard let self, self.viewerInput == id else { return }
             self.viewerFeed.push(pb)
         }
-        e.onSwitcherChange = { [weak self] s in self?.switcher = s; if s.transition == nil { self?.tbar = s.tbarRest } }
+        e.onSwitcherChange = { [weak self] s in self?.receiveSwitcher(s) }
         e.onInputsChange = { [weak self] list in
             guard let self else { return }
             self.inputs = list
@@ -248,6 +248,35 @@ public final class AppModel: ObservableObject {
     // MARK: Ticks (30 Hz meters, 1 Hz performance)
 
     var tickCount = 0
+    // Switcher updates arrive every rendered frame during a transition; the UI takes at most
+    // 30 per second of them (the whole window redraws on each), the last one always delivered.
+    private var lastSwitcherPublish: CFTimeInterval = 0
+    private var pendingSwitcher: SwitcherSnapshot?
+    private var switcherFlushScheduled = false
+
+    func receiveSwitcher(_ s: SwitcherSnapshot) {
+        let now = CACurrentMediaTime()
+        if s.transition != nil, switcher.transition != nil, now - lastSwitcherPublish < 1.0 / 30 {
+            pendingSwitcher = s
+            if !switcherFlushScheduled {
+                switcherFlushScheduled = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0 / 30) { [weak self] in
+                    guard let self else { return }
+                    self.switcherFlushScheduled = false
+                    if let p = self.pendingSwitcher { self.publishSwitcher(p) }
+                }
+            }
+            return
+        }
+        publishSwitcher(s)
+    }
+
+    private func publishSwitcher(_ s: SwitcherSnapshot) {
+        pendingSwitcher = nil
+        lastSwitcherPublish = CACurrentMediaTime()
+        if s != switcher { switcher = s }
+        if s.transition == nil, tbar != s.tbarRest { tbar = s.tbarRest }
+    }
     let watchdog = MainThreadWatchdog()
     var lastRadioErrors: [String: String] = [:]
     var lastDropCounts: (late: UInt64, busy: UInt64, failed: UInt64) = (0, 0, 0)
@@ -258,7 +287,7 @@ public final class AppModel: ObservableObject {
         if tickCount % 3 == 0 { meters.updateLoudness(e.mixer) }
         if tickCount % 30 == 0 { performance = e.samplePerformance(); refreshExternalStatus(); logRenderDrops(e) }
         if remoteServer != nil, tickCount % 3 == 0 { pushRemoteState(clients: tickCount % 30 == 0) }
-        if remoteServer != nil, tickCount % 10 == 0 { pushRemoteFrames() }
+        if remoteServer != nil, tickCount % 2 == 0 { pushRemoteFrames() }
     }
 
     // MARK: Devices
