@@ -51,6 +51,17 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AO. Tes manual build 0.39.0
+Otomatis di CI: unit test parser GT (GTTemplateTests).
+
+| ID | Area | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-190 | Impor GT | + › Title vMix GT (.gtzip) › pilih "Blue news.gtzip" | Input baru "GT – Blue news"; jendela ubah teks terbuka dengan pratinjau dan 6 field |
+| T-191 | Tampilan | Bandingkan Preview dengan tampilan di vMix | Kotak, gradasi, logo, teks di posisi yang sama (beda kecil font/skew dicatat) |
+| T-192 | Animasi | CUT/AUTO title ke Program | Elemen muncul berurutan ±2 detik (Reveal/Expand/Zoom); keluar dari Program lalu masuk lagi memutar ulang |
+| T-193 | Ubah teks | Ubah "Headline 1", Terapkan | Teks baru tampil di Preview/Program; teks panjang mengecil agar muat |
+| T-194 | Proyek | Simpan, tutup, buka proyek | Title GT dan teks yang diubah kembali |
+
 ## AN. Tes manual build 0.38.0
 Otomatis di CI: unit test, dekoder radio (livecore-radio-check), RTMP/SRT e2e, soak 90 dtk.
 

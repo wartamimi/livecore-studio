@@ -161,6 +161,21 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.39.0
+Impor template title vMix GT (.gtzip). Diuji dengan sampel "Blue news.gtzip" dari pengguna: 14 elemen, logo dan
+14 animasi terbaca (uji parser di Linux); gambar hasil render belum dilihat di Mac (TEST_PLAN bagian AO).
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Impor .gtzip (Graphics › Title vMix GT) | Implemented, belum dites | L (5 tes) + M (kompilasi) | Membaca document.xml + resources.xml; layer diratakan dan dipotong sesuai kotak layer |
+| Elemen: Rectangle, Ellipse, TextBlock, Image | Implemented, belum dites | M (kompilasi) | Warna solid, gradasi linear/radial, sudut tumpul, garis tepi, skew, bayangan sederhana |
+| Text3D | Partial | M (kompilasi) | Digambar sebagai teks datar + bayangan; efek 3D/ekstrusi tidak ada |
+| Animasi masuk saat On Air (Reveal, Expand, Zoom, Fade) | Implemented, belum dites | L (perhitungan frame) | Diputar tiap input masuk Program; di Preview tampil versi selesai. Animasi keluar dan jenis lain belum |
+| Ubah teks per field | Implemented, belum dites | M (kompilasi) | Klik kanan input › Ubah teks title GT; tersimpan di proyek (file .gtzip dirujuk, tidak disalin) |
+| Data source GT, Feather/crop gambar, efek lain (Blur, Glow, dll.), font tidak terpasang | Planned / tidak didukung | – | Font yang tidak ada di Mac diganti font sistem; pasang font template dulu |
+
+Lisensi: template bawaan vMix tidak boleh dibagikan bersama LiveCore; impor hanya untuk template milik pengguna.
+
 ## Fitur 0.38.0
 Perbaikan dari laporan pengguna setelah 0.37.0, plus input radio online. Kolom Verifikasi: L = unit test Linux,
 M = dikompilasi/diuji di CI macOS; "belum dites" = belum dicoba pengguna di Mac (TEST_PLAN bagian AN).

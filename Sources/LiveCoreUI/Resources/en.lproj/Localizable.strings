@@ -1040,3 +1040,12 @@
 "radio.error" = "Radio \"%@\" stopped: %@";
 "radio.play" = "Play the station";
 "radio.stop" = "Stop the station";
+
+/* 0.39.0: vMix GT title import */
+"gt.add" = "vMix GT title (.gtzip)…";
+"gt.edit" = "Edit GT title texts…";
+"gt.edit_title" = "vMix GT title";
+"gt.note" = "Boxes, gradients, skew, texts, pictures and the Reveal / Expand / Zoom in-animations are drawn. 3D text is drawn flat; fonts that are not installed on this Mac fall back to the system font.";
+"gt.missing" = "This GT title is no longer available.";
+"gt.empty" = "This .gtzip has no elements LiveCore can draw.";
+"gt.failed" = "Could not import the GT title: %@";

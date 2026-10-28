@@ -1040,3 +1040,12 @@
 "radio.error" = "Radio \"%@\" berhenti: %@";
 "radio.play" = "Putar stasiun";
 "radio.stop" = "Hentikan stasiun";
+
+/* 0.39.0: impor title vMix GT */
+"gt.add" = "Title vMix GT (.gtzip)…";
+"gt.edit" = "Ubah teks title GT…";
+"gt.edit_title" = "Title vMix GT";
+"gt.note" = "Kotak, gradasi, kemiringan, teks, gambar dan animasi masuk Reveal / Expand / Zoom digambar. Teks 3D digambar datar; font yang tidak terpasang di Mac ini diganti font sistem.";
+"gt.missing" = "Title GT ini sudah tidak ada.";
+"gt.empty" = "File .gtzip ini tidak berisi elemen yang bisa digambar LiveCore.";
+"gt.failed" = "Gagal mengimpor title GT: %@";

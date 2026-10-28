@@ -4,6 +4,7 @@ import AppKit
 import CoreMedia
 import Foundation
 import LiveCoreCore
+import LiveCoreServices
 
 // MARK: - Project save / load
 
@@ -45,6 +46,8 @@ extension ProductionEngine {
             case let c as ScreenCaptureSource: ps = .screen(c.config)
             case let n as NDISource: ps = .ndi(n.config)
             case let f as FrameSource: ps = .frame(f.design)
+            case let g as GTTitleSource:
+                ps = .gtTitle(ProjectGTTitle(file: ProjectMediaRef(path: g.url.path, relativePath: rel(g.url)), fields: g.fields))
             case let p as PresentationSource:
                 ps = .presentation(ProjectPresentation(file: ProjectMediaRef(path: p.url.path, relativePath: rel(p.url)),
                                                        slide: p.slide, background: p.background, live: p.prefersLive ? true : nil))
@@ -288,6 +291,11 @@ extension ProductionEngine {
             addNDI(n, id: pi.id)
         case let .frame(d):
             addFrame(d, id: pi.id)
+        case let .gtTitle(g):
+            // A missing or broken .gtzip keeps its place as an empty title.
+            let url = mediaURL(g.file.path, g.file.relativePath)
+            addGTTitle(url: url, template: (try? GTReader.template(at: url)) ?? GTTemplate(width: 1920, height: 1080),
+                       fields: g.fields, id: pi.id)
         case let .presentation(p):
             addPresentation(url: mediaURL(p.file.path, p.file.relativePath), slide: p.slide, background: p.background,
                             live: p.live ?? false, id: pi.id)
