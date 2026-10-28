@@ -167,7 +167,7 @@ Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; k
 
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|
-| Perbaikan: sisa ruang disk di drive eksternal/disk image (HFS+, exFAT) | Fixed | M (CI soak check: rekam ke disk image 64 MB sampai penuh) | Sebelumnya bisa terbaca "0 KB free" sehingga rekaman ke drive eksternal menolak mulai |
+| Perbaikan: sisa ruang disk di drive eksternal/disk image (HFS+, exFAT) | Fixed | M (CI soak check: rekam ke disk image 64 MB sampai penuh) | Sebelumnya bisa terbaca "0 KB free" sehingga rekaman ke drive eksternal menolak mulai. Sisa ruang kini dicek tiap detik dengan cadangan 4 dtk tulis, jadi file ditutup rapi sebelum disk penuh |
 | Autosave tiap 30 dtk + tawaran pemulihan setelah crash | Implemented, belum dites | L (3 unit test: crash, keluar normal, tanpa autosave) | Simpanan di `~/Library/Application Support/LiveCore Studio/Autosave`; tidak ada stream key di dalamnya (T-170) |
 | Log file + Ekspor Log & Diagnostik | Implemented, belum dites | L (rotasi, sensor rahasia, isi bundel) | `~/Library/Logs/LiveCore Studio`; zip berisi ringkasan, setelan, proyek, log sistem app, laporan crash. Stream key, Stream ID SRT dan PIN dihapus (T-172) |
 | Undo/redo (⌘Z / ⇧⌘Z) | Implemented, belum dites | L (riwayat + penggabungan geser) + kompilasi CI | Tutup/tambah/ganti nama input, Layer Designer, Title Designer, editor Scene. Bidang teks memakai undo teksnya sendiri (T-171) |

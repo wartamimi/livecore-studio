@@ -71,6 +71,9 @@ public final class SRTStreamingEngine: StreamOutput {
         queue.async {
             self.wantRunning = false
             self.reconnectWork?.cancel()
+            // Our own shutdown closes the caller; mark the stop first so tick() does not report it
+            // as a lost connection.
+            self.setState(.stopping)
             if let c = self.caller, let bye = c.close(now: HostClock.now()) { self.write(bye) }
             // Let the shutdown packet leave before the socket closes.
             self.queue.asyncAfter(deadline: .now() + 0.1) { self.teardown(.idle) }
