@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - run: brew install xcodegen ffmpeg
+      - run: brew install xcodegen ffmpeg srt
       - run: xcodebuild -version && xcodegen --version
       - run: scripts/ci_run.sh macos-swift-build swift build --build-tests
       - run: scripts/ci_run.sh macos-swift-test swift test
