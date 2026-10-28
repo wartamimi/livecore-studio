@@ -627,18 +627,18 @@
 /* MultiCorder (0.32.0) */
 "multicorder.enable" = "Rekam input pilihan ke file masing-masing saat RECORD";
 "multicorder.no_inputs" = "Tambahkan input dulu.";
-"multicorder.help" = "Maksimal %d input. Tiap file ISO berisi input itu saja (ukuran penuh, dengan layer-nya) plus bus audio pilihan, memakai profil MultiCorder, dengan nama sesuai pola profil ditambah \" - ISO <nomor> <nama>\".";
+"multicorder.help" = "Maksimal %d input. Tiap file ISO berisi input itu saja (ukuran penuh, dengan layer-nya) plus bus audio pilihan, memakai profil ISOCorder, dengan nama sesuai pola profil ditambah \" - ISO <nomor> <nama>\".";
 "multicorder.next_time" = "Perubahan berlaku saat rekaman berikutnya dimulai.";
 "multicorder.count" = "%d input";
-"multicorder.full" = "MultiCorder merekam maksimal %d input.";
+"multicorder.full" = "ISOCorder merekam maksimal %d input.";
 
 /* 0.33.0 MultiCorder, recorder profile, input groups */
-"multicorder.stop_confirm" = "Hentikan MultiCorder?";
-"multicorder.stop" = "Hentikan MultiCorder";
+"multicorder.stop_confirm" = "Hentikan ISOCorder?";
+"multicorder.stop" = "Hentikan ISOCorder";
 "multicorder.stop_message" = "Semua file ISO ditutup. Rekaman Program tetap berjalan.";
-"multicorder.choose_first" = "Pilih dulu input untuk MultiCorder (tombol roda gigi di samping MULTICORDER).";
+"multicorder.choose_first" = "Pilih dulu input untuk ISOCorder (tombol roda gigi di samping ISOCORDER).";
 "multicorder.button_help" = "Mulai atau hentikan rekaman ISO input pilihan. Terpisah dari RECORD.";
-"multicorder.settings" = "Input dan status MultiCorder";
+"multicorder.settings" = "Input dan status ISOCorder";
 "multicorder.none" = "Belum ada input";
 "multicorder.ready" = "%d input siap";
 "multicorder.settings_help" = "Profil rekaman sendiri untuk file ISO. Bawaan HEVC 25 Mbps MOV: di-encode hardware, hemat disk. ProRes memberi kualitas terbaik dan beban CPU paling ringan tapi butuh ruang disk besar.";
@@ -675,3 +675,8 @@
 "color.blue" = "Biru";
 "color.purple" = "Ungu";
 "color.pink" = "Merah muda";
+
+/* 0.33.1 ISOCorder name, compact dock */
+"dock.off" = "Mati";
+"dock.on" = "Nyala";
+"multicorder.short" = "%d input";

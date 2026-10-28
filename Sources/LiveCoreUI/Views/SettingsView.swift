@@ -29,7 +29,7 @@ struct SettingsView: View {
                 outputTab.tabItem { Text(L10n.t("settings.output")) }.tag(0)
                 streamTab.tabItem { Text(L10n.t("stream.title")) }.tag(1)
                 recordTab.tabItem { Text(L10n.t("record.title")) }.tag(2)
-                multiCorderTab.tabItem { Text("MultiCorder") }.tag(8)
+                multiCorderTab.tabItem { Text("ISOCorder") }.tag(8)
                 audioTab.tabItem { Text(L10n.t("audio.title")) }.tag(3)
                 shortcutTab.tabItem { Text(L10n.t("settings.shortcuts")) }.tag(4)
                 MIDISettingsView().tabItem { Text("MIDI") }.tag(5)

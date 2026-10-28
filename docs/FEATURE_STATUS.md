@@ -135,7 +135,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 |---|---|---|---|
 | Shortcut keyboard yang bisa diatur | Implemented | M | |
 | Kontrol MIDI dengan Learn (CUT, AUTO, T-bar, preview/cut 1–8, overlay 1–4, stream, rekam, snapshot) | Implemented (0.7.0) | L (parser MIDI 1.0/UMP, pemetaan, 6 unit test) + kompilasi CI | Semua sumber CoreMIDI tersambung otomatis; pemetaan disimpan di Mac (bukan proyek). Belum dites dengan controller (T-35) |
-| MultiCorder: rekaman ISO per input (maks 4) | Implemented (0.32.0), terpisah sejak 0.33.0 | lihat bagian MultiCorder terpisah 0.33.0 | Tombol MULTICORDER sendiri, profil sendiri |
+| MultiCorder: rekaman ISO per input (maks 4) | Implemented (0.32.0), terpisah sejak 0.33.0 | lihat bagian MultiCorder terpisah 0.33.0 | Tombol ISOCORDER sendiri, profil sendiri |
 | Web Controller (remote dari browser HP/tablet di jaringan yang sama) | Implemented (0.30.0) | lihat bagian Web Controller 0.30.0 | PIN, mati secara default |
 | Input tangkap jendela / layar (Zoom, Teams, Meet, slide) | Implemented (0.10.0) | L (pencocokan jendela, 5 unit test) + kompilasi CI | ScreenCaptureKit; audio aplikasi (jendela) atau sistem (layar) ke channel mixer sendiri; audio & jendela LiveCore sendiri dikecualikan; jendela ditemukan lagi lewat aplikasi + judul saat proyek dibuka. Perlu izin Perekaman Layar. Belum dites (T-46) |
 | Input Zoom via Zoom Meeting SDK (peserta terpisah, seperti vMix) | Ditunda (dihapus dari build publik di 0.10.1) | — | Pernah dibuat di 0.11.x dan dikompilasi dengan SDK, lalu ditarik dari repo & rilis publik atas keputusan pemilik; diarsipkan secara privat. Join meeting akun lain gagal (kode 63) sampai aplikasi SDK lolos review Zoom Marketplace. Untuk sekarang pakai input tangkap jendela |
@@ -161,11 +161,17 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Dock bawah 0.33.1
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Nama MultiCorder → ISOCorder | Implemented (0.33.1) | L (label validasi; unit test) | Tombol ISOCORDER, tab Settings › ISOCorder; file proyek & setelan lama tetap terbaca (kunci internal tidak berubah) |
+| Dock menyesuaikan lebar jendela, teks tidak terpotong | Implemented (0.33.1), belum dites di Mac pengguna | kompilasi CI | ≥1660 pt: status 2 baris di samping tombol + chip OUT bernama; ≥1380 pt: status lebih sempit (mengecil sedikit bila panjang), chip "OUT n" saja; lebih sempit: status singkat di dalam tombol. Status lengkap dan sumber OUT di tooltip (T-140) |
+
 ## MultiCorder terpisah & Recorder lanjutan 0.33.0
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|
-| Tombol MULTICORDER sendiri, terpisah dari RECORD | Implemented (0.33.0), belum dites di Mac pengguna | kompilasi CI | Dock: MULTICORDER + ⚙ (pilih input maks 4, status per file); mulai/berhenti tanpa memengaruhi RECORD; berhenti minta konfirmasi; ikut gembok RECORD (T-134) |
-| Profil rekaman MultiCorder sendiri | Implemented (0.33.0), belum dites | L (profil terpisah, validasi, simpan/baca; unit test) | Settings › MultiCorder; bawaan HEVC 25 Mbps MOV; folder, pola nama, codec, bitrate, keyframe, audio, bus sendiri (T-135) |
+| Tombol ISOCORDER sendiri, terpisah dari RECORD | Implemented (0.33.0), belum dites di Mac pengguna | kompilasi CI | Dock: ISOCORDER + ⚙ (pilih input maks 4, status per file); mulai/berhenti tanpa memengaruhi RECORD; berhenti minta konfirmasi; ikut gembok RECORD (T-134) |
+| Profil rekaman MultiCorder sendiri | Implemented (0.33.0), belum dites | L (profil terpisah, validasi, simpan/baca; unit test) | Settings › ISOCorder; bawaan HEVC 25 Mbps MOV; folder, pola nama, codec, bitrate, keyframe, audio, bus sendiri (T-135) |
 | Setelan lanjutan Recorder & MultiCorder | Implemented (0.33.0), belum dites | L (default lama tetap, ProRes/PCM paksa MOV, perkiraan GB/jam; unit test) + CI `livecore-iso-check` merekam H.264, HEVC, ProRes 422 | Codec H.264/HEVC/ProRes 422 Proxy/LT/422/HQ; bitrate 2–150 Mbps; keyframe 0,5–10 s; B-frame; AAC 128–320 kbps atau PCM 24-bit; setelan yang ditolak Mac menggagalkan rekaman dengan pesan, bukan crash (T-136) |
 | Optimasi 4 ISO tanpa drop | Partial (0.33.0) | CI: Program + 4 ISO 1080p30 5 detik per codec, file valid, drop dicetak per file (CI Mac virtual tanpa media engine, angka drop hanya informasi) | Encoder hardware diminta, B-frame mati bawaan, tiap file antrean tulis sendiri, frame tidak menunggu encoder (dibuang & dihitung bila encoder penuh). Tidak bisa dijamin 0 drop di semua Mac; lihat KNOWN_ISSUES 70 (T-137) |
 

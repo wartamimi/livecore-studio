@@ -44,7 +44,7 @@ final class M33Tests: XCTestCase {
         var m = RecordingSettings.multiCorderDefault
         m.bitrateKbps = 999_999
         s.multiCorder = m
-        XCTAssertEqual(s.validationErrors(), ["MultiCorder: video bitrate must be 2–150 Mbps."])
+        XCTAssertEqual(s.validationErrors(), ["ISOCorder: video bitrate must be 2–150 Mbps."])
     }
 
     func testEstimates() {
