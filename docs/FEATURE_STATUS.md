@@ -161,6 +161,32 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.37.0
+Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; kolom Verifikasi menyebut uji otomatis.
+"Belum dites" = belum dicoba di Mac oleh pengguna (lihat TEST_PLAN bagian AM).
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Autosave tiap 30 dtk + tawaran pemulihan setelah crash | Implemented, belum dites | L (3 unit test: crash, keluar normal, tanpa autosave) | Simpanan di `~/Library/Application Support/LiveCore Studio/Autosave`; tidak ada stream key di dalamnya (T-170) |
+| Log file + Ekspor Log & Diagnostik | Implemented, belum dites | L (rotasi, sensor rahasia, isi bundel) | `~/Library/Logs/LiveCore Studio`; zip berisi ringkasan, setelan, proyek, log sistem app, laporan crash. Stream key, Stream ID SRT dan PIN dihapus (T-172) |
+| Undo/redo (⌘Z / ⇧⌘Z) | Implemented, belum dites | L (riwayat + penggabungan geser) + kompilasi CI | Tutup/tambah/ganti nama input, Layer Designer, Title Designer, editor Scene. Bidang teks memakai undo teksnya sendiri (T-171) |
+| Mode Operator / Lanjutan | Implemented, belum dites | kompilasi CI | Operator menyembunyikan CPU/GPU/MEM, pengaturan, ISOCORDER & EXTERNAL (kecuali sedang jalan), capture card, NDI, layar capture, colour bars (T-176) |
+| Panel Outputs | Implemented, belum dites | kompilasi CI | RECORD, STREAM (status per tujuan), ISOCORDER, EXTERNAL (Syphon/NDI), FULLSCREEN di satu panel dengan status (T-177) |
+| Pre-flight check | Implemented, belum dites | L (aturan, 1 unit test) + kompilasi CI | Input, izin kamera/mic, audio 3 dtk (hening/clipping), tujuan stream + uji koneksi TCP ke server RTMP, ruang disk vs lama acara, FPS, panas, baterai (T-173) |
+| Template proyek + layar sambutan | Implemented, belum dites | L (dokumen template konsisten) | Pernikahan, Seminar, Rapat dari kamera & mic yang tersambung (T-174) |
+| Meter LUFS (EBU R128) | Implemented, belum dites | L (nada referensi −23 LUFS ±0,1; gating hening) | Momentary, short-term, integrated di master; reset (T-175) |
+| Ducking musik | Implemented, belum dites | L (attack/hold/release, setelan) | Channel ditandai pemicu (mic) / target (musik); template Pernikahan menyalakannya (T-175) |
+| Sumber data title (CSV, Excel .xlsx, Google Sheets) | Implemented, belum dites | L (CSV RFC 4180, XLSX sheet pertama, tautan Sheets) | Pilih kolom judul/subjudul, pindah baris dari menu, Web Controller atau Companion; tautan dimuat ulang berkala (T-179) |
+| Kontrol kamera PTZ (VISCA over IP / UDP / TCP) | Implemented, belum dites | L (byte VISCA, paket Sony) + kompilasi CI | Panah tahan-untuk-gerak, zoom, home, auto focus, 8 preset (panggil/simpan, nama). Video tetap lewat input kamera/NDI (T-180) |
+| Stream Deck / Companion | Implemented (API), belum dites | L (rute API) | Lewat modul Generic HTTP; panduan di docs/COMPANION.md; perintah baru PTZ & baris data (T-178) |
+| Output SRT (caller, MPEG-TS) | Implemented, belum dites di Mac | L (E2E ke ffmpeg/libsrt: semua frame diterima, termasuk 4% paket hilang yang dikirim ulang) + uji engine di CI macOS | Isi tujuan stream dengan `srt://host:port`; kolom key = Stream ID. Tanpa enkripsi passphrase (T-181) |
+| Uji soak & kegagalan di CI | Implemented | CI macOS (engine asli) | Rekam + stream 90 dtk, server RTMP dimatikan di tengah (stream reconnect, rekaman tidak putus), cek kebocoran memori, SRT dari engine, disk 64 MB penuh (rekaman berhenti sendiri dan file tetap bisa diputar) |
+| ProductionEngine & AppModel dipecah per domain | Implemented | kompilasi CI + semua tes | Tidak ada perubahan perilaku |
+| Label Eksperimental | Implemented | — | PowerPoint Live, RSS teks berjalan, animasi per huruf, edit halaman web |
+| Input SRT, WebRTC/WHIP tamu | Planned | — | Butuh dekoder MPEG-TS + jitter buffer (SRT input) atau stack WebRTC (ICE/DTLS/SRTP/Opus) yang belum ada; tidak dimasukkan agar tidak setengah jadi |
+| NV12 capture / ticker & slideshow di GPU | Planned | — | Optimasi kinerja; ditunda karena butuh pengukuran di Mac Intel pengguna |
+| Developer ID, auto-update Sparkle, HTTPS Web Controller | Blocked | — | Butuh akun Apple Developer pengguna (penandatanganan & notarisasi) |
+
 ## Fitur 0.36.1
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|

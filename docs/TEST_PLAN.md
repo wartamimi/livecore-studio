@@ -51,6 +51,26 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AM. Tes manual build 0.37.0
+Tes yang membutuhkan orang dan perangkat nyata. Tes otomatis (soak 90 dtk, stream putus, disk penuh, SRT) sudah jalan di CI.
+
+| ID | Tes | Langkah | Kriteria lulus |
+|---|---|---|---|
+| T-168 | Soak 2 jam | 2 kamera + mic + title + musik, 1080p30; stream (YouTube unlisted) + rekam 2 jam; catat CPU/MEM tiap 30 mnt | Tidak crash; MEM tidak naik terus (< +200 MB); FPS stabil; drop tidak bertambah terus; file rekaman 2 jam utuh |
+| T-169 | Kegagalan saat live | Saat stream + rekam: cabut kabel LAN/matikan Wi-Fi 20 dtk lalu sambungkan; cabut kamera USB lalu colok lagi | Stream reconnect sendiri; rekaman lokal TIDAK berhenti; kamera kembali tampil (atau pesan jelas); app tidak macet |
+| T-170 | Pemulihan crash | Susun produksi; tunggu 40 dtk; paksa keluar (Activity Monitor › Force Quit); buka lagi | Muncul tawaran "Pulihkan"; setelah Pulihkan susunan kembali; "Mulai Baru" memberi produksi kosong |
+| T-171 | Undo | Tutup input lalu ⌘Z; ganti nama lalu ⌘Z / ⇧⌘Z; di Layer Designer geser layer lalu ⌘Z; di Title Designer ubah warna lalu tombol ↶ | Semua kembali seperti semula; ⌘Z di kolom teks hanya membatalkan ketikan |
+| T-172 | Ekspor diagnostik | Bantuan › Ekspor Log & Diagnostik; buka zip | Ada summary.txt, log, settings.json, project; cari stream key dan PIN di semua file: tidak ditemukan |
+| T-173 | Pre-flight | Tombol PRE-FLIGHT: (a) tanpa tujuan stream, (b) mic dibisukan, (c) internet dicabut, (d) normal | Masalah yang sesuai muncul merah/kuning; kondisi normal "Siap" |
+| T-174 | Template | Buka app tanpa proyek; pilih Pernikahan, lalu File › Baru dari Template › Seminar | Kamera & mic tersambung masuk; title, musik/ducking (Pernikahan), hitung mundur & bingkai (Seminar) ada |
+| T-175 | LUFS & ducking | Putar musik; master LUFS; ducking: mic = pemicu, musik = target; bicara | LUFS short-term bergerak, integrated stabil; musik turun ±15 dB saat bicara dan naik pelan setelah diam |
+| T-176 | Mode Operator | Pilih Operator di top bar | Statistik CPU/GPU/MEM, ⚙, ISOCORDER, EXTERNAL, item set-up di menu + hilang; Lanjutan mengembalikan |
+| T-177 | Panel Outputs | Tombol OUTPUTS saat rekam + stream ke 2 tujuan | Status tiap output benar; tombol nyalakan/matikan bekerja |
+| T-178 | Stream Deck / Companion | Ikuti docs/COMPANION.md: tombol CUT, Preview 1–3, overlay, rekam | Tiap tombol menjalankan perintah; PIN salah ditolak |
+| T-179 | Data title | Title › Sumber Data: (a) CSV, (b) .xlsx, (c) Google Sheets publik; pilih kolom; Baris Berikutnya | Teks title berubah per baris; Sheets yang diedit muncul setelah muat ulang |
+| T-180 | PTZ | Kamera PTZ di jaringan: klik kanan input › Kontrol PTZ; isi IP; panah, zoom, simpan preset 1, pindah, panggil preset 1 | Kamera bergerak, preset kembali ke posisi tersimpan |
+| T-181 | SRT | Tujuan stream `srt://<server>:<port>` (mis. ke OBS/vMix/ffmpeg listener di komputer lain, atau layanan yang menerima SRT) | Video+audio diterima; cabut jaringan sebentar → tersambung lagi |
+
 ## AL. Tes manual build 0.36.1
 | ID | Tes | Langkah | Kriteria lulus |
 |---|---|---|---|
