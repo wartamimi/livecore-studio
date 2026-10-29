@@ -81,3 +81,40 @@ final class Release0461Tests: XCTestCase {
         XCTAssertEqual(CaptureFormatPicker.pick(f, config: CaptureConfig(width: 1920, height: 1080), outputWidth: 1920, outputHeight: 1080, outputFPS: 60), 2)
     }
 }
+
+/// 0.46.2: washed-out capture card detection, live browser styling.
+final class Release0462Tests: XCTestCase {
+    func testLimitedRangePictureIsDetected() {
+        var p = LevelProbe()
+        let frame: [UInt8] = (0..<1296).map { UInt8(16 + ($0 % 220)) }   // 16…235
+        for _ in 0..<LevelProbe.framesNeeded - 1 { p.add(luma: frame) }
+        XCTAssertNil(p.verdict)
+        p.add(luma: frame)
+        XCTAssertEqual(p.verdict, .limitedToFull)
+    }
+
+    func testFullRangeAndDarkPicturesAreLeftAlone() {
+        var full = LevelProbe(), dark = LevelProbe()
+        for _ in 0..<LevelProbe.framesNeeded {
+            full.add(luma: (0..<1296).map { UInt8($0 % 256) })
+            dark.add(luma: (0..<1296).map { UInt8(16 + $0 % 60) })
+        }
+        XCTAssertEqual(full.verdict, InputAdjust.RangeFix.none)
+        XCTAssertEqual(dark.verdict, InputAdjust.RangeFix.none)
+        XCTAssertEqual(LevelProbe.luma(b: 255, g: 255, r: 255), 255)
+    }
+
+    func testFullRangeNV12IsPickedAfterVideoRange() {
+        let f = [CaptureFormatCandidate(width: 1920, height: 1080, frameRateRanges: [30...30], codec: "420f"),
+                 CaptureFormatCandidate(width: 1920, height: 1080, frameRateRanges: [30...30], codec: "420v")]
+        XCTAssertEqual(CaptureFormatPicker.pick(f, config: CaptureConfig(), outputWidth: 1920, outputHeight: 1080, outputFPS: 30), 1)
+    }
+
+    func testStyleCanBeAppliedLive() {
+        var b = ProjectBrowser(url: "https://example.com")
+        b.css = "body{color:red}"
+        XCTAssertTrue(b.liveStyleScript.contains("__livecoreCSS"))
+        b.css = nil
+        XCTAssertTrue(b.liveStyleScript.contains("m.muted = false"), "turning mute off unmutes the open page")
+    }
+}

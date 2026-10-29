@@ -161,6 +161,15 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.46.2
+Verifikasi: L = unit test Linux, M = kompilasi CI macOS, C = diuji di Chromium (Playwright). Belum dites di Mac (TEST_PLAN bagian AX).
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Fullscreen YouTube dan situs lain di input Browser | Implemented | C, M | Tombol fullscreen situs membuat pemutar memenuhi gambar input (bukan layar Mac). Baru: setelah masuk/keluar fullscreen halaman diberi sinyal ubah ukuran supaya video ikut membesar, dan browser mengaku sebagai Safari supaya YouTube menampilkan tombol fullscreen-nya. Belum dicoba di YouTube asli dari Mac. |
+| Edit browser tidak memuat ulang halaman | Implemented | L, M | CSS, video saja dan mute dari jendela Edit sekarang diterapkan ke halaman yang sedang terbuka; halaman hanya dimuat ulang jika alamatnya diganti (atau ukuran / transparan, yang memang membuat ulang tampilan). |
+| Warna capture card UVC keabu-abuan | Implemented | L, M | Penyebab: kartu mengirim video level terbatas (hitam 16, putih 235) yang lalu ditampilkan sebagai level penuh, jadi hitam tampak abu-abu dan putih kusam. Sekarang (1) format NV12 level penuh (420f) tidak lagi dipilih duluan; (2) beberapa detik setelah kartu tampil, LiveCore mengukur level gambar dan, jika jelas terbatas, otomatis menyalakan Adjust › Video levels › Limited → Full (sekali, dengan pemberitahuan; bisa dimatikan di Adjust). Kamera bawaan Mac tidak diubah. |
+
 ## Fitur 0.46.1
 Perbaikan dari laporan uji 0.46.0. Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Belum dites di Mac (TEST_PLAN bagian AW).
 

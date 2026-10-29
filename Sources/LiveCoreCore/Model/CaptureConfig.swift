@@ -32,7 +32,10 @@ public enum CaptureCodec {
     /// Compressed and unknown codecs return 0 (they are ranked elsewhere).
     public static func uncompressedCost(_ fourCC: String) -> Double {
         switch fourCC {
-        case "420v", "420f", "NV12", "I420": return 0
+        case "420v", "NV12", "I420": return 0
+        // Full-range NV12 last among 8-bit 4:2:0: UVC cards usually send limited-range video,
+        // which in a full-range format comes out grey (0.46.2).
+        case "420f": return 0.05
         case "yuvs", "yuv2", "YUY2", "2vuy", "UYVY": return 0.1
         case "x420", "xf20", "v210": return 0.3
         case "BGRA": return 0.2

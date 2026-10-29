@@ -26,6 +26,20 @@ extension ProductionEngine {
         guard let dev = DeviceManager.device(uniqueID: uniqueID) else { onError?("Camera not found"); return nil }
         let id = id ?? InputID(UUID().uuidString)
         let src = CameraSource(id: id, device: dev, target: settings.output, config: config)
+        // Capture cards (not the Mac's own camera): fix a washed-out limited-range picture once,
+        // unless the operator already chose video levels for this input.
+        if dev.deviceType != .builtInWideAngleCamera {
+            src.onLevelsDetected = { [weak self] fix in
+                DispatchQueue.main.async {
+                    guard let self, self.source(id) != nil else { return }
+                    var a = self.adjust(of: id)
+                    guard a.range == .none else { return }
+                    a.range = fix
+                    self.setAdjust(id, a)
+                    self.onError?("\(src.name): the picture was grey (limited video levels). Corrected automatically: Adjust › Video levels › Limited → Full.")
+                }
+            }
+        }
         DeviceManager.requestAccess(.video) { [weak self] ok in
             if !ok { self?.onError?("Camera access denied. Enable it in System Settings › Privacy & Security › Camera.") }
             src.start()
