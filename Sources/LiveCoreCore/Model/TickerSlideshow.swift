@@ -275,11 +275,73 @@ public struct ProjectSlideshow: Codable, Equatable, Sendable {
     public var kenBurns: Bool?
     /// Folder the photos came from; new or removed photos there are picked up while running (since 0.18.0).
     public var folder: ProjectMediaRef?
+    /// Fit, transition and frame (0.45.0; nil = fit + cross-fade, as before).
+    public var look: SlideshowLook?
     public init(images: [ProjectMediaRef], interval: Double = 5, fade: Double = 1, loop: Bool = true,
                 kenBurns: Bool? = nil, folder: ProjectMediaRef? = nil) {
         self.images = images; self.interval = interval; self.fade = fade; self.loop = loop
         self.kenBurns = kenBurns; self.folder = folder
     }
+}
+
+/// How a slideshow places and changes its photos (0.45.0).
+public struct SlideshowLook: Codable, Equatable, Sendable {
+    public enum Fit: String, Codable, Sendable, CaseIterable {
+        /// Whole photo, bars around it.
+        case fit
+        /// Fills the frame, edges cropped.
+        case fill
+        /// Whole photo over a blurred, enlarged copy of itself (no black bars).
+        case blurFill
+    }
+    public enum Transition: String, Codable, Sendable, CaseIterable {
+        case crossfade
+        /// The next photo pushes in from the right.
+        case slide
+        /// The next photo grows slightly while fading in.
+        case zoomFade
+        /// Fades to the background colour, then up into the next photo.
+        case dipToColor
+    }
+    public enum Frame: String, Codable, Sendable, CaseIterable {
+        case none
+        /// White border with a thicker bottom edge, slightly tilted (photo print).
+        case polaroid
+        /// Rounded corners with a soft shadow, inset from the edges.
+        case rounded
+    }
+    public var fit: Fit = .fit
+    public var transition: Transition = .crossfade
+    public var frame: Frame = .none
+    /// "#RRGGBB" background.
+    public var backgroundHex: String = "#000000"
+    public init() {}
+    public init(fit: Fit, transition: Transition, frame: Frame = .none, backgroundHex: String = "#000000") {
+        self.fit = fit; self.transition = transition; self.frame = frame; self.backgroundHex = backgroundHex
+    }
+}
+
+/// Ready-made slideshow set-ups (0.45.0): look plus timing.
+public struct SlideshowTemplate: Equatable, Sendable {
+    public var id: String
+    public var look: SlideshowLook
+    public var interval: Double
+    public var fade: Double
+    public var kenBurns: Bool
+    public var loop: Bool
+
+    public static let all: [SlideshowTemplate] = [
+        .init(id: "wedding", look: .init(fit: .blurFill, transition: .crossfade), interval: 6, fade: 1.5, kenBurns: true, loop: true),
+        .init(id: "photobooth", look: .init(fit: .fit, transition: .slide, frame: .polaroid, backgroundHex: "#1E1B24"),
+              interval: 4, fade: 0.6, kenBurns: false, loop: true),
+        .init(id: "gallery", look: .init(fit: .fit, transition: .zoomFade, frame: .rounded, backgroundHex: "#111317"),
+              interval: 5, fade: 0.8, kenBurns: false, loop: true),
+        .init(id: "fullscreen", look: .init(fit: .fill, transition: .crossfade), interval: 5, fade: 1, kenBurns: true, loop: true),
+        .init(id: "memorial", look: .init(fit: .blurFill, transition: .dipToColor), interval: 8, fade: 2, kenBurns: true, loop: true),
+        .init(id: "party", look: .init(fit: .fill, transition: .slide), interval: 2.5, fade: 0.4, kenBurns: false, loop: true),
+        .init(id: "corporate", look: .init(fit: .fit, transition: .crossfade, frame: .none, backgroundHex: "#0B1A33"),
+              interval: 7, fade: 0.8, kenBurns: false, loop: true),
+    ]
 }
 
 public enum SlideshowMath {

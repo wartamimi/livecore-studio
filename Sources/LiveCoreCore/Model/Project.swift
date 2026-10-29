@@ -603,7 +603,7 @@ public struct ProjectMusic: Codable, Equatable, Sendable {
     public var fadeSeconds: Double?
     /// Repeat One (since 0.27.0; nil = off).
     public var repeatOne: Bool?
-    public init(id: String, name: String, tracks: [ProjectMediaRef], loop: Bool = true, shuffle: Bool = false,
+    public init(id: String, name: String, tracks: [ProjectMediaRef], loop: Bool = false, shuffle: Bool = false,
                 channel: ProjectAudioChannel? = nil, fadeSeconds: Double? = nil) {
         self.id = id; self.name = name; self.tracks = tracks; self.loop = loop; self.shuffle = shuffle; self.channel = channel
         self.fadeSeconds = fadeSeconds

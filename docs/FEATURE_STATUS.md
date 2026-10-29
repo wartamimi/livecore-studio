@@ -161,6 +161,28 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.45.0
+Paket 16 permintaan. Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Belum ada yang dites di Mac (TEST_PLAN bagian AU).
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Template slideshow | Implemented | L, M | 7 template (Pernikahan, Photo booth, Galeri, Layar penuh, Kenangan, Pesta, Korporat): penempatan foto (utuh / penuh / utuh + latar blur), transisi (cross-fade, geser, zoom fade, celup ke latar), bingkai (polaroid, membulat), warna latar. Disimpan di project. |
+| Tombol Program Output di sebelah Settings dihapus | Implemented | M | Jendela Program Output masih bisa dibuka dari menu. |
+| Pre-flight minta konfirmasi | Implemented | M | Tidak lagi jalan otomatis saat tab dibuka. |
+| Bahasa aplikasi | Partial | M | Pilihan bahasa di Settings › Bahasa (berlaku setelah restart). Indonesia dan Inggris lengkap; Melayu, Spanyol, Mandarin hanya layar utama (±100 teks), sisanya Inggris. |
+| Animasi overlay di Preview | Implemented | L, M | Nomor overlay ke Preview memakai animasi masuk/keluar yang sama seperti di Program. |
+| FPS turun tiba-tiba | Partial | M | Render loop menahan App Nap macOS (penyebab umum FPS turun saat jendela di belakang/tertutup); UI menggambar ulang lebih jarang (0.44). Penyebab lain belum terbukti; log penyebab drop tetap ada. |
+| Repeat playlist default mati | Implemented | M | Playlist musik dan playlist video baru tidak mengulang; satu klip video tetap loop. Project lama tetap memakai setelan tersimpan. |
+| Mixer: detail bisa dikecilkan | Implemented | M | Tombol di kepala mixer: kecilkan detail strip (sisa nama, meter, fader, M/S/PGM) dan sembunyikan bus A/B. Panel mixer sendiri tetap bisa diminimize. |
+| Subtitle AI online | Partial | M | Saat "server Apple" diizinkan, server selalu dipakai (sebelumnya model on-device yang belum terunduh dipilih dan gagal terus). Error ditampilkan dengan kode; dicoba ulang dengan jeda. Butuh internet dan izin Speech Recognition. |
+| Jam / countdown lebih lengkap | Implemented | L, M | Mode "sampai jam", jam 12-jam, tanggal, persepuluh detik, warna peringatan, teks saat nol, kedip, overtime; grafis: plat, kapsul, bar aksen, bar progres, cincin progres, 5 font, 4 warna, 6 gaya siap pakai. |
+| Animasi title lebih halus + template | Partial | L, M | Kurva ease-in-out cubic; 5 gerak baru (naik+fade, pop, zoom keluar, geser pendek kiri/kanan); 2 animasi huruf baru; 12 template baru (33 total). Belum setara keyframe vMix GT. |
+| Settings Canvas | Implemented | M | Panduan monitor: area aman, sepertiga, tanda tengah, bingkai potong 9:16 / 4:3 / 1:1 (hanya di monitor). |
+| Settings Output | Implemented | M | Rate control (standar / CBR / VBR), preset encoder (cepat / seimbang / kualitas), keyframe 0,5–10 s, sample rate 44,1/48 kHz. |
+| Bitrate stream terpisah | Implemented | L, M | Settings › Stream › Kualitas: sama dengan Output, sama dengan Rekaman, atau bitrate sendiri. |
+| Web Controller online | Partial | M | Lewat Cloudflare quick tunnel (butuh `brew install cloudflared`), alamat https + QR, dengan konfirmasi; PIN tetap wajib. Alternatif Tailscale. Tanpa akun/server LiveCore. |
+| Settings Audio Mixer | Implemented | M | Limiter (on/off, ceiling, release), volume monitor, tampilan mixer, LUFS dan ducking lengkap di Settings › Audio. |
+
 ## Fitur 0.44.0 (0.44.1: perbaikan crash editor rundown saat segmen dihapus/diganti)
 Kelancaran dan capture card. Verifikasi: L = unit test Linux, M = kompilasi CI macOS.
 Belum ada yang dites di Mac (TEST_PLAN bagian AT).

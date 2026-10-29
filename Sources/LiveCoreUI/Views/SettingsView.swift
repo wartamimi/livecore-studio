@@ -14,6 +14,15 @@ struct SettingsView: View {
     @State private var errors: [String] = []
     @State private var tab = 0
     @State private var canvasMode: OutputFormat.Orientation = .horizontal
+    @AppStorage("guides.safe") private var guideSafe = false
+    @AppStorage("guides.thirds") private var guideThirds = false
+    @AppStorage("guides.center") private var guideCenter = false
+    @AppStorage("guides.crop") private var guideCrop = ""
+    @AppStorage("audio.limiterCeiling") private var limiterCeiling = -1.0
+    @AppStorage("audio.limiterRelease") private var limiterRelease = 80.0
+    @AppStorage("mixer.compact") private var mixerCompact = false
+    @AppStorage(L10n.languageKey) private var appLanguage = ""
+    @AppStorage("mixer.hideAux") private var mixerHideAux = false
     @State private var canvasLines = 1080
     @State private var customWidth = 1920
     @State private var customHeight = 1080
@@ -27,7 +36,7 @@ struct SettingsView: View {
          (1, L10n.t("stream.title"), "dot.radiowaves.left.and.right"), (2, L10n.t("record.title"), "record.circle"),
          (8, "ISOCorder", "square.grid.2x2"), (3, L10n.t("audio.title"), "speaker.wave.2"),
          (4, L10n.t("settings.shortcuts"), "keyboard"), (5, "MIDI", "pianokeys"), (7, "Remote", "iphone"),
-         (9, L10n.t("preflight.button"), "checklist")]
+         (9, L10n.t("preflight.button"), "checklist"), (10, L10n.t("settings.language"), "globe")]
     }
 
     var body: some View {
@@ -53,6 +62,7 @@ struct SettingsView: View {
                     case 5: MIDISettingsView()
                     case 7: RemoteSettingsView()
                     case 9: PreflightSheet(embedded: true)
+                    case 10: languageTab
                     default: outputTab
                     }
                 }
@@ -126,6 +136,18 @@ struct SettingsView: View {
                 }
             }
             .disabled(outputLocked)
+            Section(L10n.t("canvas.guides")) {
+                Toggle(L10n.t("canvas.guide_safe"), isOn: $guideSafe)
+                Toggle(L10n.t("canvas.guide_thirds"), isOn: $guideThirds)
+                Toggle(L10n.t("canvas.guide_center"), isOn: $guideCenter)
+                Picker(L10n.t("canvas.guide_crop"), selection: $guideCrop) {
+                    Text(L10n.t("canvas.guide_none")).tag("")
+                    Text("9:16").tag("9:16")
+                    Text("4:3").tag("4:3")
+                    Text("1:1").tag("1:1")
+                }
+                Text(L10n.t("canvas.guides_help")).font(.caption).foregroundStyle(Theme.textDim)
+            }
             Section {
                 HStack(alignment: .center, spacing: 14) {
                     canvasPreview
@@ -192,10 +214,24 @@ struct SettingsView: View {
                 ForEach([96, 128, 160, 192, 256, 320], id: \.self) { Text("\($0)").tag($0) }
             }
             Picker(L10n.t("settings.keyframe"), selection: $draft.video.keyframeIntervalSeconds) {
-                ForEach([1.0, 2.0, 3.0, 4.0], id: \.self) { Text(String(format: "%.0f", $0)).tag($0) }
+                ForEach([0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 8.0, 10.0], id: \.self) { Text(String(format: $0 < 1 ? "%.1f" : "%.0f", $0)).tag($0) }
             }
             Picker(L10n.t("settings.profile"), selection: $draft.video.profile) {
                 ForEach(H264Profile.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
+            }
+            Picker(L10n.t("output.rate_control"), selection: $draft.video.rateControl) {
+                Text(L10n.t("output.rc_standard")).tag(VideoEncoderSettings.RateControl?.none)
+                Text("CBR").tag(VideoEncoderSettings.RateControl?.some(.cbr))
+                Text("VBR").tag(VideoEncoderSettings.RateControl?.some(.vbr))
+            }
+            .help(L10n.t("output.rate_control_help"))
+            Picker(L10n.t("output.preset"), selection: Binding(get: { draft.video.encoderPreset ?? .balanced },
+                                                               set: { draft.video.encoderPreset = $0 == .balanced ? nil : $0 })) {
+                ForEach(VideoEncoderSettings.EncoderPreset.allCases, id: \.self) { Text(L10n.t("output.preset_\($0.rawValue)")).tag($0) }
+            }
+            Picker(L10n.t("output.sample_rate"), selection: $draft.audio.sampleRate) {
+                Text("44.1 kHz").tag(44100)
+                Text("48 kHz").tag(48000)
             }
             Toggle(L10n.t("settings.hardware"), isOn: $draft.video.preferHardware)
             Text("Streaming and recording use H.264 + AAC-LC \(draft.audio.sampleRate / 1000) kHz stereo. Most platforms recommend a 2 s keyframe interval.")
@@ -206,6 +242,23 @@ struct SettingsView: View {
 
     private var streamTab: some View {
         Form {
+            Section(L10n.t("stream.quality")) {
+                Picker(L10n.t("stream.quality_source"), selection: $draft.stream.qualitySource) {
+                    Text(L10n.t("stream.quality_output")).tag(StreamQualitySource.output)
+                    Text(L10n.t("stream.quality_recording")).tag(StreamQualitySource.recording)
+                    Text(L10n.t("stream.quality_custom")).tag(StreamQualitySource.custom)
+                }
+                if draft.stream.qualitySource == .custom {
+                    Stepper(value: $draft.stream.customVideoKbps, in: 500...50_000, step: 250) {
+                        LabeledContent(L10n.t("settings.video_bitrate"), value: "\(draft.stream.customVideoKbps)")
+                    }
+                    Picker(L10n.t("settings.audio_bitrate"), selection: $draft.stream.customAudioKbps) {
+                        ForEach([96, 128, 160, 192, 256, 320], id: \.self) { Text("\($0)").tag($0) }
+                    }
+                }
+                Text(L10n.f("stream.quality_now", draft.streamVideo.bitrateKbps, draft.streamAudioKbps))
+                    .font(.caption).foregroundStyle(Theme.textDim)
+            }
             Section(L10n.t("stream.primary")) {
                 HStack {
                     Toggle("", isOn: $draft.stream.primaryEnabled).labelsHidden()
@@ -290,6 +343,45 @@ struct SettingsView: View {
                 .font(.caption).foregroundStyle(Theme.textDim)
             Text("Mixer: 48 kHz, 32-bit float, stereo. Input devices at other rates are converted by Core Audio.")
                 .font(.caption).foregroundStyle(Theme.textDim)
+            Section(L10n.t("audio.master_section")) {
+                Toggle(L10n.t("audio.limiter"), isOn: $model.limiterEnabled)
+                LabeledContent(L10n.t("audio.limiter_ceiling")) {
+                    Slider(value: $limiterCeiling, in: -6...0, step: 0.5)
+                    Text(String(format: "%.1f dBFS", limiterCeiling)).monospacedDigit().frame(width: 70)
+                }
+                .disabled(!model.limiterEnabled)
+                LabeledContent(L10n.t("audio.limiter_release")) {
+                    Slider(value: $limiterRelease, in: 20...500, step: 10)
+                    Text("\(Int(limiterRelease)) ms").monospacedDigit().frame(width: 70)
+                }
+                .disabled(!model.limiterEnabled)
+                LabeledContent(L10n.t("audio.monitor")) {
+                    Slider(value: $model.monitorVolume, in: 0...1)
+                    Text("\(Int(model.monitorVolume * 100)) %").monospacedDigit().frame(width: 70)
+                }
+            }
+            .onChange(of: limiterCeiling) { _ in model.applyLimiterSettings() }
+            .onChange(of: limiterRelease) { _ in model.applyLimiterSettings() }
+            Section(L10n.t("audio.mixer_view")) {
+                Toggle(L10n.t("mixer.minimize_details"), isOn: $mixerCompact)
+                Toggle(L10n.t("mixer.hide_aux"), isOn: $mixerHideAux)
+            }
+            Section {
+                LoudnessPanel()
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var languageTab: some View {
+        Form {
+            Picker(L10n.t("settings.language"), selection: $appLanguage) {
+                Text(L10n.t("settings.language_system")).tag("")
+                ForEach(L10n.languages, id: \.code) { Text($0.name).tag($0.code) }
+            }
+            .pickerStyle(.radioGroup)
+            Text(L10n.t("settings.language_restart")).font(.caption).foregroundStyle(Theme.warning)
+            Text(L10n.t("settings.language_partial")).font(.caption).foregroundStyle(Theme.textDim)
         }
         .formStyle(.grouped)
     }

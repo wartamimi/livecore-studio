@@ -172,5 +172,13 @@ extension AppModel {
         monitorDeviceUID = uid
         engine?.mixer.setMonitorDevice(outputDevices.first { $0.uid == uid }?.id)
     }
+
+    /// Limiter ceiling / release from Settings › Audio (stored per Mac, 0.45.0).
+    func applyLimiterSettings() {
+        guard let m = engine?.mixer else { return }
+        let d = UserDefaults.standard
+        m.limiterCeilingDB.value = Float(d.object(forKey: "audio.limiterCeiling") as? Double ?? -1)
+        m.limiterReleaseMs.value = Float(d.object(forKey: "audio.limiterRelease") as? Double ?? 80)
+    }
 }
 #endif

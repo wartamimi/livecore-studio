@@ -51,6 +51,21 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AU. Tes manual build 0.45.0
+
+| ID | Area | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-221 | Slideshow | Tambah slideshow, pilih tiap template | Foto tampil sesuai gaya (latar blur, polaroid, geser, dll.), tersimpan setelah project dibuka ulang |
+| T-222 | Overlay ke Preview | Klik nomor overlay (Preview) pada title dengan animasi geser | Title meluncur masuk di Preview; CUT/AUTO membawanya ke Program |
+| T-223 | Countdown | Buat countdown 2 menit gaya "Cincin", peringatan 60 s, overtime aktif | Cincin berkurang, kuning di 1 menit, setelah nol tampil −00:xx |
+| T-224 | Bitrate stream | Stream › Kualitas = bitrate sendiri 3000 | Statistik stream ±3000 kbps, rekaman tetap memakai bitrate rekaman |
+| T-225 | Subtitle online | Subtitle, izinkan server Apple, bicara Bahasa Indonesia | Teks muncul dalam beberapa detik; bila gagal tampil error dengan kode |
+| T-226 | Remote online | `brew install cloudflared`, Settings › Remote › Mulai akses online, buka alamat lewat data seluler | Halaman controller terbuka, PIN diminta, tombol bekerja |
+| T-227 | Bahasa | Settings › Bahasa = Español, restart | Layar utama dalam bahasa Spanyol, sisanya Inggris |
+| T-228 | FPS | Jalankan 30 menit dengan jendela di belakang app lain | FPS stabil (lihat bar atas), tidak turun tiba-tiba |
+| T-229 | Mixer | Klik tombol kecilkan detail di kepala mixer | Strip menjadi pendek; tombol lagi mengembalikan |
+| T-230 | Pre-flight | Buka Settings › Pre-flight | Tidak jalan sendiri; tombol Jalankan meminta konfirmasi |
+
 ## AT. Tes manual build 0.44.0
 
 | ID | Area | Langkah | Hasil yang diharapkan |

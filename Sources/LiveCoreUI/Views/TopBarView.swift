@@ -56,9 +56,6 @@ struct TopBarView: View {
             Button { openWindow(id: "multiview") } label: { Image(systemName: "square.grid.3x2") }
                 .help(L10n.t("multiview.open"))
                 .buttonStyle(.borderless)
-            Button { openWindow(id: "program-output") } label: { Image(systemName: "rectangle.on.rectangle") }
-                .help("Open Program output window (drag to an external display)")
-                .buttonStyle(.borderless)
             if !model.isOperatorMode {
                 Button { showSettings = true } label: { Image(systemName: "gearshape") }
                     .help(L10n.t("settings.title"))

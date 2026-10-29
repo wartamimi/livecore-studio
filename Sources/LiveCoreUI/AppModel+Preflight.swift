@@ -75,7 +75,7 @@ extension AppModel {
             }
             if !hasKey(account: d.account) { f.destinationsMissingKey.append(d.name) }
         }
-        f.streamVideoKbps = settings.video.bitrateKbps * max(dests.count, 1)
+        f.streamVideoKbps = settings.streamVideo.bitrateKbps * max(dests.count, 1)
         f.streamAudioKbps = settings.audio.bitrateKbps * max(dests.count, 1)
 
         // Recording: Program file plus the ISO files

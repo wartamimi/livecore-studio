@@ -142,6 +142,9 @@ public final class ProductionEngine {
 
     let renderQueue = DispatchQueue(label: "livecore.render", qos: .userInteractive)
     var renderTimer: DispatchSourceTimer?
+    /// Keeps macOS from App-Napping the render loop (timer coalescing caused sudden FPS drops
+    /// when the window was in the background or covered, 0.45.0).
+    var renderActivity: NSObjectProtocol?
     var clockStart: Double = 0
     var lastFrameIndex: Int64 = -1
     let inFlight = Locked(0)
@@ -210,6 +213,7 @@ public final class ProductionEngine {
         stopRecording()
         renderTimer?.cancel()
         renderTimer = nil
+        if let a = renderActivity { ProcessInfo.processInfo.endActivity(a); renderActivity = nil }
         control.read { $0.sources.values.forEach { $0.stop() } }
         musicPlayers.forEach { $0.stop() }
         radios.forEach { $0.stop() }
@@ -220,6 +224,11 @@ public final class ProductionEngine {
 
     func startRenderLoop() {
         renderTimer?.cancel()
+        if renderActivity == nil {
+            renderActivity = ProcessInfo.processInfo.beginActivity(
+                options: [.userInitiated, .latencyCritical, .idleSystemSleepDisabled],
+                reason: "Live video rendering")
+        }
         let fps = Double(settings.output.frameRate)
         clockStart = HostClock.now()
         lastFrameIndex = -1

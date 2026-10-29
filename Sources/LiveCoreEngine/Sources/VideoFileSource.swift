@@ -84,6 +84,8 @@ public final class VideoFileSource: NSObject, VideoSource {
     public init(id: InputID, urls: [URL]) {
         precondition(!urls.isEmpty)
         self.id = id; self.urls = urls
+        // A new playlist does not repeat by default (0.45.0); a single clip still loops.
+        self.loop = urls.count <= 1
         self.name = urls.count > 1 ? "Playlist" : urls[0].deletingPathExtension().lastPathComponent
         output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,

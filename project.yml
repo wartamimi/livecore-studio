@@ -29,10 +29,10 @@ targets:
       properties:
         CFBundleName: LiveCore Studio
         CFBundleDisplayName: LiveCore Studio
-        CFBundleShortVersionString: "0.44.1"
-        CFBundleVersion: "53"
+        CFBundleShortVersionString: "0.45.0"
+        CFBundleVersion: "54"
         CFBundleDevelopmentRegion: en
-        CFBundleLocalizations: [en, id]
+        CFBundleLocalizations: [en, id, ms, es, zh-Hans]
         LSApplicationCategoryType: public.app-category.video
         LSMinimumSystemVersion: "13.0"
         NSCameraUseContinuityCameraDeviceType: true

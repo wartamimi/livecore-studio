@@ -86,12 +86,12 @@ extension ProductionEngine {
         }
         let errs = settings.validationErrors()
         if !errs.isEmpty { throw NSError(domain: "LiveCore", code: 10, userInfo: [NSLocalizedDescriptionKey: errs.joined(separator: "\n")]) }
-        let enc = try H264Encoder(size: settings.output.size, frameRate: settings.output.frameRate, settings: settings.video)
+        let enc = try H264Encoder(size: settings.output.size, frameRate: settings.output.frameRate, settings: settings.streamVideo)
         // One AAC encode per bus in use (destinations on the same bus share it).
         var aacByBus: [OutputBus: AACEncoder] = [:]
         for bus in Set(targets.map(\.audioBus)) {
             aacByBus[bus] = try AACEncoder(sampleRate: Double(settings.audio.sampleRate), channels: settings.audio.channels,
-                                           bitrateKbps: settings.audio.bitrateKbps)
+                                           bitrateKbps: settings.streamAudioKbps)
         }
         aacEncoders = Array(aacByBus.values)
         streamers.values.forEach { $0.stop() }

@@ -26,6 +26,7 @@ extension AppModel {
         UserDefaults.standard.set(on, forKey: Self.remoteEnabledKey)
         remoteServer?.stop()
         remoteServer = nil
+        if !on { remoteTunnel.stop() }
         remoteClients = 0
         remoteError = nil
         remoteEnabled = on

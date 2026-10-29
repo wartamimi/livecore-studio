@@ -63,8 +63,13 @@ public final class H264Encoder {
         set(kVTCompressionPropertyKey_ProfileLevel, profile)
         set(kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse)
         set(kVTCompressionPropertyKey_AverageBitRate, NSNumber(value: bps))
-        // Cap bursts at 1.5x average over 1 s (CBR-like behaviour that RTMP ingest servers expect).
-        set(kVTCompressionPropertyKey_DataRateLimits, [NSNumber(value: Double(bps) * 1.5 / 8), NSNumber(value: 1.0)] as CFArray)
+        // Cap bursts over 1 s (standard 1.5x average; CBR 1.1x, VBR 2x — see VideoEncoderSettings.RateControl).
+        set(kVTCompressionPropertyKey_DataRateLimits, [NSNumber(value: Double(bps) * settings.peakFactor / 8), NSNumber(value: 1.0)] as CFArray)
+        switch settings.encoderPreset ?? .balanced {
+        case .speed: set(kVTCompressionPropertyKey_PrioritizeEncodingSpeedOverQuality, kCFBooleanTrue)
+        case .quality: set(kVTCompressionPropertyKey_Quality, NSNumber(value: 0.9))
+        case .balanced: break
+        }
         set(kVTCompressionPropertyKey_MaxKeyFrameInterval, NSNumber(value: gop))
         set(kVTCompressionPropertyKey_MaxKeyFrameIntervalDuration, NSNumber(value: settings.keyframeIntervalSeconds))
         set(kVTCompressionPropertyKey_ExpectedFrameRate, NSNumber(value: frameRate))

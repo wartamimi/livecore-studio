@@ -775,32 +775,91 @@ struct BrowserSheet: View {
     }
 }
 
-/// Add or edit a clock / countdown / count-up input.
+/// Add or edit a clock / countdown / count-up input, with its look (0.45.0).
 struct TimerSheet: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     let editing: InputID?
     @State private var config = TimerConfig()
+    @State private var style = TimerStyle()
     @State private var minutes = 5
     @State private var seconds = 0
+    @State private var target = Date().addingTimeInterval(3600)
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(L10n.t("timer.title")).font(.headline)
             Picker(L10n.t("timer.mode"), selection: $config.mode) {
                 Text(L10n.t("timer.mode.countdown")).tag(TimerConfig.Mode.countdown)
+                Text(L10n.t("timer.mode.until")).tag(TimerConfig.Mode.untilTime)
                 Text(L10n.t("timer.mode.countup")).tag(TimerConfig.Mode.countUp)
                 Text(L10n.t("timer.mode.clock")).tag(TimerConfig.Mode.clock)
             }
             .pickerStyle(.segmented)
-            if config.mode == .countdown {
-                HStack {
-                    Stepper("\(minutes) min", value: $minutes, in: 0...599)
-                    Stepper("\(seconds) s", value: $seconds, in: 0...59)
+            Form {
+                Section {
+                    if config.mode == .countdown {
+                        HStack {
+                            Stepper("\(minutes) min", value: $minutes, in: 0...599)
+                            Stepper("\(seconds) s", value: $seconds, in: 0...59)
+                        }
+                        HStack(spacing: 6) {
+                            ForEach([1, 3, 5, 10, 15, 30, 60], id: \.self) { m in
+                                Button("\(m)′") { minutes = m; seconds = 0 }.controlSize(.small)
+                            }
+                        }
+                    }
+                    if config.mode == .untilTime {
+                        DatePicker(L10n.t("timer.until"), selection: $target, displayedComponents: .hourAndMinute)
+                        Stepper(L10n.f("timer.progress_window", minutes), value: $minutes, in: 1...600)
+                    }
+                    Toggle(L10n.t("timer.show_seconds"), isOn: $config.showSeconds)
+                    if config.mode != .clock {
+                        Toggle(L10n.t("timer.tenths"), isOn: $style.showTenths).disabled(!config.showSeconds)
+                    }
+                    if config.mode == .clock {
+                        Toggle(L10n.t("timer.12h"), isOn: $style.twelveHour)
+                        Toggle(L10n.t("timer.show_date"), isOn: $style.showDate)
+                    }
+                    TextField(L10n.t("timer.label"), text: $config.label, prompt: Text(L10n.t("timer.label_prompt")))
+                }
+                if config.mode == .countdown || config.mode == .untilTime {
+                    Section(L10n.t("timer.end")) {
+                        Stepper(style.warnSeconds > 0 ? L10n.f("timer.warn", Int(style.warnSeconds)) : L10n.t("timer.warn_off"),
+                                value: $style.warnSeconds, in: 0...600, step: 15)
+                        TextField(L10n.t("timer.finished_text"), text: $style.finishedText, prompt: Text("00:00"))
+                        Toggle(L10n.t("timer.blink"), isOn: $style.blinkWhenFinished)
+                        if config.mode == .countdown { Toggle(L10n.t("timer.overtime"), isOn: $style.overtime) }
+                    }
+                }
+                Section(L10n.t("timer.graphic")) {
+                    Picker(L10n.t("timer.plate"), selection: $style.plate) {
+                        ForEach(TimerStyle.Plate.allCases, id: \.self) { Text(L10n.t("timer.plate.\($0.rawValue)")).tag($0) }
+                    }
+                    Picker(L10n.t("timer.font"), selection: $style.font) {
+                        ForEach(TimerStyle.Font.allCases, id: \.self) { Text(L10n.t("timer.font.\($0.rawValue)")).tag($0) }
+                    }
+                    HStack {
+                        hexColor(L10n.t("timer.color_text"), $style.textHex)
+                        hexColor(L10n.t("timer.color_plate"), $style.plateHex)
+                        hexColor(L10n.t("timer.color_warn"), $style.warnHex)
+                        hexColor(L10n.t("timer.color_end"), $style.accentHex)
+                    }
+                    LabeledContent(L10n.t("timer.plate_opacity")) {
+                        Slider(value: $style.plateOpacity, in: 0...1)
+                        Text("\(Int(style.plateOpacity * 100)) %").monospacedDigit().frame(width: 44)
+                    }
+                    HStack(spacing: 6) {
+                        Text(L10n.t("timer.presets")).font(.caption).foregroundStyle(Theme.textDim)
+                        ForEach(Self.presets, id: \.0) { p in
+                            Button(L10n.t("timer.preset.\(p.0)")) { let o = style; style = p.1; style.showTenths = o.showTenths; style.twelveHour = o.twelveHour; style.showDate = o.showDate }
+                                .controlSize(.small)
+                        }
+                    }
                 }
             }
-            Toggle(L10n.t("timer.show_seconds"), isOn: $config.showSeconds)
-            TextField(L10n.t("timer.label"), text: $config.label, prompt: Text(L10n.t("timer.label_prompt")))
+            .formStyle(.grouped)
+            .frame(minHeight: 380)
             if config.mode != .clock {
                 Text(L10n.t("timer.hint")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
             }
@@ -808,7 +867,10 @@ struct TimerSheet: View {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
                 Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
-                    config.durationSeconds = Double(minutes * 60 + seconds)
+                    config.durationSeconds = config.mode == .untilTime ? Double(minutes * 60) : Double(minutes * 60 + seconds)
+                    let cal = Calendar.current
+                    config.targetSecondsOfDay = target.timeIntervalSince(cal.startOfDay(for: target))
+                    config.style = style
                     if let id = editing { model.updateTimer(id, config) } else { model.addTimer(config) }
                     dismiss()
                 }
@@ -816,14 +878,38 @@ struct TimerSheet: View {
             }
         }
         .padding(16)
-        .frame(width: 420)
+        .frame(width: 520)
         .onAppear {
             if let id = editing, let t = model.timerSource(id) {
                 config = t.config
+                style = t.config.look
                 minutes = Int(t.config.durationSeconds) / 60; seconds = Int(t.config.durationSeconds) % 60
+                if let s = t.config.targetSecondsOfDay { target = Calendar.current.startOfDay(for: Date()).addingTimeInterval(s) }
             }
         }
     }
+
+    private func hexColor(_ label: String, _ hex: Binding<String>) -> some View {
+        ColorPicker(label, selection: Binding(
+            get: { let c = ProjectColor(hex: hex.wrappedValue) ?? ProjectColor(r: 1, g: 1, b: 1)
+                   return Color(.sRGB, red: c.r, green: c.g, blue: c.b) },
+            set: { c in
+                let n = NSColor(c).usingColorSpace(.sRGB) ?? .white
+                hex.wrappedValue = ProjectColor(r: Double(n.redComponent), g: Double(n.greenComponent), b: Double(n.blueComponent)).hex
+            }), supportsOpacity: false)
+            .font(.system(size: 11))
+    }
+
+    /// Ready looks: broadcast (dark plate), stage (big, no plate), sport (bar), minimal ring.
+    static let presets: [(String, TimerStyle)] = {
+        var broadcast = TimerStyle(); broadcast.plate = .rounded
+        var stage = TimerStyle(); stage.plate = .none; stage.font = .rounded; stage.warnSeconds = 120
+        var sport = TimerStyle(); sport.plate = .bar; sport.font = .condensed; sport.plateHex = "#101820"; sport.plateOpacity = 0.9
+        var ring = TimerStyle(); ring.plate = .ring; ring.font = .rounded; ring.accentHex = "#22D36F"
+        var progress = TimerStyle(); progress.plate = .progress; progress.plateHex = "#0B1A33"; progress.plateOpacity = 0.85
+        var light = TimerStyle(); light.plate = .pill; light.plateHex = "#FFFFFF"; light.plateOpacity = 0.9; light.textHex = "#111111"
+        return [("broadcast", broadcast), ("stage", stage), ("sport", sport), ("ring", ring), ("progress", progress), ("light", light)]
+    }()
 }
 
 /// Transport of a video input: seekbar (drag to scrub), position / length, previous, play/pause,

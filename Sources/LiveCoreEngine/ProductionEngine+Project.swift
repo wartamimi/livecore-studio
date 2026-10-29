@@ -39,10 +39,12 @@ extension ProductionEngine {
             case let t as TimerSource: ps = .timer(t.config, nil)
             case let t as TickerSource: ps = .ticker(t.config)
             case let sl as SlideshowSource:
-                ps = .slideshow(ProjectSlideshow(images: sl.urls.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) },
-                                                 interval: sl.interval, fade: sl.fade, loop: sl.loop,
-                                                 kenBurns: sl.kenBurns ? true : nil,
-                                                 folder: sl.folder.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) }))
+                var show = ProjectSlideshow(images: sl.urls.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) },
+                                            interval: sl.interval, fade: sl.fade, loop: sl.loop,
+                                            kenBurns: sl.kenBurns ? true : nil,
+                                            folder: sl.folder.map { ProjectMediaRef(path: $0.path, relativePath: rel($0)) })
+                show.look = sl.look == SlideshowLook() ? nil : sl.look
+                ps = .slideshow(show)
             case let c as ScreenCaptureSource: ps = .screen(c.config)
             case let n as NDISource: ps = .ndi(n.config)
             case let f as FrameSource: ps = .frame(f.design)
@@ -289,8 +291,9 @@ extension ProductionEngine {
                 return URL(fileURLWithPath: f.path, isDirectory: true)
             }
             let photos = folder.map { SlideshowSource.images(inFolder: $0) }.flatMap { $0.isEmpty ? nil : $0 }
-            addSlideshow(urls: photos ?? sl.images.map { mediaURL($0.path, $0.relativePath) }, interval: sl.interval,
-                         fade: sl.fade, loop: sl.loop, kenBurns: sl.kenBurns ?? false, folder: folder, id: pi.id)
+            let sid = addSlideshow(urls: photos ?? sl.images.map { mediaURL($0.path, $0.relativePath) }, interval: sl.interval,
+                                   fade: sl.fade, loop: sl.loop, kenBurns: sl.kenBurns ?? false, folder: folder, id: pi.id)
+            if let look = sl.look { (source(sid) as? SlideshowSource)?.look = look }
         case let .screen(c):
             addScreenCapture(c, id: pi.id)
         case let .ndi(n):

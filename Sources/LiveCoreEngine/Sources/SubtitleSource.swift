@@ -89,7 +89,12 @@ public final class SubtitleSource: VideoSource {
         guard r.isAvailable else { return setStatus(.noSignal("Speech recognition is not available right now.")) }
         let req = SFSpeechAudioBufferRecognitionRequest()
         req.shouldReportPartialResults = true
-        req.requiresOnDeviceRecognition = onDevice
+        // "Online" (0.45.0): when Apple's servers are allowed they are used, even if the Mac
+        // reports an on-device model. The on-device model for Indonesian is often reported but
+        // not downloaded, which failed every request and showed no captions.
+        let useServer = style.allowServer
+        req.requiresOnDeviceRecognition = !useServer
+        req.taskHint = .dictation
         if #available(macOS 13.0, *) { req.addsPunctuation = true }
         lock.withLock { request = req; recognizer = r }
         task = r.recognitionTask(with: req) { [weak self] result, error in
@@ -99,11 +104,34 @@ public final class SubtitleSource: VideoSource {
                 self.redraw()
             }
             // A finished or failed request starts a new one so captions keep coming.
-            if error != nil || result?.isFinal == true {
-                DispatchQueue.main.asyncAfter(deadline: .now() + (error == nil ? 0 : 1)) { [weak self] in self?.restart() }
+            if let error = error as NSError? {
+                self.handle(error, server: useServer)
+            } else if result?.isFinal == true {
+                self.failures = 0
+                DispatchQueue.main.async { [weak self] in self?.restart() }
+            } else if result != nil {
+                if self.failures > 0 { self.failures = 0; self.setStatus(.live) }
             }
         }
         setStatus(.live)
+    }
+
+    private var failures = 0
+
+    /// "No speech" and the server's one-minute limit are normal and restart at once; other
+    /// errors are shown on the input and retried with a growing pause (network down, quota).
+    private func handle(_ error: NSError, server: Bool) {
+        let normal = [1110, 216, 301, 203].contains(error.code)   // no speech / cancelled / retry
+        if !normal { failures += 1 }
+        let msg = "subtitles (\(server ? "server" : "on-device")) error \(error.domain) \(error.code): \(error.localizedDescription)"
+        if !normal { Log.devices.error("\(msg, privacy: .public)") }
+        if !normal && failures >= 3 {
+            setStatus(.error(server
+                ? "Online speech recognition failed (\(error.code)): \(error.localizedDescription). Check the internet connection and that Siri/Dictation is allowed."
+                : "On-device speech recognition failed (\(error.code)). Turn on \"Use Apple's servers\" in the subtitle settings."))
+        }
+        let delay = normal ? 0.0 : min(Double(failures), 10)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.restart() }
     }
 
     private func restart() {
