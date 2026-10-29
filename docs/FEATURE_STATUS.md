@@ -161,7 +161,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
-## Fitur 0.44.0
+## Fitur 0.44.0 (0.44.1: perbaikan crash editor rundown saat segmen dihapus/diganti)
 Kelancaran dan capture card. Verifikasi: L = unit test Linux, M = kompilasi CI macOS.
 Belum ada yang dites di Mac (TEST_PLAN bagian AT).
 
