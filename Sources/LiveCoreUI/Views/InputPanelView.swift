@@ -196,8 +196,10 @@ struct InputPanelView: View {
         Menu {
             // One entry for every camera, capture card and iPhone (0.46.0, like vMix's "Video
             // Capture Device"): the device, format and audio are picked in the sheet.
-            Button { model.refreshDevices(); showCaptureCard = true } label: {
-                Label(L10n.t("inputs.video_capture"), systemImage: "video")
+            Section(L10n.t("inputs.camera_group")) {
+                Button { model.refreshDevices(); showCaptureCard = true } label: {
+                    Label(L10n.t("inputs.video_capture"), systemImage: "video")
+                }
             }
             // Media files grouped in one place: video, video playlist, image, slideshow, presentation.
             Section(L10n.t("inputs.media_group")) {

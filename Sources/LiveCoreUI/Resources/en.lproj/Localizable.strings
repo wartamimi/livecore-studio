@@ -1404,3 +1404,6 @@
 
 /* 0.46.1 */
 "overlay.all_busy" = "Every overlay channel is in use. Take one off air first, or right-click the number to replace it on Program.";
+
+/* 0.46.3 */
+"inputs.camera_group" = "Camera";
