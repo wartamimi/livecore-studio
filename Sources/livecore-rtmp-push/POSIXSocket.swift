@@ -72,3 +72,47 @@ final class POSIXSocket {
         return Array(buf[0..<n])
     }
 }
+
+/// Connected UDP socket for the SRT mode of the CLI tool.
+final class UDPSocket {
+    private var fd: Int32 = -1
+
+    init(host: String, port: Int) throws {
+        var hints = addrinfo()
+        hints.ai_family = AF_INET
+        #if canImport(Glibc)
+        hints.ai_socktype = Int32(SOCK_DGRAM.rawValue)
+        #else
+        hints.ai_socktype = SOCK_DGRAM
+        #endif
+        var res: UnsafeMutablePointer<addrinfo>?
+        let rc = getaddrinfo(host, String(port), &hints, &res)
+        guard rc == 0, let a = res else { throw POSIXSocket.SocketError.resolve("cannot resolve \(host)") }
+        defer { freeaddrinfo(res) }
+        fd = socket(a.pointee.ai_family, a.pointee.ai_socktype, a.pointee.ai_protocol)
+        guard fd >= 0, connect(fd, a.pointee.ai_addr, a.pointee.ai_addrlen) == 0 else {
+            throw POSIXSocket.SocketError.connect("cannot open UDP to \(host):\(port)")
+        }
+    }
+
+    deinit { if fd >= 0 { close(fd) } }
+
+    func send(_ bytes: [UInt8]) {
+        _ = bytes.withUnsafeBytes { buf in
+            #if canImport(Glibc)
+            Glibc.send(fd, buf.baseAddress, buf.count, 0)
+            #else
+            Darwin.send(fd, buf.baseAddress, buf.count, 0)
+            #endif
+        }
+    }
+
+    /// One datagram, [] on timeout (ICMP "port unreachable" errors are ignored: the server may not be up yet).
+    func receive(timeoutMs: Int32) -> [UInt8] {
+        var p = pollfd(fd: fd, events: Int16(POLLIN), revents: 0)
+        guard poll(&p, 1, timeoutMs) > 0 else { return [] }
+        var buf = [UInt8](repeating: 0, count: 2048)
+        let n = buf.withUnsafeMutableBytes { recv(fd, $0.baseAddress, $0.count, 0) }
+        return n > 0 ? Array(buf[0..<n]) : []
+    }
+}

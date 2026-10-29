@@ -4,7 +4,82 @@ Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal
 workflow Preview/Program ala vMix/OBS untuk wedding, event korporat, seminar, dan siaran. Arsitektur dan kode orisinal —
 tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 
-> **Status: Milestone 1 — kode lengkap, belum terverifikasi di Mac.**
+> **Status: 0.46.3 — Milestone 3 berjalan.** 0.46.3: label Kamera di menu Input. 0.46.2: fullscreen YouTube di input Browser, Edit tanpa reload, warna capture card UVC keabu-abuan diperbaiki otomatis. 0.46.1: jendela hitam input Browser, overlay ke Preview, optimasi Datavideo CAP-2. 0.46.0: tombol PHOTO pindah ke dock output (Preview dan Program sama besar), input Video Capture Device, 10 layout scene baru dan editor scene lebih lengkap (angka, rata, duplikat), vertical output dengan latar blur/zoom/format 4:5 dan 1:1, template nama pengantin (title, lower third, running text), frame meeting & conference, bug menu AI berkedip diperbaiki. Lihat docs/FEATURE_STATUS.md.
+> ikut direkam ke file masing-masing selama RECORD berjalan ("… - ISO 2 Kamera Wide.mp4"), ukuran penuh dengan
+> layer-nya, audio & format sama dengan rekaman Program — untuk edit ulang wedding/event. Diuji di CI macOS
+> (`livecore-iso-check`: file Program + ISO bersamaan, keduanya bisa diputar dengan video+audio); menunggu tes
+> T-131..T-133. 0.31.0 mendesain ulang Web Controller menjadi panel switcher bergaya
+> hardware: gambar Program/Preview langsung (JPEG ±3 fps, hanya saat halaman dibuka), dua baris bus Preview/Program
+> dengan tombol menyala, tuas T-bar besar (horizontal di HP, vertikal di tablet), pilihan jenis dan durasi transisi,
+> mixer audio (fader master & per kanal, mute, meter), LED REC/LIVE dengan timer, keypad PIN, dan getaran saat ditekan
+> (Android). Menunggu tes T-127..T-130. 0.30.0 menambah Web Controller: remote dari browser HP, tablet atau
+> komputer lain di jaringan yang sama (tanpa install aplikasi) untuk Preview, CUT, AUTO, T-bar, overlay 1–4, instant
+> replay, rekam, streaming dan snapshot, dengan status Program/Preview langsung. Mati secara default; dikunci PIN yang
+> disimpan di Keychain, perangkat dikunci sementara setelah 5 PIN salah, ada QR code untuk masuk cepat (Settings ›
+> Remote). Server diuji otomatis di CI (Linux dan macOS); menunggu tes T-119..T-126. 0.29.0 menambah input NDI®: sumber NDI di jaringan (HP dengan aplikasi
+> kamera NDI, OBS/vMix di komputer lain, kamera NDI) bisa ditambahkan sebagai input, lengkap dengan audionya di mixer,
+> pilihan bandwidth rendah, dan info sinyal — diuji di CI (input LiveCore menerima sumber NDI dari proses lain), menunggu
+> tes T-116..T-118. 0.28.0 menambah bagian "Lanjutan" di pengaturan capture card: format video
+> perangkat (mis. YUY2/NV12 uncompressed atau MJPEG/H.264), perbaikan rentang warna (limited ↔ full), deinterlace,
+> buffer frame, info sinyal (format aktif, fps terukur, frame terbuang) dan tombol mulai ulang perangkat — menunggu tes
+> T-112..T-115. 0.27.0 memperbaiki crash instant replay (macOS 27), menghapus tombol
+> Terapkan/Batalkan Layer Designer — edit layer tetap hanya di Preview dan baru masuk Program saat transisi (CUT, AUTO,
+> T-bar) —, mengganti T-bar menjadi horizontal dengan angka persen saja, dan menambah Repeat One, "Berhenti setelah item
+> ini", bar waktu dengan seek (berjalan/sisa), serta "Putar berikutnya" di playlist — menunggu tes T-107..T-111. 0.26.0: edit di Layer Designer kini berupa draft yang hanya tampil di Preview
+> sampai Terapkan / tutup / CUT / AUTO / T-bar, geser & ubah ukuran layer lebih halus, label FULLSCREEN satu baris, kamera
+> dan capture yang sudah dipakai tidak bisa ditambahkan dua kali, tombol Repeat/Shuffle playlist menyala saat aktif (video
+> playlist juga bisa diacak), T-bar baru bergaya tuas broadcast, dan Settings › Canvas (Horizontal 16:9, Portrait 9:16,
+> Custom) dengan monitor yang mengikuti bentuk canvas — menunggu tes T-101..T-106. 0.25.0 menambah Layer Designer di monitor Preview (geser/ubah ukuran
+> langsung dengan snapping, crop dengan menarik tepi — Shift untuk simetris —, bingkai, sudut melengkung, sembunyikan/kunci
+> layer, Flatten Layers, dan tata letak tersimpan sebagai template), tombol FULLSCREEN ala vMix di bar atas dengan ⚙ untuk
+> memilih layar dan gambar tiap output (layar ke-2/ke-3), tombol FOTO seukuran RECORD, transisi awal Dissolve, dan dock
+> Playlist yang baru muncul setelah ada playlist — menunggu tes T-96..T-100. 0.24.0 menambah output NDI®: tiap output bisa dikirim sebagai sumber NDI
+> "LiveCore Output N", sehingga Zoom/Meet bisa memakai LiveCore lewat kamera "NDI Virtual Camera" dari NDI Tools tanpa OBS.
+> LiveCore memakai runtime NDI yang sudah terpasang (NDI Tools / NDI Runtime) dan tidak menyertakannya. CI membuktikan proses
+> lain menemukan sumber NDI dan menerima frame-nya — menunggu tes T-93..T-95 di Mac. 0.23.0 memperbaiki Syphon (frame dikirim sejak awal, Output 1 otomatis
+> nyala saat EXTERNAL, status "aplikasi tersambung", dan CI kini membuktikan proses lain bisa menemukan source dan membaca
+> frame-nya), memperlambat kedipan NOT RECORDING, menghapus kamera virtual Camera Extension, memindahkan foto Program ke
+> bawah monitor Program dan instant replay ke bawah T-bar, menyatukan gembok RECORD/STREAM, dan mengganti dock Overlay
+> dengan nomor 1–4 di bawah tiap input (fade, layar penuh) — menunggu tes T-88..T-92. 0.22.0 memindahkan RECORD / STREAM ke dock bawah yang selalu tampil
+> (dengan tombol ⚙ masing-masing) dan menambah EXTERNAL: 4 output dengan gambar sendiri-sendiri (Program, Preview, atau
+> satu input) ke jendela/layar penuh dan ke aplikasi lain lewat Syphon (OBS "Syphon Client" → OBS Virtual Camera),
+> pengingat NOT RECORDING berkedip di monitor Program, dan klik di Playlist kini hanya memilih (klik dua kali untuk
+> memutar) — menunggu tes T-82..T-86. 0.21.0 menambah tombol x + gembok untuk kanal audio di mixer dan dock
+> Playlist di samping mixer (klik untuk memutar, seret untuk mengurutkan, cari, M3U) — menunggu tes T-80..T-81.
+> 0.20.0 menambah animasi masuk/keluar overlay (geser, zoom), eyedropper
+> chroma key, dan fade antarlagu musik — menunggu tes T-77..T-79. 0.19.0 menambah arah teks berjalan (kiri → kanan) dan teks dari feed
+> RSS/Atom — menunggu tes T-76. 0.18.0 memperbaiki klik saat delay audio diubah, membuat AFV crossfade
+> selama transisi AUTO, dan memperbaiki teks berjalan yang sangat panjang; menambah teks berjalan dari file .txt, Ken
+> Burns dan folder yang dipantau di slideshow — menunggu tes T-72..T-75. 0.17.0 menambah putar input 90°/270°, input teks berjalan (ticker) dan
+> slideshow foto (folder, durasi per foto, crossfade) — menunggu tes T-69..T-71. 0.16.0 menambah koreksi warna & balik/putar per input dan nada tes 1 kHz —
+> menunggu tes T-67..T-68. 0.15.0 menghapus Lottie, menambah input Scene + template tata letak,
+> Colour Bars, tombol fullscreen per input, pengaturan capture card, Properti Audio per kanal, dan transparansi + tepi
+> halus untuk media transparan — menunggu tes T-61..T-66. Virtual camera: lewat NDI → NDI Virtual Camera (0.24.0, tanpa OBS) atau Syphon → OBS Virtual Camera (Camera Extension sendiri dihapus di 0.23.0).
+> 0.14.0 memperbaiki Lottie .json yang tidak tampil, menghapus menu Tambah
+> Bentuk, menambah tombol "x" untuk menutup source, gembok untuk source / streaming / rekaman, konfirmasi Stop, dan
+> rekam otomatis saat streaming — menunggu tes T-57..T-60.
+> 0.13.2 memperbaiki crash saat dibuka di 0.13.0/0.13.1 (Lottie kini di-link statis).
+> 0.13.0 menambah input Lottie (.json/.lottie), gaya layer (crop, sudut
+> bulat, elips, border, bentuk), overlay ke Preview (klik) / Program (klik dua jari), dan memperbaiki tombol Tambah Layer —
+> menunggu tes T-54..T-56. 0.12.0 menambah transisi custom: shader Metal milik sendiri (Baru/Impor)
+> plus 6 contoh bawaan — menunggu tes T-52..T-53. 0.10.1 sama dengan 0.10.0 (input Zoom SDK dari 0.11.x ditarik dari build publik dan ditunda). 0.10.0 menambah audio follow video (AFV), input tangkap jendela/layar
+> dengan audio aplikasi (untuk Zoom/Teams/Meet; Zoom SDK resmi ditunda), dan instant replay 5/10/20 detik
+> dengan slow motion — menunggu tes T-45..T-47. 0.9.0 menambah tombol Fullscreen output ke layar pilihan, pilihan bus audio
+> (Master/Bus A/Bus B) untuk rekaman dan tiap tujuan stream, serta satu menu "Tambah Media" / "Tambah Media Playlist"
+> untuk video dan audio, plus perbaikan glitch T-bar di ujung — menunggu tes T-41..T-44. 0.8.0 menambah input playlist video, auto play saat masuk Program, dan
+> transport media (seekbar, play/pause, prev/next; media dimuat dalam keadaan jeda).
+> 0.7.0 menambah kontrol MIDI dengan Learn, input musik (playlist file audio
+> ke mixer), dan panel dock yang bisa dikecilkan — dikompilasi & diuji unit, menunggu tes T-35..T-36. 0.6.0 (dilaporkan berfungsi) menambah browser source,
+> input jam / hitung mundur / stopwatch, dan snapshot Program ke PNG.
+> 0.5.0 (dilaporkan berfungsi) menambah transisi stinger dan aux bus A/B dengan output ke perangkat terpisah (mix-minus).
+> 0.4.0 (dilaporkan berfungsi oleh pengguna) menambah streaming ke beberapa tujuan sekaligus (hingga 3, satu encode)
+> dan transisi baru (Wipe 4 arah, Push, Slide, Iris) — dikompilasi & diuji unit, menunggu tes perangkat T-28..T-29.
+> 0.3.1 memperbaiki crash capture card generik (dikonfirmasi pengguna). 0.3.0 menambah editor scene visual, lower third yang dapat diatur,
+> EQ/high-pass, dan koreksi drift clock audio. Fungsi inti M1 (kamera, CUT/AUTO, meter, rekam, stream) dilaporkan
+> berfungsi di Mac pengguna. M2 menambah audio file video ke mixer, noise gate, chroma key, Multiview, dan simpan/muat
+> proyek — dikompilasi & diuji unit, menunggu tes perangkat T-17..T-22.
+>
+> Catatan M1 sebelumnya:
 > Logika inti (switcher, transisi, DSP audio, FLV/RTMP) lulus 47 unit test dan uji end-to-end RTMP ke server nyata
 > (ffmpeg) di Linux. Seluruh kode khusus macOS sudah ditulis dan lolos *syntax parse*, tetapi **belum dikompilasi atau
 > dijalankan di macOS** karena lingkungan pembuatan tidak memiliki Mac/Xcode. Milestone 1 baru dinyatakan selesai setelah
@@ -13,7 +88,7 @@ tidak ada kode, aset, atau implementasi vMix/OBS yang disalin.
 ## Mulai cepat (di Mac)
 ```bash
 brew install xcodegen ffmpeg
-swift test                        # 47 unit test inti
+swift test                        # 73 unit test inti
 scripts/rtmp_e2e_test.sh          # uji RTMP end-to-end ke server ffmpeg lokal
 scripts/build_macos.sh release    # generate Xcode project + build .app (Universal)
 open build/DerivedData/Build/Products/Release/LiveCoreStudio.app
@@ -32,6 +107,11 @@ Kebutuhan: macOS 13 Ventura+, **Xcode 16+ lengkap** (bukan hanya Command Line To
 4. Overlay 1–4: pilih sumber + layout (lower third, PiP), klik nomor untuk on/off (fade).
 5. ⚙︎ Settings → Stream: URL + key (disimpan di Keychain) → **Start Stream** (⌘L). **Start Recording** (⌘R).
 6. Jendela Program Output (ikon ⧉) dapat diseret ke monitor/proyektor eksternal → ⌃⌘F.
+7. **Multiview** (ikon grid): Preview, Program, dan semua input dengan tally — cocok untuk monitor kedua.
+8. **Chroma key**: klik kanan input kamera/file/gambar → Chroma Key…; lalu jadikan layer PiP atau overlay di atas latar.
+9. **File video dengan suara** otomatis mendapat kanal mixer (ikon film). **Noise gate**: tombol DSP di kanal.
+11. **Editor scene**: klik kanan input → Edit Scene Layers… (seret/ubah ukuran PiP). **EQ/HPF** dan status clock: tombol DSP.
+10. **Proyek**: File › Save Project (⌘S) / Open Project (⌘O) menyimpan input, layer, overlay, key, mixer (tanpa stream key).
 
 ## Struktur proyek
 ```
@@ -67,7 +147,9 @@ docs/                         Dokumentasi (lihat di bawah)
 ## Roadmap
 - **M1 Working MVP** (kode selesai, menunggu verifikasi Mac): input kamera/file/gambar/teks/warna, Preview/Program,
   CUT/Dissolve/Fade/Wipe/T-bar, overlay & PiP dasar, mixer + compressor/limiter + meter, RTMP/RTMPS + reconnect, rekaman MP4/MOV.
-- **M2 Production Workflow**: audio file video ke mixer, resampler drift, noise gate/EQ, multiview, editor scene visual,
-  simpan/muat proyek, chroma key, browser source (dievaluasi), capture 4:2:0, optimasi performa.
-- **M3 Broadcast Expansion**: Blackmagic DeckLink, AJA/Magewell SDK, NDI, stinger & transisi lanjutan, output SDI/HDMI,
-  routing audio lanjutan (aux/mix-minus), multi-destination streaming, profil operator.
+- **M2 Production Workflow** — selesai di kode (0.2.0, menunggu tes perangkat): audio file video ke mixer, noise gate,
+  multiview, simpan/muat proyek, chroma key. 0.3.0: koreksi drift clock, EQ/HPF, editor scene visual,
+  lower third yang dapat diatur. 0.6.0: browser source. Masih planned: capture 4:2:0, optimasi performa.
+- **M3 Broadcast Expansion** — 0.4.0: multi-destination streaming, transisi Wipe/Push/Slide/Iris. 0.5.0: stinger,
+  aux bus A/B + mix-minus. Masih planned: Blackmagic DeckLink, AJA/Magewell SDK, NDI (perlu SDK vendor), output SDI/HDMI,
+  profil operator.

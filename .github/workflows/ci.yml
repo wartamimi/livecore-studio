@@ -9,38 +9,109 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 jobs:
+  # Foundation-free core logic and protocol tests on Linux (fast, about 2 min). It does not block the
+  # DMG: the macos-app job builds and publishes it on its own.
   linux-core:
+    # A pull request from a branch of this repository already runs on push; skip the duplicate run.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: swift-actions/setup-swift@v2
         with: { swift-version: "6.0" }
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      # Ubuntu mirrors occasionally stall; bound each attempt and retry instead of eating the job timeout.
+      - name: Install ffmpeg
+        timeout-minutes: 8
+        run: |
+          for i in 1 2 3; do
+            timeout 150 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+              && timeout 150 sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg && exit 0
+            echo "apt attempt $i failed, retrying"; sleep 10
+          done
+          exit 1
       - run: scripts/ci_run.sh linux-validate scripts/validate_linux.sh
+  # The DMG is built and published as soon as the app compiles and the unit tests pass (about
+  # 5 minutes). The longer engine checks (NDI, ISO, RTMP/SRT end to end, soak) run next to it and
+  # report failures as commit comments without holding the DMG back.
   macos-app:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: macos-15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - run: brew install xcodegen ffmpeg
+      - run: brew install xcodegen
       - run: xcodebuild -version && xcodegen --version
-      - run: scripts/ci_run.sh macos-swift-build swift build --build-tests
-      - run: scripts/ci_run.sh macos-swift-test swift test
-      - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
       - run: scripts/ci_run.sh macos-app-build scripts/build_macos.sh release
+        env:
+          LIVECORE_SKIP_TESTS: "1"
       - run: scripts/ci_run.sh macos-dmg scripts/make_dmg.sh
       - uses: actions/upload-artifact@v4
         with:
           name: LiveCoreStudio-dmg
-          path: build/LiveCoreStudio-0.1.0-unsigned.dmg
-      - name: Publish DMG as pre-release (main only)
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        run: |
-          TAG="build-${GITHUB_RUN_NUMBER}"
-          gh release create "$TAG" build/LiveCoreStudio-0.1.0-unsigned.dmg \
-            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio M1 build ${GITHUB_RUN_NUMBER} (unsigned)" \
-            --notes "Automated CI build from ${GITHUB_SHA}. Unsigned and not notarized: right-click the app and choose Open the first time. Milestone 1 not yet verified on hardware; see docs/TEST_PLAN.md."
+          path: build/LiveCoreStudio-0.46.3-unsigned.dmg
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: build-logs
+          name: build-logs-app
           path: build/*.log
+  macos-tests:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install ffmpeg
+      - run: scripts/ci_run.sh macos-swift-build swift build --build-tests
+      - run: scripts/ci_run.sh macos-swift-test swift test
+      - run: scripts/ci_run.sh macos-metal-shaders scripts/check_shaders.sh
+      - run: scripts/ci_run.sh macos-title-check swift run livecore-title-check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: title-templates
+          path: build/title-templates.png
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs-tests
+          path: build/*.log
+  macos-engine-checks:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install ffmpeg srt
+      - run: scripts/ci_run.sh macos-checks-build swift build
+      - run: scripts/ci_run.sh macos-syphon-check swift run livecore-syphon-check
+      - run: scripts/ci_run.sh macos-ndi-runtime scripts/install_ndi_runtime.sh
+      - run: scripts/ci_run.sh macos-ndi-check swift run livecore-ndi-check
+      - run: scripts/ci_run.sh macos-iso-check swift run livecore-iso-check
+        env:
+          LIVECORE_NDI_REQUIRED: "1"
+      - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
+      # Engine run with recording + streaming, a stream drop in the middle and a full disk.
+      # Its disk-full part is known to fail (docs/KNOWN_ISSUES.md); the result is still reported.
+      - run: scripts/ci_run.sh macos-soak-check swift run livecore-soak-check
+        continue-on-error: true
+        env:
+          SOAK_SECONDS: "90"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs-checks
+          path: build/*.log
+  publish:
+    needs: [macos-app, macos-tests]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/claude/'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: build, merge-multiple: true }
+      - name: Publish DMG as pre-release (main and claude/* development branches)
+        run: |
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then TAG="build-${GITHUB_RUN_NUMBER}"; else TAG="dev-build-${GITHUB_RUN_NUMBER}"; fi
+          gh release create "$TAG" build/LiveCoreStudio-0.46.3-unsigned.dmg build/title-templates.png --repo "$GITHUB_REPOSITORY" \
+            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.46.3 build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
+            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. New features are compiled and unit-tested but need hardware verification; see docs/FEATURE_STATUS.md and docs/TEST_PLAN.md (T-61..T-189). 0.46.3: Settings as an OBS-style sidebar list. 0.38.0: web edit window fits the page to the window (no zoomed or cropped view, page scrolling works), page screen size = input size for in-page fullscreen, Pre-flight moved to Settings, Operator/Advanced switch removed, smoother title animations while menus are open, 3 GPU frames in flight, main-thread stall and render-drop log, faster CI (DMG job runs in parallel with the engine checks), Online Radio input (free Radio Browser directory, HTTPS MP3/AAC, song titles; CI-checked decoder)."

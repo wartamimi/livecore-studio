@@ -84,6 +84,61 @@ public struct Limiter: Sendable {
     }
 }
 
+/// Stereo-linked noise gate with hysteresis and hold. Closes to `rangeDB` (not hard zero by
+/// default) so room tone does not "pump". Real-time safe, like the other processors.
+public struct NoiseGate: Sendable {
+    public var thresholdDB: Float = -50
+    /// The gate closes only when the level falls this far below the threshold (prevents chatter).
+    public var hysteresisDB: Float = 4
+    public var rangeDB: Float = -80
+    public var attackSeconds: Float = 0.002
+    public var holdSeconds: Float = 0.060
+    public var releaseSeconds: Float = 0.150
+    public private(set) var sampleRate: Float
+    public private(set) var isOpen = false
+    private var gain: Float
+    private var holdRemaining = 0
+
+    public init(sampleRate: Float) {
+        self.sampleRate = sampleRate
+        gain = AudioMath.dbToLinear(-80)
+    }
+
+    /// Current attenuation in dB (positive; 0 = fully open).
+    public var gainReductionDB: Float { -AudioMath.linearToDB(gain) }
+
+    public mutating func process(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>?, frames: Int) {
+        let aC = AudioMath.timeConstantCoeff(seconds: attackSeconds, sampleRate: sampleRate)
+        let rC = AudioMath.timeConstantCoeff(seconds: releaseSeconds, sampleRate: sampleRate)
+        let openLin = AudioMath.dbToLinear(thresholdDB)
+        let closeLin = AudioMath.dbToLinear(thresholdDB - max(hysteresisDB, 0))
+        let floorGain = AudioMath.dbToLinear(min(rangeDB, 0))
+        let holdSamples = Int(holdSeconds * sampleRate)
+        var g = gain
+        var open = isOpen
+        var hold = holdRemaining
+        for i in 0..<frames {
+            let l = left[i]
+            let r = right?[i] ?? l
+            let level = max(abs(l), abs(r))
+            if level >= openLin {
+                open = true
+                hold = holdSamples
+            } else if open && level < closeLin {
+                if hold > 0 { hold -= 1 } else { open = false }
+            }
+            let target: Float = open ? 1 : floorGain
+            let c = target > g ? aC : rC
+            g = target + c * (g - target)
+            left[i] = l * g
+            right?[i] = r * g
+        }
+        gain = g
+        isOpen = open
+        holdRemaining = hold
+    }
+}
+
 /// Click-free gain changes: linearly ramps from the previous to the new gain over one block.
 public struct GainRamp: Sendable {
     public private(set) var current: Float

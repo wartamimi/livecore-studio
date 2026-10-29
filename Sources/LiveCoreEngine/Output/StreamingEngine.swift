@@ -195,7 +195,7 @@ public final class StreamingEngine {
         guard let session else { return }
         let o = settings.output
         let meta = FLV.Metadata(width: o.size.width, height: o.size.height, frameRate: Double(o.frameRate),
-                                videoBitrateKbps: settings.video.bitrateKbps, audioBitrateKbps: settings.audio.bitrateKbps,
+                                videoBitrateKbps: settings.streamVideo.bitrateKbps, audioBitrateKbps: settings.streamAudioKbps,
                                 audioSampleRate: settings.audio.sampleRate, audioChannels: settings.audio.channels)
         if let bytes = try? session.metadataPacket(meta) { write(bytes) }
     }

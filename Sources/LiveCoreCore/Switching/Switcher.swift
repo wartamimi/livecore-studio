@@ -12,10 +12,16 @@ public struct SwitcherSnapshot: Equatable, Sendable {
     public var preview: InputID?
     public var program: InputID?
     public var transition: ActiveTransition?
+    /// After a T-bar transition completes at one end, the bar stays there and the next
+    /// transition runs the other way (vMix). True when the bar's rest position is the far end.
+    public var tbarReversed = false
 
     public init(preview: InputID? = nil, program: InputID? = nil, transition: ActiveTransition? = nil) {
         self.preview = preview; self.program = program; self.transition = transition
     }
+
+    /// Physical T-bar position (0...1) that means "no transition".
+    public var tbarRest: Double { tbarReversed ? 1 : 0 }
 }
 
 public enum SwitcherEvent: Equatable, Sendable {
@@ -56,31 +62,49 @@ public final class Switcher {
     }
 
     /// Starts an automatic transition of `duration` seconds. `.cut` or duration <= 0 behaves like `cut()`.
+    /// A `.stinger` transition runs for the clip's length and needs `stinger`; without it, it cuts.
     @discardableResult
-    public func auto(kind: TransitionKind, duration: Double, now: Double) -> [SwitcherEvent] {
+    public func auto(kind: TransitionKind, duration: Double, now: Double, stinger: StingerParams? = nil) -> [SwitcherEvent] {
         if state.transition != nil { return [] } // AUTO while running is ignored (press CUT to finish)
+        var duration = duration
+        if kind == .stinger {
+            guard let stinger else { return cut() }
+            duration = stinger.clipDuration
+        }
         if kind == .cut || duration <= 0 { return cut() }
         state.transition = ActiveTransition(kind: kind, from: state.program, to: state.preview,
-                                            startTime: now, duration: duration, manualPosition: nil)
+                                            startTime: now, duration: duration, manualPosition: nil,
+                                            stinger: kind == .stinger ? stinger : nil)
         return [.transitionStarted(kind)]
     }
 
-    /// Manual T-bar. 0 = fully program, 1 = fully preview (transition completes).
+    /// Manual T-bar, `position` = physical bar position 0...1. The bar starts at its rest end
+    /// (`tbarRest`); moving it to the other end completes the transition, after which that end
+    /// becomes the rest position, so the bar never has to jump back (no glitch when the user
+    /// keeps holding it at the end). Moving back to the rest end aborts.
     @discardableResult
     public func setTBar(_ position: Double, kind: TransitionKind, now: Double) -> [SwitcherEvent] {
-        let p = min(max(position, 0), 1)
+        let x = min(max(position, 0), 1)
+        var p = state.tbarReversed ? 1 - x : x
+        // Snap within half a percent of the ends (faders and sliders rarely report exact values).
+        if p >= 0.995 { p = 1 } else if p <= 0.005 { p = 0 }
         var events: [SwitcherEvent] = []
         if state.transition == nil {
             guard p > 0 else { return [] }
-            let k = kind == .cut ? .dissolve : kind
+            // The T-bar cannot scrub a stinger clip: it dissolves instead.
+            let k: TransitionKind = kind == .cut || kind == .stinger ? .dissolve : kind
             state.transition = ActiveTransition(kind: k, from: state.program, to: state.preview,
                                                 startTime: now, duration: 0, manualPosition: p)
             events.append(.transitionStarted(k))
+        } else if state.transition?.manualPosition == nil {
+            return []   // an AUTO transition is running; the bar does not take it over
         } else {
             state.transition?.manualPosition = p
         }
-        if p >= 1 { events += complete() }
-        else if p <= 0 { state.transition = nil; events.append(.transitionCompleted) } // aborted back
+        if p >= 1 {
+            events += complete()
+            state.tbarReversed.toggle()
+        } else if p <= 0 { state.transition = nil; events.append(.transitionCompleted) } // aborted back
         return events
     }
 

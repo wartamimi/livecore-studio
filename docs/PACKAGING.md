@@ -14,7 +14,7 @@ scripts/rtmp_e2e_test.sh           # E2E RTMP ke server ffmpeg lokal
 scripts/build_macos.sh release     # xcodegen + xcodebuild → build/DerivedData/Build/Products/Release/LiveCoreStudio.app
 open build/DerivedData/Build/Products/Release/LiveCoreStudio.app
 ```
-DMG (tanpa tanda tangan) untuk dibagikan: `scripts/make_dmg.sh` → `build/LiveCoreStudio-0.1.0-unsigned.dmg`. Pertama kali dibuka: klik kanan app → Open (Gatekeeper).
+DMG (tanpa tanda tangan) untuk dibagikan: `scripts/make_dmg.sh` → `build/LiveCoreStudio-0.46.3-unsigned.dmg`. Pertama kali dibuka: klik kanan app → Open (Gatekeeper).
 Alternatif tanpa XcodeGen: `scripts/bundle_spm_app.sh` (SwiftPM + bundle .app manual + ad-hoc codesign).
 Untuk mengembangkan di Xcode: `xcodegen generate && open LiveCoreStudio.xcodeproj`, pilih skema *LiveCoreStudio*, ⌘R.
 
@@ -42,3 +42,19 @@ Lingkungan pembuatan proyek ini (Linux) **tidak dapat** melakukan signing/notari
 ## CI
 `.github/workflows/ci.yml`: job Linux (unit + E2E) dan job `macos-14` (unit + E2E + build app + upload artefak .app).
 Setelah repo di-push ke GitHub, status CI menjadi bukti kompilasi macOS pertama.
+
+## Komponen pihak ketiga (0.23.0)
+- `Sources/CSyphon`: sebagian kode server [Syphon](https://github.com/Syphon/Syphon-Framework) (lisensi BSD 3-klausa,
+  `Sources/CSyphon/License.txt`), dikompilasi statis ke dalam app (tanpa framework tertanam, aman untuk ad-hoc +
+  hardened runtime).
+- `swift run livecore-syphon-check` (CI, macOS): proses lain menemukan server Syphon LiveCore dan membaca frame-nya.
+
+## NDI® (0.24.0)
+- `Sources/CNDI/ndi`: header NDI SDK v6.3.0.3 tanpa perubahan; tiap header berlisensi MIT (Copyright Vizrt NDI AB).
+- Pustaka NDI (`libndi.dylib`) **tidak** disertakan di app atau DMG. App memuat runtime yang dipasang NDI Tools / NDI
+  Runtime (http://ndi.link/NDIRedistV6Apple) dengan `dlopen`, karena itu entitlement
+  `com.apple.security.cs.disable-library-validation` aktif (tidak terbatas, tidak butuh provisioning profile;
+  `scripts/build_macos.sh` gagal bila hilang). Info.plist: `NSLocalNetworkUsageDescription` dan `NSBonjourServices`
+  (`_ndi._tcp`) untuk izin Jaringan Lokal.
+- CI memasang runtime NDI (`scripts/install_ndi_runtime.sh`) lalu menjalankan `livecore-ndi-check`.
+- NDI® adalah merek dagang terdaftar milik Vizrt NDI AB.

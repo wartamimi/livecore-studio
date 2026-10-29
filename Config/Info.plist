@@ -16,25 +16,47 @@
 	<array>
 		<string>en</string>
 		<string>id</string>
+		<string>ms</string>
+		<string>es</string>
+		<string>zh-Hans</string>
 	</array>
 	<key>CFBundleName</key>
 	<string>LiveCore Studio</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>0.46.3</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>58</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.video</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoadsInWebContent</key>
+		<true/>
+	</dict>
+	<key>NSCameraUseContinuityCameraDeviceType</key>
+	<true/>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>LiveCore Studio turns the program sound into live subtitles. On-device when the language allows it.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>LiveCore Studio uses cameras and video capture devices as production inputs.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>LiveCore Studio uses microphones and audio interfaces as mixer inputs.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>LiveCore Studio sends and receives NDI video on your network and, when the Web Controller is on, lets phones and tablets on your network control the switcher.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>LiveCore Studio takes the sound of its web page inputs into its audio mixer.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>LiveCore Studio asks Keynote, PowerPoint or LibreOffice to export a presentation you add as an input to PDF, so its slides can be shown.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_ndi._tcp</string>
+	</array>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>

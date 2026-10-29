@@ -30,7 +30,82 @@ Catatan: runner CI tidak punya kamera, mikrofon, atau layar interaktif, jadi T-0
 Putaran CI sebelumnya menemukan dan memperbaiki: initializer `DrawCommand`/`Stats` yang tidak `public`, dan format project
 XcodeGen yang butuh Xcode 16 (Xcode 15.4 gagal membaca project).
 
-## Failed
+## Passed di Mac pengguna (laporan manual, build-5 / 0.1.0, 2026-10-27)
+Dilaporkan oleh pengguna di MacBook miliknya (model/chip belum dicatat). Bukti: laporan tertulis pengguna, belum ada log/screenshot.
+| ID | Tes | Hasil |
+|---|---|---|
+| T-02 | App dapat dibuka | Passed |
+| T-03 | Input kamera tampil | Passed ("muncul") |
+| T-05 / T-06 | CUT dan AUTO mengubah Program | Passed |
+| T-07 (sebagian) | Meter audio mikrofon bergerak | Passed; sinkronisasi A/V belum diukur |
+| T-09 | Rekaman dapat diputar | Passed |
+| T-08 | Streaming ke platform | Passed |
+
+Belum dilaporkan: T-10 (stream+rekam 10 menit), T-11 reconnect, T-12 cabut-colok, T-13 beban, T-14 disk penuh, T-15 izin ditolak, T-16 bahasa.
+
+## Laporan pengguna build 0.2.0 (dev-build-8), 2026-10-27
+Pengguna melaporkan "sejauh ini belum ada bug" setelah mencoba 0.2.0. Rincian per tes T-17..T-22 belum dilaporkan, jadi
+statusnya tetap Not tested per item.
+
+## Laporan pengguna build 0.13.1 (dev-build-57), 2026-10-27
+Crash yang sama. Penyebab sebenarnya: app ad-hoc dengan hardened runtime tidak bisa memuat framework apa pun di luar
+sistem (library validation butuh Team ID; tanda tangan ad-hoc tidak punya), jadi tanda tangan ulang ad-hoc tidak membantu
+dan cek Team ID di CI lolos padahal salah. 0.13.2 meng-compile Lottie dari source dan me-link-nya statis (tidak ada
+framework di app), dan `scripts/check_app_loadable.sh` menggagalkan build/DMG bila app ad-hoc + hardened runtime
+membawa framework/dylib apa pun (dicek pada salinan yang masuk DMG).
+
+## Laporan pengguna build 0.13.0 (dev-build-53), 2026-10-27
+Crash saat dibuka: dyld menolak Lottie.framework ("different Team IDs") karena framework masih bertanda tangan Airbnb,
+sedangkan app ditandatangani ad-hoc. 0.13.1 menandatangani ulang framework secara ad-hoc dan build gagal bila Team ID
+berbeda. Juga ditemukan: CFBundleVersion selalu "11" karena project.yml menimpa Info.plist; diperbaiki (17).
+
+## Build Zoom 0.11.0/0.11.1 (dev-build-39/41/43), 2026-10-27
+Join ke meeting milik akun Zoom lain gagal dengan kode 63 (`UnableToJoinExternalMeeting`: aplikasi Meeting SDK yang belum
+dipublikasikan hanya boleh join meeting akun sendiri). Atas keputusan pemilik, fitur Zoom SDK ditarik dari repo dan rilis
+publik; 0.10.1 kembali ke isi 0.10.0.
+
+## Laporan pengguna build 0.9.0 (dev-build-31), 2026-10-27
+Pengguna menanggapi 0.9.0 dengan "Lanjutkan build selanjutnya" (fullscreen, bus audio, Tambah Media, T-bar — tanpa rincian per tes T-41..T-44).
+
+## Laporan pengguna build 0.8.0 (dev-build-29), 2026-10-27
+Pengguna menanggapi 0.8.0 dengan "Lanjutkan fitur selanjutnya" (playlist video, auto play, transport — tanpa rincian per tes T-38..T-40).
+
+## Laporan pengguna build 0.7.0 (dev-build-27), 2026-10-27
+Pengguna menanggapi 0.7.0 dengan "Bagus, lanjutkan" (musik, dock, MIDI — tanpa rincian per tes T-35..T-37).
+
+## Laporan pengguna build 0.6.0 (dev-build-21), 2026-10-27
+Pengguna melaporkan 0.6.0 "sudah bisa": browser source, jam/hitung mundur, dan snapshot berfungsi (T-32..T-34, ringkas).
+
+## Laporan pengguna build 0.5.0 (dev-build-19), 2026-10-27
+Pengguna melaporkan 0.5.0 "sudah bisa": transisi stinger dan aux bus berfungsi (T-30, T-31 — laporan ringkas, tanpa angka).
+
+## Laporan pengguna build 0.4.0 (dev-build-15), 2026-10-27
+Pengguna melaporkan 0.4.0 "sudah bisa": multi-destination streaming dan transisi baru berfungsi di Mac mereka
+(T-28, T-29 — laporan ringkas, tanpa angka pengukuran).
+
+## Build 0.3.0 — otomatis
+| ID | Tes | Hasil |
+|---|---|---|
+| A-01 | 73/73 unit test di Linux (Swift 6.0.3) | Passed |
+| M-01..M-04, A-06 | Kompilasi macOS, 73/73 test, shader, app, DMG (`dev-build-9`) | Passed — https://github.com/wartamimi/livecore-studio/actions/runs/40447703986 (commit 9175d5b), lulus pada percobaan pertama |
+
+## Milestone 2 (0.2.0) — otomatis
+| ID | Tes | Hasil |
+|---|---|---|
+| A-01 | 61/61 unit test di Linux (Swift 6.0.3), termasuk 14 tes baru M2 | Passed |
+
+Putaran CI pertama M2 menemukan 1 error kompilasi (tipe out-parameter `MTAudioProcessingTapCreate` adalah `Unmanaged` di SDK macOS) — diperbaiki di 7c69d6a.
+| M-01..M-03 | `swift build`, 61/61 `swift test`, RTMP E2E di macos-15 / Xcode 16.4 | Passed — run https://github.com/wartamimi/livecore-studio/actions/runs/40443040329 (commit 7c69d6a) |
+| A-06 | Kompilasi shader Metal offline (`scripts/check_shaders.sh`) termasuk `key_fragment` | Passed (run yang sama) |
+| A-05 / M-04 | Build app 0.2.0 + DMG, dipublikasikan sebagai pre-release `dev-build-8` | Passed |
+| T-17..T-22 | Tes manual M2 | Not tested (butuh Mac + perangkat) |
+
+## Failed (ditemukan pengguna) — semuanya sudah diperbaiki
+| ID | Build | Tes | Hasil | Perbaikan |
+|---|---|---|---|---|
+| T-03 | 0.3.0 | Tambah capture card HDMI USB merek generik (Mac17,2, macOS 27.0.1) | **Failed — crash** (SIGABRT: NSException dari `-[AVCaptureDALDevice setActiveVideoMinFrameDuration:]` di `CameraSource.selectFormat`) | 0.3.1: durasi frame diambil dari rentang yang dilaporkan perangkat, toleransi 29,97/30, semua setter perangkat dibungkus penangkap NSException (`CObjCSupport`); jika driver menolak, perangkat tetap dipakai dengan setelan bawaannya. CI macOS lulus (run 40449244649, `dev-build-11`). **Dikonfirmasi berfungsi oleh pengguna di 0.3.1.** |
+
+## Failed (lainnya)
 Tidak ada tes yang gagal pada putaran terakhir.
 
 ## Blocked by environment
