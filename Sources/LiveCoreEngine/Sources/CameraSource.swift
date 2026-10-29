@@ -18,6 +18,12 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
         didSet { if status != oldValue { onStatusChange?(status) } }
     }
     public var onStatusChange: ((SourceStatus) -> Void)?
+    /// Called once (capture queue) when the picture turns out to be limited range shown as full
+    /// (grey, washed out), so the engine can correct the input's video levels (0.46.2).
+    public var onLevelsDetected: ((InputAdjust.RangeFix) -> Void)?
+    private var levelProbe = LevelProbe()
+    private var levelFrame = 0
+    private var levelsDone = false
     public private(set) var activeFormatDescription: String = ""
 
     private let session = AVCaptureSession()
@@ -269,6 +275,7 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
         guard let pb = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         slot.put(pb)
         if !liveReported.value { liveReported.value = true; setStatus(.live) }
+        probeLevels(pb)
         // Measured frame rate over ~1 s windows.
         let now = HostClock.now()
         windowFrames += 1
@@ -278,6 +285,31 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
             let fps = Double(windowFrames - 1) / span
             statsLock.withLock { _stats.fps = max(fps, 0) }
             windowStart = now; windowFrames = 1
+        }
+    }
+
+    /// Samples a 48 × 27 grid of luma every 10th frame until `LevelProbe` has a verdict.
+    private func probeLevels(_ pb: CVPixelBuffer) {
+        guard !levelsDone, onLevelsDetected != nil else { return }
+        levelFrame += 1
+        guard levelFrame % 10 == 0, CVPixelBufferGetPixelFormatType(pb) == kCVPixelFormatType_32BGRA else { return }
+        CVPixelBufferLockBaseAddress(pb, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(pb, .readOnly) }
+        guard let base = CVPixelBufferGetBaseAddress(pb)?.assumingMemoryBound(to: UInt8.self) else { return }
+        let w = CVPixelBufferGetWidth(pb), h = CVPixelBufferGetHeight(pb), row = CVPixelBufferGetBytesPerRow(pb)
+        var luma: [UInt8] = []
+        luma.reserveCapacity(48 * 27)
+        for j in 0..<27 {
+            let y = (j * 2 + 1) * h / 54
+            for i in 0..<48 {
+                let p = base + y * row + ((i * 2 + 1) * w / 96) * 4
+                luma.append(LevelProbe.luma(b: p[0], g: p[1], r: p[2]))
+            }
+        }
+        levelProbe.add(luma: luma)
+        if let v = levelProbe.verdict {
+            levelsDone = true
+            if v != .none { onLevelsDetected?(v) }
         }
     }
 

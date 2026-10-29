@@ -146,6 +146,9 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         cfg.websiteDataStore = .nonPersistent()
         cfg.mediaTypesRequiringUserActionForPlayback = []
         cfg.preferences.javaScriptCanOpenWindowsAutomatically = false
+        // Identify as Safari: some sites (YouTube among them) hide player features such as the
+        // fullscreen button from an unknown WebKit browser.
+        cfg.applicationNameForUserAgent = "Version/18.0 Safari/605.1.15"
         cfg.userContentController = WKUserContentController()
         let wv = WKWebView(frame: NSRect(x: 0, y: 0, width: w, height: h), configuration: cfg)
         wv.navigationDelegate = self
@@ -214,13 +217,16 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
     /// Changes the page or its settings (main thread). Size changes recreate the web view.
     public func update(_ new: ProjectBrowser) {
         let recreate = new.width != config.width || new.height != config.height || new.transparent != config.transparent
-        let reloadPage = new.url != config.url || new.userScript != config.userScript
+        // Only a new address reloads; CSS / video-only / mute apply to the open page (0.46.2), so
+        // changing them in Edit no longer restarts the video or logs the page out.
+        let reloadPage = new.url != config.url
+        let restyle = new.userScript != config.userScript
         config = new
         config.fps = BrowserURLPolicy.clampFPS(new.fps)
         if recreate && webView != nil { stop(); start(); return }
         applyPageOptions()
         startTimer()
-        if reloadPage { load() }
+        if reloadPage { load() } else if restyle { webView?.evaluateJavaScript(config.liveStyleScript, completionHandler: nil) }
     }
 
     public func reload() { webView?.reloadFromOrigin() }

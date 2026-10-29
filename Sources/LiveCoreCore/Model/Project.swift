@@ -301,23 +301,45 @@ public struct ProjectBrowser: Codable, Equatable, Sendable {
     /// Script run in every page: the operator's CSS, video-only mode and muting. Re-applied when the
     /// page adds elements (single-page sites such as YouTube rebuild the page while playing).
     public var userScript: String? {
+        let css = pageCSS
+        let mute = muted == true
+        guard !css.isEmpty || mute else { return nil }
+        return Self.styleScript(css: css, mute: mute)
+    }
+
+    /// The CSS this input injects (video-only layout and the operator's own CSS).
+    var pageCSS: String {
         var css = ""
         if videoOnly == true { css += Self.videoOnlyCSS + "\n" }
         if let c = self.css, !c.isEmpty { css += c }
-        let mute = muted == true
-        guard !css.isEmpty || mute else { return nil }
-        return """
+        return css
+    }
+
+    /// Script that changes the injected CSS and mute on the page that is already open (0.46.2):
+    /// the Browser settings apply without reloading the page.
+    public var liveStyleScript: String { Self.styleScript(css: pageCSS, mute: muted == true, live: true) }
+
+    /// One shared helper per page: the CSS and mute live in window variables that a
+    /// MutationObserver keeps applied, so a later update replaces them instead of stacking.
+    static func styleScript(css: String, mute: Bool, live: Bool = false) -> String {
+        """
         (function () {
-          var css = \(Self.jsString(css));
-          function apply() {
-            if (css && !document.getElementById('livecore-css')) {
-              var s = document.createElement('style'); s.id = 'livecore-css'; s.textContent = css;
-              (document.head || document.documentElement).appendChild(s);
-            }
-            \(mute ? "document.querySelectorAll('video,audio').forEach(function (m) { m.muted = true; });" : "")
+          window.__livecoreCSS = \(jsString(css));
+          window.__livecoreMute = \(mute);
+          if (!window.__livecoreApply) {
+            window.__livecoreApply = function () {
+              var css = window.__livecoreCSS || '';
+              var s = document.getElementById('livecore-css');
+              if (css) {
+                if (!s) { s = document.createElement('style'); s.id = 'livecore-css'; (document.head || document.documentElement).appendChild(s); }
+                if (s.textContent !== css) s.textContent = css;
+              } else if (s) { s.remove(); }
+              if (window.__livecoreMute) document.querySelectorAll('video,audio').forEach(function (m) { if (!m.muted) m.muted = true; });
+            };
+            new MutationObserver(window.__livecoreApply).observe(document.documentElement, { childList: true, subtree: true });
           }
-          apply();
-          new MutationObserver(apply).observe(document.documentElement, { childList: true, subtree: true });
+          \(live && !mute ? "document.querySelectorAll('video,audio').forEach(function (m) { m.muted = false; });" : "")
+          window.__livecoreApply();
         })();
         """
     }
@@ -369,6 +391,7 @@ public struct ProjectBrowser: Codable, Equatable, Sendable {
         mark(el, true);
         tellParent(true);
         fire(el);
+        relayout();
         return Promise.resolve();
       }
       function exit() {
@@ -378,7 +401,13 @@ public struct ProjectBrowser: Codable, Equatable, Sendable {
         mark(el, false);
         tellParent(false);
         fire(el);
+        relayout();
         return Promise.resolve();
+      }
+      // Players size their video from the window on resize (YouTube): without this the player
+      // filled the picture but its video stayed at the old, small size.
+      function relayout() {
+        [0, 60, 250].forEach(function (t) { setTimeout(function () { window.dispatchEvent(new Event('resize')); }, t); });
       }
       function request() { return enter(this); }
       function define(proto, name, value) {

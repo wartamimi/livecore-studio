@@ -51,6 +51,14 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AX. Tes manual build 0.46.2
+
+| ID | Area | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-243 | Browser fullscreen | Input Browser ke YouTube, Edit, putar video, klik tombol fullscreen YouTube | Video memenuhi gambar input; Esc / tombol keluar mengembalikan |
+| T-244 | Edit tanpa reload | Saat video diputar, buka pengaturan input, ubah CSS / mute, Apply | Video tetap berjalan, halaman tidak dimuat ulang |
+| T-245 | Capture UVC | Tambah capture card UVC dengan sumber berwarna, tunggu 5 detik | Pemberitahuan koreksi muncul; hitam benar-benar hitam, warna tidak keabu-abuan |
+
 ## AW. Tes manual build 0.46.1
 
 | ID | Area | Langkah | Hasil yang diharapkan |

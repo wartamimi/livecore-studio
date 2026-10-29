@@ -26,7 +26,7 @@ final class M36Tests: XCTestCase {
         XCTAssertEqual(try roundTrip(b), b)
         let js = try XCTUnwrap(b.userScript)
         XCTAssertTrue(js.contains("livecore-css"))
-        XCTAssertTrue(js.contains("m.muted = true"))
+        XCTAssertTrue(js.contains("m.muted = true") && js.contains("__livecoreMute = true"))
         XCTAssertTrue(js.contains("object-fit: contain"))
         b.zoom = .nan
         XCTAssertEqual(b.pageZoom, 1)
