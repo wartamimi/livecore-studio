@@ -168,10 +168,19 @@ struct RundownView: View {
         editing = true
     }
 
+    /// Binding to one field of a segment, found by its id on every read and write. SwiftUI can
+    /// still read a binding once after its segment was deleted or the rundown replaced; the
+    /// value captured here is returned then instead of indexing past the end (crash in 0.44.0).
     private func seg<T>(_ i: Int, _ kp: WritableKeyPath<RundownSegment, T>) -> Binding<T> {
-        Binding(get: { model.rundown.segments[i][keyPath: kp] },
-                set: { v in var r = model.rundown; guard r.segments.indices.contains(i) else { return }
-                    r.segments[i][keyPath: kp] = v; model.setRundown(r) })
+        let segs = model.rundown.segments
+        guard segs.indices.contains(i) else {
+            return .constant(RundownSegment(title: "")[keyPath: kp])
+        }
+        let id = segs[i].id, fallback = segs[i][keyPath: kp]
+        return Binding(get: { model.rundown.segments.first { $0.id == id }?[keyPath: kp] ?? fallback },
+                       set: { v in var r = model.rundown
+                           guard let j = r.segments.firstIndex(where: { $0.id == id }) else { return }
+                           r.segments[j][keyPath: kp] = v; model.setRundown(r) })
     }
 
     @ViewBuilder
