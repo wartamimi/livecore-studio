@@ -34,6 +34,9 @@ struct PreflightSheet: View {
     @State private var plan: AppModel.PreflightPlan?
     @State private var items: [PreflightItem] = []
     @State private var running = false
+    /// Pre-flight only starts after the operator confirms it (0.45.0): it opens devices and
+    /// test-connects to the stream server.
+    @State private var confirmRun = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -80,11 +83,11 @@ struct PreflightSheet: View {
                 Text(L10n.t("preflight.privacy")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
                 Spacer()
                 if embedded {
-                    Button(items.isEmpty ? L10n.t("preflight.run") : L10n.t("preflight.run_again")) { run() }
+                    Button(items.isEmpty ? L10n.t("preflight.run") : L10n.t("preflight.run_again")) { confirmRun = true }
                         .disabled(running || plan == nil)
                 } else {
                     Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.cancelAction)
-                    Button(items.isEmpty ? L10n.t("preflight.run") : L10n.t("preflight.run_again")) { run() }
+                    Button(items.isEmpty ? L10n.t("preflight.run") : L10n.t("preflight.run_again")) { confirmRun = true }
                         .keyboardShortcut(.defaultAction)
                         .disabled(running || plan == nil)
                 }
@@ -94,7 +97,12 @@ struct PreflightSheet: View {
         .frame(width: embedded ? nil : 620, height: embedded ? nil : 520)
         .onAppear {
             if plan == nil { plan = model.defaultPreflightPlan }
-            run()
+        }
+        .alert(L10n.t("preflight.confirm_title"), isPresented: $confirmRun) {
+            Button(L10n.t("preflight.run")) { run() }
+            Button(L10n.t("settings.cancel"), role: .cancel) {}
+        } message: {
+            Text(L10n.t("preflight.confirm_message"))
         }
     }
 

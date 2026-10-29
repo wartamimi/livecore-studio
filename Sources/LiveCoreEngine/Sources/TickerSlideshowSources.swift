@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import CoreImage
 import CoreVideo
 import ImageIO
 import LiveCoreCore
@@ -357,6 +358,13 @@ public final class SlideshowSource: VideoSource {
     /// Folder watched for added / removed photos (nil when photos were picked one by one).
     public var folder: URL? { queue.sync { dir } }
     private var list: [URL], iv: Double, fd: Double, lp: Bool, kb: Bool, dir: URL?
+    private var lk = SlideshowLook()
+    private var blurCache: [Int: CGImage] = [:]
+    /// Fit, transition and frame (0.45.0).
+    public var look: SlideshowLook {
+        get { queue.sync { lk } }
+        set { queue.async { self.lk = newValue; self.lastDrawn = nil } }
+    }
     private var pollCount = 0
     private let outputSize: PixelSize
     private let queue = DispatchQueue(label: "livecore.slideshow", qos: .userInitiated)
@@ -407,7 +415,7 @@ public final class SlideshowSource: VideoSource {
             guard let self else { return }
             let changed = urls != self.list
             self.list = urls; self.iv = interval; self.fd = fade; self.lp = loop; self.kb = kenBurns; self.dir = folder
-            if changed { self.cache = [:]; self.failed = []; self.startTime = HostClock.now(); self.pausedAt = nil; self.lock.withLock { self.paused = false } }
+            if changed { self.cache = [:]; self.blurCache = [:]; self.failed = []; self.startTime = HostClock.now(); self.pausedAt = nil; self.lock.withLock { self.paused = false } }
             self.lastDrawn = nil
         }
     }
@@ -453,6 +461,18 @@ public final class SlideshowSource: VideoSource {
     }
 
     /// Picks up photos added to or removed from the watched folder, staying on the photo shown.
+    /// Small blurred copy of a photo for the blurred background (made once per photo).
+    private func blurredImage(_ i: Int, _ img: CGImage) -> CGImage? {
+        if let b = blurCache[i] { return b }
+        let small = CIImage(cgImage: img).transformed(by: CGAffineTransform(scaleX: 320 / CGFloat(max(img.width, 1)),
+                                                                             y: 320 / CGFloat(max(img.width, 1))))
+        let blurred = small.clampedToExtent().applyingGaussianBlur(sigma: 12).cropped(to: small.extent)
+        guard let cg = Self.ci.createCGImage(blurred, from: small.extent) else { return nil }
+        blurCache[i] = cg
+        return cg
+    }
+    private static let ci = CIContext(options: [.cacheIntermediates: false])
+
     private func rescanFolder() {
         guard let dir else { return }
         let found = Self.images(inFolder: dir)
@@ -485,6 +505,7 @@ public final class SlideshowSource: VideoSource {
         let n = list.count
         let wanted: Set<Int> = [pos.index, (pos.index + 1) % n, pos.next ?? pos.index]
         for k in cache.keys where !wanted.contains(k) { cache[k] = nil }
+        for k in blurCache.keys where !wanted.contains(k) { blurCache[k] = nil }
         let a = image(pos.index)
         let b = pos.next.flatMap { image($0) }
         if pos.next == nil, n > 1 { _ = image((pos.index + 1) % n) }   // decode ahead while idle
@@ -496,28 +517,95 @@ public final class SlideshowSource: VideoSource {
         if let ctx = CGContext(data: CVPixelBufferGetBaseAddress(pb), width: w, height: h, bitsPerComponent: 8,
                                bytesPerRow: CVPixelBufferGetBytesPerRow(pb), space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) {
-            ctx.setFillColor(NSColor.black.cgColor)
+            let look = lk
+            let bg = NSColor(hex: look.backgroundHex) ?? .black
+            ctx.setFillColor(bg.cgColor)
             ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
             ctx.interpolationQuality = kb ? .medium : .high
-            func drawFit(_ img: CGImage, alpha: Double, index: Int, progress: Double) {
-                let s = min(Double(w) / Double(img.width), Double(h) / Double(img.height))
-                let dw = Double(img.width) * s, dh = Double(img.height) * s
-                let fit = CGRect(x: (Double(w) - dw) / 2, y: (Double(h) - dh) / 2, width: dw, height: dh)
+            let W = Double(w), H = Double(h)
+            /// Draws one photo with the look's fit and frame; `dx` shifts it (slide), `scale`
+            /// grows it about the centre (zoom-fade).
+            func drawPhoto(_ img: CGImage, alpha: Double, index: Int, progress: Double, dx: Double = 0, scale: Double = 1) {
+                guard alpha > 0.001 else { return }
                 ctx.saveGState()
                 ctx.setAlpha(CGFloat(alpha))
+                if dx != 0 || scale != 1 {
+                    ctx.translateBy(x: CGFloat(W / 2 + dx), y: CGFloat(H / 2))
+                    ctx.scaleBy(x: CGFloat(scale), y: CGFloat(scale))
+                    ctx.translateBy(x: CGFloat(-W / 2), y: CGFloat(-H / 2))
+                }
+                // Area the photo may use.
+                var area = CGRect(x: 0, y: 0, width: W, height: H)
+                switch look.frame {
+                case .none: break
+                case .polaroid: area = area.insetBy(dx: W * 0.16, dy: H * 0.14)
+                case .rounded: area = area.insetBy(dx: W * 0.06, dy: H * 0.06)
+                }
+                if look.fit == .blurFill, look.frame == .none, let blurred = blurredImage(index, img) {
+                    let s = max(W / Double(blurred.width), H / Double(blurred.height))
+                    let bw = Double(blurred.width) * s, bh = Double(blurred.height) * s
+                    ctx.draw(blurred, in: CGRect(x: (W - bw) / 2, y: (H - bh) / 2, width: bw, height: bh))
+                    ctx.setFillColor(NSColor.black.withAlphaComponent(0.25).cgColor)
+                    ctx.fill(CGRect(x: 0, y: 0, width: W, height: H))
+                }
+                let iw = Double(img.width), ih = Double(img.height)
+                let s = look.fit == .fill && look.frame == .none
+                    ? max(area.width / iw, area.height / ih) : min(area.width / iw, area.height / ih)
+                let dw = iw * s, dh = ih * s
+                let fit = CGRect(x: area.midX - dw / 2, y: area.midY - dh / 2, width: dw, height: dh)
+                let visible = fit.intersection(area)
+                switch look.frame {
+                case .polaroid:
+                    // Slight tilt per photo, white border with a deeper bottom edge.
+                    let tilt = (index % 2 == 0 ? 1.0 : -1.0) * (1.2 + Double(index % 3) * 0.6) * .pi / 180
+                    ctx.translateBy(x: visible.midX, y: visible.midY)
+                    ctx.rotate(by: CGFloat(tilt))
+                    ctx.translateBy(x: -visible.midX, y: -visible.midY)
+                    let b = min(dw, dh) * 0.04
+                    let card = CGRect(x: visible.minX - b, y: visible.minY - b * 4, width: visible.width + 2 * b, height: visible.height + b * 5)
+                    ctx.setShadow(offset: CGSize(width: 0, height: -H * 0.01), blur: CGFloat(H * 0.03),
+                                  color: NSColor.black.withAlphaComponent(0.6).cgColor)
+                    ctx.setFillColor(NSColor(white: 0.97, alpha: 1).cgColor)
+                    ctx.fill(card)
+                    ctx.setShadow(offset: .zero, blur: 0, color: nil)
+                case .rounded:
+                    let r = min(visible.width, visible.height) * 0.04
+                    ctx.setShadow(offset: CGSize(width: 0, height: -H * 0.008), blur: CGFloat(H * 0.03),
+                                  color: NSColor.black.withAlphaComponent(0.55).cgColor)
+                    ctx.setFillColor(bg.cgColor)
+                    ctx.addPath(CGPath(roundedRect: visible, cornerWidth: r, cornerHeight: r, transform: nil)); ctx.fillPath()
+                    ctx.setShadow(offset: .zero, blur: 0, color: nil)
+                    ctx.addPath(CGPath(roundedRect: visible, cornerWidth: r, cornerHeight: r, transform: nil)); ctx.clip()
+                case .none:
+                    break
+                }
+                ctx.clip(to: visible)
                 if kb {
-                    // Draw the whole photo enlarged so that the Ken Burns crop fills the fitted area.
+                    // Draw the whole photo enlarged so that the Ken Burns crop fills the photo area.
                     let r = SlideshowMath.kenBurnsRect(progress: progress, index: index)
                     let fw = dw / r.width, fh = dh / r.height
-                    ctx.clip(to: fit)
                     ctx.draw(img, in: CGRect(x: fit.minX - r.x * fw, y: fit.minY - (1 - r.y - r.height) * fh, width: fw, height: fh))
                 } else {
                     ctx.draw(img, in: fit)
                 }
                 ctx.restoreGState()
             }
-            if let a { drawFit(a, alpha: 1, index: pos.index, progress: prog.current) }
-            if let b, let ni = pos.next { drawFit(b, alpha: pos.mix, index: ni, progress: prog.next) }
+            let m = pos.mix
+            let e = m < 0.5 ? 4 * m * m * m : 1 - pow(-2 * m + 2, 3) / 2
+            switch (look.transition, b, pos.next) {
+            case (.slide, let b?, let ni?):
+                if let a { drawPhoto(a, alpha: 1, index: pos.index, progress: prog.current, dx: -W * e) }
+                drawPhoto(b, alpha: 1, index: ni, progress: prog.next, dx: W * (1 - e))
+            case (.zoomFade, let b?, let ni?):
+                if let a { drawPhoto(a, alpha: 1, index: pos.index, progress: prog.current) }
+                drawPhoto(b, alpha: m, index: ni, progress: prog.next, scale: 0.92 + 0.08 * e)
+            case (.dipToColor, let b?, let ni?):
+                if m < 0.5 { if let a { drawPhoto(a, alpha: 1 - m * 2, index: pos.index, progress: prog.current) } }
+                else { drawPhoto(b, alpha: m * 2 - 1, index: ni, progress: prog.next) }
+            default:
+                if let a { drawPhoto(a, alpha: 1, index: pos.index, progress: prog.current) }
+                if let b, let ni = pos.next { drawPhoto(b, alpha: m, index: ni, progress: prog.next) }
+            }
         }
         CVPixelBufferUnlockBaseAddress(pb, [])
         lastDrawn = (pos.index, pos.next, mixStep, timeStep)

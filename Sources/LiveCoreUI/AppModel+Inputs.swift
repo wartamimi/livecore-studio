@@ -309,8 +309,11 @@ extension AppModel {
         }
         reloadAudioChannels()
     }
-    public func addSlideshow(urls: [URL], interval: Double, fade: Double, loop: Bool, kenBurns: Bool, folder: URL?) {
-        engine?.addSlideshow(urls: urls, interval: interval, fade: fade, loop: loop, kenBurns: kenBurns, folder: folder)
+    public func addSlideshow(urls: [URL], interval: Double, fade: Double, loop: Bool, kenBurns: Bool, folder: URL?,
+                             look: SlideshowLook = SlideshowLook()) {
+        guard let id = engine?.addSlideshow(urls: urls, interval: interval, fade: fade, loop: loop, kenBurns: kenBurns, folder: folder)
+        else { return }
+        slideshowSource(id)?.look = look
     }
     func pickTextFile() -> URL? {
         let panel = NSOpenPanel()

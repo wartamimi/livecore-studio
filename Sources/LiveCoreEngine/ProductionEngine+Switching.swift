@@ -269,7 +269,7 @@ extension ProductionEngine {
                 st.overlays[i].fadeDuration = d
             }
             st.overlays[i].set(on: on, now: now)
-            if on { st.overlays[i].onPreview = false }
+            if on { st.overlays[i].setPreview(false, now: now); st.overlays[i].onPreview = false }
         }
         applyAutoPlay()
     }
@@ -283,7 +283,7 @@ extension ProductionEngine {
                 st.overlays[i].animation = a
                 st.overlays[i].fadeDuration = d
             }
-            st.overlays[i].onPreview = on
+            st.overlays[i].setPreview(on, now: HostClock.now())
         }
     }
 }

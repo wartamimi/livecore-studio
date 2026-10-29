@@ -278,6 +278,8 @@ struct SlideshowSheet: View {
     @State private var loop = true
     @State private var kenBurns = false
     @State private var folder: URL?
+    @State private var look = SlideshowLook()
+    @State private var templateID = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -292,7 +294,36 @@ struct SlideshowSheet: View {
                 Text(urls.prefix(6).map(\.lastPathComponent).joined(separator: ", ") + (urls.count > 6 ? ", …" : ""))
                     .font(.system(size: 10)).foregroundStyle(Theme.textDim).lineLimit(2)
             }
+            Text(L10n.t("slideshow.templates")).font(.system(size: 11, weight: .semibold))
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 6)], spacing: 6) {
+                ForEach(SlideshowTemplate.all, id: \.id) { t in
+                    Button {
+                        templateID = t.id; look = t.look; interval = t.interval; fade = t.fade; kenBurns = t.kenBurns; loop = t.loop
+                    } label: {
+                        Text(L10n.t("slideshow.tpl.\(t.id)")).font(.system(size: 11, weight: .medium))
+                            .frame(maxWidth: .infinity).padding(.vertical, 6)
+                            .background(templateID == t.id ? Theme.accent.opacity(0.35) : Theme.panelRaised)
+                            .clipShape(RoundedRectangle(cornerRadius: 5))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
             Form {
+                Picker(L10n.t("slideshow.fit"), selection: $look.fit) {
+                    ForEach(SlideshowLook.Fit.allCases, id: \.self) { Text(L10n.t("slideshow.fit.\($0.rawValue)")).tag($0) }
+                }
+                Picker(L10n.t("slideshow.transition"), selection: $look.transition) {
+                    ForEach(SlideshowLook.Transition.allCases, id: \.self) { Text(L10n.t("slideshow.tr.\($0.rawValue)")).tag($0) }
+                }
+                Picker(L10n.t("slideshow.frame"), selection: $look.frame) {
+                    ForEach(SlideshowLook.Frame.allCases, id: \.self) { Text(L10n.t("slideshow.frame.\($0.rawValue)")).tag($0) }
+                }
+                ColorPicker(L10n.t("slideshow.background"), selection: Binding(
+                    get: { let c = ProjectColor(hex: look.backgroundHex) ?? ProjectColor(r: 0, g: 0, b: 0)
+                           return Color(.sRGB, red: c.r, green: c.g, blue: c.b) },
+                    set: { c in let n = NSColor(c).usingColorSpace(.sRGB) ?? .black
+                           look.backgroundHex = ProjectColor(r: Double(n.redComponent), g: Double(n.greenComponent), b: Double(n.blueComponent)).hex }),
+                    supportsOpacity: false)
                 LabeledContent(L10n.t("slideshow.interval")) {
                     Slider(value: $interval, in: 1...60, step: 0.5)
                     Text(String(format: "%.1f s", interval)).monospacedDigit().frame(width: 60, alignment: .trailing)
@@ -315,8 +346,9 @@ struct SlideshowSheet: View {
                     if let id = editing {
                         model.slideshowSource(id)?.update(urls: urls, interval: interval, fade: fade, loop: loop,
                                                           kenBurns: kenBurns, folder: folder)
+                        model.slideshowSource(id)?.look = look
                     } else {
-                        model.addSlideshow(urls: urls, interval: interval, fade: fade, loop: loop, kenBurns: kenBurns, folder: folder)
+                        model.addSlideshow(urls: urls, interval: interval, fade: fade, loop: loop, kenBurns: kenBurns, folder: folder, look: look)
                     }
                     dismiss()
                 }
@@ -325,10 +357,10 @@ struct SlideshowSheet: View {
             }
         }
         .padding(16)
-        .frame(width: 460)
+        .frame(width: 540)
         .onAppear {
             if let id = editing, let s = model.slideshowSource(id) {
-                urls = s.urls; interval = s.interval; fade = s.fade; loop = s.loop; kenBurns = s.kenBurns; folder = s.folder
+                urls = s.urls; interval = s.interval; fade = s.fade; loop = s.loop; kenBurns = s.kenBurns; folder = s.folder; look = s.look
             }
         }
     }

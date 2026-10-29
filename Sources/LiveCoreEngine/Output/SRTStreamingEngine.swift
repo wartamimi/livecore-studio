@@ -204,7 +204,7 @@ public final class SRTStreamingEngine: StreamOutput {
             stats.bitrateKbps = Double(bytesThisSecond) * 8 / 1000
             bytesThisSecond = 0
             stats.droppedVideoFrames = droppedFrames + UInt64(caller?.stats.dropped ?? 0)
-            stats.queuedMs = UInt32(min(Double(caller?.stats.unacknowledged ?? 0) * 1316 * 8 / Double(max(settings.video.bitrateKbps, 1)), 60_000))
+            stats.queuedMs = UInt32(min(Double(caller?.stats.unacknowledged ?? 0) * 1316 * 8 / Double(max(settings.streamVideo.bitrateKbps, 1)), 60_000))
             stats.uptime = state == .live ? now - liveSince : 0
             if let e = encoderStatsProvider?() { stats.encoderHardware = e.hardware; stats.encoderDropped = e.dropped }
             publishStats()

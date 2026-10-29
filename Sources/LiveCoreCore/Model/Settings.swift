@@ -55,7 +55,33 @@ public struct VideoEncoderSettings: Codable, Equatable, Sendable {
     public var keyframeIntervalSeconds: Double = 2
     public var profile: H264Profile = .high
     public var preferHardware: Bool = true
+    /// Rate control (0.45.0; nil = standard: peaks up to 1.5 × average over 1 s, as before).
+    public var rateControl: RateControl?
+    /// Encoder speed / quality trade-off (0.45.0; nil = balanced).
+    public var encoderPreset: EncoderPreset?
     public init() {}
+
+    public enum RateControl: String, Codable, Sendable, CaseIterable {
+        /// Peaks held close to the average (1.1 ×): the steadiest upload, for weak connections.
+        case cbr
+        /// Peaks up to 2 × the average: better on fast motion, needs upload headroom.
+        case vbr
+        public var peakFactor: Double { self == .cbr ? 1.1 : 2.0 }
+    }
+    public enum EncoderPreset: String, Codable, Sendable, CaseIterable {
+        case speed, balanced, quality
+    }
+    public var peakFactor: Double { rateControl?.peakFactor ?? 1.5 }
+}
+
+/// Where the stream takes its video / audio bitrate from (0.45.0).
+public enum StreamQualitySource: String, Codable, Sendable, CaseIterable {
+    /// The Output settings (encoder settings shared with outputs).
+    case output
+    /// The Recorder's bitrate (H.264/HEVC recordings; ProRes recordings fall back to Output).
+    case recording
+    /// Its own bitrate, set in the Stream settings.
+    case custom
 }
 
 public struct AudioEncoderSettings: Codable, Equatable, Sendable {
@@ -106,10 +132,15 @@ public struct StreamSettings: Codable, Equatable, Sendable {
     public var additional: [StreamDestination] = []
     /// Added in 0.9.0.
     public var primaryAudioBus: OutputBus = .master
+    /// Stream bitrate source and its own values (0.45.0).
+    public var qualitySource: StreamQualitySource = .output
+    public var customVideoKbps: Int = 6000
+    public var customAudioKbps: Int = 160
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
         case serverURL, keychainAccount, primaryName, primaryEnabled, autoReconnect, reconnect, additional, primaryAudioBus
+        case qualitySource, customVideoKbps, customAudioKbps
     }
 
     // Tolerant decoding: settings saved by older versions lack the newer keys.
@@ -124,6 +155,9 @@ public struct StreamSettings: Codable, Equatable, Sendable {
         reconnect = try c.decodeIfPresent(ExponentialBackoff.self, forKey: .reconnect) ?? d.reconnect
         additional = try c.decodeIfPresent([StreamDestination].self, forKey: .additional) ?? []
         primaryAudioBus = try c.decodeIfPresent(OutputBus.self, forKey: .primaryAudioBus) ?? .master
+        qualitySource = try c.decodeIfPresent(StreamQualitySource.self, forKey: .qualitySource) ?? .output
+        customVideoKbps = try c.decodeIfPresent(Int.self, forKey: .customVideoKbps) ?? d.customVideoKbps
+        customAudioKbps = try c.decodeIfPresent(Int.self, forKey: .customAudioKbps) ?? d.customAudioKbps
     }
 
     /// Problems with the destination list (empty = OK). Keys are checked by the app (Keychain).
@@ -260,6 +294,27 @@ public struct ProductionSettings: Codable, Equatable, Sendable {
     public var verticalOutput: VerticalSettings { vertical ?? VerticalSettings() }
     public init() {}
 
+    /// Encoder settings the stream uses: Output's, the Recorder's bitrate, or its own (0.45.0).
+    public var streamVideo: VideoEncoderSettings {
+        var v = video
+        switch stream.qualitySource {
+        case .output: break
+        case .recording:
+            if recording.videoCodec.usesBitrate { v.bitrateKbps = min(max(recording.bitrateKbps, 300), 50_000) }
+        case .custom: v.bitrateKbps = stream.customVideoKbps
+        }
+        return v
+    }
+
+    /// AAC bitrate of the stream (kbps).
+    public var streamAudioKbps: Int {
+        switch stream.qualitySource {
+        case .output: return audio.bitrateKbps
+        case .recording: return recording.audioKbps
+        case .custom: return stream.customAudioKbps
+        }
+    }
+
     /// Validation used before starting outputs. Returns human-readable problems (empty = OK).
     public func validationErrors() -> [String] {
         var errs: [String] = []
@@ -270,6 +325,10 @@ public struct ProductionSettings: Codable, Equatable, Sendable {
         }
         if !(1...120).contains(output.frameRate) { errs.append("Frame rate must be 1–120 fps.") }
         if !(300...50_000).contains(video.bitrateKbps) { errs.append("Video bitrate must be 300–50000 kbps.") }
+        if stream.qualitySource == .custom, !(300...50_000).contains(stream.customVideoKbps) {
+            errs.append("Stream video bitrate must be 300–50000 kbps.")
+        }
+        if stream.qualitySource != .output, ![64, 96, 128, 160, 192, 256, 320].contains(streamAudioKbps) { errs.append("Stream audio bitrate not supported by AAC encoder.") }
         if ![64, 96, 128, 160, 192, 256, 320].contains(audio.bitrateKbps) { errs.append("Audio bitrate not supported by AAC encoder.") }
         if ![44100, 48000].contains(audio.sampleRate) { errs.append("Audio sample rate must be 44.1 or 48 kHz.") }
         errs += stream.destinationErrors()

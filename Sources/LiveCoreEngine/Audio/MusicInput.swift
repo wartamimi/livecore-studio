@@ -14,7 +14,7 @@ public final class MusicInput {
     public let channel: MixerChannel
     public private(set) var tracks: [URL]
     public private(set) var index = 0
-    public var loopPlaylist = true
+    public var loopPlaylist = false   // repeat is off by default (0.45.0)
     public var shuffle = false
     /// Repeat One: the current song starts again when it ends.
     public var repeatOne = false

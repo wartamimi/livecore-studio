@@ -59,7 +59,7 @@ public enum ProjectTemplate: String, CaseIterable, Sendable {
             let opening = title(.fullScreenTitle, t.welcome, t.coupleNames, name: t.welcome)
             doc.inputs += [names, opening]
             overlayInputs = [names.id, opening.id]
-            var music = ProjectMusic(id: "tpl-music", name: t.music, tracks: [], loop: true, fadeSeconds: 3)
+            var music = ProjectMusic(id: "tpl-music", name: t.music, tracks: [], loop: false, fadeSeconds: 3)
             var ch = ProjectAudioChannel(name: t.music)
             ch.faderDB = -6
             ch.duckTarget = true

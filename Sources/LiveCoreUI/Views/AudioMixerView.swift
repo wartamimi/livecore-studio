@@ -6,12 +6,24 @@ import LiveCoreEngine
 struct AudioMixerView: View {
     @EnvironmentObject var model: AppModel
     @State private var showRadio = false
+    /// Compact mixer: strips show only name, meter, fader and mute/solo (details hidden).
+    @AppStorage("mixer.compact") private var compact = false
+    /// Aux buses (A/B) folded away.
+    @AppStorage("mixer.hideAux") private var hideAux = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 SectionHeader(title: L10n.t("audio.title"))
                 Spacer()
+                Button { compact.toggle() } label: {
+                    Image(systemName: compact ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
+                }
+                .buttonStyle(.borderless)
+                .help(compact ? L10n.t("mixer.expand_details") : L10n.t("mixer.minimize_details"))
+                Button { hideAux.toggle() } label: { Image(systemName: hideAux ? "a.square" : "a.square.fill") }
+                    .buttonStyle(.borderless)
+                    .help(hideAux ? L10n.t("mixer.show_aux") : L10n.t("mixer.hide_aux"))
                 if !model.audioChannels.isEmpty {
                     let allLocked = model.audioChannels.allSatisfy(\.locked)
                     Button { model.lockAllAudio(!allLocked) } label: { Image(systemName: allLocked ? "lock.fill" : "lock.open") }
@@ -40,9 +52,11 @@ struct AudioMixerView: View {
                         }
                     }
                 }
-                Divider()
-                ForEach(model.auxBuses) { bus in
-                    AuxStripView(bus: bus)
+                if !hideAux {
+                    Divider()
+                    ForEach(model.auxBuses) { bus in
+                        AuxStripView(bus: bus)
+                    }
                 }
                 Divider()
                 MasterStripView()
@@ -60,6 +74,7 @@ struct ChannelStripView: View {
     @State private var showDSP = false
     @State private var hovering = false
     @State private var confirmClose = false
+    @AppStorage("mixer.compact") private var compact = false
 
     var body: some View {
         VStack(spacing: 4) {
@@ -89,13 +104,29 @@ struct ChannelStripView: View {
                 StereoMeter(source: .channel(vm.id))
                 VerticalFader(value: $vm.fader)
             }
-            .frame(height: 120)
+            .frame(height: compact ? 90 : 120)
             Text(dbLabel).font(.system(size: 9).monospacedDigit()).foregroundStyle(Theme.textDim)
             HStack(spacing: 3) {
                 toggle(L10n.t("audio.mute"), $vm.muted, Theme.program)
                 toggle(L10n.t("audio.solo"), $vm.solo, Theme.warning)
                 toggle(L10n.t("audio.pgm"), $vm.toProgram, Theme.accent)
             }
+            if !compact { details }
+        }
+        .padding(4)
+        .background(Theme.panelRaised)
+        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .onHover { hovering = $0 }
+        .alert(L10n.f("audio.close_confirm", vm.name), isPresented: $confirmClose) {
+            Button(L10n.t("audio.close"), role: .destructive) { model.closeAudioChannel(vm.id) }
+            Button(L10n.t("settings.cancel"), role: .cancel) {}
+        } message: {
+            Text(closeMessage)
+        }
+    }
+
+    /// Transport, aux sends and properties: hidden in the compact mixer.
+    @ViewBuilder private var details: some View {
             if let m = model.musicPlayer(vm.id) { MusicTransport(player: m) }
             if let r = model.radio(vm.id) { RadioTransport(radio: r) }
             HStack(spacing: 3) {
@@ -138,17 +169,6 @@ struct ChannelStripView: View {
                     Divider()
                     Button(L10n.t("audio.close"), role: .destructive) { confirmClose = true }.disabled(vm.locked)
                 }
-        }
-        .padding(4)
-        .background(Theme.panelRaised)
-        .clipShape(RoundedRectangle(cornerRadius: 5))
-        .onHover { hovering = $0 }
-        .alert(L10n.f("audio.close_confirm", vm.name), isPresented: $confirmClose) {
-            Button(L10n.t("audio.close"), role: .destructive) { model.closeAudioChannel(vm.id) }
-            Button(L10n.t("settings.cancel"), role: .cancel) {}
-        } message: {
-            Text(closeMessage)
-        }
     }
 
     /// What closing removes: the input the audio belongs to, the music input, or the channel.

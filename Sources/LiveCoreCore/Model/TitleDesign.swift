@@ -217,15 +217,21 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
     case headline, fullScreenTitle, chapterCard, quote, endCard, breakingBanner
     // Corners
     case cornerBug, locationTag, liveBadge
+    // 0.45.0
+    case weddingScript, corporateSplit, cleanWhite, neonDark, outlineBold, goldBar, sportsBar
+    case weddingCard, seminarTitle, sponsorCard
+    case hashtagTag, sponsorBug
 
     public var category: TitleCategory {
         switch self {
         case .classicStrap, .roundedStrap, .twoTone, .boxedName, .accentLine, .modernGlass,
-             .newsLive, .minimalUnderline, .pill, .socialHandle, .fullWidthBar, .rightStrap:
+             .newsLive, .minimalUnderline, .pill, .socialHandle, .fullWidthBar, .rightStrap,
+             .weddingScript, .corporateSplit, .cleanWhite, .neonDark, .outlineBold, .goldBar, .sportsBar:
             return .lowerThird
-        case .headline, .fullScreenTitle, .chapterCard, .quote, .endCard, .breakingBanner:
+        case .headline, .fullScreenTitle, .chapterCard, .quote, .endCard, .breakingBanner,
+             .weddingCard, .seminarTitle, .sponsorCard:
             return .title
-        case .cornerBug, .locationTag, .liveBadge:
+        case .cornerBug, .locationTag, .liveBadge, .hashtagTag, .sponsorBug:
             return .corner
         }
     }
@@ -233,12 +239,13 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
     public var kind: TitleKind {
         switch self {
         case .classicStrap, .roundedStrap, .modernGlass, .pill, .socialHandle, .rightStrap,
-             .cornerBug, .locationTag, .liveBadge:
+             .cornerBug, .locationTag, .liveBadge, .cleanWhite, .neonDark, .hashtagTag, .sponsorBug:
             return .strap
-        case .twoTone, .boxedName: return .twoTone
-        case .accentLine: return .accentLine
+        case .twoTone, .boxedName, .corporateSplit, .sportsBar: return .twoTone
+        case .accentLine, .weddingScript, .outlineBold, .goldBar: return .accentLine
         case .newsLive, .breakingBanner: return .news
-        case .minimalUnderline, .chapterCard, .headline, .quote: return .underline
+        case .minimalUnderline, .chapterCard, .headline, .quote, .seminarTitle: return .underline
+        case .weddingCard, .sponsorCard: return .card
         case .fullWidthBar: return .fullBar
         case .fullScreenTitle, .endCard: return .card
         }
@@ -261,6 +268,13 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
         case .cornerBug: return ("LiveCore", "", "")
         case .locationTag: return ("Jakarta", "", "")
         case .liveBadge: return ("● LIVE", "", "")
+        case .weddingScript: return ("Rina & Dimas", "The Wedding · 12.12.2026", "")
+        case .weddingCard: return ("Rina & Dimas", "Saturday, 12 December 2026", "")
+        case .seminarTitle: return ("Digital Transformation 2026", "Keynote Session", "")
+        case .sponsorCard: return ("Supported by", "Sponsor Name", "")
+        case .hashtagTag: return ("#YourEvent2026", "", "")
+        case .sponsorBug: return ("Presented by Sponsor", "", "")
+        case .sportsBar: return ("HOME 2 - 1 AWAY", "2nd half · 67′", "")
         default: return ("Speaker Name", "Title / Organisation", "")
         }
     }
@@ -282,6 +296,14 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
             return .zoom
         case .minimalUnderline, .fullScreenTitle, .quote, .endCard:
             return .fade
+        case .weddingScript, .weddingCard, .seminarTitle, .cleanWhite, .goldBar:
+            return .riseFade
+        case .corporateSplit, .outlineBold, .sportsBar:
+            return .nudgeLeft
+        case .neonDark, .sponsorCard:
+            return .zoomOut
+        case .hashtagTag, .sponsorBug:
+            return .pop
         }
     }
 
@@ -442,6 +464,121 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
             d.titleWeight = .heavy
             d.tracking = 2
             d.marginY = 0.06
+            d.marginX = 0.04
+        case .weddingScript:
+            d.showBox = false
+            d.fontFamily = "Snell Roundhand"
+            d.titleSize = 72
+            d.subtitleSize = 28
+            d.titleWeight = .regular
+            d.subtitleWeight = .light
+            d.tracking = 0.5
+            d.accentColor = Self.rgb(0.85, 0.7, 0.4)
+            d.shadow = true
+            d.textAnimation = .fade
+            d.letterDelay = 0.03
+        case .corporateSplit:
+            d.boxColor = Self.rgb(0.0, 0.32, 0.6, 0.96)
+            d.box2Color = Self.rgb(0.93, 0.95, 0.97, 0.96)
+            d.subtitleColor = Self.rgb(0.0, 0.25, 0.45)
+            d.titleWeight = .semibold
+            d.paddingY = 10
+            d.cornerRadius = 4
+        case .cleanWhite:
+            d.boxColor = Self.rgb(1, 1, 1, 0.96)
+            d.titleColor = Self.rgb(0.07, 0.07, 0.09)
+            d.subtitleColor = Self.rgb(0.35, 0.35, 0.4)
+            d.cornerRadius = 10
+            d.titleWeight = .semibold
+            d.minWidth = 0.26
+            d.shadow = true
+            d.shadowColor = Self.rgb(0, 0, 0, 0.35)
+        case .neonDark:
+            d.boxColor = Self.rgb(0.04, 0.04, 0.08, 0.88)
+            d.titleColor = Self.rgb(0.35, 0.95, 1)
+            d.subtitleColor = Self.rgb(1, 0.4, 0.85)
+            d.cornerRadius = 6
+            d.uppercase = true
+            d.tracking = 2
+            d.shadow = true
+            d.shadowColor = Self.rgb(0.2, 0.85, 1, 0.7)
+            d.shadowBlur = 16
+            d.shadowOffset = 0
+        case .outlineBold:
+            d.showBox = false
+            d.uppercase = true
+            d.titleWeight = .heavy
+            d.titleSize = 64
+            d.outlineWidth = 3
+            d.outlineColor = Self.rgb(0, 0, 0)
+            d.accentColor = Self.rgb(1, 0.82, 0.1)
+            d.textAnimation = .pop
+        case .goldBar:
+            d.showBox = false
+            d.accentColor = Self.rgb(0.83, 0.68, 0.33)
+            d.titleWeight = .medium
+            d.subtitleColor = Self.rgb(0.95, 0.88, 0.7)
+            d.tracking = 1
+            d.shadow = true
+        case .sportsBar:
+            d.boxColor = Self.rgb(0.07, 0.09, 0.12, 0.95)
+            d.box2Color = Self.rgb(0.95, 0.75, 0.05, 0.97)
+            d.subtitleColor = Self.rgb(0.07, 0.07, 0.09)
+            d.titleWeight = .heavy
+            d.uppercase = true
+            d.paddingY = 8
+            d.anchor = .topLeft
+        case .weddingCard:
+            d.anchor = .center
+            d.align = .center
+            d.fontFamily = "Snell Roundhand"
+            d.titleSize = 120
+            d.subtitleSize = 40
+            d.titleWeight = .regular
+            d.subtitleWeight = .light
+            d.box2Color = Self.rgb(0.98, 0.96, 0.92, 0.94)
+            d.titleColor = Self.rgb(0.55, 0.42, 0.2)
+            d.subtitleColor = Self.rgb(0.35, 0.3, 0.25)
+            d.lineGap = 16
+            d.textAnimation = .fade
+            d.letterDelay = 0.035
+        case .seminarTitle:
+            d.showBox = false
+            d.anchor = .left
+            d.titleSize = 84
+            d.subtitleSize = 38
+            d.titleWeight = .heavy
+            d.shadow = true
+            d.accentColor = Self.rgb(0.0, 0.55, 0.95)
+            d.lineGap = 14
+        case .sponsorCard:
+            d.anchor = .center
+            d.align = .center
+            d.titleSize = 48
+            d.subtitleSize = 96
+            d.titleWeight = .medium
+            d.subtitleWeight = .heavy
+            d.box2Color = Self.rgb(0.08, 0.08, 0.1, 0.92)
+            d.lineGap = 12
+        case .hashtagTag:
+            d.anchor = .topRight
+            d.pill = true
+            d.titleSize = 32
+            d.paddingX = 24
+            d.paddingY = 8
+            d.boxColor = Self.rgb(0.12, 0.45, 0.95, 0.92)
+            d.titleWeight = .semibold
+            d.marginY = 0.06
+            d.marginX = 0.04
+        case .sponsorBug:
+            d.anchor = .bottomRight
+            d.titleSize = 26
+            d.cornerRadius = 6
+            d.paddingX = 18
+            d.paddingY = 6
+            d.boxColor = Self.rgb(0, 0, 0, 0.5)
+            d.titleWeight = .medium
+            d.marginY = 0.05
             d.marginX = 0.04
         }
         return d
@@ -669,6 +806,10 @@ public enum TextAnimation: String, Codable, Sendable, CaseIterable {
     case drop
     /// Each letter grows from small.
     case pop
+    /// Each letter shrinks into place from large (0.45.0).
+    case shrink
+    /// Each letter drops in and bounces slightly (0.45.0).
+    case bounce
 
     /// Seconds one letter takes to settle.
     public var letterDuration: Double {
@@ -677,6 +818,8 @@ public enum TextAnimation: String, Codable, Sendable, CaseIterable {
         case .fade: return 0.35
         case .rise, .drop: return 0.4
         case .pop: return 0.3
+        case .shrink: return 0.35
+        case .bounce: return 0.5
         }
     }
 }
@@ -717,11 +860,21 @@ public struct TextReveal: Equatable, Sendable {
         switch animation {
         case .rise: return -0.45 * (1 - e)
         case .drop: return 0.45 * (1 - e)
+        case .bounce:
+            // Back ease-out from above: overshoots below its line, then settles.
+            let c1 = 1.9, c3 = c1 + 1, m = min(max(p, 0), 1) - 1
+            return 0.6 * (1 - (1 + c3 * m * m * m + c1 * m * m))
         default: return 0
         }
     }
 
     /// Scale of a letter (pop) and its opacity.
-    public func scale(_ p: Double) -> Double { animation == .pop ? 0.3 + 0.7 * Self.ease(p) : 1 }
+    public func scale(_ p: Double) -> Double {
+        switch animation {
+        case .pop: return 0.3 + 0.7 * Self.ease(p)
+        case .shrink: return 1.9 - 0.9 * Self.ease(p)
+        default: return 1
+        }
+    }
     public func opacity(_ p: Double) -> Double { animation == .typewriter ? (p > 0 ? 1 : 0) : p }
 }

@@ -154,10 +154,12 @@ public enum FramePlanner {
                 return d
             }
         }
-        // Overlays waiting on Preview are drawn over the preview picture at full opacity.
-        for ch in overlays.sorted(by: { $0.index < $1.index }) where ch.onPreview {
+        // Overlays waiting on Preview animate in (and out) over the preview picture.
+        for ch in overlays.sorted(by: { $0.index < $1.index }) where !ch.isOn {
             guard let src = ch.source, layersFor(src) != nil else { continue }
-            plan.preview += overlayCommands(ch, src, frame: ch.preset.rect, opacity: 1)
+            let (rect, a) = ch.previewPlacement(ch.preset.rect, at: now)
+            guard a > 0.001 else { continue }
+            plan.preview += overlayCommands(ch, src, frame: rect, opacity: a)
         }
         for ch in overlays.sorted(by: { $0.index < $1.index }) {
             guard let src = ch.source, layersFor(src) != nil else { continue }

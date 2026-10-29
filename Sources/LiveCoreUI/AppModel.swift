@@ -109,6 +109,8 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var remoteError: String?
     @Published public internal(set) var remoteClients = 0
     @Published public internal(set) var remoteAddresses: [String] = []
+    /// Online access through a Cloudflare quick tunnel (0.45.0).
+    let remoteTunnel = RemoteTunnel()
     var remoteServer: RemoteServer?
 
     // Errors
@@ -177,6 +179,7 @@ public final class AppModel: ObservableObject {
     }
 
     func wire(_ e: ProductionEngine) {
+        DispatchQueue.main.async { [weak self] in self?.applyLimiterSettings() }
         e.onProgramFrame = { [weak self] pb in
             self?.lastProgramFrame = pb
             self?.programFeed.push(pb); self?.programOutputFeed.push(pb)

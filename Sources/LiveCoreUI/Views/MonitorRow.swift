@@ -61,6 +61,7 @@ struct MonitorView: View {
             PixelBufferView(feed: feed)
                 .aspectRatio(model.canvasAspect, contentMode: .fit)   // follows Settings › Canvas
                 .overlay(Rectangle().stroke(color, lineWidth: 2))
+                .overlay { MonitorGuides() }
                 .overlay(alignment: .top) { if notRecording { NotRecordingBadge().padding(.top, 8) } }
                 .overlay { if let designer { DesignerCanvasIfActive(state: designer) } }
                 .overlay { if snapshot != nil { SnapshotConfirmation() } }
@@ -286,6 +287,55 @@ struct CustomTransitionControls: View {
         }
         .controlSize(.small)
         .font(.system(size: 10))
+    }
+}
+/// Operator guides drawn over Preview and Program only (never on the output): safe areas,
+/// rule of thirds, centre cross and a 9:16 / 4:3 crop frame (Settings › Canvas, 0.45.0).
+struct MonitorGuides: View {
+    @AppStorage("guides.safe") private var safe = false
+    @AppStorage("guides.thirds") private var thirds = false
+    @AppStorage("guides.center") private var center = false
+    @AppStorage("guides.crop") private var crop = ""   // "", "9:16", "4:3", "1:1"
+
+    var body: some View {
+        if safe || thirds || center || !crop.isEmpty {
+            Canvas { ctx, size in
+                let line = GraphicsContext.Shading.color(.white.opacity(0.55))
+                func box(_ f: CGFloat) -> CGRect {
+                    CGRect(x: size.width * (1 - f) / 2, y: size.height * (1 - f) / 2, width: size.width * f, height: size.height * f)
+                }
+                if safe {
+                    ctx.stroke(Path(box(0.93)), with: line, style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+                    ctx.stroke(Path(box(0.90)), with: .color(.yellow.opacity(0.6)), lineWidth: 1)
+                }
+                if thirds {
+                    var p = Path()
+                    for i in 1...2 {
+                        let x = size.width * CGFloat(i) / 3, y = size.height * CGFloat(i) / 3
+                        p.move(to: CGPoint(x: x, y: 0)); p.addLine(to: CGPoint(x: x, y: size.height))
+                        p.move(to: CGPoint(x: 0, y: y)); p.addLine(to: CGPoint(x: size.width, y: y))
+                    }
+                    ctx.stroke(p, with: .color(.white.opacity(0.35)), lineWidth: 1)
+                }
+                if center {
+                    var p = Path()
+                    let c = CGPoint(x: size.width / 2, y: size.height / 2), r: CGFloat = 12
+                    p.move(to: CGPoint(x: c.x - r, y: c.y)); p.addLine(to: CGPoint(x: c.x + r, y: c.y))
+                    p.move(to: CGPoint(x: c.x, y: c.y - r)); p.addLine(to: CGPoint(x: c.x, y: c.y + r))
+                    ctx.stroke(p, with: line, lineWidth: 1.5)
+                }
+                let ratio: CGFloat? = crop == "9:16" ? 9.0 / 16 : crop == "4:3" ? 4.0 / 3 : crop == "1:1" ? 1 : nil
+                if let ratio {
+                    var w = size.height * ratio, h = size.height
+                    if w > size.width { w = size.width; h = w / ratio }
+                    let r = CGRect(x: (size.width - w) / 2, y: (size.height - h) / 2, width: w, height: h)
+                    var outside = Path(CGRect(origin: .zero, size: size)); outside.addRect(r)
+                    ctx.fill(outside, with: .color(.black.opacity(0.35)), style: FillStyle(eoFill: true))
+                    ctx.stroke(Path(r), with: .color(.cyan.opacity(0.8)), lineWidth: 1)
+                }
+            }
+            .allowsHitTesting(false)
+        }
     }
 }
 #endif

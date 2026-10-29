@@ -61,6 +61,9 @@ public final class AudioMixerEngine {
     public let master = ChannelControls()
     public let monitorVolume = AtomicFloat(1)
     public let limiterEnabled = AtomicBool(true)
+    /// Limiter ceiling (dBFS) and release (ms), Settings › Audio (0.45.0).
+    public let limiterCeilingDB = AtomicFloat(-1)
+    public let limiterReleaseMs = AtomicFloat(80)
     /// Aux buses A and B: fader, mute and meters (same control block as a channel).
     public static let auxCount = 2
     public let aux: [ChannelControls] = (0..<AudioMixerEngine.auxCount).map { _ in ChannelControls() }
@@ -257,7 +260,11 @@ public final class AudioMixerEngine {
         // Master fader + protective limiter on the program bus.
         let masterGain = master.muted.value ? 0 : AudioMath.dbToLinear(master.faderDB.value)
         masterRamp.apply(target: masterGain, left: progL, right: progR, frames: frames)
-        if limiterEnabled.value { limiter.process(left: progL, right: progR, frames: frames) }
+        if limiterEnabled.value {
+            limiter.ceilingDB = min(max(limiterCeilingDB.value, -12), 0)
+            limiter.releaseSeconds = min(max(limiterReleaseMs.value, 10), 1000) / 1000
+            limiter.process(left: progL, right: progR, frames: frames)
+        }
         master.peakL.storeMax(AudioMath.peak(progL, count: frames))
         master.peakR.storeMax(AudioMath.peak(progR, count: frames))
         master.gainReductionDB.value = limiterEnabled.value ? limiter.gainReductionDB : 0
