@@ -65,33 +65,64 @@ public final class VerticalOutput {
         let s = config.current
         let src = PixelSize(width: CVPixelBufferGetWidth(program), height: CVPixelBufferGetHeight(program))
         frameIndex += 1
-        switch s.follow {
-        case .faces:
-            // About 6 detections a second, off this queue; the crop keeps gliding in between.
-            if frameIndex % 5 == 0, detecting.mutate({ d -> Bool in if d { return false }; d = true; return true }) {
-                detectQueue.async { [weak self] in self?.detect(program, pts: pts.seconds) }
-            }
-        case .center:
-            follower.mutate { $0.aim(at: 0.5) }
-        case .manual:
-            follower.mutate { $0.aim(at: s.manualX) }
-        }
-        let x = follower.mutate { $0.step(smoothing: s.follow == .faces ? s.smoothing : 0.25) }
         let out = s.size
-        let aspect = Double(out.width) / Double(max(out.height, 1))
-        let r = VerticalCrop.rect(source: src, aspect: aspect, centerX: x)
-        // CoreImage is y-up.
-        let crop = CGRect(x: r.x, y: Double(src.height) - r.y - r.height, width: r.width, height: r.height)
-        let sx = Double(out.width) / r.width, sy = Double(out.height) / r.height
-        let img = CIImage(cvPixelBuffer: program).cropped(to: crop)
-            .transformed(by: CGAffineTransform(translationX: -crop.minX, y: -crop.minY))
-            .transformed(by: CGAffineTransform(scaleX: sx, y: sy))
+        let img: CIImage
+        if s.fill == .crop {
+            follower.mutate { $0.deadZone = min(max(s.deadZone, 0.005), 0.3) }
+            switch s.follow {
+            case .faces:
+                // About 6 detections a second, off this queue; the crop keeps gliding in between.
+                if frameIndex % 5 == 0, detecting.mutate({ d -> Bool in if d { return false }; d = true; return true }) {
+                    detectQueue.async { [weak self] in self?.detect(program, pts: pts.seconds) }
+                }
+            case .center:
+                follower.mutate { $0.aim(at: 0.5) }
+            case .manual:
+                follower.mutate { $0.aim(at: s.manualX) }
+            }
+            let x = follower.mutate { $0.step(smoothing: s.follow == .faces ? s.smoothing : 0.25) }
+            let aspect = Double(out.width) / Double(max(out.height, 1))
+            let r = VerticalCrop.rect(source: src, aspect: aspect, centerX: x, zoom: s.zoom, centerY: s.centerY)
+            // CoreImage is y-up.
+            let crop = CGRect(x: r.x, y: Double(src.height) - r.y - r.height, width: r.width, height: r.height)
+            let sx = Double(out.width) / r.width, sy = Double(out.height) / r.height
+            img = CIImage(cvPixelBuffer: program).cropped(to: crop)
+                .transformed(by: CGAffineTransform(translationX: -crop.minX, y: -crop.minY))
+                .transformed(by: CGAffineTransform(scaleX: sx, y: sy))
+        } else {
+            img = fitted(program, source: src, output: out, settings: s)
+        }
         guard let pb = buffer(out) else { return }
         ci.render(img, to: pb, bounds: CGRect(x: 0, y: 0, width: out.width, height: out.height), colorSpace: nil)
         latest.mutate { $0 = pb }
         let k = sinks.current
         k.encoder?.encode(pb, pts: pts)
         k.recorder?.append(video: pb, pts: pts)
+    }
+
+    /// The whole Program picture fitted to the width, on black or on a blurred, zoomed copy.
+    private func fitted(_ program: CVPixelBuffer, source src: PixelSize, output out: PixelSize, settings s: VerticalSettings) -> CIImage {
+        let base = CIImage(cvPixelBuffer: program)
+        let bounds = CGRect(x: 0, y: 0, width: out.width, height: out.height)
+        let f = VerticalCrop.fitRect(source: src, output: out, position: s.fitPosition)
+        let k = f.width / Double(max(src.width, 1))
+        let fg = base.transformed(by: CGAffineTransform(scaleX: k, y: k))
+            .transformed(by: CGAffineTransform(translationX: f.x, y: Double(out.height) - f.y - f.height))
+        let bg: CIImage
+        if s.fill == .fitBlur {
+            // Fill the frame (aspect fill), blur, and crop back to the output.
+            let fillScale = max(Double(out.width) / Double(max(src.width, 1)), Double(out.height) / Double(max(src.height, 1)))
+            let w = Double(src.width) * fillScale, h = Double(src.height) * fillScale
+            bg = base.transformed(by: CGAffineTransform(scaleX: fillScale, y: fillScale))
+                .transformed(by: CGAffineTransform(translationX: (Double(out.width) - w) / 2, y: (Double(out.height) - h) / 2))
+                .clampedToExtent()
+                .applyingGaussianBlur(sigma: min(max(s.blurRadius, 0), 120))
+                .applyingFilter("CIColorControls", parameters: [kCIInputBrightnessKey: -0.12])
+                .cropped(to: bounds)
+        } else {
+            bg = CIImage(color: .black).cropped(to: bounds)
+        }
+        return fg.composited(over: bg)
     }
 
     private func detect(_ program: CVPixelBuffer, pts: Double) {

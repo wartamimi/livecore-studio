@@ -101,6 +101,51 @@ public enum FrameRenderer {
                 ctx.setFillColor(CGColor(gray: 0, alpha: 1))
                 ctx.fill(all)
             }
+        case .conference:
+            // Accent strip along the bottom and a bar beside the speaker panel.
+            ctx.setFillColor(d.accent.nsColor.cgColor)
+            ctx.fill(CGRect(x: 0, y: 0, width: W, height: 0.035 * H))
+            if let lab = l.label {
+                let r = rect(lab)
+                ctx.fill(CGRect(x: r.minX - 18 * u, y: r.minY, width: 6 * u, height: r.height))
+            }
+            ctx.setFillColor(d.accent.nsColor.withAlphaComponent(0.35).cgColor)
+            ctx.fill(CGRect(x: 0, y: 0.035 * H, width: W, height: 4 * u))
+        case .meeting:
+            // Soft shadow under the window and an accent underline under the name.
+            ctx.saveGState()
+            ctx.setShadow(offset: CGSize(width: 0, height: -8 * u), blur: 28 * u, color: CGColor(gray: 0, alpha: 0.35))
+            ctx.setFillColor(CGColor(gray: 1, alpha: 1))
+            ctx.addPath(windowPath(cam))
+            ctx.fillPath()
+            ctx.restoreGState()
+            if let lab = l.label {
+                let r = rect(lab)
+                ctx.setFillColor(d.accent.nsColor.cgColor)
+                ctx.addPath(CGPath(roundedRect: CGRect(x: r.minX, y: r.minY - 2 * u, width: 120 * u, height: 6 * u),
+                                   cornerWidth: 3 * u, cornerHeight: 3 * u, transform: nil))
+                ctx.fillPath()
+            }
+        case .webinar:
+            // Glow behind the window and an accent bar above the title.
+            ctx.saveGState()
+            ctx.setShadow(offset: .zero, blur: 50 * u, color: d.accent.nsColor.withAlphaComponent(0.6).cgColor)
+            ctx.setFillColor(CGColor(gray: 0, alpha: 1))
+            ctx.addPath(windowPath(cam))
+            ctx.fillPath()
+            ctx.restoreGState()
+            if let lab = l.label {
+                let r = rect(lab)
+                ctx.setFillColor(d.accent.nsColor.cgColor)
+                ctx.fill(CGRect(x: r.minX, y: r.maxY + 10 * u, width: 90 * u, height: 8 * u))
+            }
+        case .keynote:
+            // Thin accent line above the name strap.
+            if let lab = l.label {
+                let r = rect(lab)
+                ctx.setFillColor(d.accent.nsColor.cgColor)
+                ctx.fill(CGRect(x: r.midX - 60 * u, y: r.maxY - 4 * u, width: 120 * u, height: 3 * u))
+            }
         default:
             break
         }

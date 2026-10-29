@@ -33,6 +33,7 @@ struct InputPanelView: View {
     @State private var editingSlideshow: InputID?
     @State private var editingData: InputID?
     @State private var editingPTZ: InputID?
+    @State private var editingAI: InputID?
     @State private var collapsedGroups: Set<String> = []
     @State private var renamingGroup: InputColorTag?
     @State private var groupNameText = ""
@@ -100,6 +101,7 @@ struct InputPanelView: View {
         .panel()
         .sheet(isPresented: $showTitleSheet) { TitleSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingTitle) { id in TitleSheet(editing: id).environmentObject(model) }
+        .sheet(item: $editingAI) { id in InputAISheet(input: id).environmentObject(model) }
         .sheet(item: $keying) { id in ChromaKeySheet(input: id).environmentObject(model) }
         .sheet(item: $editingScene) { id in SceneEditorSheet(input: id).environmentObject(model) }
         .sheet(isPresented: $showBrowserSheet) { BrowserSheet(editing: nil).environmentObject(model) }
@@ -192,17 +194,10 @@ struct InputPanelView: View {
 
     private var addMenu: some View {
         Menu {
-            Section(L10n.t("inputs.camera")) {
-                if model.videoDevices.isEmpty { Text(L10n.t("inputs.no_cameras")) }
-                // One camera = one input: a device already in use is shown but cannot be added again.
-                ForEach(model.videoDevices) { d in
-                    if let used = model.cameraInUse(d.id) {
-                        Button(L10n.f("inputs.in_use_item", d.name, used)) {}.disabled(true)
-                    } else {
-                        Button(d.name) { model.addCamera(d) }
-                    }
-                }
-                if !model.isOperatorMode { Button(L10n.t("capturecard.add_menu")) { showCaptureCard = true } }
+            // One entry for every camera, capture card and iPhone (0.46.0, like vMix's "Video
+            // Capture Device"): the device, format and audio are picked in the sheet.
+            Button { model.refreshDevices(); showCaptureCard = true } label: {
+                Label(L10n.t("inputs.video_capture"), systemImage: "video")
             }
             // Media files grouped in one place: video, video playlist, image, slideshow, presentation.
             Section(L10n.t("inputs.media_group")) {
@@ -244,25 +239,11 @@ struct InputPanelView: View {
         .onAppear { model.refreshDevices() }
     }
 
-    /// On-device AI per input (0.43.0); Apple Silicon only.
+    /// On-device AI per input (0.43.0). Since 0.46.0 a plain item that opens a sheet: a live
+    /// submenu with toggles was rebuilt on every tile refresh and flickered (cursor blinking).
     @ViewBuilder
     private func aiMenu(_ id: InputID) -> some View {
-        Menu(L10n.t("ai.menu")) {
-            if model.aiAvailable {
-                let ai = model.inputAI(id)
-                Toggle(L10n.t("ai.remove_bg"), isOn: Binding(get: { ai.removeBackground },
-                                                             set: { v in var a = ai; a.removeBackground = v; model.setInputAI(id, a) }))
-                Toggle(L10n.t("ai.auto_frame"), isOn: Binding(get: { ai.autoFrame },
-                                                              set: { v in var a = ai; a.autoFrame = v; model.setInputAI(id, a) }))
-                Picker(L10n.t("ai.zoom"), selection: Binding(get: { ai.zoom }, set: { v in var a = ai; a.zoom = v; model.setInputAI(id, a) })) {
-                    Text(L10n.t("ai.zoom.wide")).tag(1.25)
-                    Text(L10n.t("ai.zoom.medium")).tag(1.5)
-                    Text(L10n.t("ai.zoom.close")).tag(2.0)
-                }
-            } else {
-                Text(L10n.t("ai.needs_apple_silicon"))
-            }
-        }
+        Button(L10n.t("ai.menu") + "…") { editingAI = id }
     }
 
     @ViewBuilder
@@ -1087,6 +1068,38 @@ struct ChromaKeySheet: View {
                     let ns = NSColor(c).usingColorSpace(.sRGB) ?? .green
                     key.keyColor = ChromaKey.RGB(r: Double(ns.redComponent), g: Double(ns.greenComponent), b: Double(ns.blueComponent))
                 })
+    }
+}
+
+/// AI options for one input (0.46.0), moved out of the context menu.
+struct InputAISheet: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    let input: InputID
+    @State private var ai = InputAI()
+    @State private var loaded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L10n.t("ai.menu")).font(.headline)
+            if model.aiAvailable {
+                Toggle(L10n.t("ai.remove_bg"), isOn: $ai.removeBackground)
+                Toggle(L10n.t("ai.auto_frame"), isOn: $ai.autoFrame)
+                Picker(L10n.t("ai.zoom"), selection: $ai.zoom) {
+                    Text(L10n.t("ai.zoom.wide")).tag(1.25)
+                    Text(L10n.t("ai.zoom.medium")).tag(1.5)
+                    Text(L10n.t("ai.zoom.close")).tag(2.0)
+                }
+                .disabled(!ai.autoFrame)
+            } else {
+                Text(L10n.t("ai.needs_apple_silicon")).foregroundStyle(.secondary)
+            }
+            HStack { Spacer(); Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.defaultAction) }
+        }
+        .padding(20)
+        .frame(width: 380)
+        .onAppear { ai = model.inputAI(input); loaded = true }
+        .onChange(of: ai) { v in if loaded { model.setInputAI(input, v) } }
     }
 }
 #endif

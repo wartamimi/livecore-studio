@@ -200,4 +200,49 @@ public struct LayoutTemplate: Codable, Equatable, Sendable, Identifiable {
         }
         return out
     }
+
+}
+
+public extension LayerEditing {
+    // MARK: Align / distribute (0.46.0)
+
+    enum Alignment: String, CaseIterable, Sendable {
+        case left, centerX, right, top, centerY, bottom
+    }
+
+    /// Moves the box to a canvas edge or centre (size unchanged).
+    static func align(_ r: NormRect, _ a: Alignment) -> NormRect {
+        var o = r
+        switch a {
+        case .left: o.x = 0
+        case .centerX: o.x = (1 - r.width) / 2
+        case .right: o.x = 1 - r.width
+        case .top: o.y = 0
+        case .centerY: o.y = (1 - r.height) / 2
+        case .bottom: o.y = 1 - r.height
+        }
+        return o
+    }
+
+    /// Spreads the boxes evenly across the canvas width (horizontal) or height, in their current
+    /// order along that axis, with equal gaps. Sizes are kept; fewer than two boxes are unchanged.
+    static func distribute(_ rects: [NormRect], horizontal: Bool) -> [NormRect] {
+        guard rects.count > 1 else { return rects }
+        let order = rects.indices.sorted { horizontal ? rects[$0].x < rects[$1].x : rects[$0].y < rects[$1].y }
+        let total = rects.reduce(0) { $0 + (horizontal ? $1.width : $1.height) }
+        let gap = max(0, (1 - total) / Double(rects.count + 1))
+        var out = rects
+        var pos = gap
+        for i in order {
+            if horizontal { out[i].x = pos; pos += rects[i].width + gap } else { out[i].y = pos; pos += rects[i].height + gap }
+        }
+        return out
+    }
+
+    /// A copy of the layer, offset slightly so it is visible, kept on the canvas.
+    static func duplicate(_ l: Layer, offset: Double = 0.03) -> Layer {
+        var c = l
+        c.rect = LayerEditing.move(l.rect, dx: offset, dy: offset)
+        return c
+    }
 }

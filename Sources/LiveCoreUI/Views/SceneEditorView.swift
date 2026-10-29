@@ -167,6 +167,12 @@ struct SceneEditorSheet: View {
                 Button { move(by: 1) } label: { Image(systemName: "arrow.up") }.disabled(selected == 0 || selected >= layers.count - 1)
                 Button { move(by: -1) } label: { Image(systemName: "arrow.down") }.disabled(selected <= 1)
                 Spacer()
+                Button { duplicateSelected() } label: { Image(systemName: "plus.square.on.square") }
+                    .help(L10n.t("scene.duplicate")).disabled(selected == 0 && isScene)
+                Button { distribute(horizontal: true) } label: { Image(systemName: "distribute.horizontal.center") }
+                    .help(L10n.t("scene.distribute_h")).disabled(layers.count - (isScene ? 1 : 0) < 2)
+                Button { distribute(horizontal: false) } label: { Image(systemName: "distribute.vertical.center") }
+                    .help(L10n.t("scene.distribute_v")).disabled(layers.count - (isScene ? 1 : 0) < 2)
                 Button(role: .destructive) { removeSelected() } label: { Image(systemName: "trash") }.disabled(selected == 0)
             }
             if layers.indices.contains(selected) {
@@ -186,11 +192,92 @@ struct SceneEditorSheet: View {
                 Toggle(L10n.t("scene.lock"), isOn: $lockAspect).font(.system(size: 11))
                 styleEditor(l)
                 Button(L10n.t("scene.fit_source")) { fitToSource(selected) }.font(.system(size: 11))
-                Text(String(format: "x %.2f  y %.2f  w %.2f  h %.2f", l.rect.x, l.rect.y, l.rect.width, l.rect.height))
-                    .font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.textDim)
+                geometryEditor(l)
             }
             Spacer(minLength: 0)
         }
+    }
+
+    // MARK: Position and size (0.46.0): exact numbers, align, nudge
+
+    @ViewBuilder
+    private func geometryEditor(_ l: Layer) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 4) {
+                numberField("X", \.x, l); numberField("Y", \.y, l)
+                numberField("W", \.width, l); numberField("H", \.height, l)
+            }
+            HStack(spacing: 2) {
+                ForEach(LayerEditing.Alignment.allCases, id: \.self) { a in
+                    Button { update(selected) { $0.rect = LayerEditing.align($0.rect, a) } } label: {
+                        Image(systemName: alignIcon(a))
+                    }
+                    .help(L10n.t("scene.align.\(a.rawValue)"))
+                }
+                Spacer()
+                Button { update(selected) { $0.rect = .full } } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
+                    .help(L10n.t("scene.fill_canvas"))
+            }
+            HStack(spacing: 2) {
+                Text(L10n.t("scene.nudge")).foregroundStyle(Theme.textDim)
+                Button { nudge(-0.01, 0) } label: { Image(systemName: "arrow.left") }
+                Button { nudge(0.01, 0) } label: { Image(systemName: "arrow.right") }
+                Button { nudge(0, -0.01) } label: { Image(systemName: "arrow.up") }
+                Button { nudge(0, 0.01) } label: { Image(systemName: "arrow.down") }
+            }
+        }
+        .buttonStyle(.borderless)
+        .font(.system(size: 11))
+    }
+
+    /// One coordinate as a percentage of the canvas.
+    private func numberField(_ title: String, _ path: WritableKeyPath<NormRect, Double>, _ l: Layer) -> some View {
+        HStack(spacing: 2) {
+            Text(title).font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.textDim)
+            TextField(title, value: Binding(
+                get: { (l.rect[keyPath: path] * 1000).rounded() / 10 },
+                set: { v in
+                    let n = v / 100
+                    update(selected) { layer in
+                        var r = layer.rect
+                        r[keyPath: path] = (path == \NormRect.width || path == \NormRect.height) ? max(n, LayerEditing.minimumSize) : n
+                        layer.rect = r
+                    }
+                }), format: .number.precision(.fractionLength(0...1)))
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 46)
+        }
+    }
+
+    private func alignIcon(_ a: LayerEditing.Alignment) -> String {
+        switch a {
+        case .left: return "align.horizontal.left"
+        case .centerX: return "align.horizontal.center"
+        case .right: return "align.horizontal.right"
+        case .top: return "align.vertical.top"
+        case .centerY: return "align.vertical.center"
+        case .bottom: return "align.vertical.bottom"
+        }
+    }
+
+    private func nudge(_ dx: Double, _ dy: Double) {
+        update(selected) { $0.rect = LayerEditing.move($0.rect, dx: dx, dy: dy) }
+    }
+
+    private func duplicateSelected() {
+        guard layers.indices.contains(selected) else { return }
+        layers.append(LayerEditing.duplicate(layers[selected]))
+        selected = layers.count - 1
+        model.setLayers(layers, of: input)
+    }
+
+    /// Spreads every layer except a scene's blank base evenly across the canvas.
+    private func distribute(horizontal: Bool) {
+        let skip = isScene ? 1 : 0
+        guard layers.count - skip >= 2 else { return }
+        let spread = LayerEditing.distribute(layers[skip...].map(\.rect), horizontal: horizontal)
+        for (k, r) in spread.enumerated() { layers[skip + k].rect = r }
+        model.setLayers(layers, of: input)
     }
 
     // MARK: Style (crop, corners, shape, border)

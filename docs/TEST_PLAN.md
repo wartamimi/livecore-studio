@@ -51,6 +51,20 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AV. Tes manual build 0.46.0
+
+| ID | Area | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-231 | PHOTO | Lihat Preview dan Program, klik PHOTO di dock output | Kedua monitor sama besar; foto tersimpan dan konfirmasi muncul di Program |
+| T-232 | Video Capture Device | Input + › Video Capture Device…, pilih capture card USB 3, lalu iPhone | Keduanya bisa ditambahkan; tombol muat ulang menampilkan perangkat yang baru dicolok |
+| T-233 | Menu AI | Klik kanan input Window/Screen › AI (on this Mac)… | Jendela kecil terbuka tanpa kedip; hapus latar / auto-framing bekerja |
+| T-234 | Layout scene | Scene dengan 4 input, pilih Sidebar, Panel 4, Grid 3×3 | Layer tertata sesuai layout |
+| T-235 | Editor scene | Ketik X/Y/W/H, rata kanan, geser 1 %, duplikat, ratakan jarak | Posisi berubah sesuai, langsung tampil di Preview |
+| T-236 | Vertical | Mode "Gambar utuh + latar blur", lalu "Potong" dengan zoom 1,5× | Gambar 16:9 utuh dengan latar blur; mode potong lebih dekat dan tetap mengikuti wajah |
+| T-237 | Vertical stream | Audio 160 kbps, keyframe 2 s, stream ke TikTok/YouTube | Stream diterima, audio jernih |
+| T-238 | Pengantin | Title "Nama pengantin (tengah)" dan lower "rose gold", running text "Pernikahan emas" | Huruf muncul bertahap, font script tampil, running text berjalan |
+| T-239 | Frame | Tambah frame Konferensi, Meeting, Webinar, Keynote | Kamera tampil di jendela, nama/acara terbaca |
+
 ## AU. Tes manual build 0.45.0
 
 | ID | Area | Langkah | Hasil yang diharapkan |

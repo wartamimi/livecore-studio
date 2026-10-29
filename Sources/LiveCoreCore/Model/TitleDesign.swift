@@ -221,17 +221,20 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
     case weddingScript, corporateSplit, cleanWhite, neonDark, outlineBold, goldBar, sportsBar
     case weddingCard, seminarTitle, sponsorCard
     case hashtagTag, sponsorBug
+    // 0.46.0: bride & groom names
+    case weddingFloral, weddingElegant, weddingCenter, weddingSaveDate, weddingHashtag
 
     public var category: TitleCategory {
         switch self {
         case .classicStrap, .roundedStrap, .twoTone, .boxedName, .accentLine, .modernGlass,
              .newsLive, .minimalUnderline, .pill, .socialHandle, .fullWidthBar, .rightStrap,
-             .weddingScript, .corporateSplit, .cleanWhite, .neonDark, .outlineBold, .goldBar, .sportsBar:
+             .weddingScript, .corporateSplit, .cleanWhite, .neonDark, .outlineBold, .goldBar, .sportsBar,
+             .weddingFloral, .weddingElegant:
             return .lowerThird
         case .headline, .fullScreenTitle, .chapterCard, .quote, .endCard, .breakingBanner,
-             .weddingCard, .seminarTitle, .sponsorCard:
+             .weddingCard, .seminarTitle, .sponsorCard, .weddingCenter, .weddingSaveDate:
             return .title
-        case .cornerBug, .locationTag, .liveBadge, .hashtagTag, .sponsorBug:
+        case .cornerBug, .locationTag, .liveBadge, .hashtagTag, .sponsorBug, .weddingHashtag:
             return .corner
         }
     }
@@ -239,13 +242,15 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
     public var kind: TitleKind {
         switch self {
         case .classicStrap, .roundedStrap, .modernGlass, .pill, .socialHandle, .rightStrap,
-             .cornerBug, .locationTag, .liveBadge, .cleanWhite, .neonDark, .hashtagTag, .sponsorBug:
+             .cornerBug, .locationTag, .liveBadge, .cleanWhite, .neonDark, .hashtagTag, .sponsorBug,
+             .weddingElegant, .weddingHashtag:
             return .strap
         case .twoTone, .boxedName, .corporateSplit, .sportsBar: return .twoTone
-        case .accentLine, .weddingScript, .outlineBold, .goldBar: return .accentLine
+        case .accentLine, .weddingScript, .outlineBold, .goldBar, .weddingFloral: return .accentLine
         case .newsLive, .breakingBanner: return .news
         case .minimalUnderline, .chapterCard, .headline, .quote, .seminarTitle: return .underline
-        case .weddingCard, .sponsorCard: return .card
+        case .weddingCard, .sponsorCard, .weddingSaveDate: return .card
+        case .weddingCenter: return .underline
         case .fullWidthBar: return .fullBar
         case .fullScreenTitle, .endCard: return .card
         }
@@ -270,6 +275,11 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
         case .liveBadge: return ("● LIVE", "", "")
         case .weddingScript: return ("Rina & Dimas", "The Wedding · 12.12.2026", "")
         case .weddingCard: return ("Rina & Dimas", "Saturday, 12 December 2026", "")
+        case .weddingFloral: return ("Rina & Dimas", "Akad Nikah · 12.12.2026", "")
+        case .weddingElegant: return ("Rina & Dimas", "Wedding Ceremony", "")
+        case .weddingCenter: return ("Rina & Dimas", "Together with their families", "")
+        case .weddingSaveDate: return ("Save the Date", "Rina & Dimas · 12 December 2026", "")
+        case .weddingHashtag: return ("#RinaDimasWedding", "", "")
         case .seminarTitle: return ("Digital Transformation 2026", "Keynote Session", "")
         case .sponsorCard: return ("Supported by", "Sponsor Name", "")
         case .hashtagTag: return ("#YourEvent2026", "", "")
@@ -303,6 +313,14 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
         case .neonDark, .sponsorCard:
             return .zoomOut
         case .hashtagTag, .sponsorBug:
+            return .pop
+        case .weddingFloral, .weddingElegant:
+            return .riseFade
+        case .weddingCenter:
+            return .fade
+        case .weddingSaveDate:
+            return .zoomOut
+        case .weddingHashtag:
             return .pop
         }
     }
@@ -579,6 +597,87 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
             d.boxColor = Self.rgb(0, 0, 0, 0.5)
             d.titleWeight = .medium
             d.marginY = 0.05
+            d.marginX = 0.04
+        case .weddingFloral:
+            // Rose-gold script name over a thin line, letters rising in one after another.
+            d.showBox = false
+            d.fontFamily = "Snell Roundhand"
+            d.titleSize = 76
+            d.subtitleSize = 28
+            d.titleWeight = .regular
+            d.subtitleWeight = .light
+            d.titleColor = Self.rgb(1, 0.95, 0.93)
+            d.subtitleColor = Self.rgb(0.98, 0.86, 0.8)
+            d.accentColor = Self.rgb(0.86, 0.6, 0.55)
+            d.shadow = true
+            d.shadowColor = Self.rgb(0.25, 0.1, 0.1, 0.6)
+            d.textAnimation = .rise
+            d.letterDelay = 0.045
+        case .weddingElegant:
+            // Ivory card with a serif name, letters bouncing in.
+            d.fontFamily = "Didot"
+            d.boxColor = Self.rgb(0.99, 0.97, 0.93, 0.95)
+            d.titleColor = Self.rgb(0.45, 0.34, 0.16)
+            d.subtitleColor = Self.rgb(0.4, 0.36, 0.3)
+            d.titleSize = 46
+            d.titleWeight = .regular
+            d.subtitleWeight = .light
+            d.tracking = 1.5
+            d.cornerRadius = 2
+            d.paddingX = 30
+            d.paddingY = 12
+            d.minWidth = 0.28
+            d.shadow = true
+            d.shadowColor = Self.rgb(0, 0, 0, 0.3)
+            d.textAnimation = .bounce
+            d.letterDelay = 0.03
+        case .weddingCenter:
+            // Large centred names, no box, soft gold underline; letters fade in one by one.
+            d.showBox = false
+            d.anchor = .center
+            d.align = .center
+            d.fontFamily = "Snell Roundhand"
+            d.titleSize = 140
+            d.subtitleSize = 36
+            d.titleWeight = .regular
+            d.subtitleWeight = .light
+            d.titleColor = Self.rgb(1, 0.97, 0.9)
+            d.subtitleColor = Self.rgb(0.95, 0.9, 0.8)
+            d.accentColor = Self.rgb(0.85, 0.7, 0.4)
+            d.tracking = 0.5
+            d.lineGap = 18
+            d.shadow = true
+            d.shadowColor = Self.rgb(0, 0, 0, 0.55)
+            d.shadowBlur = 14
+            d.textAnimation = .fade
+            d.letterDelay = 0.06
+        case .weddingSaveDate:
+            // Deep green card with gold lettering.
+            d.anchor = .center
+            d.align = .center
+            d.fontFamily = "Didot"
+            d.titleSize = 96
+            d.subtitleSize = 36
+            d.titleWeight = .regular
+            d.subtitleWeight = .light
+            d.uppercase = false
+            d.tracking = 2
+            d.box2Color = Self.rgb(0.07, 0.2, 0.16, 0.94)
+            d.titleColor = Self.rgb(0.88, 0.75, 0.45)
+            d.subtitleColor = Self.rgb(0.95, 0.92, 0.85)
+            d.lineGap = 14
+            d.textAnimation = .shrink
+            d.letterDelay = 0.04
+        case .weddingHashtag:
+            d.anchor = .topRight
+            d.pill = true
+            d.titleSize = 30
+            d.paddingX = 24
+            d.paddingY = 8
+            d.boxColor = Self.rgb(0.93, 0.72, 0.72, 0.92)
+            d.titleColor = Self.rgb(0.35, 0.12, 0.15)
+            d.titleWeight = .semibold
+            d.marginY = 0.06
             d.marginX = 0.04
         }
         return d

@@ -25,6 +25,30 @@ struct VerticalOutputView: View {
             monitor
             Form {
                 Section(L10n.t("vertical.crop")) {
+                    Picker(L10n.t("vertical.fill"), selection: Binding(get: { v.fill }, set: { f in set { $0.fill = f } })) {
+                        ForEach(VerticalSettings.Fill.allCases, id: \.self) { Text(L10n.t("vertical.fill.\($0.rawValue)")).tag($0) }
+                    }
+                    if v.fill != .crop {
+                        Slider(value: Binding(get: { v.fitPosition }, set: { x in set { $0.fitPosition = x } }), in: 0...1) {
+                            Text(L10n.t("vertical.fit_position"))
+                        }
+                        if v.fill == .fitBlur {
+                            Slider(value: Binding(get: { v.blurRadius }, set: { x in set { $0.blurRadius = x } }), in: 5...80) {
+                                Text(L10n.t("vertical.blur"))
+                            }
+                        }
+                    }
+                }
+                if v.fill == .crop {
+                Section(L10n.t("vertical.framing")) {
+                    Slider(value: Binding(get: { v.zoom }, set: { x in set { $0.zoom = x } }), in: 1...2.5) {
+                        Text(L10n.f("vertical.zoom", String(format: "%.1f×", v.zoom)))
+                    }
+                    if v.zoom > 1.01 {
+                        Slider(value: Binding(get: { v.centerY }, set: { x in set { $0.centerY = x } }), in: 0...1) {
+                            Text(L10n.t("vertical.center_y"))
+                        }
+                    }
                     Picker(L10n.t("vertical.follow"), selection: Binding(get: { v.follow }, set: { f in set { $0.follow = f } })) {
                         Text(L10n.t("vertical.follow.faces")).tag(VerticalSettings.Follow.faces)
                         Text(L10n.t("vertical.follow.center")).tag(VerticalSettings.Follow.center)
@@ -39,7 +63,13 @@ struct VerticalOutputView: View {
                         Slider(value: Binding(get: { v.smoothing }, set: { x in set { $0.smoothing = x } }), in: 0.02...0.3) {
                             Text(L10n.t("vertical.speed"))
                         }
+                        Slider(value: Binding(get: { v.deadZone }, set: { x in set { $0.deadZone = x } }), in: 0.01...0.2) {
+                            Text(L10n.t("vertical.dead_zone"))
+                        }.help(L10n.t("vertical.dead_zone_help"))
                     }
+                }
+                }
+                Section(L10n.t("vertical.format")) {
                     Picker(L10n.t("vertical.size"), selection: Binding(get: { v.size }, set: { x in set { $0.size = x } })) {
                         ForEach(VerticalSettings.sizes, id: \.self) { Text("\($0.width)×\($0.height)").tag($0) }
                     }.disabled(model.isVerticalStreaming || model.isRecording)
@@ -60,6 +90,12 @@ struct VerticalOutputView: View {
                     Stepper(L10n.f("vertical.bitrate", "\(v.bitrateKbps)"), value: Binding(get: { v.bitrateKbps },
                                                                                        set: { x in set { $0.bitrateKbps = x } }),
                             in: 1500...12000, step: 500).disabled(model.isVerticalStreaming)
+                    Picker(L10n.t("vertical.audio_bitrate"), selection: Binding(get: { v.audioBitrateKbps }, set: { x in set { $0.audioBitrateKbps = x } })) {
+                        ForEach([96, 128, 160, 192, 256], id: \.self) { Text("\($0) kbps").tag($0) }
+                    }.disabled(model.isVerticalStreaming)
+                    Picker(L10n.t("vertical.keyframe"), selection: Binding(get: { v.keyframeSeconds }, set: { x in set { $0.keyframeSeconds = x } })) {
+                        ForEach([1.0, 2.0, 3.0, 4.0], id: \.self) { Text(String(format: "%.0f s", $0)).tag($0) }
+                    }.disabled(model.isVerticalStreaming)
                     HStack {
                         Button(model.isVerticalStreaming ? L10n.t("vertical.stop") : L10n.t("vertical.start")) {
                             set { _ in }
@@ -109,7 +145,7 @@ struct VerticalOutputView: View {
             .frame(width: 270)
             .overlay(RoundedRectangle(cornerRadius: 4).stroke(model.isVerticalStreaming ? Color.red : Color.gray.opacity(0.5),
                                                               lineWidth: model.isVerticalStreaming ? 3 : 1))
-            Text("9:16").font(.caption.bold()).foregroundStyle(.secondary)
+            Text("\(v.size.width)×\(v.size.height)").font(.caption.bold()).foregroundStyle(.secondary)
         }
     }
 }

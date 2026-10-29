@@ -17,6 +17,8 @@ extension ProductionEngine {
         let v = settings.verticalOutput
         p.output = OutputFormat(size: v.size, frameRate: settings.output.frameRate)
         p.video.bitrateKbps = v.bitrateKbps
+        p.video.keyframeIntervalSeconds = v.keyframeSeconds
+        p.audio.bitrateKbps = v.audioBitrateKbps
         return p
     }
 

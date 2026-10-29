@@ -23,6 +23,15 @@ public enum FrameTemplate: String, Codable, Sendable, CaseIterable {
     case vertical
     /// Wide cinema bars with a caption.
     case cinema
+    // 0.46.0: meeting & conference
+    /// Corporate stage: large window left, event / speaker panel right, accent strip below.
+    case conference
+    /// Light, friendly meeting look: rounded window, name under it with an accent underline.
+    case meeting
+    /// Webinar: title block left, presenter window right.
+    case webinar
+    /// Keynote: centred window with a thin accent border, name strap under it.
+    case keynote
 
     public var defaultDesign: FrameDesign {
         var d = FrameDesign(template: self)
@@ -53,6 +62,22 @@ public enum FrameTemplate: String, Codable, Sendable, CaseIterable {
         case .cinema:
             d.background1 = rgb(0, 0, 0); d.background2 = rgb(0, 0, 0)
             d.accent = rgb(0.95, 0.8, 0.45); d.subtitle = ""
+        case .conference:
+            d.background1 = rgb(0.03, 0.12, 0.28); d.background2 = rgb(0.01, 0.04, 0.10)
+            d.accent = rgb(0.0, 0.62, 0.95)
+            d.title = "Speaker Name"; d.subtitle = "Annual Conference 2026"
+        case .meeting:
+            d.background1 = rgb(0.94, 0.95, 0.97); d.background2 = rgb(0.84, 0.87, 0.92)
+            d.accent = rgb(0.2, 0.45, 0.95); d.textColor = rgb(0.1, 0.12, 0.18)
+            d.title = "Team Meeting"; d.subtitle = "Weekly update"
+        case .webinar:
+            d.background1 = rgb(0.09, 0.07, 0.2); d.background2 = rgb(0.02, 0.1, 0.18)
+            d.accent = rgb(0.35, 0.85, 0.65)
+            d.title = "Webinar Title"; d.subtitle = "Presenter Name"
+        case .keynote:
+            d.background1 = rgb(0.06, 0.06, 0.07); d.background2 = rgb(0.0, 0.0, 0.0)
+            d.accent = rgb(0.95, 0.72, 0.2)
+            d.title = "Speaker Name"; d.subtitle = "Keynote"
         }
         return d
     }
@@ -158,6 +183,22 @@ public struct FrameLayout: Equatable, Sendable {
             return FrameLayout(camera: NormRect(x: 0, y: 0.12, width: 1, height: 0.76), shape: .rectangle,
                                cornerRadius: 0, border: 0, card: nil,
                                label: NormRect(x: 0.05, y: 0.895, width: 0.9, height: 0.08), labelAlign: .center)
+        case .conference:
+            return FrameLayout(camera: NormRect(x: 0.03, y: 0.06, width: 0.68, height: 0.78), shape: .rectangle,
+                               cornerRadius: 0.015, border: 0.003, card: nil,
+                               label: NormRect(x: 0.745, y: 0.3, width: 0.235, height: 0.3), labelAlign: .left)
+        case .meeting:
+            return FrameLayout(camera: NormRect(x: 0.05, y: 0.05, width: 0.9, height: 0.76), shape: .rectangle,
+                               cornerRadius: 0.04, border: 0, card: nil,
+                               label: NormRect(x: 0.05, y: 0.835, width: 0.7, height: 0.12), labelAlign: .left)
+        case .webinar:
+            return FrameLayout(camera: NormRect(x: 0.42, y: 0.1, width: 0.55, height: 0.8), shape: .rectangle,
+                               cornerRadius: 0.03, border: 0.004, card: nil,
+                               label: NormRect(x: 0.04, y: 0.35, width: 0.35, height: 0.3), labelAlign: .left)
+        case .keynote:
+            return FrameLayout(camera: NormRect(x: 0.1, y: 0.05, width: 0.8, height: 0.78), shape: .rectangle,
+                               cornerRadius: 0, border: 0.002, card: nil,
+                               label: NormRect(x: 0.1, y: 0.86, width: 0.8, height: 0.11), labelAlign: .center)
         }
     }
 
