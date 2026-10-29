@@ -62,3 +62,22 @@ final class Release046Tests: XCTestCase {
         }
     }
 }
+
+/// 0.46.1: capture card (Datavideo CAP-2) format choice and audio pairing.
+final class Release0461Tests: XCTestCase {
+    func testCaptureCardAudioIsPairedByName() {
+        let audio = ["MacBook Pro Microphone", "CAP-2 Audio", "ZoomAudioDevice"]
+        XCTAssertEqual(CaptureAudioMatch.partner(videoName: "CAP-2 Video", audioNames: audio), 1)
+        XCTAssertEqual(CaptureAudioMatch.partner(videoName: "Cam Link 4K", audioNames: ["Cam Link 4K"]), 0)
+        XCTAssertNil(CaptureAudioMatch.partner(videoName: "FaceTime HD Camera", audioNames: audio))
+    }
+
+    func testEightBit420IsPreferredAmongUncompressedModes() {
+        let f = [CaptureFormatCandidate(width: 1920, height: 1080, frameRateRanges: [60...60], codec: "v210"),
+                 CaptureFormatCandidate(width: 1920, height: 1080, frameRateRanges: [60...60], codec: "yuvs"),
+                 CaptureFormatCandidate(width: 1920, height: 1080, frameRateRanges: [60...60], codec: "420v"),
+                 CaptureFormatCandidate(width: 1920, height: 1080, frameRateRanges: [60...60], codec: "dmb1")]
+        XCTAssertEqual(CaptureFormatPicker.pick(f, config: CaptureConfig(), outputWidth: 1920, outputHeight: 1080, outputFPS: 60), 2)
+        XCTAssertEqual(CaptureFormatPicker.pick(f, config: CaptureConfig(width: 1920, height: 1080), outputWidth: 1920, outputHeight: 1080, outputFPS: 60), 2)
+    }
+}

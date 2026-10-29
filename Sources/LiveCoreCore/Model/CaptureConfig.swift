@@ -27,6 +27,19 @@ public enum CaptureCodec {
         ["yuvs", "yuv2", "2vuy", "YUY2", "UYVY", "420v", "420f", "NV12", "v210", "BGRA", "x420", "xf20", "I420"].contains(fourCC)
     }
 
+    /// Cost of an uncompressed mode for an 8-bit pipeline (0.46.1): 8-bit 4:2:0 is the lightest on
+    /// the USB link and in conversion, 4:2:2 next, 10-bit last (the extra bits are thrown away).
+    /// Compressed and unknown codecs return 0 (they are ranked elsewhere).
+    public static func uncompressedCost(_ fourCC: String) -> Double {
+        switch fourCC {
+        case "420v", "420f", "NV12", "I420": return 0
+        case "yuvs", "yuv2", "YUY2", "2vuy", "UYVY": return 0.1
+        case "x420", "xf20", "v210": return 0.3
+        case "BGRA": return 0.2
+        default: return 0
+        }
+    }
+
     public static func label(_ fourCC: String) -> String {
         switch fourCC {
         case "yuvs", "yuv2", "YUY2": return "YUY2 4:2:2 (uncompressed)"
@@ -106,7 +119,9 @@ public enum CaptureFormatPicker {
         // modes are only used when no uncompressed mode delivers the size and frame rate.
         func preferUncompressed(_ list: [Int]) -> [Int] {
             guard config.codec?.isEmpty ?? true else { return list }
-            return list.filter { !CaptureCodec.isCompressed(formats[$0].codec) } + list.filter { CaptureCodec.isCompressed(formats[$0].codec) }
+            let plain = list.filter { !CaptureCodec.isCompressed(formats[$0].codec) }
+                .sorted { CaptureCodec.uncompressedCost(formats[$0].codec) < CaptureCodec.uncompressedCost(formats[$1].codec) }
+            return plain + list.filter { CaptureCodec.isCompressed(formats[$0].codec) }
         }
         if let w = config.width, let h = config.height {
             let same = preferUncompressed(preferCodec(formats.indices.filter { formats[$0].width == w && formats[$0].height == h }))
@@ -122,9 +137,38 @@ public enum CaptureFormatPicker {
             let px = Double(f.width * f.height)
             var score = px >= want ? px - want : (want - px) * 4
             if !f.supports(fps) { score += 1e12 }
-            if (config.codec?.isEmpty ?? true) && CaptureCodec.isCompressed(f.codec) { score += 0.5 }
+            if config.codec?.isEmpty ?? true {
+                score += CaptureCodec.isCompressed(f.codec) ? 0.5 : CaptureCodec.uncompressedCost(f.codec)
+            }
             if score < bestScore { bestScore = score; best = i }
         }
         return best
+    }
+}
+
+/// Pairs a capture card's picture with its audio device (0.46.1). Cards such as the Datavideo
+/// CAP-2 list the two as e.g. "CAP-2 Video" and "CAP-2 Audio", so plain substring matching
+/// misses; names are compared without words like video / audio / capture / usb.
+public enum CaptureAudioMatch {
+    static let noise: Set<String> = ["video", "audio", "capture", "usb", "device", "input", "hdmi", "sdi", "uvc", "digital", "interface"]
+
+    static func tokens(_ name: String) -> [String] {
+        name.lowercased().split(whereSeparator: { !($0.isLetter || $0.isNumber) }).map(String.init).filter { !noise.contains($0) }
+    }
+
+    /// Index of the audio device that belongs to `videoName`, or nil.
+    public static func partner(videoName: String, audioNames: [String]) -> Int? {
+        let v = tokens(videoName)
+        guard !v.isEmpty else { return nil }
+        var best: (index: Int, score: Int)?
+        for (i, a) in audioNames.enumerated() {
+            let t = tokens(a)
+            guard !t.isEmpty else { continue }
+            let common = Set(v).intersection(t).count
+            // Every remaining word of the shorter name must appear in the other.
+            guard common > 0, common == min(Set(v).count, Set(t).count) else { continue }
+            if best == nil || common > best!.score { best = (i, common) }
+        }
+        return best?.index
     }
 }

@@ -1401,3 +1401,6 @@
 "frametpl.meeting" = "Meeting";
 "frametpl.webinar" = "Webinar";
 "frametpl.keynote" = "Keynote";
+
+/* 0.46.1 */
+"overlay.all_busy" = "Semua channel overlay sedang dipakai. Matikan salah satu dulu, atau klik kanan nomornya untuk mengganti langsung di Program.";
