@@ -161,6 +161,12 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.46.3
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Label "Kamera" di menu Input + | Implemented | M | Judul bagian "Kamera" di atas "Video Capture Device…". |
+
 ## Fitur 0.46.2
 Verifikasi: L = unit test Linux, M = kompilasi CI macOS, C = diuji di Chromium (Playwright). Belum dites di Mac (TEST_PLAN bagian AX).
 
