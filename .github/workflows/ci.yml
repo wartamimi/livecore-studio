@@ -49,7 +49,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: LiveCoreStudio-dmg
-          path: build/LiveCoreStudio-0.46.0-unsigned.dmg
+          path: build/LiveCoreStudio-0.46.1-unsigned.dmg
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -112,6 +112,6 @@ jobs:
       - name: Publish DMG as pre-release (main and claude/* development branches)
         run: |
           if [ "$GITHUB_REF" = "refs/heads/main" ]; then TAG="build-${GITHUB_RUN_NUMBER}"; else TAG="dev-build-${GITHUB_RUN_NUMBER}"; fi
-          gh release create "$TAG" build/LiveCoreStudio-0.46.0-unsigned.dmg build/title-templates.png --repo "$GITHUB_REPOSITORY" \
-            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.46.0 build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
-            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. New features are compiled and unit-tested but need hardware verification; see docs/FEATURE_STATUS.md and docs/TEST_PLAN.md (T-61..T-189). 0.46.0: Settings as an OBS-style sidebar list. 0.38.0: web edit window fits the page to the window (no zoomed or cropped view, page scrolling works), page screen size = input size for in-page fullscreen, Pre-flight moved to Settings, Operator/Advanced switch removed, smoother title animations while menus are open, 3 GPU frames in flight, main-thread stall and render-drop log, faster CI (DMG job runs in parallel with the engine checks), Online Radio input (free Radio Browser directory, HTTPS MP3/AAC, song titles; CI-checked decoder)."
+          gh release create "$TAG" build/LiveCoreStudio-0.46.1-unsigned.dmg build/title-templates.png --repo "$GITHUB_REPOSITORY" \
+            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.46.1 build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
+            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. New features are compiled and unit-tested but need hardware verification; see docs/FEATURE_STATUS.md and docs/TEST_PLAN.md (T-61..T-189). 0.46.1: Settings as an OBS-style sidebar list. 0.38.0: web edit window fits the page to the window (no zoomed or cropped view, page scrolling works), page screen size = input size for in-page fullscreen, Pre-flight moved to Settings, Operator/Advanced switch removed, smoother title animations while menus are open, 3 GPU frames in flight, main-thread stall and render-drop log, faster CI (DMG job runs in parallel with the engine checks), Online Radio input (free Radio Browser directory, HTTPS MP3/AAC, song titles; CI-checked decoder)."

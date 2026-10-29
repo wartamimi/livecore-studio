@@ -174,7 +174,18 @@ extension AppModel {
     /// screen, fade), then shows / hides it on Preview (click) or Program (secondary click).
     /// A channel showing another input switches to this one and stays on.
     public func overlayFromTile(_ index: Int, input: InputID, toProgram: Bool) {
-        guard let e = engine, let ch = e.overlays.first(where: { $0.index == index }) else { return }
+        guard let e = engine, var ch = e.overlays.first(where: { $0.index == index }) else { return }
+        // A click is for Preview: when this channel is on air with another input, taking it over
+        // would put this input straight on Program (0.46.1 report). Use a free channel instead;
+        // the next CUT / AUTO brings it in over what is already on air.
+        if !toProgram, ch.source != input, ch.isOn {
+            guard let free = e.overlays.first(where: { !$0.isOn && !$0.onPreview }) else {
+                report(L10n.t("overlay.all_busy"))
+                return
+            }
+            ch = free
+        }
+        let index = ch.index
         if ch.source != input {
             e.configureOverlay(index, source: input, preset: .fullScreen)
             e.setOverlayAnimation(index, animation: .fade, duration: ch.fadeDuration)

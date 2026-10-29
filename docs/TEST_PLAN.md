@@ -51,6 +51,14 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AW. Tes manual build 0.46.1
+
+| ID | Area | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-240 | Browser | Tambah input Browser, ganti Space / colok-cabut monitor, buka Mission Control | Tidak ada jendela hitam yang muncul |
+| T-241 | Overlay | Overlay 1 tayang di Program dengan input A, klik nomor 1 di input B | B muncul di Preview (channel kosong), A tetap di Program; CUT membawa B masuk |
+| T-242 | CAP-2 | Tambah Video Capture Device › CAP-2 | Audio CAP-2 terpilih otomatis; format aktif tanpa kompresi (NV12/YUY2), 1080p sesuai frame rate |
+
 ## AV. Tes manual build 0.46.0
 
 | ID | Area | Langkah | Hasil yang diharapkan |

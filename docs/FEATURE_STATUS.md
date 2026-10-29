@@ -161,6 +161,15 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.46.1
+Perbaikan dari laporan uji 0.46.0. Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Belum dites di Mac (TEST_PLAN bagian AW).
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Jendela hitam yang tidak bisa ditutup | Implemented | M | Itu jendela tersembunyi milik input Browser (web) yang dipindah macOS ke dalam layar. Jendelanya sekarang menolak dipindah ke layar, langsung kembali ke luar layar jika terjadi (pindah layar, ganti Space), dan tidak muncul di Mission Control / ⌘`. |
+| Klik nomor overlay pertama kali langsung ke Program | Implemented | M | Penyebab: channel itu sedang tayang di Program dengan input lain, dan klik mengambil alih channel tersebut, sehingga input baru langsung tayang. Sekarang klik (Preview) memakai channel overlay yang kosong dan Program tidak berubah. Klik kanan tetap langsung ke Program. Tombol overlay di Web Controller masih langsung ke Program, seperti sebelumnya. |
+| Optimasi Datavideo CAP-2 | Partial | L, M | Audio CAP-2 otomatis dipasangkan walau namanya berbeda ("CAP-2 Video" / "CAP-2 Audio"); di antara mode tanpa kompresi dipilih NV12 8-bit (paling ringan untuk USB dan konversi), lalu YUY2, 10-bit terakhir. Belum dites dengan CAP-2 asli. |
+
 ## Fitur 0.46.0
 Paket 8 permintaan. Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Belum ada yang dites di Mac (TEST_PLAN bagian AV).
 

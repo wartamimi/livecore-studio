@@ -17,6 +17,44 @@ import LiveCoreCore
 /// local page the operator picked).
 /// Audio: on macOS 14.2+ the pages' sound is taken into the mixer's "Web audio" channel
 /// (see `WebAudioCapture`); on older systems it plays on the system output.
+/// The hidden window that hosts the page while it is not being edited (0.46.1). macOS sometimes
+/// moved the old off-screen window back onto the display (after a display change or Space switch),
+/// leaving a black window that ignores clicks and cannot be closed. This window refuses to be
+/// constrained onto a screen and moves itself away again whenever it lands on one.
+final class OffscreenHostWindow: NSWindow {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
+
+    private var observers: [NSObjectProtocol] = []
+
+    /// Far beyond the bottom-left of every connected display.
+    static func parkingOrigin() -> NSPoint {
+        let all = NSScreen.screens.map(\.frame).reduce(NSRect.zero) { $0.union($1) }
+        return NSPoint(x: all.minX - 20_000, y: all.minY - 20_000)
+    }
+
+    override init(contentRect: NSRect, styleMask style: NSWindow.StyleMask, backing: NSWindow.BackingStoreType, defer flag: Bool) {
+        super.init(contentRect: contentRect, styleMask: style, backing: backing, defer: flag)
+        let nc = NotificationCenter.default
+        observers.append(nc.addObserver(forName: NSWindow.didMoveNotification, object: self, queue: .main) { [weak self] _ in self?.parkIfVisible() })
+        observers.append(nc.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in self?.park() })
+        observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.activeSpaceDidChangeNotification, object: nil, queue: .main) { [weak self] _ in self?.parkIfVisible() })
+    }
+
+    @available(*, unavailable) required init?(coder: NSCoder) { fatalError("not used") }
+
+    deinit {
+        observers.forEach { NotificationCenter.default.removeObserver($0); NSWorkspace.shared.notificationCenter.removeObserver($0) }
+    }
+
+    func park() { setFrameOrigin(Self.parkingOrigin()) }
+
+    private func parkIfVisible() {
+        if NSScreen.screens.contains(where: { $0.frame.intersects(frame) }) { park() }
+    }
+}
+
 /// Edit-window container: shows the web view scaled to fit, keeping the output's CSS viewport.
 final class PageFitView: NSView {
     let pageSize: NSSize
@@ -114,9 +152,11 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         wv.allowsBackForwardNavigationGestures = true
         if config.transparent { wv.setValue(false, forKey: "drawsBackground") }
         // Offscreen but ordered in, so WebKit keeps laying out and animating the page.
-        let win = NSWindow(contentRect: NSRect(x: -20_000, y: -20_000, width: w, height: h),
-                           styleMask: [.borderless], backing: .buffered, defer: false)
+        let win = OffscreenHostWindow(contentRect: NSRect(origin: OffscreenHostWindow.parkingOrigin(), size: NSSize(width: w, height: h)),
+                                      styleMask: [.borderless], backing: .buffered, defer: false)
         win.isReleasedWhenClosed = false
+        // Not in Mission Control, ⌘` cycling or Spaces: it must never become a visible window.
+        win.collectionBehavior = [.transient, .ignoresCycle, .stationary, .fullScreenNone]
         win.ignoresMouseEvents = true
         win.hasShadow = false
         win.backgroundColor = .clear
@@ -302,6 +342,7 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         wv.frame = NSRect(origin: .zero, size: page)
         wv.pageZoom = CGFloat(config.pageZoom)
         host.contentView = wv
+        (host as? OffscreenHostWindow)?.park()
         host.orderBack(nil)
         win.contentView = nil
         if keepAddress, let u = wv.url, ["http", "https"].contains(u.scheme?.lowercased() ?? ""), u.absoluteString != config.url {

@@ -131,7 +131,8 @@ struct CaptureCardSheet: View {
             if !sizes.contains(size) { size = "auto" }
             // Capture cards usually expose their audio as a device with a similar name.
             if editing == nil, let name = model.videoDevices.first(where: { $0.id == deviceID })?.name {
-                audioUID = model.audioDevices.first(where: { $0.name.localizedCaseInsensitiveContains(name) || name.localizedCaseInsensitiveContains($0.name) })?.id ?? ""
+                let audio = model.audioDevices
+                audioUID = CaptureAudioMatch.partner(videoName: name, audioNames: audio.map(\.name)).map { audio[$0].id } ?? ""
             }
         }
     }
