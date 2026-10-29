@@ -75,6 +75,13 @@ struct CaptureCardSheet: View {
                     }
                 }
                 .disabled(editing != nil)
+                if editing == nil {
+                    HStack {
+                        Button { model.refreshDevices() } label: { Label(L10n.t("capturecard.refresh"), systemImage: "arrow.clockwise") }
+                            .controlSize(.small)
+                        Text(L10n.t("capturecard.kinds")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                    }
+                }
                 if editing == nil, let used = model.cameraInUse(deviceID) {
                     Text(L10n.f("inputs.already_used", used)).font(.system(size: 11)).foregroundStyle(Theme.warning)
                 }
@@ -212,7 +219,8 @@ struct CaptureCardSheet: View {
             deinterlace = a.deinterlace
             showAdvanced = !codec.isEmpty || bufferFrames || range != .none || deinterlace
         } else if deviceID.isEmpty {
-            deviceID = model.videoDevices.first?.id ?? ""
+            // The first device not used by another input.
+            deviceID = model.videoDevices.first { model.cameraInUse($0.id) == nil }?.id ?? model.videoDevices.first?.id ?? ""
         }
         formats = model.captureFormats(uniqueID: deviceID)
     }

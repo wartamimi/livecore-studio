@@ -98,6 +98,11 @@ struct OutputDockView: View {
                 }
             }
             }
+            // PHOTO (0.46.0): a still of Program, next to the other outputs instead of under the
+            // Program monitor (which made Program shorter than Preview).
+            mainButton(L10n.t("snapshot.button_big"), icon: "camera.fill", status: L10n.t("snapshot.help"),
+                       color: Theme.accent, active: false) { model.saveSnapshot() }
+                .padding(.leading, 4)
             Spacer(minLength: 0)
             OutputChips(showNames: chipNames)
         }

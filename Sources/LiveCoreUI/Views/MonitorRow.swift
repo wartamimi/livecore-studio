@@ -67,19 +67,8 @@ struct MonitorView: View {
                 .overlay { if snapshot != nil { SnapshotConfirmation() } }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             if let designer { DesignerBarIfActive(state: designer) }
-            if let snapshot {
-                HStack {
-                    Spacer()
-                    // Same size and style as RECORD / STREAM / FULLSCREEN.
-                    Button(action: snapshot) {
-                        Label(L10n.t("snapshot.button_big"), systemImage: "camera.fill")
-                    }
-                    .buttonStyle(StudioButtonStyle(color: Theme.accent))
-                    .frame(width: StudioButtonStyle.mainWidth)
-                    .help(L10n.t("snapshot.help"))
-                }
-                .padding(.top, 3).padding(.horizontal, 4)
-            }
+            // PHOTO lives in the output dock since 0.46.0, so Preview and Program are the same
+            // size; the Program monitor still shows the saved-photo confirmation.
         }
         .padding(4)
         .panel()

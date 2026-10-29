@@ -91,6 +91,8 @@ public struct TickerConfig: Codable, Equatable, Sendable {
 /// Running-text styles offered in the Title Designer.
 public enum TickerTemplate: String, Codable, Sendable, CaseIterable {
     case newsRed, breakingYellow, darkLabel, blueInfo, minimal, topBand
+    // 0.46.0: wedding greetings / couple names
+    case weddingGold, weddingBlush
 
     public func config(text: String) -> TickerConfig {
         func rgb(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1) -> ProjectColor { ProjectColor(r: r, g: g, b: b, a: a) }
@@ -138,6 +140,34 @@ public enum TickerTemplate: String, Codable, Sendable, CaseIterable {
             c.labelColor = rgb(0.88, 0.08, 0.1)
             c.labelTextColor = rgb(1, 1, 1)
             c.animation = .slideFromTop
+        case .weddingGold:
+            c.barColor = rgb(0.99, 0.96, 0.9, 0.9)
+            c.textColor = rgb(0.42, 0.32, 0.14)
+            c.label = "♥ Rina & Dimas"
+            c.labelColor = rgb(0.8, 0.65, 0.35)
+            c.labelTextColor = rgb(1, 1, 1)
+            c.fontFamily = "Didot"
+            c.italic = true
+            c.weight = .regular
+            c.separator = "❦"
+            c.separatorColor = rgb(0.8, 0.65, 0.35)
+            c.speed = 90
+            c.animation = .fade
+            c.animationDuration = 0.8
+        case .weddingBlush:
+            c.barColor = rgb(0.95, 0.8, 0.8, 0.88)
+            c.textColor = rgb(0.38, 0.14, 0.18)
+            c.label = "Happy Wedding"
+            c.labelColor = rgb(0.6, 0.25, 0.32)
+            c.labelTextColor = rgb(1, 0.95, 0.95)
+            c.fontFamily = "Snell Roundhand"
+            c.fontSize = 48
+            c.weight = .regular
+            c.separator = "♥"
+            c.separatorColor = rgb(0.6, 0.25, 0.32)
+            c.speed = 90
+            c.animation = .riseFade
+            c.animationDuration = 0.8
         }
         return c
     }

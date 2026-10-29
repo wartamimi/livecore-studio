@@ -7,10 +7,10 @@ final class M34Tests: XCTestCase {
     let title = TitleSize(520, 64), sub = TitleSize(380, 40), tag = TitleSize(90, 40)
 
     func testCatalog() {
-        XCTAssertEqual(TitleTemplate.allCases.count, 33)
-        XCTAssertEqual(TitleTemplate.allCases.filter { $0.category == .lowerThird }.count, 19)
-        XCTAssertEqual(TitleTemplate.allCases.filter { $0.category == .title }.count, 9)
-        XCTAssertEqual(TitleTemplate.allCases.filter { $0.category == .corner }.count, 5)
+        XCTAssertEqual(TitleTemplate.allCases.count, 38)
+        XCTAssertEqual(TitleTemplate.allCases.filter { $0.category == .lowerThird }.count, 21)
+        XCTAssertEqual(TitleTemplate.allCases.filter { $0.category == .title }.count, 11)
+        XCTAssertEqual(TitleTemplate.allCases.filter { $0.category == .corner }.count, 6)
         for t in TitleTemplate.allCases {
             let d = t.defaultDesign
             XCTAssertEqual(d.template, t)

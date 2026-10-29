@@ -161,6 +161,20 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.46.0
+Paket 8 permintaan. Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Belum ada yang dites di Mac (TEST_PLAN bagian AV).
+
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Tombol PHOTO dipindah | Implemented | M | Dari bawah monitor Program ke dock output, di samping RECORD / STREAM / EXTERNAL, sehingga monitor Preview dan Program kembali sama besar. Konfirmasi "foto tersimpan" tetap muncul di atas Program. |
+| Input: Video Capture Device | Implemented | M | Daftar kamera di menu + diganti satu item "Video Capture Device…" yang membuka dialog pilih perangkat (kamera, capture card USB/HDMI, iPhone Continuity) dengan tombol muat ulang; perangkat yang belum dipakai dipilih otomatis. |
+| Bug menu AI (on this Mac) berkedip | Implemented | M | Submenu diganti satu item yang membuka jendela kecil (hapus latar, auto-framing, zoom). Penyebab diduga: submenu dibangun ulang tiap thumbnail di-refresh. Belum dikonfirmasi di Mac. |
+| Layout scene editor | Implemented | L, M | 10 layout baru (17 total): PiP kiri bawah, 2 PiP, belah dua tinggi, grid 3×3, 1 atas + 3 bawah, sidebar, meja berita, bentuk L, panel 3, panel 4. |
+| Scene editor lebih advance | Implemented | L, M | X/Y/W/H dalam persen bisa diketik, rata kiri/tengah/kanan/atas/bawah, penuhi kanvas, geser 1 %, duplikat layer, ratakan jarak mendatar / menurun. (Snap, crop, rotasi tidak berubah dari sebelumnya.) |
+| Vertical output lebih advance | Implemented | L, M | Mode isi: potong (ikuti orang) / gambar utuh + latar blur / gambar utuh di hitam; zoom 1–2,5× dan ruang kepala; ketenangan (dead zone); posisi gambar dan kekuatan blur; bitrate audio dan interval keyframe stream vertikal; ukuran baru 1080×1350 (4:5) dan 1080×1080. Setting lama tetap terbaca. |
+| Template nama pengantin | Implemented | L, M | Title: Nama pengantin (tengah), Save the date. Lower third: rose gold (huruf naik satu per satu), kartu ivory (huruf memantul). Pojok: hashtag pernikahan. Running text: Pernikahan emas, Pernikahan pink. Font script/Didot bawaan macOS. |
+| Frame meeting & conference | Implemented | L, M | 4 frame baru: Konferensi (kamera besar + panel pembicara + strip aksen), Meeting (terang, sudut membulat, bayangan), Webinar (judul kiri, presenter kanan dengan glow), Keynote (kamera tengah, garis aksen). |
+
 ## Fitur 0.45.0
 Paket 16 permintaan. Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Belum ada yang dites di Mac (TEST_PLAN bagian AU).
 
