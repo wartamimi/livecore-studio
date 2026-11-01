@@ -37,8 +37,9 @@ enum ShaderSource {
     }
 
     // Input colour correction (LiveCoreCore.InputAdjust, same math): output is premultiplied.
-    struct AdjustParams { float brightness; float contrast; float saturation; float invGamma; int straight; int range; int deinterlace; int pad2; };
+    struct AdjustParams { float brightness; float contrast; float saturation; float invGamma; int straight; int range; int deinterlace; float lutMix; };
     fragment float4 adjust_fragment(VOut in [[stage_in]], texture2d<float> tex [[texture(0)]],
+                                    texture3d<float> lut [[texture(1)]],
                                     constant AdjustParams &p [[buffer(0)]]) {
         constexpr sampler s(address::clamp_to_edge, filter::linear);
         float4 c = tex.sample(s, in.uv);
@@ -56,6 +57,13 @@ enum ShaderSource {
         rgb = (rgb - 0.5) * p.contrast + 0.5 + p.brightness;
         float l = dot(rgb, float3(0.2126, 0.7152, 0.0722));
         rgb = clamp(l + (rgb - l) * p.saturation, 0.0, 1.0);
+        if (p.lutMix > 0.0) {
+            // 3D LUT (0.48.0): sample lattice centres, trilinear, mixed by strength.
+            constexpr sampler ls(address::clamp_to_edge, filter::linear);
+            float n = float(lut.get_width());
+            float3 uvw = rgb * ((n - 1.0) / n) + 0.5 / n;
+            rgb = mix(rgb, clamp(lut.sample(ls, uvw).rgb, 0.0, 1.0), p.lutMix);
+        }
         return float4(rgb * a, a);
     }
 

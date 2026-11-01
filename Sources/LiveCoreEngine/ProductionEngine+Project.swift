@@ -330,6 +330,7 @@ extension ProductionEngine {
         p.faderDB = c.faderDB.value; p.gainDB = c.gainDB.value; p.pan = c.pan.value
         p.muted = c.muted.value; p.toProgram = c.toProgram.value
         p.toBusA = c.toBusA.value; p.toBusB = c.toBusB.value
+        p.toBusC = c.toBusC.value ? true : nil; p.toBusD = c.toBusD.value ? true : nil
         p.compressorEnabled = c.compressorEnabled.value; p.compThresholdDB = c.compThresholdDB.value; p.compRatio = c.compRatio.value
         p.gateEnabled = c.gateEnabled.value; p.gateThresholdDB = c.gateThresholdDB.value
         p.gateRangeDB = c.gateRangeDB.value; p.compMakeupDB = c.compMakeupDB.value
@@ -369,6 +370,7 @@ extension ProductionEngine {
         c.faderDB.value = p.faderDB; c.gainDB.value = p.gainDB; c.pan.value = p.pan
         c.muted.value = p.muted; c.toProgram.value = p.toProgram
         c.toBusA.value = p.toBusA ?? false; c.toBusB.value = p.toBusB ?? false
+        c.toBusC.value = p.toBusC ?? false; c.toBusD.value = p.toBusD ?? false
         c.compressorEnabled.value = p.compressorEnabled; c.compThresholdDB.value = p.compThresholdDB; c.compRatio.value = p.compRatio
         c.gateEnabled.value = p.gateEnabled; c.gateThresholdDB.value = p.gateThresholdDB
         if let v = p.gateRangeDB { c.gateRangeDB.value = v }

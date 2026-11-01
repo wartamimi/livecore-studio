@@ -30,7 +30,17 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var customTransitionError: String?
     @Published public var tbar: Double = 0
     /// Instant replay: seconds buffered, and the speed new replays play at.
-    @Published public var replayAvailable: Double = 0
+    /// Live readings (0.48.0): these change many times a minute, so they no longer redraw the
+    /// whole window (which dropped frames and rebuilt open menus). Views showing the numbers wrap
+    /// them in `Live(model.live) { ... }`; a change of state (started, stopped, failed) still
+    /// redraws everything.
+    public let live = LiveStats()
+    public var replayAvailable: Double = 0 {
+        didSet {
+            if (oldValue < 1) != (replayAvailable < 1) { objectWillChange.send() }
+            else if Int(oldValue) != Int(replayAvailable) { live.objectWillChange.send() }
+        }
+    }
     @Published public var replaySpeed: Double = 0.5 { didSet { engine?.replaySource?.speed = replaySpeed } }
     @Published public var overlays: [OverlayChannel] = []
     public let programFeed = FrameFeed()
@@ -85,20 +95,28 @@ public final class AppModel: ObservableObject {
     // Outputs
     @Published public var settings = ProductionSettings()
     /// Live statistics per stream destination ("primary" or a StreamDestination id).
-    @Published public var destinationStats: [String: StreamingEngine.Stats] = [:]
+    public var destinationStats: [String: StreamingEngine.Stats] = [:] {
+        didSet { liveChanged(stateChanged: oldValue.mapValues(\.state) != destinationStats.mapValues(\.state)) }
+    }
     /// Destinations of the current/last stream session, in display order.
     @Published public internal(set) var streamTargets: [(id: String, name: String)] = []
-    @Published public var recordStats = RecordingEngine.Stats()
+    public var recordStats = RecordingEngine.Stats() {
+        didSet { liveChanged(stateChanged: "\(oldValue.state)" != "\(recordStats.state)") }
+    }
     /// MultiCorder: inputs recorded to their own files (own button and profile), and those files' states.
     @Published public internal(set) var multiCorder = MultiCorderConfig() { didSet { engine?.multiCorder = multiCorder } }
-    @Published public internal(set) var isoStats: [InputID: RecordingEngine.Stats] = [:]
+    public internal(set) var isoStats: [InputID: RecordingEngine.Stats] = [:] {
+        didSet { liveChanged(stateChanged: oldValue.mapValues { "\($0.state)" } != isoStats.mapValues { "\($0.state)" }) }
+    }
     /// Inputs panel: colour labels (groups), minimized tiles, group names, colour filter.
     @Published public internal(set) var inputTags: [InputID: InputColorTag] = [:]
     @Published public internal(set) var minimizedInputs: Set<InputID> = []
     @Published public internal(set) var groupNames: [InputColorTag: String] = [:]
     @Published public var inputFilter: InputColorTag?
     @Published public var hasStreamKey = false
-    @Published public var performance = PerformanceSnapshot.zero
+    public var performance = PerformanceSnapshot.zero {
+        didSet { live.objectWillChange.send() }
+    }
     @Published public var shortcuts = ShortcutSettings.load()
 
     // Web Controller (remote control from a browser on the same network; off by default)
@@ -293,14 +311,24 @@ public final class AppModel: ObservableObject {
         if remoteServer != nil, tickCount % 2 == 0 { pushRemoteFrames() }
     }
 
+    func liveChanged(stateChanged: Bool) {
+        if stateChanged { objectWillChange.send() } else { live.objectWillChange.send() }
+    }
+
     // MARK: Devices
 
     public func refreshDevices() {
         guard let e = engine else { return }
         e.devices.refresh()
-        videoDevices = e.devices.videoDevices
-        audioDevices = e.devices.audioDevices
-        outputDevices = AudioDevices.outputs()
+        // Assign only what changed: every assignment redraws the whole window (0.48.0).
+        if videoDevices.map(\.id) != e.devices.videoDevices.map(\.id) || videoDevices.map(\.name) != e.devices.videoDevices.map(\.name) {
+            videoDevices = e.devices.videoDevices
+        }
+        if audioDevices.map(\.id) != e.devices.audioDevices.map(\.id) || audioDevices.map(\.name) != e.devices.audioDevices.map(\.name) {
+            audioDevices = e.devices.audioDevices
+        }
+        let outs = AudioDevices.outputs()
+        if outs != outputDevices { outputDevices = outs }
         reloadAudioChannels()
     }
 
@@ -351,7 +379,9 @@ public final class AppModel: ObservableObject {
     /// Panels opened from the menus.
     @Published public var showPreflight = false
     // Vertical 9:16 output and event rundown (0.42.0).
-    @Published public var verticalStreamStats: StreamingEngine.Stats?
+    public var verticalStreamStats: StreamingEngine.Stats? {
+        didSet { liveChanged(stateChanged: oldValue?.state != verticalStreamStats?.state) }
+    }
     @Published public var rundown = Rundown()
     @Published public var rundownIndex: Int?
     @Published public var rundownStart: Date?

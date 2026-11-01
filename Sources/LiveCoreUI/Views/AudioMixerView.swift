@@ -10,6 +10,8 @@ struct AudioMixerView: View {
     @AppStorage("mixer.compact") private var compact = false
     /// Aux buses (A/B) folded away.
     @AppStorage("mixer.hideAux") private var hideAux = false
+    /// How many aux buses the mixer shows (0.48.0: AUX A–D, "+ AUX / BUS" adds one).
+    @AppStorage("mixer.auxCount") private var auxCount = 2
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -35,6 +37,11 @@ struct AudioMixerView: View {
                     Divider()
                     Button(L10n.t("tone.add")) { model.addTone() }
                     Button(L10n.t("radio.menu")) { showRadio = true }
+                    Divider()
+                    Button(L10n.t("aux.add")) { auxCount = min(auxCount + 1, 4); hideAux = false }
+                        .disabled(auxCount >= 4)
+                    Button(L10n.t("aux.remove")) { auxCount = max(auxCount - 1, 0) }
+                        .disabled(auxCount <= 0)
                 } label: { Image(systemName: "plus.circle.fill") }
                 .menuStyle(.borderlessButton).fixedSize()
                 .help(L10n.t("audio.add"))
@@ -52,9 +59,9 @@ struct AudioMixerView: View {
                         }
                     }
                 }
-                if !hideAux {
+                if !hideAux && auxCount > 0 {
                     Divider()
-                    ForEach(model.auxBuses) { bus in
+                    ForEach(model.auxBuses.prefix(auxCount)) { bus in
                         AuxStripView(bus: bus)
                     }
                 }
@@ -75,6 +82,7 @@ struct ChannelStripView: View {
     @State private var hovering = false
     @State private var confirmClose = false
     @AppStorage("mixer.compact") private var compact = false
+    @AppStorage("mixer.auxCount") private var auxCount = 2
 
     var body: some View {
         VStack(spacing: 4) {
@@ -130,8 +138,11 @@ struct ChannelStripView: View {
             if let m = model.musicPlayer(vm.id) { MusicTransport(player: m) }
             if let r = model.radio(vm.id) { RadioTransport(radio: r) }
             HStack(spacing: 3) {
-                toggle("A", $vm.toBusA, Theme.preview).help(L10n.t("aux.send_a"))
-                toggle("B", $vm.toBusB, Theme.preview).help(L10n.t("aux.send_b"))
+                let n = auxCount
+                if n > 0 { toggle("A", $vm.toBusA, Theme.preview).help(L10n.t("aux.send_a")) }
+                if n > 1 { toggle("B", $vm.toBusB, Theme.preview).help(L10n.t("aux.send_b")) }
+                if n > 2 { toggle("C", $vm.toBusC, Theme.preview).help(L10n.f("aux.send_n", "C")) }
+                if n > 3 { toggle("D", $vm.toBusD, Theme.preview).help(L10n.f("aux.send_n", "D")) }
                 afvButton
             }
             Button { showDSP = true } label: {
@@ -354,6 +365,8 @@ struct AudioPropertiesSheet: View {
             Toggle(L10n.t("audio.route_program"), isOn: $vm.toProgram)
             Toggle(L10n.t("aux.send_a"), isOn: $vm.toBusA)
             Toggle(L10n.t("aux.send_b"), isOn: $vm.toBusB)
+            Toggle(L10n.f("aux.send_n", "C"), isOn: $vm.toBusC)
+            Toggle(L10n.f("aux.send_n", "D"), isOn: $vm.toBusD)
             Toggle(L10n.t("audio.mute"), isOn: $vm.muted)
             Toggle(L10n.t("audio.solo"), isOn: $vm.solo)
             Picker("AFV", selection: Binding(get: { model.afvLink(vm.id) }, set: { model.setAFV(vm.id, input: $0) })) {

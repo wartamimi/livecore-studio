@@ -9,7 +9,9 @@ import LiveCoreEngine
 struct ReplaySection: View {
     @EnvironmentObject var model: AppModel
 
-    var body: some View {
+    var body: some View { Live(model.live) { content } }
+
+    @ViewBuilder private var content: some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(spacing: 4) {
                 Text(L10n.t("replay.title").uppercased()).font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.textDim)
@@ -52,7 +54,9 @@ struct ReplaySection: View {
 struct StreamDetails: View {
     @EnvironmentObject var model: AppModel
 
-    var body: some View {
+    var body: some View { Live(model.live) { content } }
+
+    @ViewBuilder private var content: some View {
         VStack(alignment: .leading, spacing: 6) {
             SectionHeader(title: L10n.t("stream.title"))
             ForEach(destinationRows, id: \.id) { row in
@@ -156,7 +160,9 @@ struct RecordDetails: View {
     @EnvironmentObject var model: AppModel
     @AppStorage(RecordReminderMode.storageKey) private var reminder = RecordReminderMode.always.rawValue
 
-    var body: some View {
+    var body: some View { Live(model.live) { content } }
+
+    @ViewBuilder private var content: some View {
         VStack(alignment: .leading, spacing: 6) {
             SectionHeader(title: L10n.t("record.title"))
             Text(folderLabel).font(.system(size: 11)).foregroundStyle(Theme.textDim).lineLimit(1).truncationMode(.head)
@@ -202,9 +208,11 @@ struct RecordDetails: View {
 struct MultiCorderDetails: View {
     @EnvironmentObject var model: AppModel
 
-    var body: some View {
+    var body: some View { Live(model.live) { content } }
+
+    @ViewBuilder private var content: some View {
         VStack(alignment: .leading, spacing: 5) {
-            SectionHeader(title: "ISOCorder")
+            SectionHeader(title: "MultiCorder")
             let p = model.settings.multiCorderRecording
             Text("\(p.videoCodec.label)\(p.videoCodec.usesBitrate ? " · \(p.bitrateKbps / 1000) Mbps" : "") · \(p.effectiveContainer.rawValue.uppercased()) · \(model.settings.output.size.width)×\(model.settings.output.size.height) \(model.settings.output.frameRate) fps")
                 .font(.system(size: 10)).foregroundStyle(Theme.textDim)
@@ -247,11 +255,7 @@ struct MultiCorderDetails: View {
     }
 
     private func busName(_ b: OutputBus) -> String {
-        switch b {
-        case .master: return "Master"
-        case .busA: return "Bus A"
-        case .busB: return "Bus B"
-        }
+        b.displayName
     }
 
     @ViewBuilder

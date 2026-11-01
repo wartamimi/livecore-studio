@@ -21,6 +21,15 @@ public struct InputAdjust: Codable, Equatable, Sendable {
     /// The video levels were already decided for this input (detected automatically, or set by the
     /// operator), so the automatic check does not run again (0.47.0).
     public var rangeChecked: Bool = false
+    /// 3D LUT (.cube file path) applied after the colour correction, and how much of it (0.48.0).
+    public var lut: String?
+    public var lutStrength: Double = 1
+
+    /// The LUT in use (a path is set and the strength is above zero).
+    public var activeLUT: String? {
+        guard let lut, !lut.isEmpty, lutStrength > 0.001 else { return nil }
+        return lut
+    }
 
     /// Video level correction: "limited" (16–235) pictures shown as full range look washed out;
     /// full range pictures treated as limited look crushed.
@@ -43,6 +52,7 @@ public struct InputAdjust: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case brightness, contrast, saturation, gamma, flipHorizontal, flipVertical, rotation, range, deinterlace, rangeChecked
+        case lut, lutStrength
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -56,6 +66,8 @@ public struct InputAdjust: Codable, Equatable, Sendable {
                   range: try c.decodeIfPresent(RangeFix.self, forKey: .range) ?? .none,
                   deinterlace: try c.decodeIfPresent(Bool.self, forKey: .deinterlace) ?? false)
         rangeChecked = try c.decodeIfPresent(Bool.self, forKey: .rangeChecked) ?? false
+        lut = try c.decodeIfPresent(String.self, forKey: .lut)
+        lutStrength = try c.decodeIfPresent(Double.self, forKey: .lutStrength) ?? 1
     }
 
     /// Rotation snapped to 0 / 90 / 180 / 270.
@@ -89,6 +101,8 @@ public struct InputAdjust: Codable, Equatable, Sendable {
                     flipHorizontal: flipHorizontal, flipVertical: flipVertical, rotation: normalizedRotation,
                     range: range, deinterlace: deinterlace)
         a.rangeChecked = rangeChecked
+        a.lut = lut
+        a.lutStrength = min(max(lutStrength, 0), 1)
         return a
     }
 
@@ -97,7 +111,7 @@ public struct InputAdjust: Codable, Equatable, Sendable {
         let a = clamped
         return abs(a.brightness) < 1e-4 && abs(a.contrast - 1) < 1e-4 && abs(a.saturation - 1) < 1e-4
             && abs(a.gamma - 1) < 1e-4 && !flipHorizontal && !flipVertical && a.rotation == 0
-            && range == .none && !deinterlace
+            && range == .none && !deinterlace && a.activeLUT == nil
     }
 
     /// Nothing worth keeping: no picture change and no remembered levels decision.

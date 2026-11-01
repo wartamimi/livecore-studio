@@ -58,16 +58,17 @@ extension ProductionEngine {
     }
 
     @discardableResult
-    public func addVideoFile(url: URL, id: InputID? = nil, loop: Bool = true, autoPlay: VideoFileSource.AutoPlay = .off) -> InputID {
+    public func addVideoFile(url: URL, id: InputID? = nil, loop: Bool? = nil, autoPlay: VideoFileSource.AutoPlay = .off) -> InputID {
         addVideoFile(urls: [url], id: id, loop: loop, autoPlay: autoPlay)
     }
 
     /// A video input; several URLs make a playlist played in order.
     @discardableResult
-    public func addVideoFile(urls: [URL], id: InputID? = nil, loop: Bool = true, autoPlay: VideoFileSource.AutoPlay = .off,
+    /// `loop` nil (new inputs): a single clip loops, a playlist does not (repeat off by default, 0.48.0).
+    public func addVideoFile(urls: [URL], id: InputID? = nil, loop: Bool? = nil, autoPlay: VideoFileSource.AutoPlay = .off,
                              autoRestart: Bool = true) -> InputID {
         let src = VideoFileSource(id: id ?? InputID(UUID().uuidString), urls: urls)
-        src.loop = loop
+        src.loop = loop ?? (urls.count <= 1)
         src.autoPlay = autoPlay
         src.autoRestart = autoRestart
         let srcID = src.id
@@ -623,6 +624,15 @@ extension ProductionEngine {
             guard st.sources[id] != nil else { return }
             st.keys[id] = key.clamped
         }
+    }
+}
+
+// MARK: LUTs (0.48.0)
+
+public extension ProductionEngine {
+    /// Drops the cached copy of a LUT file so the next frame reads it again.
+    func reloadLUT(_ path: String) {
+        renderQueue.async { [compositor] in compositor.reloadLUT(path) }
     }
 }
 #endif

@@ -45,11 +45,19 @@ public enum LiveCoreScenes {
                     .keyboardShortcut("h", modifiers: [.command, .shift])
                 Button(L10n.t("package.menu")) { model.makeClientPackage() }
             }
-            CommandGroup(after: .help) {
-                Button(L10n.t("diagnostics.menu")) { model.exportDiagnostics() }
-                Button(L10n.t("diagnostics.reveal_log")) { model.revealLogFolder() }
-            }
+            CommandGroup(replacing: .appInfo) { AboutCommand() }
+            CommandGroup(replacing: .help) { HelpCommands(model: model) }
         }
+
+        // Help and About (0.48.0).
+        Window(L10n.t("help.title"), id: "help") {
+            HelpView().preferredColorScheme(.dark)
+        }
+        .defaultSize(width: 900, height: 640)
+        Window(L10n.t("about.menu"), id: "about") {
+            AboutView().preferredColorScheme(.dark)
+        }
+        .windowResizability(.contentSize)
 
         Window(L10n.t("multiview.title"), id: "multiview") {
             MultiviewView()

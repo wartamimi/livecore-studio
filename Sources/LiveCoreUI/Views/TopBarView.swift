@@ -30,8 +30,37 @@ struct TopBarView: View {
                 .buttonStyle(StudioButtonStyle())
                 .fixedSize()
                 .help(L10n.t("outputs.help"))
-            FullscreenGroup()
-            if !model.isOperatorMode && !compact { machineStats }
+            Live(model.live) { liveStats(compact: compact) }
+            Divider().frame(height: 18)
+            Button { openWindow(id: "rundown") } label: {
+                Label(L10n.t("rundown.button"), systemImage: "list.number").labelStyle(AdaptiveLabelStyle(iconOnly: compact))
+            }
+                .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.rundownIndex != nil))
+                .fixedSize()
+                .help(L10n.t("rundown.title"))
+            Button { openWindow(id: "vertical") } label: {
+                Label("9:16", systemImage: "rectangle.portrait").labelStyle(AdaptiveLabelStyle(iconOnly: compact))
+            }
+                .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isVerticalStreaming))
+                .fixedSize()
+                .help(L10n.t("vertical.window"))
+            Button { openWindow(id: "multiview") } label: { Image(systemName: "square.grid.3x2") }
+                .help(L10n.t("multiview.open"))
+                .buttonStyle(.borderless)
+            if !model.isOperatorMode {
+                Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                    .help(L10n.t("settings.title"))
+                    .buttonStyle(.borderless)
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .panel()
+    }
+
+    /// Readings that change every second, redrawn on their own (0.48.0).
+    @ViewBuilder
+    private func liveStats(compact: Bool) -> some View {
+        if !model.isOperatorMode && !compact { machineStats }
             stat(L10n.t("top.fps"), String(format: "%.1f", model.performance.renderFPS),
                  warn: model.performance.renderFPS < Double(model.settings.output.frameRate) * 0.95 && model.performance.renderFPS > 0)
             if !compact { stat(L10n.t("top.dropped"), "\(model.performance.droppedRenderFrames)", warn: false) }
@@ -41,27 +70,6 @@ struct TopBarView: View {
             Divider().frame(height: 18)
             StatusPill(text: streamText, color: streamColor, systemImage: "dot.radiowaves.left.and.right")
             StatusPill(text: recordText, color: model.isRecording ? Theme.program : Theme.panelRaised, systemImage: "record.circle")
-            // Rundown, vertical output and multiview in one menu (0.47.0): fewer buttons on top.
-            Menu {
-                Button { openWindow(id: "rundown") } label: { Label(L10n.t("rundown.button"), systemImage: "list.number") }
-                Button { openWindow(id: "vertical") } label: { Label(L10n.t("vertical.window"), systemImage: "rectangle.portrait") }
-                Button { openWindow(id: "multiview") } label: { Label(L10n.t("multiview.open"), systemImage: "square.grid.3x2") }
-            } label: {
-                Label(L10n.t("tools.menu"), systemImage: "wrench.and.screwdriver")
-                    .labelStyle(AdaptiveLabelStyle(iconOnly: compact))
-            }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .foregroundStyle(model.rundownIndex != nil || model.isVerticalStreaming ? Theme.program : Theme.text)
-                .help(L10n.t("tools.help"))
-            if !model.isOperatorMode {
-                Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                    .help(L10n.t("settings.title"))
-                    .buttonStyle(.borderless)
-            }
-        }
-        .padding(.horizontal, 10).padding(.vertical, 6)
-        .panel()
     }
 
     @ViewBuilder

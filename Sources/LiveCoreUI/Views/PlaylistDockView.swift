@@ -1,5 +1,6 @@
 #if os(macOS)
 import SwiftUI
+import UniformTypeIdentifiers
 import LiveCoreCore
 import LiveCoreEngine
 
@@ -13,6 +14,8 @@ struct PlaylistDockView: View {
     @State private var query = ""
     /// Row picked with a single click (highlighted, not played): "<source key>#<index>".
     @State private var picked: String?
+    /// Playlist a row is being dragged from (drops into another playlist are ignored).
+    @State private var dragging: String?
 
     private enum Source {
         case music(MusicInput)
@@ -93,6 +96,21 @@ struct PlaylistDockView: View {
                 .listRowBackground(RoundedRectangle(cornerRadius: 4)
                     .fill(picked == key(s) + "#\(i)" ? Theme.accent.opacity(0.35) : Color.clear))
                 .help(u.lastPathComponent)
+                // Hold and drag a row up or down to reorder (0.48.0). List.onMove never started a
+                // drag here because the rows' click gestures took the mouse; drag and drop of the
+                // row number works next to them. Not while the list is filtered by a search.
+                .onDrag {
+                    dragging = key(s)
+                    return NSItemProvider(object: "\(i)" as NSString)
+                }
+                .onDrop(of: [.plainText], isTargeted: nil) { providers in
+                    guard query.isEmpty, dragging == key(s), let p = providers.first else { return false }
+                    _ = p.loadObject(ofClass: NSString.self) { obj, _ in
+                        guard let str = obj as? String, let from = Int(str), from != i else { return }
+                        DispatchQueue.main.async { move(s, from, i) }
+                    }
+                    return true
+                }
                 .contextMenu {
                     Button(L10n.t("playlist.play_this")) { play(s, i) }
                     Button(L10n.t("playlist.play_next")) { move(s, i, i < it.index ? it.index : it.index + 1) }
@@ -104,11 +122,6 @@ struct PlaylistDockView: View {
                         .disabled(isLocked(s) || (it.urls.count == 1 && { if case .video = s { return true }; return false }()))
                 }
             }
-            // Drag to reorder (not while the list is filtered by a search).
-            .onMove(perform: query.isEmpty ? { (from: IndexSet, to: Int) in
-                guard let f = from.first else { return }
-                move(s, f, to > f ? to - 1 : to)
-            } : nil)
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)

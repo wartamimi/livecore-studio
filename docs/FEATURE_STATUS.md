@@ -161,6 +161,24 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.48.0 — panel lebih ringkas, LUT, Help
+
+| Fitur | Status | Catatan |
+|---|---|---|
+| Panel OUTPUTS: FULLSCREEN di atas EXTERNAL; RECORD, STREAM, ISOCORDER dihapus dari panel | Implemented | RECORD/STREAM/MULTICORDER tetap di bar bawah |
+| ISOCORDER → MULTICORDER (bar bawah, Settings, teks) | Implemented | |
+| Bar atas: tombol menu Tools dan Fullscreen dihapus; RUNDOWN, 9:16 dan ikon Multiview kembali | Implemented | Fullscreen tetap di OUTPUTS dan ⇧⌘F |
+| Bar bawah: grup EXTERNAL dan chip OUT1–OUT4 dihapus | Implemented | EXTERNAL ada di panel OUTPUTS |
+| Tambah / hapus AUX / BUS (sampai 4: A–D) dari menu + mixer | Implemented | Bus C/D baru; routing, kirim ke device, mix-minus dan proyek ikut 4 bus. Perlu tes audio di Mac |
+| Playlist: tahan & seret item ke atas/bawah | Implemented | Tidak aktif saat kolom cari terisi |
+| Loop playlist default mati | Implemented | Proyek lama tetap memakai nilai tersimpan |
+| Browser: Edit lagi tidak me-reload halaman | Implemented | Halaman tidak lagi pindah jendela: jendela tersembunyi itu sendiri yang tampil saat Edit. Perlu tes di Mac |
+| FPS turun / submenu berkedip | Partial | Angka live (FPS, CPU, rekaman, stream, replay) tidak lagi menggambar ulang seluruh jendela dan menu tiap detik; daftar device hanya diperbarui bila berubah. Belum diukur di Mac |
+| LUT per input (.cube 3D, kekuatan 0–100%) | Implemented | Di Properti › Warna, setelah koreksi warna (GPU, 3D texture). Pustaka di Application Support/LiveCore Studio/LUTs |
+| LUT Generator profesional | Implemented | 15 preset; eksposur, white balance, kontras film, lift/gamma/gain, saturasi, vibrance, split toning, fade, roll-off highlight; ukuran 17/33/65; preview live di input; Simpan & Terapkan atau Ekspor .cube |
+| Halaman Help (Bantuan) sesuai bahasa aplikasi | Implemented | en + id lengkap; ms/es/zh-Hans memakai teks Inggris. Menu Help › ⌘? |
+| About singkat + "Dibuat oleh Munawar Tamimi" | Implemented | Menu LiveCore Studio › About |
+
 ## Fitur 0.47.0 — stabil dan sederhana
 Tanpa fitur baru: merapikan tampilan dan perilaku. Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Belum dites di Mac (TEST_PLAN bagian AY).
 

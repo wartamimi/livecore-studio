@@ -512,6 +512,8 @@ public struct ProjectAudioChannel: Codable, Equatable, Sendable {
     public var toProgram = true
     public var toBusA: Bool?
     public var toBusB: Bool?
+    public var toBusC: Bool?
+    public var toBusD: Bool?
     public var compressorEnabled = false
     public var compThresholdDB: Float = -18
     public var compRatio: Float = 3

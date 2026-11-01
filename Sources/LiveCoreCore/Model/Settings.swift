@@ -95,10 +95,15 @@ public struct AudioEncoderSettings: Codable, Equatable, Sendable {
 /// bus selection: Master (Program mix) or one of the aux buses, e.g. a mix without the music
 /// for the recording, or a commentary mix for one platform.
 public enum OutputBus: String, Codable, Sendable, CaseIterable, Hashable {
-    case master, busA, busB
+    case master, busA, busB, busC, busD
     /// Index into the mixer's aux buses, nil for Master.
     public var auxIndex: Int? {
-        switch self { case .master: return nil; case .busA: return 0; case .busB: return 1 }
+        switch self { case .master: return nil; case .busA: return 0; case .busB: return 1; case .busC: return 2; case .busD: return 3 }
+    }
+    /// "Master", "Bus A" … "Bus D".
+    public var displayName: String {
+        guard let i = auxIndex else { return "Master" }
+        return "Bus " + ["A", "B", "C", "D"][i]
     }
 }
 

@@ -103,7 +103,7 @@ struct VerticalOutputView: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(model.isVerticalStreaming ? .red : .accentColor)
-                        Text(statusText).font(.caption).foregroundStyle(.secondary)
+                        Live(model.live) { Text(statusText).font(.caption).foregroundStyle(.secondary) }
                     }
                 }
                 Text(L10n.t("vertical.note")).font(.caption).foregroundStyle(.secondary)
