@@ -137,7 +137,7 @@ extension AppModel {
     /// Rebuilds channel view models, keeping existing ones so open popovers stay bound.
     public func reloadAudioChannels() {
         let existing = Dictionary(uniqueKeysWithValues: audioChannels.map { ($0.id, $0) })
-        let next = engine?.audioChannels.map { ch in
+        let next: [ChannelVM] = engine?.audioChannels.map { ch -> ChannelVM in
             if let vm = existing[ch.id], vm.channel === ch { return vm }
             return ChannelVM(channel: ch)
         } ?? []
