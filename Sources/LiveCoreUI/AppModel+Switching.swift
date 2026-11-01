@@ -130,6 +130,7 @@ extension AppModel {
         case let .preview(n): previewNumber(n)
         case let .cutDirect(n): if n >= 1, n <= inputs.count { cutDirect(inputs[n - 1].id) }
         case let .overlay(i): toggleOverlay(i)
+        case let .overlayPreview(i): toggleOverlayPreview(i)
         }
     }
 
@@ -146,6 +147,7 @@ extension AppModel {
         case let .preview(n): return L10n.f("midi.preview", n)
         case let .cutDirect(n): return L10n.f("midi.cut_direct", n)
         case let .overlay(i): return "Overlay \(i)"
+        case let .overlayPreview(i): return "Overlay \(i) → Preview"
         }
     }
 

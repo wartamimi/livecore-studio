@@ -263,7 +263,8 @@ public enum RemoteRouter {
             cmd = .action(r.path == "/api/preview" ? .preview(n) : .cutDirect(n))
         case "/api/overlay":
             guard let n = int(r.query["n"]), (1...4).contains(n) else { return .badRequest("n") }
-            cmd = .action(.overlay(n))
+            // Same as the app (0.47.0): a tap shows it on Preview, to=program puts it on air.
+            cmd = .action(r.query["to"] == "program" ? .overlay(n) : .overlayPreview(n))
         case "/api/replay":
             guard let s = int(r.query["sec"]), ReplayIndex.lengths.contains(Double(s)) else { return .badRequest("sec") }
             cmd = .action(.replay(s))

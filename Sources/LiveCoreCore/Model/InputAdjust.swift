@@ -18,6 +18,9 @@ public struct InputAdjust: Codable, Equatable, Sendable {
     public var range: RangeFix
     /// Blend the two fields of an interlaced signal (1080i) to remove combing (since 0.28.0).
     public var deinterlace: Bool
+    /// The video levels were already decided for this input (detected automatically, or set by the
+    /// operator), so the automatic check does not run again (0.47.0).
+    public var rangeChecked: Bool = false
 
     /// Video level correction: "limited" (16–235) pictures shown as full range look washed out;
     /// full range pictures treated as limited look crushed.
@@ -34,10 +37,12 @@ public struct InputAdjust: Codable, Equatable, Sendable {
     }
 
     /// The same settings with colour correction and orientation reset, keeping the capture fixes.
-    public var resetKeepingSignalFixes: InputAdjust { InputAdjust(range: range, deinterlace: deinterlace) }
+    public var resetKeepingSignalFixes: InputAdjust {
+        var a = InputAdjust(range: range, deinterlace: deinterlace); a.rangeChecked = rangeChecked; return a
+    }
 
     private enum CodingKeys: String, CodingKey {
-        case brightness, contrast, saturation, gamma, flipHorizontal, flipVertical, rotation, range, deinterlace
+        case brightness, contrast, saturation, gamma, flipHorizontal, flipVertical, rotation, range, deinterlace, rangeChecked
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -50,6 +55,7 @@ public struct InputAdjust: Codable, Equatable, Sendable {
                   rotation: try c.decodeIfPresent(Int.self, forKey: .rotation) ?? 0,
                   range: try c.decodeIfPresent(RangeFix.self, forKey: .range) ?? .none,
                   deinterlace: try c.decodeIfPresent(Bool.self, forKey: .deinterlace) ?? false)
+        rangeChecked = try c.decodeIfPresent(Bool.self, forKey: .rangeChecked) ?? false
     }
 
     /// Rotation snapped to 0 / 90 / 180 / 270.
@@ -78,10 +84,12 @@ public struct InputAdjust: Codable, Equatable, Sendable {
     }
 
     public var clamped: InputAdjust {
-        InputAdjust(brightness: min(max(brightness, -0.5), 0.5), contrast: min(max(contrast, 0), 2),
+        var a = InputAdjust(brightness: min(max(brightness, -0.5), 0.5), contrast: min(max(contrast, 0), 2),
                     saturation: min(max(saturation, 0), 2), gamma: min(max(gamma, 0.5), 2),
                     flipHorizontal: flipHorizontal, flipVertical: flipVertical, rotation: normalizedRotation,
                     range: range, deinterlace: deinterlace)
+        a.rangeChecked = rangeChecked
+        return a
     }
 
     /// True when the picture is unchanged (the compositor then skips the adjustment pass).
@@ -91,6 +99,9 @@ public struct InputAdjust: Codable, Equatable, Sendable {
             && abs(a.gamma - 1) < 1e-4 && !flipHorizontal && !flipVertical && a.rotation == 0
             && range == .none && !deinterlace
     }
+
+    /// Nothing worth keeping: no picture change and no remembered levels decision.
+    public var isEmpty: Bool { isIdentity && !rangeChecked }
 
     public var hasColorChange: Bool {
         var a = self; a.flipHorizontal = false; a.flipVertical = false; a.rotation = 0

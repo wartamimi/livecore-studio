@@ -161,6 +161,19 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | UI EN + ID | Implemented | M |
 | Simpan/muat proyek (.livecore JSON) | Implemented (M2) | L (model) + M |
 
+## Fitur 0.47.0 — stabil dan sederhana
+Tanpa fitur baru: merapikan tampilan dan perilaku. Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Belum dites di Mac (TEST_PLAN bagian AY).
+
+| Perubahan | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Satu jendela "Properti…" per input | Implemented | M | Klik kanan input › Properti… membuka satu jendela bertab: Sumber (capture card / screen / NDI), Warna, Key, AI, PTZ. Lima item menu terpisah dihapus. Aksi cepat (reload, retry, timer, slide) tetap di menu. |
+| Menu Alat di bar atas | Implemented | M | Tombol Rundown, 9:16 dan Multiview digabung ke satu menu "Alat"; ikonnya merah saat rundown berjalan atau stream vertikal live. |
+| Overlay Web Controller sama dengan aplikasi | Implemented | L, M | Ketuk = Preview, tahan 0,5 detik = Program (ada keterangan di bawah tombol). Juga tersedia sebagai aksi MIDI "Overlay n → Preview". |
+| Koreksi warna otomatis mengingat keputusan | Implemented | L, M | Setelah koreksi level otomatis berjalan sekali, atau Anda mengubah level sendiri, pemeriksaan otomatis tidak berjalan lagi untuk input itu (tersimpan di project). |
+| Bahasa sebagian ditandai | Implemented | M | Melayu, Spanyol, Mandarin tampil "(beta)" di pilihan bahasa. |
+| Pengaturan audio | Tidak diubah | – | Diperiksa: pengaturan detail limiter/loudness hanya ada di Settings › Audio; mixer hanya punya sakelar cepat. Tidak ada duplikasi yang perlu dihapus. |
+| Satu galeri template (title, frame, slideshow, running text) | Planned | – | Belum dikerjakan di build ini. |
+
 ## Fitur 0.46.3
 
 | Fitur | Status | Verifikasi | Catatan |
