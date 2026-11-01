@@ -27,69 +27,171 @@ public final class ProductionEngine {
         public var kind: InputKind
         public var status: SourceStatus
         public var number: Int
+        /// Locked inputs cannot be closed, renamed or edited from the UI (protection on air).
+        public var locked: Bool = false
+        /// Presentation inputs: slide on air (1-based) and slide count; 0 slides while converting.
+        public var slide: (index: Int, count: Int, converting: Bool)? = nil
+
+        public static func == (l: InputInfo, r: InputInfo) -> Bool {
+            l.id == r.id && l.name == r.name && l.kind == r.kind && l.status == r.status && l.number == r.number
+                && l.locked == r.locked && l.slide?.index == r.slide?.index && l.slide?.count == r.slide?.count
+                && l.slide?.converting == r.slide?.converting
+        }
     }
 
     // MARK: Callbacks (main thread)
     public var onProgramFrame: ((CVPixelBuffer) -> Void)?
     public var onPreviewFrame: ((CVPixelBuffer) -> Void)?
     public var onThumbnails: (([InputID: CVPixelBuffer]) -> Void)?
+    /// Full-size picture of `detailInput` (per-input viewer). Main thread.
+    public var onDetailFrame: ((InputID, CVPixelBuffer) -> Void)?
+    /// Every rendered frame for the extra outputs, called on the GPU completion thread (not the
+    /// main thread) so Syphon and the virtual camera get frames without a main-thread hop.
+    /// Set it before `start()`.
+    public var outputFrameHandler: ((OutputFrames) -> Void)?
+    public struct OutputFrames {
+        public var program: CVPixelBuffer
+        /// Preview at full output size; nil unless `setOutputRendering(fullPreview: true)`.
+        public var preview: CVPixelBuffer?
+        public var inputs: [InputID: CVPixelBuffer]
+        public var pts: CMTime
+    }
     public var onSwitcherChange: ((SwitcherSnapshot) -> Void)?
     public var onInputsChange: (([InputInfo]) -> Void)?
-    public var onStreamStats: ((StreamingEngine.Stats) -> Void)?
+    /// Statistics of one stream destination (destination id, stats). Main thread.
+    public var onStreamStats: ((String, StreamingEngine.Stats) -> Void)?
     public var onRecordStats: ((RecordingEngine.Stats) -> Void)?
+    /// MultiCorder file states, per ISO input (main thread).
+    public var onISOStats: (([InputID: RecordingEngine.Stats]) -> Void)?
+    /// Inputs the MultiCorder records to their own files (main thread; applies at the next start).
+    public var multiCorder = MultiCorderConfig()
+    public var isMultiCorderRunning: Bool { !outputs.read { $0.iso.isEmpty } }
+    public internal(set) var isoStats: [InputID: RecordingEngine.Stats] = [:]
     public var onError: ((String) -> Void)?
+    /// Mixer channels were added or removed by the engine itself (e.g. a video file's audio).
+    public var onAudioChannelsChange: (() -> Void)?
 
-    public private(set) var settings: ProductionSettings
+    public internal(set) var settings: ProductionSettings
     public let compositor: MetalCompositor
     public let mixer = AudioMixerEngine()
     public let devices = DeviceManager()
-    public private(set) lazy var audioPump = ProgramAudioPump(mixer: mixer)
-    public let streamer = StreamingEngine()
+    public internal(set) lazy var audioPump = ProgramAudioPump(mixer: mixer)
+    /// One RTMP/RTMPS publisher per destination, all fed by the same encoders. Main thread.
+    public internal(set) var streamers: [String: StreamOutput] = [:]
+    var streamTerminal: [String: Bool] = [:]
     public let recorder = RecordingEngine()
+    /// Instant replay buffer and its input (nil while replay is off).
+    public let replay = ReplayRecorder()
+    public internal(set) var replaySource: ReplaySource?
+    public var onReplayChange: (() -> Void)?
+    /// Music inputs (audio-file playlists), each with its own mixer channel. Main thread.
+    public internal(set) var musicPlayers: [MusicInput] = []
+    public internal(set) var tones: [TestTone] = []
+    public static let toneChannelPrefix = "tone:"
+    public var onMusicChange: (() -> Void)?
+    public static let musicChannelPrefix = "music:"
+    public static let radioChannelPrefix = "radio:"
+    /// Online radio stations (0.38.0), each in its own mixer channel.
+    public internal(set) var radios: [RadioInput] = []
+    /// Main thread: a station started, stopped, failed or changed song.
+    public var onRadioChange: (() -> Void)?
     public let performance = PerformanceMonitor()
 
-    private struct ControlState {
+    struct ControlState {
         var switcher = Switcher()
         var overlays: [OverlayChannel] = (1...4).map { OverlayChannel(index: $0) }
         var sources: [InputID: VideoSource] = [:]
         var order: [InputID] = []
         var layers: [InputID: [Layer]] = [:]
+        var keys: [InputID: ChromaKey] = [:]
+        var locked: Set<InputID> = []
+        /// Colour correction / flips per input (identity entries are not stored).
+        var adjusts: [InputID: InputAdjust] = [:]
+        /// Input shown in the per-input viewer window, rendered at full size every frame.
+        var detail: InputID?
+        /// Inputs rendered at full size for the extra outputs, and whether Preview is too.
+        var extraInputs: [InputID] = []
+        var fullPreview = false
+        /// Inputs being recorded to their own files (MultiCorder), also rendered at full size.
+        var isoInputs: [InputID] = []
+        var stinger = StingerConfig()
+        /// Layer Designer edits not yet on air, per input: Preview shows the draft of its input;
+        /// everything else (Program, overlays, other inputs) keeps the committed layers.
+        var drafts: [InputID: [Layer]] = [:]
+
+        /// The input about to go on air (the one on Preview / being transitioned in) takes its
+        /// draft with it: Layer Designer edits reach Program only through a transition.
+        mutating func commitDraftOfIncoming() {
+            guard let id = switcher.state.transition?.to ?? switcher.state.preview else { return }
+            commitDraft(of: id)
+        }
+
+        mutating func commitDraft(of id: InputID) {
+            guard let d = drafts.removeValue(forKey: id), sources[id] != nil else { return }
+            layers[id] = d
+        }
+
+        /// Layer 0 stays the input itself; layers of unknown inputs are dropped.
+        func sanitized(_ list: [Layer], of id: InputID) -> [Layer] {
+            var l = list.filter { $0.source != id && sources[$0.source] != nil }
+            l.insert(list.first(where: { $0.source == id }) ?? Layer(source: id), at: 0)
+            return l
+        }
     }
-    private let control = Locked(ControlState())
+    let control = Locked(ControlState())
 
-    private let renderQueue = DispatchQueue(label: "livecore.render", qos: .userInteractive)
-    private var renderTimer: DispatchSourceTimer?
-    private var clockStart: Double = 0
-    private var lastFrameIndex: Int64 = -1
-    private let inFlight = Locked(0)
-    private var frameCounter: Int64 = 0
+    let renderQueue = DispatchQueue(label: "livecore.render", qos: .userInteractive)
+    var renderTimer: DispatchSourceTimer?
+    /// Keeps macOS from App-Napping the render loop (timer coalescing caused sudden FPS drops
+    /// when the window was in the background or covered, 0.45.0).
+    var renderActivity: NSObjectProtocol?
+    var clockStart: Double = 0
+    var lastFrameIndex: Int64 = -1
+    let inFlight = Locked(0)
+    var frameCounter: Int64 = 0
     public let droppedRenderFrames = AtomicCounter()
-    private let gpuMsAverage = AtomicFloat(0)
-    private let renderedFrames = AtomicCounter()
-    private var lastFPSSample: (time: Double, frames: UInt64) = (0, 0)
+    /// Why frames were dropped (diagnostics): the render tick came late (CPU), the GPU still had
+    /// frames in flight, or the compositor could not encode the frame.
+    public let droppedLate = AtomicCounter()
+    public let droppedGPUBusy = AtomicCounter()
+    public let droppedFailed = AtomicCounter()
+    let gpuMsAverage = AtomicFloat(0)
+    let renderedFrames = AtomicCounter()
+    var lastFPSSample: (time: Double, frames: UInt64) = (0, 0)
 
-    private struct Outputs {
+    struct Outputs {
         var streamEncoder: H264Encoder?
         var recording = false
+        var replay = false
+        /// MultiCorder: one recorder per ISO input while it runs.
+        var iso: [(InputID, RecordingEngine)] = []
     }
-    private let outputs = Locked(Outputs())
-    private var aacEncoder: AACEncoder?
-    private var audioInputs: [String: AudioCaptureInput] = [:]
-    private var lastSwitcher = SwitcherSnapshot()
+    let outputs = Locked(Outputs())
+    /// Portrait 9:16 output and its stream (0.42.0).
+    public let vertical = VerticalOutput()
+    /// When the current / last RECORD started (client package chapters, 0.43.0).
+    public internal(set) var recordingStartDate: Date?
+    /// On-device AI per input (0.43.0), only on Apple Silicon.
+    let aiProcessors = Locked([InputID: AIProcessor]())
+    var verticalStream: (StreamingEngine, AACEncoder)?
+    public var onVerticalStreamStats: ((StreamingEngine.Stats) -> Void)?
+    var aacEncoders: [AACEncoder] = []
+    var audioInputs: [String: AudioCaptureInput] = [:]
+    var lastSwitcher = SwitcherSnapshot()
+    /// Mixer settings from a loaded project for video-file channels that appear once the file's
+    /// audio track has loaded.
+    var pendingFileChannelSettings: [InputID: ProjectAudioChannel] = [:]
+    /// Sound of the web inputs (macOS 14.2+; a `WebAudioCapture`) and its saved mixer settings.
+    var webAudio: AnyObject?
+    var pendingWebAudioSettings: ProjectAudioChannel?
+    /// The one mixer channel all web inputs play into.
+    public static let webAudioChannelID = "webaudio"
 
     public init(settings: ProductionSettings = ProductionSettings()) throws {
         self.settings = settings
         compositor = try MetalCompositor(outputSize: settings.output.size)
         mixer.onError = { [weak self] msg in DispatchQueue.main.async { self?.onError?(msg) } }
-        streamer.onStats = { [weak self] s in
-            // Permanent failure (not reconnecting): release the encoder and audio sink.
-            if case .failed = s.state { self?.streamDidEnd() }
-            self?.onStreamStats?(s)
-        }
-        streamer.encoderStatsProvider = { [weak self] in
-            guard let enc = self?.outputs.read({ $0.streamEncoder }) else { return (false, 0) }
-            return (enc.isHardwareAccelerated, enc.droppedFrames.value)
-        }
+        vertical.settings = settings.verticalOutput
         recorder.onStats = { [weak self] s in
             if case .recording = s.state {} else { self?.recordingEnded(s) }
             self?.onRecordStats?(s)
@@ -99,6 +201,9 @@ public final class ProductionEngine {
     // MARK: Lifecycle
 
     public func start() {
+        if let id = settings.customTransition, let err = setCustomTransition(id) {
+            onError?("Custom transition: \(err)")
+        }
         mixer.start()
         startRenderLoop()
     }
@@ -108,13 +213,22 @@ public final class ProductionEngine {
         stopRecording()
         renderTimer?.cancel()
         renderTimer = nil
+        if let a = renderActivity { ProcessInfo.processInfo.endActivity(a); renderActivity = nil }
         control.read { $0.sources.values.forEach { $0.stop() } }
+        musicPlayers.forEach { $0.stop() }
+        radios.forEach { $0.stop() }
+        tones.forEach { $0.stop() }
         audioInputs.values.forEach { $0.stop() }
         mixer.stop()
     }
 
-    private func startRenderLoop() {
+    func startRenderLoop() {
         renderTimer?.cancel()
+        if renderActivity == nil {
+            renderActivity = ProcessInfo.processInfo.beginActivity(
+                options: [.userInitiated, .latencyCritical, .idleSystemSleepDisabled],
+                reason: "Live video rendering")
+        }
         let fps = Double(settings.output.frameRate)
         clockStart = HostClock.now()
         lastFrameIndex = -1
@@ -129,54 +243,82 @@ public final class ProductionEngine {
 
     // MARK: Render (render queue)
 
-    private func renderTick(fps: Double) {
+    func renderTick(fps: Double) {
         let now = HostClock.now()
         let index = Int64(((now - clockStart) * fps).rounded(.down))
         guard index > lastFrameIndex else { return }
-        if lastFrameIndex >= 0 && index > lastFrameIndex + 1 { droppedRenderFrames.add(UInt64(index - lastFrameIndex - 1)) }
+        if lastFrameIndex >= 0 && index > lastFrameIndex + 1 {
+            droppedRenderFrames.add(UInt64(index - lastFrameIndex - 1))
+            droppedLate.add(UInt64(index - lastFrameIndex - 1))
+        }
         lastFrameIndex = index
         let frameHost = clockStart + Double(index) / fps
 
         // Snapshot control state and advance transitions.
         var events: [SwitcherEvent] = []
-        let (plan, sources, order, snapshot) = control.mutate { st -> (FramePlan, [InputID: VideoSource], [InputID], SwitcherSnapshot) in
+        frameCounter += 1
+        let thumbTick = frameCounter % Int64(max(1, Int(fps / 10))) == 0   // ~10 fps thumbnails (inputs panel + multiview)
+        let (plan, sources, snapshot, adjusts) = control.mutate { st -> (FramePlan, [InputID: VideoSource], SwitcherSnapshot, [InputID: InputAdjust]) in
             events = st.switcher.update(now: now)
             let layers = st.layers
+            let keys = st.keys.filter { $0.value.enabled }.mapValues { $0.clamped }
+            let draft = st.drafts
             let plan = FramePlanner.plan(snapshot: st.switcher.state, overlays: st.overlays, now: now,
-                                         layersFor: { layers[$0] })
-            return (plan, st.sources, st.order, st.switcher.state)
+                                         layersFor: { layers[$0] }, keyFor: { keys[$0] },
+                                         thumbnailsFor: thumbTick ? st.order : [],
+                                         composedThumbnails: thumbTick ? Set(st.sources.filter { $0.value is SceneSource }.keys) : [],
+                                         detailInput: st.detail,
+                                         extraInputs: st.extraInputs + st.isoInputs.filter { !st.extraInputs.contains($0) },
+                                         fullPreview: st.fullPreview,
+                                         previewLayers: draft)
+            return (plan, st.sources, st.switcher.state, st.adjusts)
         }
         if !events.isEmpty || snapshot != lastSwitcher {
             lastSwitcher = snapshot
-            DispatchQueue.main.async { [weak self] in self?.onSwitcherChange?(snapshot) }
+            DispatchQueue.main.async { [weak self] in
+                self?.applyAutoPlay()
+                self?.onSwitcherChange?(snapshot)
+            }
         }
 
-        guard inFlight.mutate({ n -> Bool in if n >= 2 { return false }; n += 1; return true }) else {
+        // Up to three frames queued on the GPU: rides out short GPU stalls (window animations,
+        // other apps) at the cost of at most one more frame of latency.
+        guard inFlight.mutate({ n -> Bool in if n >= 3 { return false }; n += 1; return true }) else {
             droppedRenderFrames.add()
+            droppedGPUBusy.add()
             return
         }
 
-        frameCounter += 1
-        let thumbs: [InputID] = frameCounter % Int64(max(1, Int(fps / 5))) == 0 ? order : []   // ~5 fps thumbnails
-        var needed = Set<InputID>(thumbs)
-        for c in plan.program + plan.overlays + plan.preview + (plan.transition?.incoming ?? []) { needed.insert(c.source) }
+        var needed = Set<InputID>()
+        for list in plan.allCommandLists { for c in list { needed.insert(c.source) } }
         var frames: [InputID: CVPixelBuffer] = [:]
-        for id in needed { if let pb = sources[id]?.currentFrame() { frames[id] = pb } }
+        let ai = aiProcessors.current
+        for id in needed {
+            guard let pb = sources[id]?.currentFrame() else { continue }
+            frames[id] = ai[id]?.process(pb) ?? pb
+        }
 
         let pts = CMTime(seconds: frameHost, preferredTimescale: 90_000)
-        let ok = compositor.render(plan: plan, frames: frames, thumbnailsFor: thumbs) { [weak self] result in
+        let detailID = plan.detail == nil ? nil : control.read { $0.detail }
+        let ok = compositor.render(plan: plan, frames: frames, adjusts: adjusts) { [weak self] result in
             guard let self else { return }
             self.inFlight.mutate { $0 -= 1 }
             self.renderedFrames.add()
             let avg = self.gpuMsAverage.value
             self.gpuMsAverage.value = avg == 0 ? Float(result.gpuMs) : avg * 0.95 + Float(result.gpuMs) * 0.05
-            guard let program = result.program else { self.droppedRenderFrames.add(); return }
+            guard let program = result.program else { self.droppedRenderFrames.add(); self.droppedFailed.add(); return }
             let outs = self.outputs.current
             outs.streamEncoder?.encode(program, pts: pts)
             if outs.recording { self.recorder.append(video: program, pts: pts) }
+            for (id, r) in outs.iso { if let pb = result.extra[id] { r.append(video: pb, pts: pts) } }
+            if self.vertical.isActive { self.vertical.process(program, pts: pts) }
+            if outs.replay { self.replay.append(program, hostTime: pts.seconds) }
+            self.outputFrameHandler?(OutputFrames(program: program, preview: result.fullPreview, inputs: result.extra, pts: pts))
             let preview = result.preview
             let thumbs = result.thumbnails
+            let detail = result.detail
             DispatchQueue.main.async {
+                if let detail, let detailID { self.onDetailFrame?(detailID, detail) }
                 self.onProgramFrame?(program)
                 if let preview { self.onPreviewFrame?(preview) }
                 if !thumbs.isEmpty { self.onThumbnails?(thumbs) }
@@ -185,297 +327,23 @@ public final class ProductionEngine {
         if !ok {
             inFlight.mutate { $0 -= 1 }
             droppedRenderFrames.add()
+            droppedFailed.add()
         }
         if frameCounter % Int64(fps) == 0 { compositor.flushCache() }
     }
 
-    // MARK: Inputs (main thread)
+    // MARK: State used by the extension files
 
-    public var inputs: [InputInfo] {
-        control.read { st in
-            st.order.enumerated().compactMap { i, id in
-                guard let s = st.sources[id] else { return nil }
-                return InputInfo(id: id, name: s.name, kind: s.kind, status: s.status, number: i + 1)
-            }
-        }
+    /// Auto play (vMix-style): inputs whose media plays while on air, and the inputs on air now.
+    var autoPlayOnAir = Set<InputID>()
+    var onAirInputs = Set<InputID>()
+    /// Audio follow video (vMix AFV): mixer channel id -> the input it follows. Main thread.
+    public internal(set) var afvLinks: [String: InputID] = [:]
+    /// PTZ camera control per input (saved in projects) and the open connections. Main thread.
+    public internal(set) var ptzConfigs: [InputID: PTZConfig] = [:] {
+        didSet { for id in ptzControllers.keys where ptzConfigs[id] == nil { ptzControllers.removeValue(forKey: id)?.stop() } }
     }
-
-    @discardableResult
-    public func addCamera(uniqueID: String) -> InputID? {
-        guard let dev = DeviceManager.device(uniqueID: uniqueID) else { onError?("Camera not found"); return nil }
-        let id = InputID(UUID().uuidString)
-        let src = CameraSource(id: id, device: dev, target: settings.output)
-        DeviceManager.requestAccess(.video) { [weak self] ok in
-            if !ok { self?.onError?("Camera access denied. Enable it in System Settings › Privacy & Security › Camera.") }
-            src.start()
-        }
-        add(src)
-        return id
-    }
-
-    @discardableResult
-    public func addImage(url: URL) -> InputID {
-        let src = ImageSource(id: InputID(UUID().uuidString), url: url)
-        src.start()
-        add(src)
-        return src.id
-    }
-
-    @discardableResult
-    public func addVideoFile(url: URL) -> InputID {
-        let src = VideoFileSource(id: InputID(UUID().uuidString), url: url)
-        src.start()
-        add(src)
-        return src.id
-    }
-
-    @discardableResult
-    public func addColor(_ color: NSColor, name: String) -> InputID {
-        let src = ColorSource(id: InputID(UUID().uuidString), color: color, name: name)
-        add(src)
-        return src.id
-    }
-
-    @discardableResult
-    public func addTitle(_ style: TextSource.Style) -> InputID {
-        let src = TextSource(id: InputID(UUID().uuidString), style: style, outputSize: settings.output.size)
-        add(src)
-        // Titles default to the lower-third area when used as a layer or overlay.
-        control.mutate { $0.layers[src.id] = [Layer(source: src.id, rect: LayoutPreset.lowerThird.rect, scaleMode: .fit)] }
-        return src.id
-    }
-
-    public func source(_ id: InputID) -> VideoSource? { control.read { $0.sources[id] } }
-
-    private func add(_ src: VideoSource) {
-        src.onStatusChange = { [weak self] _ in self?.publishInputs() }
-        control.mutate { st in
-            st.sources[src.id] = src
-            st.order.append(src.id)
-            st.layers[src.id] = [Layer(source: src.id)]
-            if st.switcher.state.preview == nil { st.switcher.setPreview(src.id) }
-        }
-        publishInputs()
-    }
-
-    public func removeInput(_ id: InputID) {
-        let removed: VideoSource? = control.mutate { st in
-            st.switcher.inputRemoved(id)
-            for i in st.overlays.indices where st.overlays[i].source == id { st.overlays[i].source = nil }
-            for key in st.layers.keys { st.layers[key]?.removeAll { $0.source == id && key != id } }
-            st.layers[id] = nil
-            st.order.removeAll { $0 == id }
-            return st.sources.removeValue(forKey: id)
-        }
-        removed?.stop()
-        publishInputs()
-    }
-
-    public func renameInput(_ id: InputID, to name: String) {
-        control.read { $0.sources[id] }?.name = name
-        publishInputs()
-    }
-
-    public func moveInput(from: IndexSet, to: Int) {
-        control.mutate { st in
-            let moving = from.map { st.order[$0] }
-            var rest = st.order.enumerated().filter { !from.contains($0.offset) }.map(\.element)
-            let insertAt = min(to - from.filter { $0 < to }.count, rest.count)
-            rest.insert(contentsOf: moving, at: insertAt)
-            st.order = rest
-        }
-        publishInputs()
-    }
-
-    private func publishInputs() {
-        let list = inputs
-        DispatchQueue.main.async { self.onInputsChange?(list) }
-    }
-
-    // MARK: Scene layers (basic composition / PiP on an input)
-
-    public func layers(of id: InputID) -> [Layer] { control.read { $0.layers[id] ?? [] } }
-
-    public func addLayer(to id: InputID, source: InputID, preset: LayoutPreset) {
-        control.mutate { st in
-            guard st.sources[id] != nil, st.sources[source] != nil, id != source else { return }
-            st.layers[id, default: [Layer(source: id)]].append(Layer(source: source, rect: preset.rect, scaleMode: .fill))
-        }
-    }
-
-    public func removeLayer(from id: InputID, at index: Int) {
-        control.mutate { st in
-            guard var l = st.layers[id], index > 0, index < l.count else { return } // layer 0 = the input itself
-            l.remove(at: index)
-            st.layers[id] = l
-        }
-    }
-
-    // MARK: Switching (main thread)
-
-    public var switcherState: SwitcherSnapshot { control.read { $0.switcher.state } }
-
-    public func setPreview(_ id: InputID?) { control.mutate { _ = $0.switcher.setPreview(id) } }
-    public func cut() { control.mutate { _ = $0.switcher.cut() } }
-    public func auto() {
-        let kind = settings.transition, dur = settings.transitionDuration
-        control.mutate { _ = $0.switcher.auto(kind: kind, duration: dur, now: HostClock.now()) }
-    }
-    public func setTBar(_ position: Double) {
-        let kind = settings.transition
-        control.mutate { _ = $0.switcher.setTBar(position, kind: kind, now: HostClock.now()) }
-    }
-    /// "Quick play": cut a specific input straight to program.
-    public func cutDirect(_ id: InputID) {
-        control.mutate { st in _ = st.switcher.setPreview(id); _ = st.switcher.cut() }
-    }
-
-    public func setTransition(_ kind: TransitionKind, duration: Double) {
-        settings.transition = kind
-        settings.transitionDuration = min(max(duration, 0.1), 10)
-    }
-
-    // MARK: Overlays
-
-    public var overlays: [OverlayChannel] { control.read { $0.overlays } }
-
-    public func configureOverlay(_ index: Int, source: InputID?, preset: LayoutPreset) {
-        control.mutate { st in
-            guard let i = st.overlays.firstIndex(where: { $0.index == index }) else { return }
-            st.overlays[i].source = source
-            st.overlays[i].preset = preset
-        }
-    }
-
-    public func setOverlay(_ index: Int, on: Bool) {
-        let now = HostClock.now()
-        control.mutate { st in
-            guard let i = st.overlays.firstIndex(where: { $0.index == index }), st.overlays[i].source != nil else { return }
-            st.overlays[i].set(on: on, now: now)
-        }
-    }
-
-    // MARK: Audio inputs
-
-    public var audioChannels: [MixerChannel] { mixer.channelList }
-
-    public func addAudioInput(uniqueID: String) {
-        guard audioInputs[uniqueID] == nil, let dev = DeviceManager.device(uniqueID: uniqueID) else { return }
-        let ch = mixer.addChannel(id: uniqueID, name: dev.localizedName)
-        let input = AudioCaptureInput(device: dev, channel: ch)
-        input.onStatusChange = { [weak self] s in
-            if case let .error(msg) = s { self?.onError?("\(dev.localizedName): \(msg)") }
-        }
-        audioInputs[uniqueID] = input
-        DeviceManager.requestAccess(.audio) { [weak self] ok in
-            if !ok { self?.onError?("Microphone access denied. Enable it in System Settings › Privacy & Security › Microphone.") }
-            input.start()
-        }
-    }
-
-    public func removeAudioInput(uniqueID: String) {
-        audioInputs[uniqueID]?.stop()
-        audioInputs[uniqueID] = nil
-        mixer.removeChannel(id: uniqueID)
-    }
-
-    public func audioInputStatus(_ uniqueID: String) -> SourceStatus? { audioInputs[uniqueID]?.status }
-
-    // MARK: Settings
-
-    public var isOutputActive: Bool {
-        let o = outputs.current
-        return o.streamEncoder != nil || o.recording
-    }
-
-    /// Applies settings. Output resolution/frame rate changes require all outputs to be stopped.
-    @discardableResult
-    public func apply(_ new: ProductionSettings) -> [String] {
-        let errs = new.validationErrors()
-        guard errs.isEmpty else { return errs }
-        let formatChanged = new.output != settings.output
-        if formatChanged && isOutputActive { return ["Stop streaming and recording before changing resolution or frame rate."] }
-        settings = new
-        if formatChanged {
-            renderQueue.sync { compositor.configure(outputSize: new.output.size) }
-            startRenderLoop()
-        }
-        return []
-    }
-
-    // MARK: Streaming
-
-    public func startStreaming(streamKey: String) throws {
-        guard outputs.read({ $0.streamEncoder }) == nil else { return }
-        let url = try RTMPURL.parse(serverURL: settings.stream.serverURL, streamKey: streamKey)
-        let errs = settings.validationErrors()
-        if !errs.isEmpty { throw NSError(domain: "LiveCore", code: 10, userInfo: [NSLocalizedDescriptionKey: errs.joined(separator: "\n")]) }
-        let enc = try H264Encoder(size: settings.output.size, frameRate: settings.output.frameRate, settings: settings.video)
-        let aac = try AACEncoder(sampleRate: Double(settings.audio.sampleRate), channels: settings.audio.channels,
-                                 bitrateKbps: settings.audio.bitrateKbps)
-        aacEncoder = aac
-        let streamer = self.streamer
-        enc.onFrame = { [weak streamer] f in streamer?.send(video: f) }
-        streamer.onRequestKeyframe = { [weak enc] in enc?.requestKeyframe() }
-        // AAC timestamps: Apple's AAC encoder has 2112 samples of priming delay. Output packet k
-        // carries audio that started at firstHost + (k*1024 - 2112)/sr; stamping it that way keeps
-        // lip-sync exact in FLV, which cannot signal priming.
-        var firstHost: Double?
-        var packetIndex: Int64 = 0
-        let sr = Double(settings.audio.sampleRate)
-        audioPump.addSink("stream") { [weak streamer] chunk in
-            if firstHost == nil { firstHost = chunk.hostTime }
-            guard let data = try? aac.encode(chunk), let base = firstHost else { return }
-            let t = base + (Double(packetIndex) * 1024 - Double(AACEncoder.primingFrames)) / sr
-            packetIndex += 1
-            streamer?.send(audio: data, pts: CMTime(seconds: t, preferredTimescale: 48_000))
-        }
-        outputs.mutate { $0.streamEncoder = enc }
-        streamer.start(url: url, settings: settings, audioSpecificConfig: aac.audioSpecificConfig)
-    }
-
-    public func stopStreaming() {
-        streamer.stop()
-        audioPump.removeSink("stream")
-        let enc: H264Encoder? = outputs.mutate { o in let e = o.streamEncoder; o.streamEncoder = nil; return e }
-        renderQueue.async { enc?.invalidate() }
-        aacEncoder = nil
-    }
-
-    /// Called when the stream fails permanently (not while reconnecting) to release the encoder.
-    public func streamDidEnd() {
-        let enc: H264Encoder? = outputs.mutate { o in let e = o.streamEncoder; o.streamEncoder = nil; return e }
-        audioPump.removeSink("stream")
-        renderQueue.async { enc?.invalidate() }
-    }
-
-    // MARK: Recording
-
-    public func startRecording() {
-        guard !outputs.read({ $0.recording }) else { return }
-        recorder.start(settings: settings.recording, output: settings.output, audio: settings.audio)
-        outputs.mutate { $0.recording = true }
-        let recorder = self.recorder
-        audioPump.addSink("record") { [weak recorder] chunk in recorder?.append(audio: chunk) }
-    }
-
-    public func stopRecording() {
-        guard outputs.read({ $0.recording }) else { return }
-        recorder.stop()
-        outputs.mutate { $0.recording = false }
-        audioPump.removeSink("record")
-    }
-
-    private func recordingEnded(_ s: RecordingEngine.Stats) {
-        switch s.state {
-        case .failed, .finished, .idle:
-            if outputs.read({ $0.recording }) {
-                outputs.mutate { $0.recording = false }
-                audioPump.removeSink("record")
-            }
-        default: break
-        }
-    }
+    var ptzControllers: [InputID: PTZController] = [:]
 
     // MARK: Stats
 
@@ -485,6 +353,39 @@ public final class ProductionEngine {
         let fps = lastFPSSample.time > 0 ? Double(frames - lastFPSSample.frames) / max(now - lastFPSSample.time, 0.001) : 0
         lastFPSSample = (now, frames)
         return performance.sample(gpuFrameMs: Double(gpuMsAverage.value), renderFPS: fps, dropped: droppedRenderFrames.value)
+    }
+}
+
+
+extension ProjectColor {
+    public init(_ color: NSColor) {
+        let c = color.usingColorSpace(.sRGB) ?? color
+        self.init(r: Double(c.redComponent), g: Double(c.greenComponent), b: Double(c.blueComponent), a: Double(c.alphaComponent))
+    }
+    public var nsColor: NSColor { NSColor(srgbRed: CGFloat(r), green: CGFloat(g), blue: CGFloat(b), alpha: CGFloat(a)) }
+}
+
+extension ProjectTitleStyle {
+    public init(_ s: TextSource.Style) {
+        self.init(title: s.title, subtitle: s.subtitle, showBar: s.showBar,
+                  textColor: ProjectColor(s.textColor), barColor: ProjectColor(s.barColor))
+        titleSize = Double(s.titleSize)
+        subtitleSize = Double(s.subtitleSize)
+        layout = s.layout.rawValue
+        design = s.design
+        dataSource = s.dataSource
+    }
+    public var textStyle: TextSource.Style {
+        var s = TextSource.Style(title: title, subtitle: subtitle)
+        s.showBar = showBar
+        s.textColor = textColor.nsColor
+        s.barColor = barColor.nsColor
+        if let titleSize { s.titleSize = CGFloat(titleSize) }
+        if let subtitleSize { s.subtitleSize = CGFloat(subtitleSize) }
+        if let layout, let l = TextSource.Layout(rawValue: layout) { s.layout = l }
+        s.design = design
+        s.dataSource = dataSource
+        return s
     }
 }
 
