@@ -34,6 +34,7 @@ struct InputPanelView: View {
     @State private var editingData: InputID?
     @State private var editingPTZ: InputID?
     @State private var editingAI: InputID?
+    @State private var properties: InputID?
     @State private var collapsedGroups: Set<String> = []
     @State private var renamingGroup: InputColorTag?
     @State private var groupNameText = ""
@@ -101,6 +102,7 @@ struct InputPanelView: View {
         .panel()
         .sheet(isPresented: $showTitleSheet) { TitleSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingTitle) { id in TitleSheet(editing: id).environmentObject(model) }
+        .sheet(item: $properties) { id in InputPropertiesSheet(input: id).environmentObject(model) }
         .sheet(item: $editingAI) { id in InputAISheet(input: id).environmentObject(model) }
         .sheet(item: $keying) { id in ChromaKeySheet(input: id).environmentObject(model) }
         .sheet(item: $editingScene) { id in SceneEditorSheet(input: id).environmentObject(model) }
@@ -241,13 +243,6 @@ struct InputPanelView: View {
         .onAppear { model.refreshDevices() }
     }
 
-    /// On-device AI per input (0.43.0). Since 0.46.0 a plain item that opens a sheet: a live
-    /// submenu with toggles was rebuilt on every tile refresh and flickered (cursor blinking).
-    @ViewBuilder
-    private func aiMenu(_ id: InputID) -> some View {
-        Button(L10n.t("ai.menu") + "…") { editingAI = id }
-    }
-
     @ViewBuilder
     private func contextMenu(_ info: ProductionEngine.InputInfo) -> some View {
         Button(L10n.t("inputs.preview")) { model.preview(info.id) }
@@ -273,10 +268,9 @@ struct InputPanelView: View {
                 Button(p.rawValue) { model.addPiP(source: info.id, preset: p) }
             }
         }
-        if info.kind == .camera && !model.isOperatorMode { Button(L10n.t("capturecard.edit_menu")) { editingCaptureCard = info.id } }
-        if info.kind != .scene { Button(L10n.t("adjust.menu")) { adjusting = info.id } }
-        if info.kind == .camera || info.kind == .videoFile || info.kind == .image || info.kind == .ndi {
-            Button(L10n.t("key.menu")) { keying = info.id }
+        // Device, colour, key, AI and PTZ in one window (0.47.0).
+        if !InputPropertiesSheet.tabs(for: info.kind, operatorMode: model.isOperatorMode).isEmpty {
+            Button(L10n.t("props.menu")) { properties = info.id }
         }
         if info.kind == .text {
             Button(L10n.t("titled.edit_menu")) { editingTitle = info.id }
@@ -294,7 +288,6 @@ struct InputPanelView: View {
                 Button(L10n.t("data.reload")) { model.loadDataSource(info.id) }
             }
         }
-        if info.kind == .camera { Button(L10n.t("ptz.menu")) { editingPTZ = info.id } }
         if info.kind == .browser {
             Button(L10n.experimental("browser.interact")) { model.editBrowserPage(info.id) }
             if let b = model.browserSource(info.id) {
@@ -305,14 +298,11 @@ struct InputPanelView: View {
             Button(L10n.t("browser.reload")) { model.browserSource(info.id)?.reload() }
         }
         if info.kind == .screen {
-            Button(L10n.t("capture.edit")) { editingCapture = info.id }
             Button(L10n.t("capture.retry")) { model.captureSource(info.id)?.start() }
         }
-        if info.kind == .ndi { Button(L10n.t("ndi.edit")) { editingNDI = info.id } }
         if info.kind == .frame { Button(L10n.t("frame.edit")) { editingFrame = info.id } }
         if info.kind == .gtTitle { Button(L10n.t("gt.edit")) { editingGT = info.id } }
         if info.kind == .subtitles { Button(L10n.t("subtitles.edit")) { editingSubtitles = info.id } }
-        if [.camera, .ndi, .videoFile, .screen].contains(info.kind) { aiMenu(info.id) }
         if info.kind == .timer {
             Button(L10n.t("timer.start")) { model.timerControl(info.id, "play") }
             Button(L10n.t("timer.pause")) { model.timerControl(info.id, "pause") }

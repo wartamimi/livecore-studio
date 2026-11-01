@@ -16,7 +16,7 @@ enum L10n {
 
     /// Languages offered in Settings: code and own name.
     static let languages: [(code: String, name: String)] = [
-        ("en", "English"), ("id", "Bahasa Indonesia"), ("ms", "Bahasa Melayu"), ("es", "Español"), ("zh-Hans", "简体中文"),
+        ("en", "English"), ("id", "Bahasa Indonesia"), ("ms", "Bahasa Melayu (beta)"), ("es", "Español (beta)"), ("zh-Hans", "简体中文 (beta)"),
     ]
     static let languageKey = "app.language"
 

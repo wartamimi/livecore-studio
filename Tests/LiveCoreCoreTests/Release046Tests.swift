@@ -118,3 +118,21 @@ final class Release0462Tests: XCTestCase {
         XCTAssertTrue(b.liveStyleScript.contains("m.muted = false"), "turning mute off unmutes the open page")
     }
 }
+
+/// 0.47.0: the levels decision is remembered; web overlay taps go to Preview.
+final class Release047Tests: XCTestCase {
+    func testRangeDecisionSurvivesSaveAndClamp() throws {
+        var a = InputAdjust()
+        a.rangeChecked = true
+        XCTAssertTrue(a.isIdentity, "the picture is unchanged")
+        XCTAssertFalse(a.isEmpty, "but the decision is kept")
+        XCTAssertTrue(a.clamped.rangeChecked)
+        let back = try JSONDecoder().decode(InputAdjust.self, from: JSONEncoder().encode(a))
+        XCTAssertTrue(back.rangeChecked)
+        XCTAssertFalse(try JSONDecoder().decode(InputAdjust.self, from: Data("{}".utf8)).rangeChecked)
+    }
+
+    func testOverlayPreviewIsAControlAction() {
+        XCTAssertTrue(ControlAction.catalog.contains(.overlayPreview(1)))
+    }
+}

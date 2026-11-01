@@ -151,7 +151,7 @@ extension ProductionEngine {
                 st.layers[pi.id] = layers.isEmpty ? [Layer(source: pi.id)] : layers
                 if let k = pi.chromaKey { st.keys[pi.id] = k.clamped }
                 if pi.locked == true { st.locked.insert(pi.id) }
-                if let a = pi.adjust, !a.isIdentity { st.adjusts[pi.id] = a.clamped }
+                if let a = pi.adjust, !a.isEmpty { st.adjusts[pi.id] = a.clamped }
             }
             st.overlays = (1...4).map { OverlayChannel(index: $0) }
             for o in doc.overlays {

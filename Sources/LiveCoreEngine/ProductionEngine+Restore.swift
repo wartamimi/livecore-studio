@@ -46,7 +46,7 @@ extension ProductionEngine {
             st.layers[pi.id] = st.sanitized(pi.layers, of: pi.id)
             if let k = pi.chromaKey { st.keys[pi.id] = k.clamped }
             if pi.locked == true { st.locked.insert(pi.id) }
-            if let a = pi.adjust, !a.isIdentity { st.adjusts[pi.id] = a.clamped }
+            if let a = pi.adjust, !a.isEmpty { st.adjusts[pi.id] = a.clamped }
             for (other, layers) in r.dependents where st.sources[other] != nil {
                 st.layers[other] = st.sanitized(layers, of: other)
             }

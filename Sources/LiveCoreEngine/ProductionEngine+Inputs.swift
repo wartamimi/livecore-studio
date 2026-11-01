@@ -33,8 +33,9 @@ extension ProductionEngine {
                 DispatchQueue.main.async {
                     guard let self, self.source(id) != nil else { return }
                     var a = self.adjust(of: id)
-                    guard a.range == .none else { return }
+                    guard a.range == .none, !a.rangeChecked else { return }
                     a.range = fix
+                    a.rangeChecked = true
                     self.setAdjust(id, a)
                     self.onError?("\(src.name): the picture was grey (limited video levels). Corrected automatically: Adjust › Video levels › Limited → Full.")
                 }
@@ -521,7 +522,7 @@ extension ProductionEngine {
 
     /// Colour correction and flips of an input (applied live).
     public func setAdjust(_ id: InputID, _ adjust: InputAdjust) {
-        control.mutate { st in st.adjusts[id] = adjust.isIdentity ? nil : adjust.clamped }
+        control.mutate { st in st.adjusts[id] = adjust.isEmpty ? nil : adjust.clamped }
     }
     public func adjust(of id: InputID) -> InputAdjust { control.read { $0.adjusts[id] } ?? InputAdjust() }
 

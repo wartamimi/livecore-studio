@@ -74,13 +74,14 @@ public enum ControlAction: Hashable, Codable, Sendable {
     case cut, auto, tbar, streamToggle, recordToggle, snapshot, fullscreenToggle
     case preview(Int)       // input number 1...
     case cutDirect(Int)     // input number 1...
-    case overlay(Int)       // overlay channel 1...4
+    case overlay(Int)       // overlay channel 1...4 (Program)
+    case overlayPreview(Int) // overlay channel 1...4 on Preview (0.47.0)
     case replay(Int)        // instant replay of the last N seconds
 
     /// The actions offered in the MIDI settings, in display order.
     public static let catalog: [ControlAction] =
         [.cut, .auto, .tbar, .streamToggle, .recordToggle, .snapshot, .fullscreenToggle]
-        + (1...8).map { .preview($0) } + (1...8).map { .cutDirect($0) } + (1...4).map { .overlay($0) }
+        + (1...8).map { .preview($0) } + (1...8).map { .cutDirect($0) } + (1...4).map { .overlay($0) } + (1...4).map { .overlayPreview($0) }
         + ReplayIndex.lengths.map { .replay(Int($0)) }
 
     /// Continuous actions follow a fader/knob (CC value); the others fire on a press.

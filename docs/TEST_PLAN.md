@@ -51,6 +51,15 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AY. Tes manual build 0.47.0
+
+| ID | Area | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-246 | Properti | Klik kanan kamera › Properti…, buka tiap tab | Sumber, Warna, Key, AI, PTZ tampil dan bekerja; Tutup menutup jendela |
+| T-247 | Menu Alat | Bar atas › Alat › Rundown / Vertical / Multiview | Jendela masing-masing terbuka |
+| T-248 | Web overlay | Di HP: ketuk nomor overlay, lalu tahan | Ketuk: oranye di Preview; tahan: merah di Program |
+| T-249 | Level warna | Matikan koreksi otomatis di Properti › Sumber, tutup dan buka lagi project | Koreksi tidak menyala lagi |
+
 ## AX. Tes manual build 0.46.2
 
 | ID | Area | Langkah | Hasil yang diharapkan |

@@ -127,7 +127,12 @@ extension AppModel {
     // MARK: Input colour correction / orientation
 
     public func adjust(of id: InputID) -> InputAdjust { engine?.adjust(of: id) ?? InputAdjust() }
-    public func setAdjust(_ id: InputID, _ a: InputAdjust) { engine?.setAdjust(id, a) }
+    public func setAdjust(_ id: InputID, _ a: InputAdjust) {
+        var a = a
+        // The operator chose the video levels: the automatic check leaves this input alone from now on.
+        if a.range != adjust(of: id).range { a.rangeChecked = true }
+        engine?.setAdjust(id, a)
+    }
 
     /// Rebuilds channel view models, keeping existing ones so open popovers stay bound.
     public func reloadAudioChannels() {

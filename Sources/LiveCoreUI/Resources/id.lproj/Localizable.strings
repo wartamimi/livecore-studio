@@ -1407,3 +1407,14 @@
 
 /* 0.46.3 */
 "inputs.camera_group" = "Kamera";
+
+/* 0.47.0 */
+"props.menu" = "Properti…";
+"props.title" = "Properti: %@";
+"props.tab.source" = "Sumber";
+"props.tab.color" = "Warna";
+"props.tab.key" = "Key";
+"props.tab.ai" = "AI";
+"props.tab.ptz" = "PTZ";
+"tools.menu" = "Alat";
+"tools.help" = "Rundown, output vertikal 9:16 dan multiview";

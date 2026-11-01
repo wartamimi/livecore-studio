@@ -271,6 +271,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
     <div class="mod a-keys">
       <h2>Overlay</h2>
       <div id="overlays" class="grp"></div>
+      <div class="sub" data-t="ovHint"></div>
       <div class="sub" data-t="replay"></div>
       <div id="replays" class="grp3"></div>
     </div>
@@ -294,8 +295,8 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 <script>
 "use strict";
 const T={
- en:{pinHint:"Enter the PIN shown in LiveCore Studio › Settings › Remote.",inputs:"Inputs",transition:"Transition",replay:"Instant replay",output:"Record & stream",audio:"Audio mixer",signOut:"Sign out",wrong:"Wrong PIN.",locked:"Too many wrong PINs. Try again in {s} s.",offline:"Cannot reach LiveCore Studio.",stopRec:"Stop recording?",stopLive:"Stop streaming?",startLive:"Start streaming?",recLocked:"Recording is locked in the app.",liveLocked:"Streaming is locked in the app.",noInputs:"No inputs yet.",noAudio:"No audio channels.",mute:"MUTE"},
- id:{pinHint:"Masukkan PIN yang tampil di LiveCore Studio › Settings › Remote.",inputs:"Input",transition:"Transisi",replay:"Instant replay",output:"Rekam & stream",audio:"Mixer audio",signOut:"Keluar",wrong:"PIN salah.",locked:"Terlalu banyak PIN salah. Coba lagi dalam {s} detik.",offline:"LiveCore Studio tidak terjangkau.",stopRec:"Hentikan rekaman?",stopLive:"Hentikan streaming?",startLive:"Mulai streaming?",recLocked:"Rekaman dikunci di aplikasi.",liveLocked:"Streaming dikunci di aplikasi.",noInputs:"Belum ada input.",noAudio:"Belum ada kanal audio.",mute:"MUTE"}
+ en:{pinHint:"Enter the PIN shown in LiveCore Studio › Settings › Remote.",inputs:"Inputs",transition:"Transition",replay:"Instant replay",output:"Record & stream",audio:"Audio mixer",signOut:"Sign out",wrong:"Wrong PIN.",locked:"Too many wrong PINs. Try again in {s} s.",offline:"Cannot reach LiveCore Studio.",stopRec:"Stop recording?",stopLive:"Stop streaming?",startLive:"Start streaming?",recLocked:"Recording is locked in the app.",liveLocked:"Streaming is locked in the app.",noInputs:"No inputs yet.",noAudio:"No audio channels.",mute:"MUTE",ovHint:"Tap = Preview · hold = Program"},
+ id:{pinHint:"Masukkan PIN yang tampil di LiveCore Studio › Settings › Remote.",inputs:"Input",transition:"Transisi",replay:"Instant replay",output:"Rekam & stream",audio:"Mixer audio",signOut:"Keluar",wrong:"PIN salah.",locked:"Terlalu banyak PIN salah. Coba lagi dalam {s} detik.",offline:"LiveCore Studio tidak terjangkau.",stopRec:"Hentikan rekaman?",stopLive:"Hentikan streaming?",startLive:"Mulai streaming?",recLocked:"Rekaman dikunci di aplikasi.",liveLocked:"Streaming dikunci di aplikasi.",noInputs:"Belum ada input.",noAudio:"Belum ada kanal audio.",mute:"MUTE",ovHint:"Ketuk = Preview · tahan = Program"}
 };
 const lang=(navigator.language||"en").slice(0,2), L=T[lang]||T.en;
 document.documentElement.lang=T[lang]?lang:"en";
@@ -320,6 +321,12 @@ async function api(path,method){
   if(!r.ok)throw new Error("http "+r.status);
   return r;
 }
+// Tap = first action, hold 0.5 s = second (overlay: tap to Preview, hold to Program).
+function holdTap(b,tap,hold){let t=null,held=false;
+  b.addEventListener("pointerdown",()=>{held=false;t=setTimeout(()=>{held=true;t=null;if(navigator.vibrate)navigator.vibrate(30);hold()},500)});
+  const end=()=>{if(t){clearTimeout(t);t=null;if(!held)tap()}};
+  b.addEventListener("pointerup",end);b.addEventListener("pointerleave",()=>{if(t){clearTimeout(t);t=null}});
+  b.addEventListener("contextmenu",e=>e.preventDefault())}
 function send(path){api(path,"POST").then(()=>setTimeout(poll,60)).catch(()=>{})}
 
 /* Sign in with an on-screen keypad */
@@ -400,7 +407,7 @@ function render(){
 
   const os=sig(st.overlays.map(o=>[o.n,o.input]));
   if(os!==ovSig){ovSig=os;const o=$("overlays");o.textContent="";st.overlays.forEach(ov=>{const b=el("button","key");b.dataset.n=ov.n;
-    b.append(el("span","num",ov.n),el("span","nm",ov.input?name(ov.input).replace(/^\d+\s+/,""):"—"));b.onclick=()=>send("/api/overlay?n="+ov.n);o.appendChild(b)})}
+    b.append(el("span","num",ov.n),el("span","nm",ov.input?name(ov.input).replace(/^\d+\s+/,""):"—"));holdTap(b,()=>send("/api/overlay?n="+ov.n),()=>send("/api/overlay?to=program&n="+ov.n));o.appendChild(b)})}
   st.overlays.forEach((ov,k)=>{const b=$("overlays").children[k];if(!b)return;b.classList.toggle("on",ov.on||ov.preview);
     b.classList.toggle("red",ov.on);b.classList.toggle("amber",ov.preview&&!ov.on);b.disabled=!ov.input});
   const rs=sig(st.replayLengths);
