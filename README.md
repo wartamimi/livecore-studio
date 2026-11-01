@@ -1,3 +1,5 @@
+<img src="docs/images/logo.png" width="96" alt="LiveCore Studio logo">
+
 # LiveCore Studio
 
 Aplikasi live video production native macOS (Swift, SwiftUI, AVFoundation, Metal, Core Audio, VideoToolbox) dengan
