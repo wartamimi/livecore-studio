@@ -142,8 +142,8 @@ struct PreflightSheet: View {
 
 // MARK: Outputs panel
 
-/// Every output in one place with its status: RECORD, ISOCORDER, STREAM, EXTERNAL (Syphon / NDI)
-/// and FULLSCREEN. The bottom dock keeps the quick buttons; this panel is the full view.
+/// FULLSCREEN and EXTERNAL (Syphon / NDI) outputs with their settings (0.48.0: RECORD, STREAM and
+/// MULTICORDER live only in the bottom dock).
 struct OutputsPanelSheet: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
@@ -158,23 +158,14 @@ struct OutputsPanelSheet: View {
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    section(L10n.t("dock.record"), status: recordStatus, on: model.isRecording,
-                            action: model.isRecording ? L10n.t("record.stop") : L10n.t("record.start"),
-                            disabled: model.recordLocked) { model.requestToggleRecord() } content: { RecordDetails() }
-                    section(L10n.t("dock.stream"), status: streamStatus, on: model.isStreamingActive,
-                            action: model.isStreamingActive ? L10n.t("stream.stop") : L10n.t("stream.start"),
-                            disabled: model.streamLocked) { model.requestToggleStream() } content: { StreamDetails() }
-                    section("ISOCORDER", status: isoStatus, on: model.isMultiCorderRunning,
-                            action: model.isMultiCorderRunning ? L10n.t("multicorder.stop") : L10n.t("multicorder.start"),
-                            disabled: model.recordLocked) { model.requestToggleMultiCorder() } content: { MultiCorderDetails() }
-                    section(L10n.t("dock.external"), status: model.externalActive ? L10n.t("outputs.on") : L10n.t("outputs.off"),
-                            on: model.externalActive,
-                            action: model.externalActive ? L10n.t("outputs.turn_off") : L10n.t("outputs.turn_on"),
-                            disabled: false) { model.toggleExternal() } content: { ExternalSettingsView() }
                     section(L10n.t("fullscreen.big"), status: model.isFullscreenActive ? L10n.t("outputs.on") : L10n.t("outputs.off"),
                             on: model.isFullscreenActive,
                             action: model.isFullscreenActive ? L10n.t("outputs.turn_off") : L10n.t("outputs.turn_on"),
                             disabled: false) { model.toggleFullscreen() } content: { FullscreenSettingsView() }
+                    section(L10n.t("dock.external"), status: model.externalActive ? L10n.t("outputs.on") : L10n.t("outputs.off"),
+                            on: model.externalActive,
+                            action: model.externalActive ? L10n.t("outputs.turn_off") : L10n.t("outputs.turn_on"),
+                            disabled: false) { model.toggleExternal() } content: { ExternalSettingsView() }
                 }
             }
         }
@@ -197,36 +188,6 @@ struct OutputsPanelSheet: View {
         .padding(10)
         .background(Theme.panel)
         .clipShape(RoundedRectangle(cornerRadius: 6))
-    }
-
-    private var recordStatus: String {
-        switch model.recordStats.state {
-        case .recording:
-            var s = "\(formatDuration(model.recordStats.duration)) · \(ByteCountFormatter.string(fromByteCount: model.recordStats.fileBytes, countStyle: .file))"
-            if model.recordStats.droppedVideoFrames > 0 { s += " · \(model.recordStats.droppedVideoFrames) drop" }
-            return s
-        case .finishing: return L10n.t("outputs.finishing")
-        case let .failed(msg): return msg
-        default: return L10n.t("dock.record_off")
-        }
-    }
-
-    private var streamStatus: String {
-        guard !model.streamTargets.isEmpty else { return L10n.f("dock.stream_ready", model.readyDestinationCount) }
-        return model.streamTargets.map { t -> String in
-            let s = model.destinationStats[t.id] ?? StreamingEngine.Stats()
-            var line = "\(t.name): \(Self.stateText(s.state))"
-            if case .live = s.state { line += " \(Int(s.bitrateKbps)) kbps" }
-            if s.reconnects > 0 { line += " · ↻\(s.reconnects)" }
-            return line
-        }.joined(separator: "  ·  ")
-    }
-
-    private var isoStatus: String {
-        guard model.isMultiCorderRunning else {
-            return model.multiCorder.inputs.isEmpty ? L10n.t("multicorder.none") : L10n.f("multicorder.ready", model.multiCorder.inputs.count)
-        }
-        return L10n.f("outputs.iso_running", model.isoFiles.count)
     }
 
     static func stateText(_ s: StreamingEngine.State) -> String {

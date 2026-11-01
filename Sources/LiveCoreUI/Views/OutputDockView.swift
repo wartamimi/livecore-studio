@@ -8,7 +8,7 @@ extension RecordReminderMode {
     static let storageKey = "record.reminder"
 }
 
-/// vMix-style bottom bar: RECORD, ISOCORDER, STREAM and EXTERNAL, each with its settings (⚙)
+/// vMix-style bottom bar: RECORD, MULTICORDER, STREAM and PHOTO, each with its settings (⚙)
 /// beside it, and the four outputs. It is always shown (cannot be minimized).
 struct OutputDockView: View {
     @EnvironmentObject var model: AppModel
@@ -42,9 +42,11 @@ struct OutputDockView: View {
                                        set: { model.recordLocked = $0; model.streamLocked = $0 }),
                        help: L10n.t("lock.dock_help"))
             group {
-                mainButton(L10n.t("dock.record"), icon: model.isRecording ? "stop.circle.fill" : "record.circle",
-                           status: recordStatus, color: Theme.program, active: model.isRecording) {
-                    model.requestToggleRecord()
+                Live(model.live) {
+                    mainButton(L10n.t("dock.record"), icon: model.isRecording ? "stop.circle.fill" : "record.circle",
+                               status: recordStatus, color: Theme.program, active: model.isRecording) {
+                        model.requestToggleRecord()
+                    }
                 }
                 .disabled(model.recordLocked)
                 gear($showRecord, help: L10n.t("dock.record_settings")) {
@@ -58,7 +60,7 @@ struct OutputDockView: View {
             // Operator mode keeps the dock to RECORD and STREAM unless the others are running.
             if !model.isOperatorMode || model.isMultiCorderRunning {
             group {
-                mainButton("ISOCORDER", icon: model.isMultiCorderRunning ? "stop.circle.fill" : "square.grid.2x2",
+                mainButton("MULTICORDER", icon: model.isMultiCorderRunning ? "stop.circle.fill" : "square.grid.2x2",
                            status: L10n.t("multicorder.button_help") + "\n" + multiCorderStatus,
                            color: Theme.program, active: model.isMultiCorderRunning) {
                     model.requestToggleMultiCorder()
@@ -87,24 +89,13 @@ struct OutputDockView: View {
                     .padding(12).frame(width: 360)
                 }
             }
-            if !model.isOperatorMode || model.externalActive {
-            group {
-                mainButton(L10n.t("dock.external"), icon: "rectangle.portrait.and.arrow.right",
-                           status: L10n.t("dock.external_help") + "\n" + externalStatus, color: Theme.accent, active: model.externalActive) {
-                    model.toggleExternal()
-                }
-                gear($showExternal, help: L10n.t("dock.external_settings")) {
-                    ExternalSettingsView().padding(12).frame(width: 640)
-                }
-            }
-            }
+            // EXTERNAL (Syphon / NDI) lives in the OUTPUTS panel only (0.48.0).
             // PHOTO (0.46.0): a still of Program, next to the other outputs instead of under the
             // Program monitor (which made Program shorter than Preview).
             mainButton(L10n.t("snapshot.button_big"), icon: "camera.fill", status: L10n.t("snapshot.help"),
                        color: Theme.accent, active: false) { model.saveSnapshot() }
                 .padding(.leading, 4)
             Spacer(minLength: 0)
-            OutputChips(showNames: chipNames)
         }
     }
 
@@ -350,7 +341,8 @@ struct OutputWindowView: View {
 /// vMix "NOT RECORDING" warning, blinking over the Program monitor (never on the real output).
 struct NotRecordingBadge: View {
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.1)) { ctx in
+        // 4 updates a second are enough for a 2 s blink (was 10, 0.48.0).
+        TimelineView(.periodic(from: .now, by: 0.25)) { ctx in
             Text(L10n.t("record.not_recording"))
                 .font(.system(size: 13, weight: .heavy)).tracking(1)
                 .foregroundStyle(.white)

@@ -137,10 +137,12 @@ extension AppModel {
     /// Rebuilds channel view models, keeping existing ones so open popovers stay bound.
     public func reloadAudioChannels() {
         let existing = Dictionary(uniqueKeysWithValues: audioChannels.map { ($0.id, $0) })
-        audioChannels = engine?.audioChannels.map { ch in
+        let next = engine?.audioChannels.map { ch in
             if let vm = existing[ch.id], vm.channel === ch { return vm }
             return ChannelVM(channel: ch)
         } ?? []
+        // Same strips: no assignment, so no redraw of the whole window (0.48.0).
+        if next.count != audioChannels.count || zip(next, audioChannels).contains(where: { $0 !== $1 }) { audioChannels = next }
     }
 
     /// Re-reads master/monitor values from the engine (after a project load).
@@ -164,7 +166,8 @@ extension AppModel {
     /// hears everyone but themselves).
     public func makeMixMinus(bus index: Int, excluding excluded: String) {
         for ch in audioChannels {
-            if index == 0 { ch.toBusA = ch.id != excluded } else { ch.toBusB = ch.id != excluded }
+            let on = ch.id != excluded
+            switch index { case 0: ch.toBusA = on; case 1: ch.toBusB = on; case 2: ch.toBusC = on; default: ch.toBusD = on }
         }
     }
 

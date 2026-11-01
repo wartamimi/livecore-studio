@@ -34,7 +34,7 @@ struct SettingsView: View {
     static var sections: [(tag: Int, title: String, icon: String)] {
         [(6, L10n.t("canvas.title"), "rectangle.dashed"), (0, L10n.t("settings.output"), "display"),
          (1, L10n.t("stream.title"), "dot.radiowaves.left.and.right"), (2, L10n.t("record.title"), "record.circle"),
-         (8, "ISOCorder", "square.grid.2x2"), (3, L10n.t("audio.title"), "speaker.wave.2"),
+         (8, "MultiCorder", "square.grid.2x2"), (3, L10n.t("audio.title"), "speaker.wave.2"),
          (4, L10n.t("settings.shortcuts"), "keyboard"), (5, "MIDI", "pianokeys"), (7, "Remote", "iphone"),
          (9, L10n.t("preflight.button"), "checklist"), (10, L10n.t("settings.language"), "globe")]
     }
@@ -465,9 +465,7 @@ struct OutputBusPicker: View {
     @Binding var selection: OutputBus
     var body: some View {
         Picker(L10n.t("bus.output"), selection: $selection) {
-            Text("Master").tag(OutputBus.master)
-            Text("Bus A").tag(OutputBus.busA)
-            Text("Bus B").tag(OutputBus.busB)
+            ForEach(OutputBus.allCases, id: \.self) { Text($0.displayName).tag($0) }
         }
     }
 }

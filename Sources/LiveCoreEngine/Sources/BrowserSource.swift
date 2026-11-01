@@ -22,9 +22,14 @@ import LiveCoreCore
 /// leaving a black window that ignores clicks and cannot be closed. This window refuses to be
 /// constrained onto a screen and moves itself away again whenever it lands on one.
 final class OffscreenHostWindow: NSWindow {
-    override var canBecomeKey: Bool { false }
-    override var canBecomeMain: Bool { false }
-    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
+    /// While the operator edits the page this same window is shown as a normal titled window
+    /// (0.48.0): the page never changes window, which reloaded some sites on the next edit.
+    var editing = false
+    override var canBecomeKey: Bool { editing }
+    override var canBecomeMain: Bool { editing }
+    override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
+        editing ? super.constrainFrameRect(frameRect, to: screen) : frameRect
+    }
 
     private var observers: [NSObjectProtocol] = []
 
@@ -48,38 +53,61 @@ final class OffscreenHostWindow: NSWindow {
         observers.forEach { NotificationCenter.default.removeObserver($0); NSWorkspace.shared.notificationCenter.removeObserver($0) }
     }
 
-    func park() { setFrameOrigin(Self.parkingOrigin()) }
+    func park() { if !editing { setFrameOrigin(Self.parkingOrigin()) } }
 
     private func parkIfVisible() {
-        if NSScreen.screens.contains(where: { $0.frame.intersects(frame) }) { park() }
+        if !editing, NSScreen.screens.contains(where: { $0.frame.intersects(frame) }) { park() }
     }
 }
 
-/// Edit-window container: shows the web view scaled to fit, keeping the output's CSS viewport.
-final class PageFitView: NSView {
+/// Content of the page's window (0.48.0). Off screen it is exactly the page; while editing it
+/// shows the address bar on top and the page scaled to fit below, keeping the output's CSS
+/// viewport (page zoom, letterboxed). The web view only changes frame and zoom here, it never
+/// leaves its view or window.
+final class BrowserHostView: NSView {
     let pageSize: NSSize
     var baseZoom: CGFloat { didSet { needsLayout = true } }
+    var bar: NSView? {
+        didSet {
+            oldValue?.removeFromSuperview()
+            if let bar { addSubview(bar) }
+            needsLayout = true
+        }
+    }
+    static let barHeight: CGFloat = 40
     private weak var webView: WKWebView?
 
     init(webView: WKWebView, pageSize: NSSize, baseZoom: CGFloat) {
         self.webView = webView
         self.pageSize = pageSize
         self.baseZoom = baseZoom
-        super.init(frame: .zero)
-        wantsLayer = true
-        layer?.backgroundColor = NSColor.black.cgColor
+        super.init(frame: NSRect(origin: .zero, size: pageSize))
+        addSubview(webView)
     }
 
     required init?(coder: NSCoder) { nil }
 
     override func layout() {
         super.layout()
-        guard let wv = webView, pageSize.width > 0, pageSize.height > 0, bounds.width > 0, bounds.height > 0 else { return }
-        let scale = min(bounds.width / pageSize.width, bounds.height / pageSize.height)
+        guard let wv = webView else { return }
+        guard let bar else {
+            wv.frame = NSRect(origin: .zero, size: pageSize)
+            if wv.pageZoom != baseZoom { wv.pageZoom = baseZoom }
+            return
+        }
+        bar.frame = NSRect(x: 0, y: bounds.height - Self.barHeight, width: bounds.width, height: Self.barHeight)
+        let area = NSRect(x: 0, y: 0, width: bounds.width, height: max(bounds.height - Self.barHeight, 1))
+        guard pageSize.width > 0, pageSize.height > 0 else { return }
+        let scale = min(area.width / pageSize.width, area.height / pageSize.height)
         let size = NSSize(width: (pageSize.width * scale).rounded(), height: (pageSize.height * scale).rounded())
-        wv.frame = NSRect(x: ((bounds.width - size.width) / 2).rounded(), y: ((bounds.height - size.height) / 2).rounded(),
+        wv.frame = NSRect(x: ((area.width - size.width) / 2).rounded(), y: ((area.height - size.height) / 2).rounded(),
                           width: size.width, height: size.height)
-        wv.pageZoom = max(0.1, baseZoom * scale)
+        let zoom = max(0.1, baseZoom * scale)
+        if abs(wv.pageZoom - zoom) > 0.001 { wv.pageZoom = zoom }
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        if bar != nil { NSColor.black.setFill(); dirtyRect.fill() }
     }
 }
 
@@ -164,7 +192,7 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         win.hasShadow = false
         win.backgroundColor = .clear
         win.isOpaque = false
-        win.contentView = wv
+        win.contentView = BrowserHostView(webView: wv, pageSize: NSSize(width: w, height: h), baseZoom: CGFloat(config.pageZoom))
         win.orderBack(nil)
         window = win
         webView = wv
@@ -179,8 +207,8 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
     /// Zoom, CSS, video-only and mute (main thread; scripts apply from the next page load).
     private func applyPageOptions() {
         guard let wv = webView else { return }
-        if let fit = wv.superview as? PageFitView {
-            fit.baseZoom = CGFloat(config.pageZoom)
+        if let host = wv.superview as? BrowserHostView {
+            host.baseZoom = CGFloat(config.pageZoom)
         } else {
             wv.pageZoom = CGFloat(config.pageZoom)
         }
@@ -237,20 +265,23 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
     public func beginEditing(doneTitle: String, windowTitle: String) {
         if let w = editWindow { NSApp.activate(ignoringOtherApps: true); w.makeKeyAndOrderFront(nil); return }
         guard let wv = webView else { return }
-        let page = wv.frame.size
+        guard let win = window as? OffscreenHostWindow, let host = win.contentView as? BrowserHostView else { return }
+        let page = host.pageSize
         let visible = (NSScreen.main ?? NSScreen.screens.first)?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let barHeight: CGFloat = 40
+        let barHeight = BrowserHostView.barHeight
         let content = NSSize(width: min(page.width, (visible.width * 0.8).rounded()),
                              height: min(page.height, (visible.height * 0.8).rounded() - barHeight) + barHeight)
-        let win = NSWindow(contentRect: NSRect(origin: .zero, size: content),
-                           styleMask: [.titled, .closable, .resizable, .miniaturizable], backing: .buffered, defer: false)
-        win.isReleasedWhenClosed = false
+        // The page's own window becomes the edit window: no new window, the page stays put.
+        win.editing = true
+        win.styleMask = [.titled, .closable, .resizable, .miniaturizable]
+        win.collectionBehavior = [.fullScreenNone, .moveToActiveSpace]
+        win.ignoresMouseEvents = false
+        win.hasShadow = true
+        win.isOpaque = true
+        win.backgroundColor = .black
         win.title = windowTitle
         win.minSize = NSSize(width: 520, height: 320)
         win.delegate = self
-        // The green button zooms instead of opening a full-screen Space: closing a full-screen window
-        // left macOS on an empty black Space. Auxiliary also lets it open over a full-screen app window.
-        win.collectionBehavior = [.fullScreenAuxiliary, .moveToActiveSpace]
 
         func button(_ symbol: String, _ action: Selector) -> NSButton {
             let b = NSButton(image: NSImage(systemSymbolName: symbol, accessibilityDescription: nil) ?? NSImage(),
@@ -274,37 +305,17 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         bar.orientation = .horizontal
         bar.spacing = 6
         bar.edgeInsets = NSEdgeInsets(top: 6, left: 8, bottom: 6, right: 8)
-        bar.translatesAutoresizingMaskIntoConstraints = false
-
-        // The page keeps its output layout (same CSS viewport as what the audience sees) but is
-        // scaled down to fit the window with page zoom, letterboxed. The whole page is visible and
-        // its own scrolling works; a larger window (green button) shows it larger.
-        let fit = PageFitView(webView: wv, pageSize: page, baseZoom: CGFloat(config.pageZoom))
-        fit.translatesAutoresizingMaskIntoConstraints = false
-        wv.removeFromSuperview()
-        fit.addSubview(wv)
-
-        let root = NSView(frame: NSRect(origin: .zero, size: content))
-        root.addSubview(bar)
-        root.addSubview(fit)
-        NSLayoutConstraint.activate([
-            bar.topAnchor.constraint(equalTo: root.topAnchor),
-            bar.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            bar.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            bar.heightAnchor.constraint(equalToConstant: barHeight),
-            fit.topAnchor.constraint(equalTo: bar.bottomAnchor),
-            fit.leadingAnchor.constraint(equalTo: root.leadingAnchor),
-            fit.trailingAnchor.constraint(equalTo: root.trailingAnchor),
-            fit.bottomAnchor.constraint(equalTo: root.bottomAnchor),
-        ])
-        win.contentView = root
+        bar.wantsLayer = true
+        bar.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
+        host.bar = bar
+        win.setContentSize(content)
         win.center()
         editWindow = win
         urlField = field
         backButton = back
         forwardButton = forward
         updateNavigationButtons()
-        root.layoutSubtreeIfNeeded()
+        host.layoutSubtreeIfNeeded()
         NSApp.activate(ignoringOtherApps: true)
         win.makeKeyAndOrderFront(nil)
         win.makeFirstResponder(wv)
@@ -332,7 +343,7 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
     /// Puts the page back off screen; with `keepAddress` the page the operator ended on becomes the
     /// input's address (saved with the project). Main thread.
     public func endEditing(keepAddress: Bool = true) {
-        guard let win = editWindow, let wv = webView, let host = window else { return }
+        guard let win = editWindow, let wv = webView else { return }
         if win.styleMask.contains(.fullScreen) {
             // Leave full screen first (finished in windowDidExitFullScreen), or the Space stays black.
             pendingEnd = keepAddress
@@ -342,15 +353,21 @@ public final class BrowserSource: NSObject, VideoSource, WKNavigationDelegate, N
         pendingEnd = nil
         editWindow = nil
         win.delegate = nil
-        win.orderOut(nil)
-        let page = (wv.superview as? PageFitView)?.pageSize ?? wv.frame.size
-        wv.removeFromSuperview()
-        wv.frame = NSRect(origin: .zero, size: page)
-        wv.pageZoom = CGFloat(config.pageZoom)
-        host.contentView = wv
-        (host as? OffscreenHostWindow)?.park()
-        host.orderBack(nil)
-        win.contentView = nil
+        // Back to the hidden page window: same window, same view, only its look and place change.
+        if let w = win as? OffscreenHostWindow, let hostView = w.contentView as? BrowserHostView {
+            hostView.bar = nil
+            w.styleMask = [.borderless]
+            w.collectionBehavior = [.transient, .ignoresCycle, .stationary, .fullScreenNone]
+            w.ignoresMouseEvents = true
+            w.hasShadow = false
+            w.isOpaque = false
+            w.backgroundColor = .clear
+            w.setContentSize(hostView.pageSize)
+            w.editing = false
+            w.park()
+            w.orderBack(nil)
+            hostView.layoutSubtreeIfNeeded()
+        }
         if keepAddress, let u = wv.url, ["http", "https"].contains(u.scheme?.lowercased() ?? ""), u.absoluteString != config.url {
             config.url = u.absoluteString
             onConfigChange?()

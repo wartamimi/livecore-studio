@@ -211,8 +211,11 @@ public final class MetalCompositor {
                                          saturation: Float(a.saturation), invGamma: Float(1 / a.gamma),
                                          straight: straightSources.contains(id) ? 1 : 0,
                                          range: Int32(a.range.rawValue), deinterlace: a.deinterlace ? 1 : 0)
+            let lutTex = a.activeLUT.flatMap(lutTexture)
+            if lutTex != nil { params.lutMix = Float(a.lutStrength) }
             enc.setFragmentBytes(&params, length: MemoryLayout<AdjustParamsGPU>.stride, index: 0)
             enc.setFragmentTexture(src, index: 0)
+            enc.setFragmentTexture(lutTex ?? identityLUT, index: 1)
             enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
             enc.endEncoding()
             textures[id] = (dst, size)
@@ -345,7 +348,7 @@ public final class MetalCompositor {
     /// Matches `AdjustParams` in the shader (4 floats, 4 ints).
     private struct AdjustParamsGPU {
         var brightness: Float, contrast: Float, saturation: Float, invGamma: Float
-        var straight: Int32, range: Int32 = 0, deinterlace: Int32 = 0, pad2: Int32 = 0
+        var straight: Int32, range: Int32 = 0, deinterlace: Int32 = 0, lutMix: Float = 0
     }
 
     private func flattenTexture(_ id: InputID) -> MTLTexture? {
@@ -356,6 +359,47 @@ public final class MetalCompositor {
         td.storageMode = .private
         let t = device.makeTexture(descriptor: td)
         flattenTextures[id] = t
+        return t
+    }
+
+    /// 3D LUT textures by file path (render queue only). A file that cannot be read is remembered
+    /// as failed and the input is shown without it (0.48.0).
+    private var lutTextures: [String: MTLTexture] = [:]
+    private var failedLUTs: Set<String> = []
+    private lazy var identityLUT: MTLTexture? = makeLUTTexture(CubeLUT.identity())
+
+    private func lutTexture(_ path: String) -> MTLTexture? {
+        if let t = lutTextures[path] { return t }
+        if failedLUTs.contains(path) { return nil }
+        guard let text = try? String(contentsOfFile: path, encoding: .utf8),
+              let lut = try? CubeLUT.parse(text), let t = makeLUTTexture(lut) else {
+            failedLUTs.insert(path)
+            return nil
+        }
+        if lutTextures.count > 32 { lutTextures.removeAll() }
+        lutTextures[path] = t
+        return t
+    }
+
+    /// Forgets a cached LUT (the file was replaced, e.g. saved again from the generator).
+    public func reloadLUT(_ path: String) {
+        lutTextures[path] = nil
+        failedLUTs.remove(path)
+    }
+
+    private func makeLUTTexture(_ lut: CubeLUT) -> MTLTexture? {
+        let d = MTLTextureDescriptor()
+        d.textureType = .type3D
+        d.pixelFormat = .rgba32Float
+        d.width = lut.size; d.height = lut.size; d.depth = lut.size
+        d.usage = .shaderRead
+        d.storageMode = .shared
+        guard let t = device.makeTexture(descriptor: d) else { return nil }
+        let data = lut.rgbaValues
+        data.withUnsafeBytes { raw in
+            t.replace(region: MTLRegionMake3D(0, 0, 0, lut.size, lut.size, lut.size), mipmapLevel: 0, slice: 0,
+                      withBytes: raw.baseAddress!, bytesPerRow: lut.size * 16, bytesPerImage: lut.size * lut.size * 16)
+        }
         return t
     }
 

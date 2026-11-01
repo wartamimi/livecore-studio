@@ -65,7 +65,8 @@ public final class AudioMixerEngine {
     public let limiterCeilingDB = AtomicFloat(-1)
     public let limiterReleaseMs = AtomicFloat(80)
     /// Aux buses A and B: fader, mute and meters (same control block as a channel).
-    public static let auxCount = 2
+    /// Aux buses A–D (0.48.0: was 2); the mixer shows as many as the operator added.
+    public static let auxCount = 4
     public let aux: [ChannelControls] = (0..<AudioMixerEngine.auxCount).map { _ in ChannelControls() }
     /// Device each aux bus plays on (nil = none). Main thread.
     public private(set) var auxDeviceIDs: [AudioDeviceID?] = Array(repeating: nil, count: AudioMixerEngine.auxCount)
@@ -347,8 +348,10 @@ public final class AudioMixerEngine {
         if ch.controls.toProgram.value {
             for i in 0..<frames { progL[i] += chL[i]; progR[i] += chR[i] }
         }
-        if ch.controls.toBusA.value { let l = auxL[0], r = auxR[0]; for i in 0..<frames { l[i] += chL[i]; r[i] += chR[i] } }
-        if ch.controls.toBusB.value { let l = auxL[1], r = auxR[1]; for i in 0..<frames { l[i] += chL[i]; r[i] += chR[i] } }
+        for b in 0..<Self.auxCount where ch.controls.send(b).value {
+            let l = auxL[b], r = auxR[b]
+            for i in 0..<frames { l[i] += chL[i]; r[i] += chR[i] }
+        }
         if ch.controls.solo.value {
             soloFlag = true
             for i in 0..<frames { monL[i] += chL[i]; monR[i] += chR[i] }

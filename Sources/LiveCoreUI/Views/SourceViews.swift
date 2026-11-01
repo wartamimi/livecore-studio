@@ -248,6 +248,7 @@ struct InputAdjustSheet: View {
                 }
                 .pickerStyle(.segmented)
                 Text(L10n.t("adjust.rotate_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                LUTSection(input: input, adjust: $a)
             }
             .formStyle(.grouped)
             HStack {

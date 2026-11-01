@@ -51,6 +51,24 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-21b | Proyek dengan perangkat/file hilang | Buka proyek setelah mencabut kamera / memindah file | Muncul peringatan yang menyebut perangkat/file; sisanya tetap termuat; app tidak crash |
 | T-22 | Beban M2 | 1080p30, 2 kamera (1 dengan chroma key) + 1 klip video + Multiview terbuka, stream + rekam 30 menit | Catat seperti T-13; FPS stabil, tanpa dropped frame bertambah terus |
 
+## AZ. Tes manual build 0.48.0
+
+| ID | Langkah | Hasil yang diharapkan |
+|---|---|---|
+| T-250 | Buka panel OUTPUTS | Hanya FULLSCREEN (atas) dan EXTERNAL |
+| T-251 | Lihat bar bawah | Tombol MULTICORDER; tidak ada EXTERNAL dan OUT1–OUT4 |
+| T-252 | Lihat bar atas | Ada RUNDOWN, 9:16, ikon Multiview; tidak ada menu Tools / Fullscreen. Ikon Multiview membuka jendela Multiview |
+| T-253 | Mixer › + › Tambah AUX / BUS sampai 4, kirim channel ke C dan D, pilih device output untuk AUX C | Strip AUX C/D muncul, meter bergerak, suara keluar di device; simpan & buka proyek: routing tetap |
+| T-254 | Playlist video: tahan dan seret item ke atas/bawah | Urutan berubah dan tersimpan |
+| T-255 | Tambah playlist video baru | Loop mati |
+| T-256 | Tambah input Browser (mis. YouTube), Edit, Done, lalu Edit lagi | Halaman tidak reload, posisi video tetap; jendela Edit bisa digeser/diubah ukurannya; output tetap jalan |
+| T-257 | Saat live, buka menu + Input dan submenu Warna selama 1 menit | Menu tidak berkedip; FPS di bar atas stabil |
+| T-258 | Properti input › Warna › Muat .cube (LUT dari Resolve/kamera), atur Kekuatan | Warna berubah sesuai LUT, 0% = asli; simpan & buka proyek: LUT tetap |
+| T-259 | Warna › Generator LUT: pilih preset, geser slider, Simpan & Terapkan; lalu Batal di sesi lain | Input berubah live; Simpan menaruh .cube di pustaka; Batal mengembalikan LUT sebelumnya |
+| T-260 | Generator LUT › Ekspor .cube, buka di DaVinci Resolve | Resolve menerima file, tampilan sama |
+| T-261 | Help › Bantuan LiveCore Studio (⌘?) dengan bahasa Indonesia, lalu Inggris | Topik dan isi mengikuti bahasa; pencarian jalan |
+| T-262 | Menu LiveCore Studio › Tentang | Ikon, versi 0.48.0 (60), deskripsi singkat, "Dibuat oleh Munawar Tamimi" |
+
 ## AY. Tes manual build 0.47.0
 
 | ID | Area | Langkah | Hasil yang diharapkan |

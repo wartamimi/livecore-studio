@@ -21,6 +21,8 @@ public final class ChannelVM: ObservableObject, Identifiable {
     @Published public var toProgram: Bool { didSet { channel.controls.toProgram.value = toProgram } }
     @Published public var toBusA: Bool { didSet { channel.controls.toBusA.value = toBusA } }
     @Published public var toBusB: Bool { didSet { channel.controls.toBusB.value = toBusB } }
+    @Published public var toBusC: Bool { didSet { channel.controls.toBusC.value = toBusC } }
+    @Published public var toBusD: Bool { didSet { channel.controls.toBusD.value = toBusD } }
     @Published public var compressor: Bool { didSet { channel.controls.compressorEnabled.value = compressor } }
     @Published public var compThreshold: Double { didSet { channel.controls.compThresholdDB.value = Float(compThreshold) } }
     @Published public var compRatio: Double { didSet { channel.controls.compRatio.value = Float(compRatio) } }
@@ -74,6 +76,8 @@ public final class ChannelVM: ObservableObject, Identifiable {
         toProgram = c.toProgram.value
         toBusA = c.toBusA.value
         toBusB = c.toBusB.value
+        toBusC = c.toBusC.value
+        toBusD = c.toBusD.value
         compressor = c.compressorEnabled.value
         compThreshold = Double(c.compThresholdDB.value)
         compRatio = Double(c.compRatio.value)
@@ -95,7 +99,7 @@ public final class AuxBusVM: ObservableObject, Identifiable {
     public let index: Int
     public let controls: ChannelControls
     public var id: Int { index }
-    public var name: String { index == 0 ? "AUX A" : "AUX B" }
+    public var name: String { "AUX " + ["A", "B", "C", "D"][min(max(index, 0), 3)] }
     @Published public var fader: Double { didSet { controls.faderDB.value = FaderLaw.db(forPosition: fader) } }
     @Published public var muted: Bool { didSet { controls.muted.value = muted } }
     @Published public var deviceUID: String

@@ -14,6 +14,12 @@ public final class ChannelControls: @unchecked Sendable {
     public let toProgram = AtomicBool(true)     // routed to the Program (stream/record) bus
     public let toBusA = AtomicBool(false)       // routed (post-fader) to aux bus A
     public let toBusB = AtomicBool(false)       // routed (post-fader) to aux bus B
+    public let toBusC = AtomicBool(false)       // aux bus C (0.48.0)
+    public let toBusD = AtomicBool(false)       // aux bus D (0.48.0)
+    /// The send to aux bus `index` (0 = A … 3 = D).
+    public func send(_ index: Int) -> AtomicBool {
+        switch index { case 0: return toBusA; case 1: return toBusB; case 2: return toBusC; default: return toBusD }
+    }
     public let compressorEnabled = AtomicBool(false)
     public let compThresholdDB = AtomicFloat(-18)
     public let compRatio = AtomicFloat(3)
