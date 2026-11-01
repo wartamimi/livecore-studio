@@ -178,6 +178,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | LUT Generator profesional | Implemented | 15 preset; eksposur, white balance, kontras film, lift/gamma/gain, saturasi, vibrance, split toning, fade, roll-off highlight; ukuran 17/33/65; preview live di input; Simpan & Terapkan atau Ekspor .cube |
 | Halaman Help (Bantuan) sesuai bahasa aplikasi | Implemented | en + id lengkap; ms/es/zh-Hans memakai teks Inggris. Menu Help › ⌘? |
 | About singkat + "Dibuat oleh Munawar Tamimi" | Implemented | Menu LiveCore Studio › About |
+| Logo / ikon aplikasi baru (logo LC oranye-putih) | Implemented | Ikon Dock, Finder dan About; ikut di DMG |
 
 ## Fitur 0.47.0 — stabil dan sederhana
 Tanpa fitur baru: merapikan tampilan dan perilaku. Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Belum dites di Mac (TEST_PLAN bagian AY).
