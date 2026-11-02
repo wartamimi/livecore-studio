@@ -78,7 +78,7 @@ func engineCheck() -> Never {
         while p.isRunning && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
         if p.isRunning { p.terminate() }
         let s = src.signal
-        print("\(codec): status \(src.status.label), \(s.width)x\(s.height) \(s.videoCodec), frames \(s.frames), audio frames \(s.audioFrames) (\(s.audio)), decode errors \(s.decodeErrors), peer \(s.peer) streamid '\(s.streamID)', lost \(s.srt.lostPackets)")
+        print("\(codec): status \(src.status.label), \(s.width)x\(s.height) \(s.videoCodec), frames \(s.frames), audio frames \(s.audioFrames) (\(s.audio)), decode errors \(s.decodeErrors) (last \(s.lastDecodeError)), decoder dropped \(s.decoderDropped), peer \(s.peer) streamid '\(s.streamID)', lost \(s.srt.lostPackets)")
         src.stop()
         guard sawLive else { fail("\(codec): the input never went live") }
         guard let pb = src.currentFrame(), CVPixelBufferGetWidth(pb) == 1280, CVPixelBufferGetHeight(pb) == 720 else { fail("\(codec): no 1280x720 frame") }

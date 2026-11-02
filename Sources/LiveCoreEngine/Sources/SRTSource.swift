@@ -37,6 +37,9 @@ public final class SRTSource: VideoSource, @unchecked Sendable {
         public var streamID = ""
         public var srt = SRTReceiver.Stats()
         public var decodeErrors = 0
+        /// Last decoder error (OSStatus) and frames the decoder skipped on purpose.
+        public var lastDecodeError: Int32 = 0
+        public var decoderDropped = 0
         /// Totals since the input started: pictures shown, audio frames decoded.
         public var frames = 0, audioFrames = 0
     }
@@ -129,6 +132,8 @@ final class SRTDecodePipeline: @unchecked Sendable {
     private var lastArrival = 0.0
     private var live = false
     private var decodeErrors = 0
+    private var lastDecodeError: OSStatus = 0
+    private var decoderDropped = 0
     // Rates.
     private var windowStart = 0.0, windowFrames = 0, windowBytes = 0
     private var totalFrames = 0, totalAudio = 0
@@ -176,8 +181,10 @@ final class SRTDecodePipeline: @unchecked Sendable {
             let (w, h) = size
             let vc = demux.videoCodec?.name ?? ""
             let errs = decodeErrors, frames = totalFrames, audioFrames = totalAudio
+            let lastErr = lastDecodeError, dropped = decoderDropped
             report { s in
                 s.fps = fps; s.kbps = kbps; s.width = w; s.height = h; s.videoCodec = vc; s.decodeErrors = errs
+                s.lastDecodeError = lastErr; s.decoderDropped = dropped
                 s.frames = frames; s.audioFrames = audioFrames
             }
             windowStart = now; windowFrames = 0; windowBytes = 0
@@ -223,13 +230,15 @@ final class SRTDecodePipeline: @unchecked Sendable {
         let pts = au.pts ?? 0
         let dts = au.dts ?? pts
         var flags = VTDecodeInfoFlags()
-        let st = VTDecompressionSessionDecodeFrame(session, sampleBuffer: sample, flags: [], infoFlagsOut: &flags) { [weak self] status, _, image, _, _ in
+        let st = VTDecompressionSessionDecodeFrame(session, sampleBuffer: sample, flags: [], infoFlagsOut: &flags) { [weak self] status, info, image, _, _ in
             guard let self else { return }
-            if status != noErr || image == nil { self.decodeErrors += 1; return }
+            if info.contains(.frameDropped) { self.decoderDropped += 1; return }
+            if status != noErr || image == nil { self.decodeErrors += 1; self.lastDecodeError = status; return }
             self.enqueue(pts: pts, pb: image!)
         }
         if st != noErr {
             decodeErrors += 1
+            lastDecodeError = st
             if st == kVTInvalidSessionErr { self.session = nil; paramSets = [] }
         }
         // Anchor the presentation clock on the first decoded unit's decode time.
@@ -274,7 +283,6 @@ final class SRTDecodePipeline: @unchecked Sendable {
                                                    imageBufferAttributes: attrs as CFDictionary, outputCallback: nil,
                                                    decompressionSessionOut: &s)
         guard created == noErr, let s else { decodeErrors += 1; return false }
-        VTSessionSetProperty(s, key: kVTDecompressionPropertyKey_RealTime, value: kCFBooleanTrue)
         session = s
         format = fd
         size = (Int(dims.width), Int(dims.height))
