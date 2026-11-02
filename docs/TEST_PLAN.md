@@ -101,6 +101,9 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-288 | Tutup / Link baru | Tutup panggilan dari sheet; lalu Link baru | Tamu terputus; link lama menampilkan "Link panggilan tidak aktif" |
 | T-289 | Dua tamu | Tambah 2 input LCS Live, dua perangkat bergabung | Dua input & dua kanal terpisah; masing-masing tidak mendengar suaranya sendiri |
 | T-290 | TURN | Isi server TURN di Advanced, uji dari jaringan kantor/4G yang sebelumnya gagal | Tersambung lewat relay |
+| T-291 | Optimasi 0.53.0 | Proyek yang sama di 0.52.0 lalu 0.53.0 (browser input + LCS Live + ticker), catat CPU/RAM Activity Monitor 5 menit | CPU/RAM 0.53.0 sama atau lebih rendah, tidak ada drop baru |
+| T-292 | LCS Live 0.53.0 | Tamu tersambung, dengarkan return audio di sisi tamu 5 menit | Audio balik mulus tanpa putus-putus, video Program ≈12 fps |
+| T-293 | Audio Monitor 0.53.0 | Web Controller › 🎧 Dengar, ganti bus, kunci layar HP lalu buka lagi | Suara jalan, ganti bus langsung pindah, tidak macet
 
 ## AY. Tes manual build 0.47.0
 

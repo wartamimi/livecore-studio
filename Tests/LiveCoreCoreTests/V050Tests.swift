@@ -38,6 +38,8 @@ final class V050Tests: XCTestCase {
         XCTAssertEqual(route([:]), .listen(bus: "master", since: 0))
         XCTAssertEqual(route(["bus": "x"]), .badRequest("bus"))
         XCTAssertTrue(route([:]).needsPIN)
+        XCTAssertEqual(route(["bus": "busA", "stream": "1"]), .listenStream(bus: "busA"))
+        XCTAssertTrue(route(["stream": "1"]).needsPIN)
     }
 
     func testElevenLabsURLAndMessages() {

@@ -27,10 +27,7 @@ final class AIProcessor {
     private var frameIndex = 0
     private var pool: CVPixelBufferPool?
     private var poolSize = PixelSize(width: 0, height: 0)
-    private static let ci: CIContext = {
-        if let d = MTLCreateSystemDefaultDevice() { return CIContext(mtlDevice: d, options: [.cacheIntermediates: false]) }
-        return CIContext()
-    }()
+    private static var ci: CIContext { SharedCI.standard }
     private let segmentation: VNGeneratePersonSegmentationRequest = {
         let r = VNGeneratePersonSegmentationRequest()
         r.qualityLevel = .balanced
