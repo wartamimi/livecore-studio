@@ -356,8 +356,8 @@
 "audio.state" = "State";
 "audio.gain_reduction" = "Gain reduction";
 "audio.route_program" = "To Program (stream / recording)";
-"adjust.menu" = "Colour & Orientation…";
-"adjust.title" = "Colour & Orientation";
+"adjust.menu" = "Colour, Orientation & Mask…";
+"adjust.title" = "Colour, Orientation & Mask";
 "adjust.brightness" = "Brightness";
 "adjust.contrast" = "Contrast";
 "adjust.saturation" = "Saturation";
@@ -1511,3 +1511,5 @@
 "transcription.key_stored" = "Stored in Keychain (type to replace)";
 "transcription.note" = "Program sound is sent to ElevenLabs over the internet with your own API key and uses your ElevenLabs quota. Captions appear as a transparent overlay; put this input on an overlay channel.";
 "transcription.live" = "Live (ElevenLabs)";
+
+"flag.add" = "Flag…";

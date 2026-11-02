@@ -24,6 +24,10 @@ public struct InputAdjust: Codable, Equatable, Sendable {
     /// 3D LUT (.cube file path) applied after the colour correction, and how much of it (0.48.0).
     public var lut: String?
     public var lutStrength: Double = 1
+    /// Video mask (0.51.0): shape or image that cuts the input's picture, everywhere it is used.
+    public var mask = InputMask()
+    /// Waving-flag warp (0.51.0), animated in the compositor.
+    public var wave = InputWave()
 
     /// The LUT in use (a path is set and the strength is above zero).
     public var activeLUT: String? {
@@ -52,7 +56,7 @@ public struct InputAdjust: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case brightness, contrast, saturation, gamma, flipHorizontal, flipVertical, rotation, range, deinterlace, rangeChecked
-        case lut, lutStrength
+        case lut, lutStrength, mask, wave
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -68,6 +72,8 @@ public struct InputAdjust: Codable, Equatable, Sendable {
         rangeChecked = try c.decodeIfPresent(Bool.self, forKey: .rangeChecked) ?? false
         lut = try c.decodeIfPresent(String.self, forKey: .lut)
         lutStrength = try c.decodeIfPresent(Double.self, forKey: .lutStrength) ?? 1
+        mask = try c.decodeIfPresent(InputMask.self, forKey: .mask) ?? InputMask()
+        wave = try c.decodeIfPresent(InputWave.self, forKey: .wave) ?? InputWave()
     }
 
     /// Rotation snapped to 0 / 90 / 180 / 270.
@@ -103,6 +109,8 @@ public struct InputAdjust: Codable, Equatable, Sendable {
         a.rangeChecked = rangeChecked
         a.lut = lut
         a.lutStrength = min(max(lutStrength, 0), 1)
+        a.mask = mask.clamped
+        a.wave = wave.clamped
         return a
     }
 
@@ -111,7 +119,7 @@ public struct InputAdjust: Codable, Equatable, Sendable {
         let a = clamped
         return abs(a.brightness) < 1e-4 && abs(a.contrast - 1) < 1e-4 && abs(a.saturation - 1) < 1e-4
             && abs(a.gamma - 1) < 1e-4 && !flipHorizontal && !flipVertical && a.rotation == 0
-            && range == .none && !deinterlace && a.activeLUT == nil
+            && range == .none && !deinterlace && a.activeLUT == nil && !mask.isActive && !wave.enabled
     }
 
     /// Nothing worth keeping: no picture change and no remembered levels decision.
@@ -119,6 +127,7 @@ public struct InputAdjust: Codable, Equatable, Sendable {
 
     public var hasColorChange: Bool {
         var a = self; a.flipHorizontal = false; a.flipVertical = false; a.rotation = 0
+        a.mask = InputMask(); a.wave = InputWave()
         return !a.isIdentity
     }
 
@@ -151,6 +160,97 @@ public struct InputAdjust: Codable, Equatable, Sendable {
         if x <= 0 { return 0 }
         if y == 1 { return x }
         return exp(y * log(x))
+    }
+}
+
+/// Mask applied to an input's picture (0.51.0). The rectangle is in the picture's own 0...1
+/// coordinates (origin top-left), so it follows the input into every layer and output.
+public struct InputMask: Codable, Equatable, Sendable {
+    public enum Shape: Int, Codable, Sendable, CaseIterable {
+        case none = 0, rectangle = 1, ellipse = 2, imageLuma = 3, imageAlpha = 4
+        public var title: String {
+            switch self {
+            case .none: return "None"
+            case .rectangle: return "Rectangle / rounded"
+            case .ellipse: return "Circle / ellipse"
+            case .imageLuma: return "Image (white = visible)"
+            case .imageAlpha: return "Image (transparency)"
+            }
+        }
+    }
+    public var shape: Shape = .none
+    public var x: Double = 0.1, y: Double = 0.1, width: Double = 0.8, height: Double = 0.8
+    /// Corner radius as a fraction of the shorter side (rectangle only), 0...0.5.
+    public var radius: Double = 0
+    /// Soft edge as a fraction of the shorter side, 0...0.25.
+    public var feather: Double = 0
+    public var invert = false
+    /// PNG/JPEG for the image shapes, stretched over the picture.
+    public var imagePath: String?
+
+    public init() {}
+
+    public var isActive: Bool {
+        switch shape {
+        case .none: return false
+        case .imageLuma, .imageAlpha: return !(imagePath ?? "").isEmpty
+        default: return true
+        }
+    }
+
+    public var clamped: InputMask {
+        var m = self
+        m.x = min(max(x, -1), 1); m.y = min(max(y, -1), 1)
+        m.width = min(max(width, 0.001), 2); m.height = min(max(height, 0.001), 2)
+        m.radius = min(max(radius, 0), 0.5); m.feather = min(max(feather, 0), 0.25)
+        return m
+    }
+
+    /// Reference of the shader's shape coverage (0 hidden ... 1 visible) at picture point u, v
+    /// for a picture of aspect `aspect` (width / height). Image shapes are not covered here.
+    public func coverage(u: Double, v: Double, aspect: Double = 16.0 / 9) -> Double {
+        let m = clamped
+        guard m.shape == .rectangle || m.shape == .ellipse else { return 1 }
+        // Work in units of picture height so circles stay round.
+        let px = u * aspect, py = v
+        let hw = m.width * aspect / 2, hh = m.height / 2
+        let cx = (m.x * aspect) + hw, cy = m.y + hh
+        let rx = px - cx, ry = py - cy
+        let short = min(hw, hh)
+        let d: Double
+        if m.shape == .ellipse {
+            d = ((rx / hw) * (rx / hw) + (ry / hh) * (ry / hh)).squareRoot() * short - short
+        } else {
+            let r = min(m.radius * 2 * short, short)
+            let qx = abs(rx) - (hw - r), qy = abs(ry) - (hh - r)
+            let ox = max(qx, 0), oy = max(qy, 0)
+            d = (ox * ox + oy * oy).squareRoot() + min(max(qx, qy), 0) - r
+        }
+        let f = max(m.feather * 2 * short, 0.001)
+        let c = min(max(0.5 - d / f, 0), 1)
+        return m.invert ? 1 - c : c
+    }
+}
+
+/// Waving-flag warp (0.51.0): the left edge stays at the pole, waves run to the right.
+public struct InputWave: Codable, Equatable, Sendable {
+    public var enabled = false
+    /// Height of the wave as a fraction of the picture height, 0...0.15.
+    public var amplitude: Double = 0.05
+    /// Waves across the picture, 0.5...4.
+    public var frequency: Double = 1.5
+    /// Cycles per second, 0.05...3.
+    public var speed: Double = 0.8
+    /// Light/shadow of the folds, 0...1.
+    public var shading: Double = 0.5
+
+    public init() {}
+
+    public var clamped: InputWave {
+        var w = self
+        w.amplitude = min(max(amplitude, 0), 0.15); w.frequency = min(max(frequency, 0.5), 4)
+        w.speed = min(max(speed, 0.05), 3); w.shading = min(max(shading, 0), 1)
+        return w
     }
 }
 

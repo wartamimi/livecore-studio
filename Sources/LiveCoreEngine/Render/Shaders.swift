@@ -37,12 +37,30 @@ enum ShaderSource {
     }
 
     // Input colour correction (LiveCoreCore.InputAdjust, same math): output is premultiplied.
-    struct AdjustParams { float brightness; float contrast; float saturation; float invGamma; int straight; int range; int deinterlace; float lutMix; };
+    struct AdjustParams { float brightness; float contrast; float saturation; float invGamma; int straight; int range; int deinterlace; float lutMix;
+                          float4 maskRect; float2 targetSize; float maskRadius; float maskFeather;
+                          int maskShape; int maskInvert; int waveOn; float waveAmp;
+                          float waveFreq; float wavePhase; float waveShade; float pad; };
     fragment float4 adjust_fragment(VOut in [[stage_in]], texture2d<float> tex [[texture(0)]],
                                     texture3d<float> lut [[texture(1)]],
+                                    texture2d<float> maskTex [[texture(2)]],
                                     constant AdjustParams &p [[buffer(0)]]) {
         constexpr sampler s(address::clamp_to_edge, filter::linear);
-        float4 c = tex.sample(s, in.uv);
+        float2 o = in.position.xy / max(p.targetSize, float2(1.0));
+        float2 uv = in.uv;
+        float edge = 1.0;
+        float fold = 0.0;
+        if (p.waveOn != 0) {
+            // Waving flag (0.51.0): pole on the left stays still, waves grow to the right.
+            float ph = 6.2831853 * p.waveFreq * o.x - p.wavePhase;
+            float grow = 0.25 + 0.75 * o.x;
+            float sy = 1.0 + 2.0 * p.waveAmp;
+            uv.y = (uv.y - 0.5) * sy + 0.5 - p.waveAmp * sin(ph) * grow * sy;
+            uv.x = uv.x + p.waveAmp * 0.25 * cos(ph) * grow;
+            edge = step(0.0, uv.y) * step(uv.y, 1.0) * step(0.0, uv.x) * step(uv.x, 1.0);
+            fold = cos(ph) * grow;
+        }
+        float4 c = tex.sample(s, uv) * edge;
         if (p.deinterlace != 0) {
             // Blend deinterlace: average with the neighbouring line (the other field).
             float dv = 1.0 / float(max(tex.get_height(), 1u));
@@ -64,7 +82,29 @@ enum ShaderSource {
             float3 uvw = rgb * ((n - 1.0) / n) + 0.5 / n;
             rgb = mix(rgb, clamp(lut.sample(ls, uvw).rgb, 0.0, 1.0), p.lutMix);
         }
-        return float4(rgb * a, a);
+        if (p.waveOn != 0) { rgb = clamp(rgb * (1.0 + p.waveShade * 0.35 * fold), 0.0, 1.0); }
+        float cov = 1.0;
+        if (p.maskShape == 1 || p.maskShape == 2) {
+            float2 rectPos = p.maskRect.xy * p.targetSize;
+            float2 halfSize = max(p.maskRect.zw * p.targetSize * 0.5, float2(0.5));
+            float2 rel = in.position.xy - (rectPos + halfSize);
+            float shortSide = min(halfSize.x, halfSize.y);
+            float d;
+            if (p.maskShape == 2) {
+                d = (length(rel / halfSize) - 1.0) * shortSide;
+            } else {
+                float r = min(p.maskRadius * 2.0 * shortSide, shortSide);
+                float2 q = abs(rel) - (halfSize - r);
+                d = length(max(q, float2(0.0))) + min(max(q.x, q.y), 0.0) - r;
+            }
+            float f = max(p.maskFeather * 2.0 * shortSide, 1.0);
+            cov = clamp(0.5 - d / f, 0.0, 1.0);
+        } else if (p.maskShape == 3 || p.maskShape == 4) {
+            float4 m = maskTex.sample(s, o);
+            cov = p.maskShape == 3 ? dot(m.rgb, float3(0.2126, 0.7152, 0.0722)) : m.a;
+        }
+        if (p.maskInvert != 0 && p.maskShape != 0) { cov = 1.0 - cov; }
+        return float4(rgb * a, a) * cov;
     }
 
     // Layer: textures are premultiplied BGRA; opacity scales all channels (premultiplied blend).
