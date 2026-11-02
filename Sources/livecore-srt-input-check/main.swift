@@ -68,7 +68,15 @@ func engineCheck() -> Never {
             RunLoop.main.run(until: Date().addingTimeInterval(0.1))
             if src.status == .live { sawLive = true }
         }
-        p.waitUntilExit()
+        // srt-live-transmit keeps waiting after its input ends: stop the senders, never hang.
+        let kill = Process()
+        kill.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        kill.arguments = ["-f", "127.0.0.1:\(port)"]
+        try? kill.run()
+        kill.waitUntilExit()
+        let deadline = Date().addingTimeInterval(5)
+        while p.isRunning && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+        if p.isRunning { p.terminate() }
         let s = src.signal
         print("\(codec): status \(src.status.label), \(s.width)x\(s.height) \(s.videoCodec), frames \(s.frames), audio frames \(s.audioFrames) (\(s.audio)), decode errors \(s.decodeErrors), peer \(s.peer) streamid '\(s.streamID)', lost \(s.srt.lostPackets)")
         src.stop()

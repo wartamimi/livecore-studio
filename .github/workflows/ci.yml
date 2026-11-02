@@ -91,6 +91,7 @@ jobs:
           LIVECORE_NDI_REQUIRED: "1"
       - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
       - run: scripts/ci_run.sh macos-srt-input-check swift run livecore-srt-input-check engine
+        timeout-minutes: 5
       # Engine run with recording + streaming, a stream drop in the middle and a full disk.
       # Its disk-full part is known to fail (docs/KNOWN_ISSUES.md); the result is still reported.
       - run: scripts/ci_run.sh macos-soak-check swift run livecore-soak-check
