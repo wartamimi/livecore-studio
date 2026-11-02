@@ -1493,3 +1493,9 @@
 "help.remote.body" = "• Web Controller: control LiveCore from a phone or tablet on the same network (Settings › Remote). Protect it with a PIN; the PIN is kept in the Keychain.\n• MIDI: map buttons and faders of a MIDI controller with Learn (Settings › MIDI).\n• Keyboard shortcuts can be changed in Settings › Shortcuts.";
 "help.tips.title" = "Tips and troubleshooting";
 "help.tips.body" = "• Frame drops: keep the output frame rate equal to your cameras (e.g. 30 or 25), close unused windows and prefer 1080p sources.\n• Capture card colours look grey: open Colour and check Video levels (automatic or limited › full).\n• A camera does not appear: unplug and plug it in again, then use Refresh in the Video Capture sheet. Allow camera and microphone access in System Settings › Privacy.\n• Streaming fails: check the stream key and your upload speed (about 1.5× the stream bitrate).\n• Help › Export Logs & Diagnostics makes a file you can send for support (without stream keys).";
+
+
+/* 0.49.0 */
+"program.screenshot" = "Screenshot";
+"program.grab_still" = "Grab as Still";
+"top.dropped_reset" = "Dropped render frames since launch (the first 5 s of warm-up are not counted). Click to reset to 0.";

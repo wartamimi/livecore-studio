@@ -24,12 +24,6 @@ struct TopBarView: View {
                 Text("\(model.settings.output.label)").font(.system(size: 11)).foregroundStyle(Theme.textDim)
             }
             Spacer(minLength: 0)
-            Button { model.showOutputsPanel = true } label: {
-                Label(L10n.t("outputs.button"), systemImage: "square.stack.3d.up").labelStyle(AdaptiveLabelStyle(iconOnly: compact))
-            }
-                .buttonStyle(StudioButtonStyle())
-                .fixedSize()
-                .help(L10n.t("outputs.help"))
             Live(model.live) { liveStats(compact: compact) }
             Divider().frame(height: 18)
             Button { openWindow(id: "rundown") } label: {
@@ -63,7 +57,14 @@ struct TopBarView: View {
         if !model.isOperatorMode && !compact { machineStats }
             stat(L10n.t("top.fps"), String(format: "%.1f", model.performance.renderFPS),
                  warn: model.performance.renderFPS < Double(model.settings.output.frameRate) * 0.95 && model.performance.renderFPS > 0)
-            if !compact { stat(L10n.t("top.dropped"), "\(model.performance.droppedRenderFrames)", warn: false) }
+            if !compact {
+                // Click to set it back to 0 (0.49.0).
+                Button { model.resetDropCounter() } label: {
+                    stat(L10n.t("top.dropped"), "\(model.performance.droppedRenderFrames)", warn: false)
+                }
+                .buttonStyle(.plain)
+                .help(L10n.t("top.dropped_reset"))
+            }
             if model.performance.thermalState == .serious || model.performance.thermalState == .critical {
                 Label("Thermal", systemImage: "thermometer.high").foregroundStyle(Theme.warning).font(.system(size: 11, weight: .bold))
             }

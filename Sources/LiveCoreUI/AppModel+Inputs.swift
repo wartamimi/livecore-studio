@@ -391,28 +391,41 @@ extension AppModel {
 
     // MARK: Snapshot
 
-    /// Saves the current Program frame as a PNG in the recording folder.
-    public func saveSnapshot() {
-        guard let pb = lastProgramFrame else { report("No Program frame to save yet."); return }
+    /// Program right-click › Grab as Still (0.49.0): the current Program frame as a PNG in the
+    /// recording folder, added straight away as a new image input.
+    public func grabStill() {
+        guard let url = saveSnapshot(name: "Still", confirm: false) else { return }
+        addImageInput(url)
+    }
+
+    /// Saves the current Program frame as a PNG in the recording folder (Program right-click ›
+    /// Screenshot). `confirm` shows the flash and banner on the Program monitor.
+    @discardableResult
+    public func saveSnapshot(name: String = "Snapshot", confirm: Bool = true) -> URL? {
+        guard let pb = lastProgramFrame else { report("No Program frame to save yet."); return nil }
         let folder = settings.recording.folderPath.isEmpty ? RecordingEngine.defaultFolder()
             : URL(fileURLWithPath: settings.recording.folderPath, isDirectory: true)
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd HH.mm.ss"
-        let url = folder.appendingPathComponent("Snapshot \(f.string(from: Date())).png")
+        let url = folder.appendingPathComponent("\(name) \(f.string(from: Date())).png")
         let ci = CIImage(cvPixelBuffer: pb)
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             guard let cg = CIContext().createCGImage(ci, from: ci.extent),
                   let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
-                report("Cannot create snapshot image."); return
+                report("Cannot create snapshot image."); return nil
             }
             CGImageDestinationAddImage(dest, cg, nil)
-            guard CGImageDestinationFinalize(dest) else { report("Cannot write snapshot to \(url.path)."); return }
-            lastSnapshotURL = url
-            lastSnapshotAt = Date()
+            guard CGImageDestinationFinalize(dest) else { report("Cannot write snapshot to \(url.path)."); return nil }
+            if confirm {
+                lastSnapshotURL = url
+                lastSnapshotAt = Date()
+            }
             NSSound(named: "Grab")?.play()
+            return url
         } catch {
             report("Cannot save snapshot: \(error.localizedDescription)")
+            return nil
         }
     }
 
