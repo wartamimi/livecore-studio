@@ -1499,3 +1499,15 @@
 "program.screenshot" = "Screenshot";
 "program.grab_still" = "Grab as Still";
 "top.dropped_reset" = "Frame render yang drop sejak aplikasi dibuka (5 detik pertama pemanasan tidak dihitung). Klik untuk reset ke 0.";
+"audio.lpf" = "Filter low-pass";
+"audio.limiter" = "Limiter";
+"audio.limiter_help" = "Batas atas keras untuk channel ini setelah kompresor, sebelum fader. Limiter Program tetap berlaku.";
+"transcription.add" = "Realtime Transcription (ElevenLabs)";
+"transcription.title" = "Realtime Transcription";
+"transcription.engine" = "Mesin";
+"transcription.apple" = "Pengenalan suara Apple";
+"transcription.auto" = "Deteksi otomatis";
+"transcription.key" = "API key ElevenLabs";
+"transcription.key_stored" = "Tersimpan di Keychain (ketik untuk mengganti)";
+"transcription.note" = "Suara Program dikirim ke ElevenLabs lewat internet dengan API key Anda sendiri dan memakai kuota ElevenLabs Anda. Teks tampil sebagai overlay transparan; pasang input ini di kanal overlay.";
+"transcription.live" = "Live (ElevenLabs)";

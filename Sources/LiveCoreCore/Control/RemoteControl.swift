@@ -220,6 +220,8 @@ public enum RemoteRoute: Equatable, Sendable {
     case ping
     /// Latest JPEG of "program" or "preview".
     case frame(String)
+    /// Audio Monitor (0.50.0): PCM of a mix bus after sequence number `since`.
+    case listen(bus: String, since: UInt32)
     case command(RemoteCommand)
     case notFound
     case methodNotAllowed
@@ -227,7 +229,7 @@ public enum RemoteRoute: Equatable, Sendable {
 
     public var needsPIN: Bool {
         switch self {
-        case .state, .ping, .frame, .command: return true
+        case .state, .ping, .frame, .listen, .command: return true
         default: return false
         }
     }
@@ -249,6 +251,11 @@ public enum RemoteRouter {
             guard r.method == "GET" else { return .methodNotAllowed }
             guard let bus = r.query["bus"], bus == "program" || bus == "preview" else { return .badRequest("bus") }
             return .frame(bus)
+        case "/api/listen":
+            guard r.method == "GET" else { return .methodNotAllowed }
+            let bus = r.query["bus"] ?? "master"
+            guard RemoteAudioRing.buses.contains(bus) else { return .badRequest("bus") }
+            return .listen(bus: bus, since: UInt32(r.query["since"] ?? "0") ?? 0)
         default:
             break
         }
@@ -577,5 +584,62 @@ public enum JSON {
             }
         }
         public var rendered: String { "{" + pairs.map { JSON.string($0.0) + ":" + $0.1 }.joined(separator: ",") + "}" }
+    }
+}
+
+/// Audio Monitor buffer (0.50.0): the last seconds of one mix bus as interleaved 16-bit stereo,
+/// numbered by block so a web page can poll for what it has not played yet.
+public struct RemoteAudioRing: Sendable {
+    public static let buses = ["master", "busA", "busB", "busC", "busD"]
+    public let sampleRate: Int
+    public let channels = 2
+    /// Blocks kept (about `keepSeconds`).
+    private let maxBlocks: Int
+    private var blocks: [(seq: UInt32, pcm: [Int16])] = []
+    private var nextSeq: UInt32 = 1
+
+    public init(sampleRate: Int, keepSeconds: Double = 3, blockFrames: Int = 512) {
+        self.sampleRate = sampleRate
+        maxBlocks = max(4, Int(Double(sampleRate) * keepSeconds / Double(max(blockFrames, 1))))
+    }
+
+    public mutating func append(_ interleaved: [Int16]) {
+        guard !interleaved.isEmpty else { return }
+        blocks.append((nextSeq, interleaved))
+        nextSeq &+= 1
+        if blocks.count > maxBlocks { blocks.removeFirst(blocks.count - maxBlocks) }
+    }
+
+    /// Blocks after `since`. A new listener (0) or one that fell behind gets only the newest
+    /// `startSeconds`, so playback starts close to live. Returns the number to ask for next.
+    public func read(since: UInt32, startSeconds: Double = 0.3) -> (next: UInt32, pcm: [Int16]) {
+        guard let last = blocks.last else { return (since, []) }
+        let first = blocks[0].seq
+        var from: Int
+        if since == 0 || since >= nextSeq || since + 1 < first {
+            // Newest blocks covering about `startSeconds`.
+            var frames = 0
+            from = blocks.count
+            while from > 0 && Double(frames) < startSeconds * Double(sampleRate) {
+                from -= 1
+                frames += blocks[from].pcm.count / channels
+            }
+        } else {
+            from = Int(since + 1 - first)
+        }
+        var out: [Int16] = []
+        for b in blocks[min(from, blocks.count)...] { out.append(contentsOf: b.pcm) }
+        return (last.seq, out)
+    }
+
+    /// Binary body: next sequence, sample rate, channels (UInt32 little-endian), then samples.
+    public static func body(next: UInt32, sampleRate: Int, channels: Int, pcm: [Int16]) -> [UInt8] {
+        var out = [UInt8]()
+        out.reserveCapacity(12 + pcm.count * 2)
+        for v in [next, UInt32(sampleRate), UInt32(channels)] {
+            out.append(UInt8(v & 0xff)); out.append(UInt8((v >> 8) & 0xff)); out.append(UInt8((v >> 16) & 0xff)); out.append(UInt8(v >> 24))
+        }
+        for s in pcm { let u = UInt16(bitPattern: s); out.append(UInt8(u & 0xff)); out.append(UInt8(u >> 8)) }
+        return out
     }
 }

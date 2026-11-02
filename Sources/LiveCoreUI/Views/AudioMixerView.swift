@@ -290,9 +290,10 @@ struct AudioPropertiesSheet: View {
                 eqTab.tabItem { Text(L10n.t("audio.eq")) }
                 gateTab(level).tabItem { Text(L10n.t("audio.gate")) }
                 compTab(level).tabItem { Text(L10n.t("audio.compressor")) }
+                limiterTab(level).tabItem { Text(L10n.t("audio.limiter")) }
                 routing.tabItem { Text(L10n.t("audio.tab.routing")) }
             }
-            .frame(height: 330)
+            .frame(height: 400)
             HStack {
                 Button(L10n.t("audio.reset_dsp")) { resetDSP() }
                 Spacer()
@@ -300,7 +301,7 @@ struct AudioPropertiesSheet: View {
             }
         }
         .padding(16)
-        .frame(width: 500)
+        .frame(width: 560)
     }
 
     private var general: some View {
@@ -325,11 +326,17 @@ struct AudioPropertiesSheet: View {
         Form {
             Toggle(L10n.t("audio.hpf"), isOn: $vm.highPass)
             row("HPF", $vm.highPassHz, 40...300, "%.0f Hz")
+            Toggle(L10n.t("audio.lpf"), isOn: $vm.lowPass)
+            row("LPF", $vm.lowPassHz, 2000...20000, "%.0f Hz")
             Toggle(L10n.t("audio.eq_enable"), isOn: $vm.eq)
-            row("Low 120 Hz", $vm.eqLow, -12...12, "%+.1f dB")
+            EQCurveView(vm: vm).frame(height: 70)
+            row("Low", $vm.eqLow, -12...12, "%+.1f dB")
+            row("Low freq", $vm.eqLowHz, 40...500, "%.0f Hz")
             row("Mid", $vm.eqMid, -12...12, "%+.1f dB")
             row("Mid freq", $vm.eqMidHz, 200...6000, "%.0f Hz")
-            row("High 8 kHz", $vm.eqHigh, -12...12, "%+.1f dB")
+            row("Mid Q", $vm.eqMidQ, 0.3...8, "%.2f")
+            row("High", $vm.eqHigh, -12...12, "%+.1f dB")
+            row("High freq", $vm.eqHighHz, 2000...16000, "%.0f Hz")
         }
         .formStyle(.grouped)
     }
@@ -339,6 +346,9 @@ struct AudioPropertiesSheet: View {
             Toggle(L10n.t("audio.enabled"), isOn: $vm.gate)
             row("Threshold", $vm.gateThreshold, -80...0, "%.0f dB")
             row("Range", $vm.gateRange, -80...0, "%.0f dB")
+            row("Attack", $vm.gateAttack, 0.1...50, "%.1f ms")
+            row("Hold", $vm.gateHold, 0...1000, "%.0f ms")
+            row("Release", $vm.gateRelease, 5...2000, "%.0f ms")
             LabeledContent(L10n.t("audio.state")) {
                 let g = level?.gate ?? 0
                 Text(!vm.gate ? "—" : (g < 1 ? "Open" : String(format: "Closed (−%.0f dB)", g))).monospacedDigit()
@@ -354,8 +364,21 @@ struct AudioPropertiesSheet: View {
             row("Ratio", $vm.compRatio, 1...20, "%.1f:1")
             row("Attack", $vm.compAttack, 0.1...200, "%.1f ms")
             row("Release", $vm.compRelease, 5...2000, "%.0f ms")
+            row("Knee", $vm.compKnee, 0...24, "%.0f dB")
             row("Makeup", $vm.compMakeup, 0...24, "%+.1f dB")
             LabeledContent(L10n.t("audio.gain_reduction")) { Text(String(format: "%.1f dB", level?.gr ?? 0)).monospacedDigit() }
+        }
+        .formStyle(.grouped)
+    }
+
+    /// Per-channel brick-wall limiter after the compressor, before the fader (0.50.0).
+    private func limiterTab(_ level: MeterModel.Level?) -> some View {
+        Form {
+            Toggle(L10n.t("audio.enabled"), isOn: $vm.limiter)
+            row("Ceiling", $vm.limiterCeiling, -20...0, "%.1f dB")
+            row("Release", $vm.limiterRelease, 5...1000, "%.0f ms")
+            LabeledContent(L10n.t("audio.gain_reduction")) { Text(String(format: "%.1f dB", level?.limiter ?? 0)).monospacedDigit() }
+            Text(L10n.t("audio.limiter_help")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
         }
         .formStyle(.grouped)
     }
@@ -389,6 +412,45 @@ struct AudioPropertiesSheet: View {
         vm.highPass = false; vm.highPassHz = 80; vm.eq = false; vm.eqLow = 0; vm.eqMid = 0; vm.eqMidHz = 1000; vm.eqHigh = 0
         vm.gate = false; vm.gateThreshold = -50; vm.gateRange = -80
         vm.compressor = false; vm.compThreshold = -18; vm.compRatio = 3; vm.compAttack = 10; vm.compRelease = 150; vm.compMakeup = 0
+        vm.eqLowHz = 120; vm.eqHighHz = 8000; vm.eqMidQ = 0.9; vm.lowPass = false; vm.lowPassHz = 18000
+        vm.gateAttack = 2; vm.gateHold = 60; vm.gateRelease = 150; vm.compKnee = 6
+        vm.limiter = false; vm.limiterCeiling = -1; vm.limiterRelease = 80
+    }
+}
+
+/// Frequency response of the channel's filters and EQ, 20 Hz–20 kHz, ±15 dB (0.50.0).
+struct EQCurveView: View {
+    @ObservedObject var vm: ChannelVM
+
+    var body: some View {
+        var p = ChannelEQ.Params()
+        p.highPassEnabled = vm.highPass; p.highPassHz = vm.highPassHz
+        p.lowPassEnabled = vm.lowPass; p.lowPassHz = vm.lowPassHz
+        p.eqEnabled = vm.eq
+        p.lowGainDB = vm.eqLow; p.lowHz = vm.eqLowHz
+        p.midGainDB = vm.eqMid; p.midHz = vm.eqMidHz; p.midQ = vm.eqMidQ
+        p.highGainDB = vm.eqHigh; p.highHz = vm.eqHighHz
+        var eq = ChannelEQ(sampleRate: 48_000)
+        eq.update(p)
+        let curve = eq
+        return Canvas { ctx, size in
+            let mid = size.height / 2
+            var grid = Path()
+            grid.move(to: CGPoint(x: 0, y: mid)); grid.addLine(to: CGPoint(x: size.width, y: mid))
+            ctx.stroke(grid, with: .color(Theme.textDim.opacity(0.4)), lineWidth: 0.5)
+            var path = Path()
+            let n = 120
+            for i in 0...n {
+                let x = Double(i) / Double(n)
+                let f = 20 * pow(1000, x)            // 20 Hz … 20 kHz, logarithmic
+                let db = min(max(curve.responseDB(at: f), -15), 15)
+                let pt = CGPoint(x: x * size.width, y: mid - db / 15 * mid)
+                if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
+            }
+            ctx.stroke(path, with: .color(Theme.accent), lineWidth: 1.5)
+        }
+        .background(Theme.panelRaised.opacity(0.5))
+        .clipShape(RoundedRectangle(cornerRadius: 4))
     }
 }
 

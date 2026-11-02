@@ -67,11 +67,26 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-259 | Warna › Generator LUT: pilih preset, geser slider, Simpan & Terapkan; lalu Batal di sesi lain | Input berubah live; Simpan menaruh .cube di pustaka; Batal mengembalikan LUT sebelumnya |
 | T-260 | Generator LUT › Ekspor .cube, buka di DaVinci Resolve | Resolve menerima file, tampilan sama |
 | T-261 | Help › Bantuan LiveCore Studio (⌘?) dengan bahasa Indonesia, lalu Inggris | Topik dan isi mengikuti bahasa; pencarian jalan |
-| T-262 | Menu LiveCore Studio › Tentang | Ikon, versi 0.49.1 (62), deskripsi singkat, "Dibuat oleh Munawar Tamimi" |
+| T-262 | Menu LiveCore Studio › Tentang | Ikon, versi 0.50.0 (63), deskripsi singkat, "Dibuat oleh Munawar Tamimi" |
 | T-263 | Drop saat buka app (0.49.0) | Buka app tanpa input, tunggu 30 dtk | Drop tetap 0 (pemanasan 5 dtk pertama tidak dihitung, dicatat di log); klik angka Drop → kembali 0 |
 | T-264 | Loop default off | Tambah 1 video dan 1 playlist | Repeat/Loop mati untuk keduanya |
 | T-265 | Menu Program | Klik 2 jari di monitor Program | Menu Screenshot (PNG + banner) dan Grab as Still (PNG jadi input gambar baru) |
 | T-266 | OUTPUTS di bawah | Lihat top bar dan dock bawah | Tombol FOTO tidak ada; OUTPUTS ada di dock bawah (bekas FOTO), tidak di atas; ⇧⌘O tetap membuka |
+
+## AZ. Tes manual build 0.50.0
+
+| ID | Area | Langkah | Hasil yang diharapkan |
+|---|---|---|---|
+| T-267 | Bacaan di kanan bawah | Lihat bar atas dan dock bawah | CPU, GPU, RAM, FPS, Drop, status STREAM dan REC ada di kanan bawah dock, tidak lagi di bar atas; klik Drop = reset |
+| T-268 | Realtime Transcription | + Input › Grafis › Realtime Transcription (ElevenLabs), isi API key, Apply, bicara ke mic yang masuk Program | Status "Live (ElevenLabs)"; teks muncul < 1 dtk, kalimat dikunci setelah jeda; hilang setelah 4 dtk diam |
+| T-269 | Transcription error | Isi API key salah | Input menampilkan pesan "ElevenLabs refused the API key"; app tidak macet |
+| T-270 | Transcription koneksi | Saat transkripsi jalan, matikan Wi-Fi 10 dtk lalu nyalakan | Tersambung lagi sendiri; teks muncul lagi |
+| T-271 | Audio advanced | Properti audio channel › EQ: geser Low freq / Mid Q / High freq, nyalakan LPF 4 kHz | Kurva EQ berubah; suara mengikuti tanpa klik |
+| T-272 | Gate & kompresor | Gate: Attack/Hold/Release; Kompresor: Knee | Perilaku gate/kompresor berubah sesuai |
+| T-273 | Limiter channel | Tab Limiter: nyalakan, Ceiling −6 dB, teriak ke mic | Meter channel tidak lewat −6 dB; GR terlihat |
+| T-274 | Simpan proyek | Ubah semua setelan advanced, simpan, buka lagi | Semua nilai kembali |
+| T-275 | Audio Monitor web | Web Controller di HP › Mixer audio › 🎧 Dengar, pilih Master lalu Bus A | Suara mix terdengar di HP (≈0,3–0,5 dtk terlambat), tanpa putus di Wi-Fi yang sama; volume slider bekerja |
+| T-276 | Audio Monitor tunnel | Sama, lewat Cloudflare tunnel (4G) | Terdengar; boleh sesekali patah jika sinyal lemah |
 
 ## AY. Tes manual build 0.47.0
 

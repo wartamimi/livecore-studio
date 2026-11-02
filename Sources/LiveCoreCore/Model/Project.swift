@@ -536,9 +536,29 @@ public struct ProjectAudioChannel: Codable, Equatable, Sendable {
     /// Ducking (since 0.37.0): this channel's level turns the ducked channels down / it is turned down.
     public var duckTrigger: Bool?
     public var duckTarget: Bool?
+    /// Advanced audio settings (since 0.50.0); absent = defaults.
+    public var advanced: ProjectAudioAdvanced?
     public init(deviceUniqueID: String? = nil, inputID: InputID? = nil, name: String) {
         self.deviceUniqueID = deviceUniqueID; self.inputID = inputID; self.name = name
     }
+}
+
+/// Advanced channel settings (0.50.0): EQ shelf frequencies and mid Q, low-pass filter, gate
+/// timing, compressor knee and a per-channel limiter. Every field is optional (nil = default).
+public struct ProjectAudioAdvanced: Codable, Equatable, Sendable {
+    public var eqLowHz: Float?
+    public var eqHighHz: Float?
+    public var eqMidQ: Float?
+    public var lowPassEnabled: Bool?
+    public var lowPassHz: Float?
+    public var gateAttackMs: Float?
+    public var gateHoldMs: Float?
+    public var gateReleaseMs: Float?
+    public var compKneeDB: Float?
+    public var limiterEnabled: Bool?
+    public var limiterCeilingDB: Float?
+    public var limiterReleaseMs: Float?
+    public init() {}
 }
 
 /// Relative-path helper for media references (pure string logic on "/"-separated POSIX paths).

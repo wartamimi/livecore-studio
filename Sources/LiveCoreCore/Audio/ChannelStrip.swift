@@ -36,6 +36,19 @@ public final class ChannelControls: @unchecked Sendable {
     public let eqHighDB = AtomicFloat(0)
     public let compAttackMs = AtomicFloat(10)
     public let compReleaseMs = AtomicFloat(150)
+    // Advanced audio settings (0.50.0).
+    public let eqLowHz = AtomicFloat(120)
+    public let eqHighHz = AtomicFloat(8_000)
+    public let eqMidQ = AtomicFloat(0.9)
+    public let lowPassEnabled = AtomicBool(false)
+    public let lowPassHz = AtomicFloat(18_000)
+    public let gateAttackMs = AtomicFloat(2)
+    public let gateHoldMs = AtomicFloat(60)
+    public let gateReleaseMs = AtomicFloat(150)
+    public let compKneeDB = AtomicFloat(6)
+    public let limiterEnabled = AtomicBool(false)
+    public let limiterCeilingDB = AtomicFloat(-1)
+    public let limiterReleaseMs = AtomicFloat(80)
     /// `ChannelMode` raw value (stored as a float so it shares the lock-free cell type).
     public let channelMode = AtomicFloat(0)
     public let invertPhase = AtomicBool(false)
@@ -53,6 +66,7 @@ public final class ChannelControls: @unchecked Sendable {
     public let peakR = AtomicFloat(0)
     public let gainReductionDB = AtomicFloat(0)
     public let gateReductionDB = AtomicFloat(0)
+    public let limiterReductionDB = AtomicFloat(0)
 
     public init() {}
 }
@@ -168,6 +182,7 @@ public struct ChannelStripDSP: Sendable {
     private var compressor: Compressor
     private var gate: NoiseGate
     private var eq: ChannelEQ
+    private var limiter: Limiter
     private var delay: StereoDelay
     /// AFV gain 0...1, moved toward the gate's target at the rate set by `afvFadeSeconds`.
     private var afvGain: Float = 1
@@ -181,6 +196,7 @@ public struct ChannelStripDSP: Sendable {
         self.delay = StereoDelay(capacity: Int(sampleRate * Self.maxDelayMs / 1000) + 1)
         self.compressor = Compressor(sampleRate: sampleRate)
         self.gate = NoiseGate(sampleRate: sampleRate)
+        self.limiter = Limiter(sampleRate: sampleRate)
         self.eq = ChannelEQ(sampleRate: Double(sampleRate))
     }
 
@@ -202,14 +218,23 @@ public struct ChannelStripDSP: Sendable {
         eqp.midGainDB = Double(controls.eqMidDB.value)
         eqp.midHz = Double(controls.eqMidHz.value)
         eqp.highGainDB = Double(controls.eqHighDB.value)
+        eqp.lowHz = Double(min(max(controls.eqLowHz.value, 30), 1_000))
+        eqp.highHz = Double(min(max(controls.eqHighHz.value, 1_000), 18_000))
+        eqp.midQ = Double(min(max(controls.eqMidQ.value, 0.2), 10))
+        eqp.lowPassEnabled = controls.lowPassEnabled.value
+        eqp.lowPassHz = Double(min(max(controls.lowPassHz.value, 1_000), 20_000))
         eq.update(eqp)
-        if gateOn || compOn || eqp.highPassEnabled || eqp.eqEnabled {
+        let limOn = controls.limiterEnabled.value
+        if gateOn || compOn || limOn || eqp.highPassEnabled || eqp.lowPassEnabled || eqp.eqEnabled {
             // Processing sees the trimmed signal, so thresholds are independent of the fader.
             if trim != 1 { for i in 0..<frames { left[i] *= trim; right[i] *= trim } }
             eq.processHighPass(left: left, right: right, frames: frames)
             if gateOn {
                 gate.thresholdDB = controls.gateThresholdDB.value
                 gate.rangeDB = controls.gateRangeDB.value
+                gate.attackSeconds = min(max(controls.gateAttackMs.value, 0.1), 100) / 1000
+                gate.holdSeconds = min(max(controls.gateHoldMs.value, 0), 2000) / 1000
+                gate.releaseSeconds = min(max(controls.gateReleaseMs.value, 5), 3000) / 1000
                 gate.process(left: left, right: right, frames: frames)
                 controls.gateReductionDB.value = gate.gainReductionDB
             } else {
@@ -220,6 +245,7 @@ public struct ChannelStripDSP: Sendable {
                 compressor.thresholdDB = controls.compThresholdDB.value
                 compressor.ratio = max(1, controls.compRatio.value)
                 compressor.makeupDB = controls.compMakeupDB.value
+                compressor.kneeDB = min(max(controls.compKneeDB.value, 0), 24)
                 compressor.attackSeconds = min(max(controls.compAttackMs.value, 0.1), 200) / 1000
                 compressor.releaseSeconds = min(max(controls.compReleaseMs.value, 5), 2000) / 1000
                 compressor.process(left: left, right: right, frames: frames)
@@ -227,10 +253,20 @@ public struct ChannelStripDSP: Sendable {
             } else {
                 controls.gainReductionDB.value = 0
             }
+            // Brick-wall safety per channel, before the fader (0.50.0).
+            if limOn {
+                limiter.ceilingDB = min(max(controls.limiterCeilingDB.value, -30), 0)
+                limiter.releaseSeconds = min(max(controls.limiterReleaseMs.value, 5), 2000) / 1000
+                limiter.process(left: left, right: right, frames: frames)
+                controls.limiterReductionDB.value = limiter.gainReductionDB
+            } else {
+                controls.limiterReductionDB.value = 0
+            }
             ramp.apply(target: muted ? 0 : AudioMath.dbToLinear(controls.faderDB.value), left: left, right: right, frames: frames)
         } else {
             controls.gainReductionDB.value = 0
             controls.gateReductionDB.value = 0
+            controls.limiterReductionDB.value = 0
             ramp.apply(target: muted ? 0 : trim * AudioMath.dbToLinear(controls.faderDB.value), left: left, right: right, frames: frames)
         }
         applyAFV(left: left, right: right, frames: frames)

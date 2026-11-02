@@ -1499,3 +1499,15 @@
 "program.screenshot" = "Screenshot";
 "program.grab_still" = "Grab as Still";
 "top.dropped_reset" = "Dropped render frames since launch (the first 5 s of warm-up are not counted). Click to reset to 0.";
+"audio.lpf" = "Low-pass filter";
+"audio.limiter" = "Limiter";
+"audio.limiter_help" = "Hard ceiling for this channel after the compressor, before the fader. The Program limiter stays on top.";
+"transcription.add" = "Realtime Transcription (ElevenLabs)";
+"transcription.title" = "Realtime Transcription";
+"transcription.engine" = "Engine";
+"transcription.apple" = "Apple speech recognition";
+"transcription.auto" = "Detect automatically";
+"transcription.key" = "ElevenLabs API key";
+"transcription.key_stored" = "Stored in Keychain (type to replace)";
+"transcription.note" = "Program sound is sent to ElevenLabs over the internet with your own API key and uses your ElevenLabs quota. Captions appear as a transparent overlay; put this input on an overlay channel.";
+"transcription.live" = "Live (ElevenLabs)";

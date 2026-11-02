@@ -31,17 +31,22 @@ public final class SubtitleSource: VideoSource {
     private var running = false
     private var clearTimer: Timer?
     private let renderQueue = DispatchQueue(label: "livecore.subtitles", qos: .userInitiated)
+    /// ElevenLabs realtime transcription (0.50.0), when `style.provider == .elevenLabs`.
+    private var eleven: ElevenLabsTranscriber?
+    private let mixRate: Int
 
     init(id: InputID, style: SubtitleStyle, outputSize: PixelSize, sampleRate: Double) {
         self.id = id; self.style = style; self.outputSize = outputSize
+        mixRate = Int(sampleRate)
         format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
+        if style.provider == .elevenLabs { name = "Realtime Transcription" }
         render([])
     }
 
     public var transcript: String { lock.withLock { text } }
 
     public func update(_ s: SubtitleStyle) {
-        let restart = s.locale != style.locale || s.allowServer != style.allowServer
+        let restart = s.locale != style.locale || s.allowServer != style.allowServer || s.provider != style.provider
         style = s
         if restart { stop(); start() } else { redraw() }
     }
@@ -54,8 +59,13 @@ public final class SubtitleSource: VideoSource {
         }
     }
 
+    /// Restarts with a new ElevenLabs API key (stored in the Keychain by the caller).
+    public func reconnect() { stop(); start() }
+
     public func start() {
         running = true
+        startClearTimer()
+        if style.provider == .elevenLabs { return startElevenLabs() }
         SFSpeechRecognizer.requestAuthorization { [weak self] auth in
             guard let self, self.running else { return }
             guard auth == .authorized else {
@@ -64,6 +74,9 @@ public final class SubtitleSource: VideoSource {
             }
             DispatchQueue.main.async { self.begin() }
         }
+    }
+
+    private func startClearTimer() {
         DispatchQueue.main.async { [weak self] in
             self?.clearTimer?.invalidate()
             self?.clearTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
@@ -71,10 +84,35 @@ public final class SubtitleSource: VideoSource {
                 // Captions disappear after 4 s of silence.
                 if Date().timeIntervalSince(self.lock.withLock({ self.lastSpeech })) > 4, !self.transcript.isEmpty {
                     self.lock.withLock { self.text = "" }
+                    self.lock.withLock({ self.eleven })?.resetText()
                     self.redraw()
                 }
             }
         }
+    }
+
+    private func startElevenLabs() {
+        onDevice = false
+        guard let key = (try? KeychainStore.load(account: ElevenLabsRealtime.keychainAccount)) ?? nil, !key.isEmpty else {
+            return setStatus(.error("Enter your ElevenLabs API key in this input's settings."))
+        }
+        guard let t = ElevenLabsTranscriber(apiKey: key, languageCode: style.languageCode, mixRate: mixRate) else {
+            return setStatus(.error("ElevenLabs cannot take audio at \(mixRate) Hz. Use 48 kHz or 44.1 kHz in Settings › Audio."))
+        }
+        t.onText = { [weak self] text in
+            guard let self else { return }
+            self.lock.withLock { self.text = text; self.lastSpeech = Date() }
+            self.redraw()
+        }
+        t.onStatus = { [weak self] st in
+            switch st {
+            case .connecting: self?.setStatus(.starting)
+            case .live: self?.setStatus(.live)
+            case let .error(msg): self?.setStatus(.error(msg))
+            }
+        }
+        lock.withLock { eleven = t }
+        t.start()
     }
 
     private func begin() {
@@ -144,6 +182,8 @@ public final class SubtitleSource: VideoSource {
 
     public func stop() {
         running = false
+        let e: ElevenLabsTranscriber? = lock.withLock { let e = eleven; eleven = nil; return e }
+        e?.stop()
         task?.cancel()
         task = nil
         lock.withLock { request?.endAudio(); request = nil }
@@ -153,6 +193,7 @@ public final class SubtitleSource: VideoSource {
     /// Program sound (audio thread). Mono for the recogniser; long requests are ended so the
     /// running transcript stays short.
     func append(_ chunk: ProgramAudioPump.Chunk) {
+        if let e = lock.withLock({ eleven }) { return e.append(left: chunk.left, right: chunk.right) }
         guard let req = lock.withLock({ request }), chunk.frames > 0,
               let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(chunk.frames)) else { return }
         buf.frameLength = AVAudioFrameCount(chunk.frames)
