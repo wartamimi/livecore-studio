@@ -1504,8 +1504,8 @@
 "audio.limiter_help" = "Batas atas keras untuk channel ini setelah kompresor, sebelum fader. Limiter Program tetap berlaku.";
 "transcription.add" = "Realtime Transcription";
 "transcription.title" = "Realtime Transcription";
-"transcription.engine" = "Mesin";
-"transcription.apple" = "Pengenalan suara Apple";
+"transcription.engine" = "Model";
+"transcription.apple" = "Apple (di Mac / server Apple)";
 "transcription.auto" = "Deteksi otomatis";
 "transcription.key" = "API key ElevenLabs";
 "transcription.key_stored" = "Tersimpan di Keychain (ketik untuk mengganti)";

@@ -1504,8 +1504,8 @@
 "audio.limiter_help" = "Hard ceiling for this channel after the compressor, before the fader. The Program limiter stays on top.";
 "transcription.add" = "Realtime Transcription";
 "transcription.title" = "Realtime Transcription";
-"transcription.engine" = "Engine";
-"transcription.apple" = "Apple speech recognition";
+"transcription.engine" = "Model";
+"transcription.apple" = "Apple (on-device / Apple servers)";
 "transcription.auto" = "Detect automatically";
 "transcription.key" = "ElevenLabs API key";
 "transcription.key_stored" = "Stored in Keychain (type to replace)";

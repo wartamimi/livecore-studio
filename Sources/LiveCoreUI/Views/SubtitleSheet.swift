@@ -18,15 +18,15 @@ struct SubtitleSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(style.provider == .elevenLabs ? L10n.t("transcription.title") : L10n.t("subtitles.title")).font(.headline)
+            Text(L10n.t("transcription.title")).font(.headline)
             Form {
-                // Live subtitles (AI) left the input menu in 0.50.3; only inputs from older projects
-                // still offer the Apple engine.
-                if model.subtitleSource(input)?.style.provider == .apple {
+                // Model: Apple speech recognition (on this Mac / Apple servers) or ElevenLabs (0.50.4).
                 Picker(L10n.t("transcription.engine"), selection: $style.provider) {
                     Text(L10n.t("transcription.apple")).tag(SubtitleProvider.apple)
                     Text("ElevenLabs (Scribe realtime)").tag(SubtitleProvider.elevenLabs)
                 }
+                .onChange(of: style.provider) { p in
+                    if p == .apple && style.locale == "auto" { style.locale = "id-ID" }
                 }
                 Picker(L10n.t("subtitles.language"), selection: $style.locale) {
                     if style.provider == .elevenLabs { Text(L10n.t("transcription.auto")).tag("auto") }
