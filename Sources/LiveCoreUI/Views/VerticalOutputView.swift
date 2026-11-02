@@ -10,7 +10,7 @@ import LiveCoreEngine
 struct VerticalOutputView: View {
     @EnvironmentObject var model: AppModel
     @State private var key = ""
-    private static let ci = CIContext(options: [.workingColorSpace: NSNull()])
+    private static var ci: CIContext { SharedCI.passthrough }
 
     private var v: VerticalSettings { model.verticalSettings }
     private func set(_ change: (inout VerticalSettings) -> Void) {

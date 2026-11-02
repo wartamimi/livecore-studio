@@ -374,7 +374,7 @@ extension AppModel {
         let scale = min(1, Double(maxWidth) / ci.extent.width)
         ci = ci.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         let space = CGColorSpace(name: CGColorSpace.sRGB)!
-        guard let img = CIContext(options: [.workingColorSpace: space]).createCGImage(ci, from: ci.extent) else { return nil }
+        guard let img = SharedCI.passthrough.createCGImage(ci, from: ci.extent) else { return nil }
         // Pixels for sampling: the same still drawn into a BGRA bitmap (row 0 = top of the picture).
         let w = img.width, h = img.height
         var px = [UInt8](repeating: 0, count: w * h * 4)
@@ -411,7 +411,7 @@ extension AppModel {
         let ci = CIImage(cvPixelBuffer: pb)
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            guard let cg = CIContext().createCGImage(ci, from: ci.extent),
+            guard let cg = SharedCI.standard.createCGImage(ci, from: ci.extent),
                   let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
                 report("Cannot create snapshot image."); return nil
             }

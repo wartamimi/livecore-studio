@@ -222,6 +222,8 @@ public enum RemoteRoute: Equatable, Sendable {
     case frame(String)
     /// Audio Monitor (0.50.0): PCM of a mix bus after sequence number `since`.
     case listen(bus: String, since: UInt32)
+    /// Audio Monitor push (0.53.0): one long response that streams length-prefixed PCM blocks.
+    case listenStream(bus: String)
     case command(RemoteCommand)
     case notFound
     case methodNotAllowed
@@ -229,7 +231,7 @@ public enum RemoteRoute: Equatable, Sendable {
 
     public var needsPIN: Bool {
         switch self {
-        case .state, .ping, .frame, .listen, .command: return true
+        case .state, .ping, .frame, .listen, .listenStream, .command: return true
         default: return false
         }
     }
@@ -255,6 +257,7 @@ public enum RemoteRouter {
             guard r.method == "GET" else { return .methodNotAllowed }
             let bus = r.query["bus"] ?? "master"
             guard RemoteAudioRing.buses.contains(bus) else { return .badRequest("bus") }
+            if r.query["stream"] == "1" { return .listenStream(bus: bus) }
             return .listen(bus: bus, since: UInt32(r.query["since"] ?? "0") ?? 0)
         default:
             break

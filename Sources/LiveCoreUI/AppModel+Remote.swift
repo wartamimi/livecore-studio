@@ -187,7 +187,7 @@ extension AppModel {
     private static let remoteEncoding = Locked(false)
 
     private static let remoteEncodeQueue = DispatchQueue(label: "studio.livecore.remote.jpeg", qos: .userInitiated)
-    private static let remoteCI = CIContext(options: [.cacheIntermediates: false])
+    private static var remoteCI: CIContext { SharedCI.standard }
 
     /// 640 px wide JPEG (quality 0.55).
     static func remoteJPEG(_ pb: CVPixelBuffer, width: CGFloat = 640) -> [UInt8]? {

@@ -58,6 +58,7 @@ public final class LiveCallSource: NSObject, VideoSource, WKNavigationDelegate {
     private var timer: Timer?
     private var returnTimer: Timer?
     private var snapshotInFlight = false
+    private var idleTick = 0
     private let slot = FrameSlot()
     private var activity: NSObjectProtocol?
     private var pageReady = false
@@ -69,7 +70,7 @@ public final class LiveCallSource: NSObject, VideoSource, WKNavigationDelegate {
     private var resamplerRate: Double = 0
     private let returnQueue = DispatchQueue(label: "studio.livecore.lcslive.return", qos: .userInitiated)
     private var returnBusy = false
-    private static let ci = CIContext(options: [.cacheIntermediates: false])
+    private static var ci: CIContext { SharedCI.standard }
 
     public init(id: InputID, config: ProjectLiveCall, sampleRate: Double) {
         self.id = id
@@ -246,12 +247,12 @@ public final class LiveCallSource: NSObject, VideoSource, WKNavigationDelegate {
             }
         }
         if on, returnTimer == nil {
-            var tick = 0
-            let t = Timer(timeInterval: 0.04, repeats: true) { [weak self] _ in
+            // 80 ms ticks: one audio block + one Program frame (≈12 fps) per tick, so half as
+            // many main-thread JavaScript calls as 40 ms audio ticks.
+            let t = Timer(timeInterval: 0.08, repeats: true) { [weak self] _ in
                 guard let self else { return }
-                tick += 1
                 self.sendReturnAudio()
-                if tick % 2 == 0 { self.sendReturnFrame() }
+                self.sendReturnFrame()
             }
             RunLoop.main.add(t, forMode: .common)
             returnTimer = t
@@ -309,10 +310,19 @@ public final class LiveCallSource: NSObject, VideoSource, WKNavigationDelegate {
 
     private func snapshot() {
         guard let wv = webView, !snapshotInFlight else { return }
+        // No guest on the line: the page shows a still "waiting" card, so about 1 fps is enough.
+        if !isConnected {
+            idleTick += 1
+            if idleTick % max(config.fps, 1) != 1, slot.get() != nil { return }
+        } else {
+            idleTick = 0
+        }
         snapshotInFlight = true
         let sc = WKSnapshotConfiguration()
         sc.afterScreenUpdates = false
-        sc.snapshotWidth = NSNumber(value: Double(config.width) / Double(wv.window?.backingScaleFactor ?? 1))
+        // WebRTC guest video is rarely above 720p; capturing wider only costs CPU (the compositor scales).
+        let captureWidth = min(config.width, 1280)
+        sc.snapshotWidth = NSNumber(value: Double(captureWidth) / Double(wv.window?.backingScaleFactor ?? 1))
         wv.takeSnapshot(with: sc) { [weak self] image, error in
             guard let self else { return }
             self.snapshotInFlight = false

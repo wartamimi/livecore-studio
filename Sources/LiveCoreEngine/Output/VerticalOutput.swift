@@ -32,11 +32,7 @@ public final class VerticalOutput {
     private let latest = Locked<CVPixelBuffer?>(nil)
 
     public init() {
-        if let dev = MTLCreateSystemDefaultDevice() {
-            ci = CIContext(mtlDevice: dev, options: [.cacheIntermediates: false, .workingColorSpace: NSNull()])
-        } else {
-            ci = CIContext(options: [.workingColorSpace: NSNull()])
-        }
+        ci = SharedCI.passthrough
     }
 
     public var settings: VerticalSettings {

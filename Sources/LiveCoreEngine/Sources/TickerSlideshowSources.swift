@@ -471,7 +471,7 @@ public final class SlideshowSource: VideoSource {
         blurCache[i] = cg
         return cg
     }
-    private static let ci = CIContext(options: [.cacheIntermediates: false])
+    private static var ci: CIContext { SharedCI.standard }
 
     private func rescanFolder() {
         guard let dir else { return }

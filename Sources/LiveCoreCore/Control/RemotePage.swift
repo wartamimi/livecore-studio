@@ -508,7 +508,7 @@ function renderAudio(){
 }
 
 /* Buttons */
-// Audio Monitor (0.50.0): PCM pulled from /api/listen and played with Web Audio.
+// Audio Monitor: PCM pushed over one streaming response (0.53.0); polling /api/listen is the fallback.
 let aCtx=null,aGain=null,listenGen=null,nextSeq=0,playT=0;
 function stopListen(){listenGen=null;nextSeq=0;const b=$("lsn");if(b){b.classList.remove("on");b.textContent=L.listen}$("lst").textContent="";if(aCtx){aCtx.close();aCtx=null}}
 function startListen(){
@@ -516,7 +516,41 @@ function startListen(){
   aCtx=new (window.AudioContext||window.webkitAudioContext)();
   aGain=aCtx.createGain();aGain.gain.value=+$("lvol").value;aGain.connect(aCtx.destination);
   playT=0;const gen=listenGen={};$("lsn").classList.add("on");$("lsn").textContent=L.listenStop;$("lst").textContent=L.listening;
-  listenLoop(gen);
+  listenStream(gen);
+}
+function playBlock(b){
+  const dv=new DataView(b);
+  nextSeq=dv.getUint32(0,true);const rate=dv.getUint32(4,true),ch=dv.getUint32(8,true);
+  const n=Math.floor((b.byteLength-12)/2/ch);
+  if(n>0&&aCtx){
+    const buf=aCtx.createBuffer(ch,n,rate);
+    for(let c=0;c<ch;c++){const d=buf.getChannelData(c);for(let i=0;i<n;i++)d[i]=dv.getInt16(12+(i*ch+c)*2,true)/32768}
+    const src=aCtx.createBufferSource();src.buffer=buf;src.connect(aGain);
+    const now=aCtx.currentTime;
+    if(playT<now+0.03||playT>now+1.2)playT=now+0.25;
+    src.start(playT);playT+=buf.duration;
+  }
+}
+async function listenStream(gen){
+  let got=false;
+  try{
+    const r=await api("/api/listen?stream=1&bus="+$("lbus").value);
+    if(!r.body||!r.body.getReader)throw new Error("no stream");
+    const rd=r.body.getReader();let acc=new Uint8Array(0);
+    while(listenGen===gen){
+      const x=await rd.read();if(x.done)break;
+      const m=new Uint8Array(acc.length+x.value.length);m.set(acc);m.set(x.value,acc.length);acc=m;
+      while(acc.length>=4){
+        const len=acc[0]|acc[1]<<8|acc[2]<<16|acc[3]<<24;
+        if(acc.length<4+len)break;
+        got=true;playBlock(acc.slice(4,4+len).buffer);acc=acc.slice(4+len);
+      }
+    }
+    try{rd.cancel()}catch(e){}
+  }catch(e){}
+  if(listenGen!==gen)return;
+  // Stream ended: reconnect if it was working, otherwise fall back to polling.
+  if(got)setTimeout(()=>listenStream(gen),300);else listenLoop(gen);
 }
 async function listenLoop(gen){
   if(listenGen!==gen)return;
@@ -524,26 +558,14 @@ async function listenLoop(gen){
   try{
     const r=await api("/api/listen?bus="+$("lbus").value+"&since="+nextSeq);
     if(listenGen!==gen)return;
-    if(r.status===200){
-      const b=await r.arrayBuffer(),dv=new DataView(b);
-      nextSeq=dv.getUint32(0,true);const rate=dv.getUint32(4,true),ch=dv.getUint32(8,true);
-      const n=Math.floor((b.byteLength-12)/2/ch);
-      if(n>0&&aCtx){
-        const buf=aCtx.createBuffer(ch,n,rate);
-        for(let c=0;c<ch;c++){const d=buf.getChannelData(c);for(let i=0;i<n;i++)d[i]=dv.getInt16(12+(i*ch+c)*2,true)/32768}
-        const src=aCtx.createBufferSource();src.buffer=buf;src.connect(aGain);
-        const now=aCtx.currentTime;
-        if(playT<now+0.03||playT>now+1.2)playT=now+0.25;
-        src.start(playT);playT+=buf.duration;
-      }
-    }
+    if(r.status===200)playBlock(await r.arrayBuffer());
   }catch(e){if(listenGen!==gen)return}
   setTimeout(()=>listenLoop(gen),Math.max(0,120-(performance.now()-t0)));
 }
 $("lsn").onclick=()=>{if(listenGen)stopListen();else startListen()};
 $("lsn").textContent=L.listen;
 $("lvol").oninput=()=>{if(aGain)aGain.gain.value=+$("lvol").value};
-$("lbus").onchange=()=>{nextSeq=0;playT=0};
+$("lbus").onchange=()=>{nextSeq=0;playT=0;if(listenGen)startListen()};
 $("out").onclick=()=>{store.set("");pin="";signedOut("")};
 $("cut").onclick=()=>{if(st&&st.preview){const p=st.program;st.program=st.preview;st.preview=p;render()}send("/api/cut")};
 $("auto").onclick=()=>send("/api/auto");

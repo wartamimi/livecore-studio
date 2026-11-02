@@ -43,6 +43,10 @@ public final class RemoteServer: @unchecked Sendable {
     /// Audio Monitor (0.50.0): one ring per bus, and when each bus was last asked for.
     private var audioRings: [String: RemoteAudioRing] = [:]
     private var lastListen: [String: Double] = [:]
+    private var audioStreams = 0
+    /// Open Audio Monitor streams allowed at once (each holds one connection slot).
+    public static let maxAudioStreams = 4
+    static let streamMarker = "X-LCS-Audio-Stream"
     private let requestedPort: Int
     private var boundPort = 0
     private let commandQueue: DispatchQueue
@@ -207,7 +211,50 @@ public final class RemoteServer: @unchecked Sendable {
             }
             break
         }
-        let out = response.serialized()
+        if let bus = response.headers.first(where: { $0.0 == Self.streamMarker })?.1 {
+            streamAudio(c, bus: bus)
+            return
+        }
+        _ = Self.writeAll(c, response.serialized())
+    }
+
+    /// Audio Monitor push: keeps the connection open and writes each new run of PCM as
+    /// [UInt32 LE length][listen body]. An empty body every second doubles as a keep-alive and
+    /// is how a closed tab is noticed (the write fails).
+    private func streamAudio(_ c: Int32, bus: String) {
+        defer { lock.sync { audioStreams -= 1 } }
+        let head = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nCache-Control: no-store\r\n"
+            + "X-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n"
+        guard Self.writeAll(c, Array(head.utf8)) else { return }
+        var since: UInt32 = 0
+        var lastWrite = Self.now()
+        let end = Self.now() + 4 * 3600
+        while isRunning && Self.now() < end {
+            let now = Self.now()
+            let r: (next: UInt32, pcm: [Int16], rate: Int)? = lock.sync {
+                lastListen[bus] = now
+                guard let ring = audioRings[bus] else { return nil }
+                let x = ring.read(since: since)
+                return (x.next, x.pcm, ring.sampleRate)
+            }
+            var body: [UInt8]?
+            if let r, !r.pcm.isEmpty {
+                since = r.next
+                body = RemoteAudioRing.body(next: r.next, sampleRate: r.rate, channels: 2, pcm: r.pcm)
+            } else if now - lastWrite > 1 {
+                body = RemoteAudioRing.body(next: since, sampleRate: r?.rate ?? 24_000, channels: 2, pcm: [])
+            }
+            if let body {
+                let n = UInt32(body.count)
+                let frame = [UInt8(n & 0xff), UInt8((n >> 8) & 0xff), UInt8((n >> 16) & 0xff), UInt8(n >> 24)] + body
+                guard Self.writeAll(c, frame) else { return }
+                lastWrite = now
+            }
+            usleep(40_000)
+        }
+    }
+
+    private static func writeAll(_ c: Int32, _ out: [UInt8]) -> Bool {
         var off = 0
         while off < out.count {
             let n = out[off...].withUnsafeBytes { b -> Int in
@@ -217,9 +264,10 @@ public final class RemoteServer: @unchecked Sendable {
                 return send(c, b.baseAddress, b.count, 0)
                 #endif
             }
-            if n <= 0 { return }
+            if n <= 0 { return false }
             off += n
         }
+        return true
     }
 
     /// Request → response (internal for tests).
@@ -272,6 +320,15 @@ public final class RemoteServer: @unchecked Sendable {
             }
             return HTTPResponse(status: 200, contentType: "application/octet-stream",
                                 body: RemoteAudioRing.body(next: r.next, sampleRate: r.rate, channels: 2, pcm: r.pcm))
+        case let .listenStream(bus):
+            let ok: Bool = lock.sync {
+                guard audioStreams < Self.maxAudioStreams else { return false }
+                audioStreams += 1
+                lastListen[bus] = Self.now()
+                return true
+            }
+            guard ok else { return .error(503, "too many listeners") }
+            return HTTPResponse(status: 200, contentType: "application/octet-stream", headers: [(Self.streamMarker, bus)])
         case let .command(cmd):
             let handler = onCommand
             commandQueue.async { handler(cmd) }

@@ -96,7 +96,7 @@ enum LiveCallPages {
         const buf=ac.createBuffer(2,n,ac.sampleRate),L=buf.getChannelData(0),R=buf.getChannelData(1);
         for(let i=0;i<n;i++){L[i]=p[2*i]/32768;R[i]=p[2*i+1]/32768}
         const x=ac.createBufferSource();x.buffer=buf;x.connect(dest);
-        const now=ac.currentTime;if(t0<now+0.02||t0>now+0.4)t0=now+0.08;
+        const now=ac.currentTime;if(t0<now+0.03||t0>now+0.5)t0=now+0.14;
         x.start(t0);t0+=n/ac.sampleRate;
       }
     };
