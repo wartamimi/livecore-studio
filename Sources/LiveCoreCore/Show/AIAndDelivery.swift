@@ -154,13 +154,32 @@ public enum ElevenLabsRealtime {
         return sampleRates.contains(mixRate) ? mixRate : nil
     }
 
-    public static func url(sampleRate: Int, languageCode: String?) -> URL? {
+    /// Single-use token for one WebSocket session (expires after 15 minutes, consumed on use).
+    public static var tokenURL: URL { URL(string: "https://\(host)/v1/single-use-token/realtime_scribe")! }
+
+    /// `token` from the token endpoint's JSON, or the service's error text.
+    public static func parseToken(_ data: Data) -> String? {
+        (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["token"] as? String
+    }
+
+    /// Readable error from an HTTP error body ({"detail": {"message": …}} or {"detail": "…"}).
+    public static func errorText(_ data: Data) -> String {
+        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let d = obj["detail"] as? [String: Any] { return (d["message"] as? String) ?? (d["status"] as? String) ?? "" }
+            if let d = obj["detail"] as? String { return d }
+            if let list = obj["detail"] as? [[String: Any]] { return list.compactMap { $0["msg"] as? String }.joined(separator: "; ") }
+        }
+        return String(decoding: data.prefix(200), as: UTF8.self)
+    }
+
+    public static func url(sampleRate: Int, languageCode: String?, token: String? = nil) -> URL? {
         var c = URLComponents()
         c.scheme = "wss"; c.host = host; c.path = "/v1/speech-to-text/realtime"
         var q = [URLQueryItem(name: "model_id", value: "scribe_v2_realtime"),
                  URLQueryItem(name: "audio_format", value: "pcm_\(sampleRate)"),
                  URLQueryItem(name: "commit_strategy", value: "vad")]
         if let languageCode { q.append(URLQueryItem(name: "language_code", value: languageCode)) }
+        if let token { q.append(URLQueryItem(name: "token", value: token)) }
         c.queryItems = q
         return c.url
     }

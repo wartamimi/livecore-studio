@@ -84,11 +84,42 @@ final class ElevenLabsTranscriber: NSObject, URLSessionWebSocketDelegate {
 
     // MARK: Connection (on `queue`)
 
+    /// Asks for a single-use token with the API key (a plain HTTPS call whose error text can be
+    /// shown), then opens the WebSocket with that token (0.50.1).
     private func connect() {
-        guard running, let url = ElevenLabsRealtime.url(sampleRate: sendRate, languageCode: languageCode) else { return }
+        guard running else { return }
         onStatus?(.connecting)
-        var req = URLRequest(url: url)
+        var req = URLRequest(url: ElevenLabsRealtime.tokenURL)
+        req.httpMethod = "POST"
         req.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
+        req.timeoutInterval = 15
+        URLSession.shared.dataTask(with: req) { [weak self] data, response, error in
+            guard let self else { return }
+            self.queue.async {
+                guard self.running, self.task == nil else { return }
+                let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+                if let error {
+                    return self.dropped("Cannot reach ElevenLabs: \(error.localizedDescription)")
+                }
+                let body = data ?? Data()
+                guard code == 200, let token = ElevenLabsRealtime.parseToken(body) else {
+                    let detail = ElevenLabsRealtime.errorText(body)
+                    Log.devices.error("elevenlabs token HTTP \(code): \(detail, privacy: .public)")
+                    if code == 401 || code == 403 {
+                        self.running = false
+                        self.onStatus?(.error("ElevenLabs refused the API key (HTTP \(code)): \(detail). The key needs Speech to Text = Access."))
+                        return
+                    }
+                    return self.dropped("ElevenLabs token HTTP \(code): \(detail)")
+                }
+                self.open(token: token)
+            }
+        }.resume()
+    }
+
+    private func open(token: String) {
+        guard running, let url = ElevenLabsRealtime.url(sampleRate: sendRate, languageCode: languageCode, token: token) else { return }
+        var req = URLRequest(url: url)
         req.timeoutInterval = 15
         let s = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
         let t = s.webSocketTask(with: req)
@@ -183,7 +214,7 @@ final class ElevenLabsTranscriber: NSObject, URLSessionWebSocketDelegate {
             if let http = task.response as? HTTPURLResponse, http.statusCode == 401 || http.statusCode == 403 {
                 self.running = false
                 self.task = nil
-                self.onStatus?(.error(Self.explain("auth_error", "")))
+                self.onStatus?(.error("ElevenLabs refused the realtime connection (HTTP \(http.statusCode)). The key needs Speech to Text = Access."))
             } else if error != nil {
                 self.dropped("Connection to ElevenLabs failed: \(error?.localizedDescription ?? "")")
             }
