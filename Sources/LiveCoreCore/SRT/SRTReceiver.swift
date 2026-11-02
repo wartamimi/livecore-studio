@@ -25,6 +25,7 @@ public final class SRTReceiver {
         public var rttMs = 0.0
         public var latencyMs = 0
         public var peerStreamID = ""
+        public init() {}
     }
 
     public let role: Role
