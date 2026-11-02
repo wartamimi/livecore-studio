@@ -49,6 +49,7 @@ public final class SRTReceiver {
 
     // Receive buffer.
     private var started = false
+    private var handshakeISN: UInt32 = 0
     private var deliverNext: UInt32 = 0          // next sequence to hand out
     private var maxSeq: UInt32 = 0               // highest sequence seen
     private var ackPoint: UInt32 = 0             // first sequence not received contiguously
@@ -251,6 +252,7 @@ public final class SRTReceiver {
     }
 
     private func beginData(isn: UInt32, now: Double) {
+        handshakeISN = isn & SRTPacket.seqMask
         state = .connected
         lastReceived = now
         lastSent = now
@@ -309,10 +311,13 @@ public final class SRTReceiver {
         rateWindowPackets += 1; rateWindowBytes += d.count
 
         if !started {
-            // Start from the first packet seen (robust when the peer's ISN differs).
+            // Start from the handshake's sequence when the first packets were lost on the way,
+            // else from the first packet seen (robust when the peer's ISN differs).
             started = true
-            deliverNext = seq; ackPoint = seq; lastAckedPoint = seq
-            maxSeq = (seq &- 1) & SRTPacket.seqMask
+            let fromISN = (seq &- handshakeISN) & SRTPacket.seqMask
+            let first = fromISN < 1024 ? handshakeISN : seq
+            deliverNext = first; ackPoint = first; lastAckedPoint = first
+            maxSeq = (first &- 1) & SRTPacket.seqMask
         }
         // Already delivered or dropped, or absurdly far ahead.
         guard !SRTPacket.seqLess(seq, deliverNext) else { return [] }
