@@ -291,20 +291,19 @@ final class SRTDecodePipeline: @unchecked Sendable {
     }
 
     private static func sampleBuffer(_ nals: [ArraySlice<UInt8>], format: CMVideoFormatDescription, pts: Int64, dts: Int64) -> CMSampleBuffer? {
-        let total = nals.reduce(0) { $0 + 4 + $1.count }
+        // AVCC: 4-byte big-endian length before each NAL, copied once into memory the block owns now
+        // (a block created without kCMBlockBufferAssureMemoryNowFlag has no memory to copy into).
+        let avcc = AVC.avcc(from: nals)
+        let total = avcc.count
         var block: CMBlockBuffer?
         guard CMBlockBufferCreateWithMemoryBlock(allocator: kCFAllocatorDefault, memoryBlock: nil, blockLength: total,
                                                  blockAllocator: kCFAllocatorDefault, customBlockSource: nil, offsetToData: 0,
-                                                 dataLength: total, flags: 0, blockBufferOut: &block) == kCMBlockBufferNoErr,
-              let block else { return nil }
-        var offset = 0
-        for n in nals {
-            var len = UInt32(n.count).bigEndian
-            _ = withUnsafeBytes(of: &len) { CMBlockBufferReplaceDataBytes(with: $0.baseAddress!, blockBuffer: block, offsetIntoDestination: offset, dataLength: 4) }
-            offset += 4
-            _ = n.withUnsafeBytes { CMBlockBufferReplaceDataBytes(with: $0.baseAddress!, blockBuffer: block, offsetIntoDestination: offset, dataLength: n.count) }
-            offset += n.count
-        }
+                                                 dataLength: total, flags: kCMBlockBufferAssureMemoryNowFlag,
+                                                 blockBufferOut: &block) == kCMBlockBufferNoErr,
+              let block,
+              avcc.withUnsafeBytes({ CMBlockBufferReplaceDataBytes(with: $0.baseAddress!, blockBuffer: block, offsetIntoDestination: 0,
+                                                                   dataLength: total) }) == kCMBlockBufferNoErr
+        else { return nil }
         var timing = CMSampleTimingInfo(duration: .invalid, presentationTimeStamp: CMTime(value: pts, timescale: 90_000),
                                         decodeTimeStamp: CMTime(value: dts, timescale: 90_000))
         var sampleSize = total
