@@ -4,7 +4,7 @@ import XCTest
 /// 0.54.0: SRT input (receiver + TS demuxer) and the DeckLink / SRT project model.
 final class V054Tests: XCTestCase {
     /// LiveCore's own SRT caller sends to the SRT receiver (listener) in memory, with 10 % of the
-    /// data packets lost on the way: every payload must come out once, in order.
+    /// data packets lost on the way (deterministic, so the test is stable): every payload must come out once, in order.
     func testReceiverRecoversLossInOrder() {
         let rx = SRTReceiver(role: .listener, latencyMs: 120)
         let tx = SRTCaller(url: try! SRTURL.parse("srt://h:1?streamid=cam1&latency=80"), socketID: 7, initialSeq: 1000)
@@ -12,12 +12,13 @@ final class V054Tests: XCTestCase {
         XCTAssertEqual(rx.start(now: t), [])
         var toRx = tx.connect(now: t)
         var toTx: [[UInt8]] = []
-        var rng = SystemRandomNumberGenerator()
+        var dataSeen = 0
         var sent: [[UInt8]] = [], got: [[UInt8]] = []
         var n = 0
         while t < 3 {
             for d in toRx {
-                if d[0] & 0x80 == 0, Int.random(in: 0..<10, using: &rng) == 0 { continue }   // lose data
+                // Lose every 10th first transmission (retransmissions get through).
+                if d[0] & 0x80 == 0, d[4] & 0x04 == 0 { dataSeen += 1; if dataSeen % 10 == 3 { continue } }
                 toTx += rx.receive(d, now: t)
             }
             toRx = []

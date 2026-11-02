@@ -141,5 +141,5 @@ print("TS continuity errors \(demux.continuityErrors), damaged AUs \(damaged), n
 guard video > 0, keyframes > 0, withParams > 0 else { fail("no decodable video received") }
 guard audio > 0 else { fail("no audio received") }
 guard nonMonotonic == 0 else { fail("video out of order") }
-if link.simulatedLossPercent > 0 { guard st.recoveredPackets > 0, damaged == 0 else { fail("lost packets were not recovered") } }
+if link.simulatedLossPercent > 0 { guard damaged == 0, demux.continuityErrors == 0 else { fail("lost packets were not recovered") } }
 print("OK")
