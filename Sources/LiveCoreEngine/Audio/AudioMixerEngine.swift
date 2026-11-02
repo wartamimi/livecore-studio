@@ -26,6 +26,15 @@ public final class MixerChannel: @unchecked Sendable {
     /// Measured clock offset of this input relative to the output clock (parts per million).
     public let driftPPM = AtomicFloat(0)
     public var underrunCount: UInt64 { underruns.value }
+    /// Mix-minus (0.52.0, LCS Live): while on, every block the mixer writes the program mix
+    /// without this channel (after the master fader, before the limiter) into `minusL`/`minusR`,
+    /// the return audio a remote guest hears without their own voice. One reader only.
+    public let mixMinusEnabled = AtomicBool(false)
+    public let minusL: SPSCFloatRingBuffer
+    public let minusR: SPSCFloatRingBuffer
+    // Render-thread-only: this channel's contribution to the program bus in the current block.
+    let selfL: UnsafeMutablePointer<Float>
+    let selfR: UnsafeMutablePointer<Float>
 
     init(id: String, name: String, sampleRate: Double, primeFrames: Int = 1024, maxBufferedFrames: Int = 4800) {
         self.id = id
@@ -36,7 +45,13 @@ public final class MixerChannel: @unchecked Sendable {
         ringR = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))
         drift = DriftCompensator(targetFill: primeFrames + primeFrames / 2, maxFrames: AudioMixerEngine.maxFrames)
         dsp = ChannelStripDSP(controls: controls, sampleRate: Float(sampleRate))
+        minusL = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))
+        minusR = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))
+        selfL = .allocate(capacity: AudioMixerEngine.maxFrames); selfL.initialize(repeating: 0, count: AudioMixerEngine.maxFrames)
+        selfR = .allocate(capacity: AudioMixerEngine.maxFrames); selfR.initialize(repeating: 0, count: AudioMixerEngine.maxFrames)
     }
+
+    deinit { selfL.deallocate(); selfR.deallocate() }
 
     /// A channel that is not part of any mixer (its audio goes nowhere). Used as a safe fallback.
     static func detached() -> MixerChannel { MixerChannel(id: "detached", name: "", sampleRate: 48_000) }
@@ -261,6 +276,20 @@ public final class AudioMixerEngine {
         // Master fader + protective limiter on the program bus.
         let masterGain = master.muted.value ? 0 : AudioMath.dbToLinear(master.faderDB.value)
         masterRamp.apply(target: masterGain, left: progL, right: progR, frames: frames)
+        // Mix-minus returns (LCS Live): program after the master fader, minus each guest's own part.
+        _ = graphLock.withTryLock { () -> Bool in
+            for ch in channels where ch.mixMinusEnabled.value {
+                let room = min(ch.minusL.availableToWrite, ch.minusR.availableToWrite)
+                guard room >= frames else { continue }   // nobody reads: drop instead of blocking
+                for i in 0..<frames {
+                    ch.selfL[i] = progL[i] - ch.selfL[i] * masterGain
+                    ch.selfR[i] = progR[i] - ch.selfR[i] * masterGain
+                }
+                _ = ch.minusL.write(ch.selfL, count: frames)
+                _ = ch.minusR.write(ch.selfR, count: frames)
+            }
+            return true
+        }
         if limiterEnabled.value {
             limiter.ceilingDB = min(max(limiterCeilingDB.value, -12), 0)
             limiter.releaseSeconds = min(max(limiterReleaseMs.value, 10), 1000) / 1000
@@ -321,6 +350,8 @@ public final class AudioMixerEngine {
     private func mixChannel(_ ch: MixerChannel, frames: Int) {
         // Jitter buffer: wait for `primeFrames` before the first read; bound latency at `maxBufferedFrames`.
         // Drift correction then keeps the fill near 1.5 × primeFrames by resampling ±0.5 %.
+        let minus = ch.mixMinusEnabled.value
+        if minus { ch.selfL.update(repeating: 0, count: frames); ch.selfR.update(repeating: 0, count: frames) }
         let avail = min(ch.ringL.availableToRead, ch.ringR.availableToRead)
         if !ch.primed {
             if avail >= ch.primeFrames { ch.primed = true; ch.drift.reset() } else { return }
@@ -347,6 +378,7 @@ public final class AudioMixerEngine {
         }
         if ch.controls.toProgram.value {
             for i in 0..<frames { progL[i] += chL[i]; progR[i] += chR[i] }
+            if minus { ch.selfL.update(from: chL, count: frames); ch.selfR.update(from: chR, count: frames) }
         }
         for b in 0..<Self.auxCount where ch.controls.send(b).value {
             let l = auxL[b], r = auxR[b]

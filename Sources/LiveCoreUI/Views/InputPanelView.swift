@@ -25,6 +25,7 @@ struct InputPanelView: View {
     @State private var editingFrame: InputID?
     @State private var editingGT: InputID?
     @State private var editingSubtitles: InputID?
+    @State private var editingLiveCall: InputID?
     @State private var closing: InputID?
     @State private var showCaptureCard = false
     @State private var editingCaptureCard: InputID?
@@ -119,6 +120,7 @@ struct InputPanelView: View {
         .sheet(item: $editingFrame) { id in FrameSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingGT) { id in GTTitleSheet(input: id).environmentObject(model) }
         .sheet(item: $editingSubtitles) { id in SubtitleSheet(input: id).environmentObject(model) }
+        .sheet(item: $editingLiveCall) { id in LiveCallSheet(input: id).environmentObject(model) }
         .sheet(item: $editingNDI) { id in NDIInputSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showCaptureCard) { CaptureCardSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCaptureCard) { id in CaptureCardSheet(editing: id).environmentObject(model) }
@@ -224,6 +226,9 @@ struct InputPanelView: View {
                 Button(L10n.t("scene.new")) { if let id = model.addScene() { editingScene = id } }
             }
             Section(L10n.t("inputs.other_group")) {
+                Button { if let id = model.addLiveCall() { editingLiveCall = id } } label: {
+                    Label("LCS Live", systemImage: "person.wave.2")
+                }
                 Button(L10n.t("browser.add")) { showBrowserSheet = true }
                 if !model.isOperatorMode {
                     Button(L10n.t("capture.add")) { showCaptureSheet = true }
@@ -306,6 +311,7 @@ struct InputPanelView: View {
         if info.kind == .frame { Button(L10n.t("frame.edit")) { editingFrame = info.id } }
         if info.kind == .gtTitle { Button(L10n.t("gt.edit")) { editingGT = info.id } }
         if info.kind == .subtitles { Button(L10n.t("subtitles.edit")) { editingSubtitles = info.id } }
+        if info.kind == .liveCall { Button(L10n.t("lcslive.edit")) { editingLiveCall = info.id } }
         if info.kind == .timer {
             Button(L10n.t("timer.start")) { model.timerControl(info.id, "play") }
             Button(L10n.t("timer.pause")) { model.timerControl(info.id, "pause") }
@@ -523,6 +529,7 @@ struct InputTile: View {
         case .frame: return "person.crop.rectangle"
         case .gtTitle: return "rectangle.bottomthird.inset.filled"
         case .subtitles: return "captions.bubble"
+        case .liveCall: return "person.wave.2"
         }
     }
 }

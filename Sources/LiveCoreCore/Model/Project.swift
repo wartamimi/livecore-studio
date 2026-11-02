@@ -184,6 +184,8 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case gtTitle(ProjectGTTitle)
     /// Live subtitles from speech (0.43.0).
     case subtitles(SubtitleStyle)
+    /// LCS Live remote guest call (0.52.0).
+    case liveCall(ProjectLiveCall)
 }
 
 /// A presentation input: the file and the slide on air.

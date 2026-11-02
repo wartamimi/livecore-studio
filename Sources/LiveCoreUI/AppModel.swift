@@ -198,6 +198,7 @@ public final class AppModel: ObservableObject {
 
     func wire(_ e: ProductionEngine) {
         DispatchQueue.main.async { [weak self] in self?.applyLimiterSettings() }
+        wireLiveCall(e)
         e.onProgramFrame = { [weak self] pb in
             self?.lastProgramFrame = pb
             self?.programFeed.push(pb); self?.programOutputFeed.push(pb)

@@ -61,6 +61,12 @@ public final class RemoteServer: @unchecked Sendable {
 
     deinit { stop() }
 
+    /// LCS Live (0.52.0): when set (before `start`), every request is answered by this handler
+    /// instead of the Web Controller routes; the Host guard still applies.
+    public var customHandler: ((HTTPRequest, String) -> HTTPResponse)?
+    /// Largest accepted request (head + body).
+    public var maxRequestSize = 16 * 1024
+
     /// The port actually listened on (useful with port 0 in tests).
     public var port: Int { lock.sync { boundPort } }
     public var isRunning: Bool { lock.sync { running } }
@@ -192,7 +198,7 @@ public final class RemoteServer: @unchecked Sendable {
             let n = chunk.withUnsafeMutableBytes { recv(c, $0.baseAddress, $0.count, 0) }
             if n <= 0 { return }
             buf.append(contentsOf: chunk[0..<n])
-            switch HTTPRequest.parse(buf) {
+            switch HTTPRequest.parse(buf, maxSize: maxRequestSize) {
             case .incomplete: continue
             case .invalid: response = .error(400, "bad request")
             case .tooLarge: response = .error(413, "too large")
@@ -219,6 +225,7 @@ public final class RemoteServer: @unchecked Sendable {
     /// Request → response (internal for tests).
     func handle(_ req: HTTPRequest, client: String) -> HTTPResponse {
         guard RemoteAuth.hostAllowed(req.headers["host"]) else { return .error(403, "host not allowed") }
+        if let custom = customHandler { return custom(req, client) }
         let route = RemoteRouter.route(req)
         if route.needsPIN {
             let now = Self.now()

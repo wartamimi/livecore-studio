@@ -62,7 +62,7 @@ extension ProductionEngine {
             setOverlayAnimation(o.index, animation: o.animation ?? .fade, duration: o.fadeDuration)
         }
         if let ch = r.channel {
-            if let mc = mixer.channelList.first(where: { [Self.fileChannelID(pi.id), Self.screenChannelID(pi.id), Self.ndiChannelID(pi.id)].contains($0.id) }) {
+            if let mc = mixer.channelList.first(where: { [Self.fileChannelID(pi.id), Self.screenChannelID(pi.id), Self.ndiChannelID(pi.id), Self.liveChannelID(pi.id)].contains($0.id) }) {
                 restore(ch, to: mc)
             } else {
                 pendingFileChannelSettings[pi.id] = ch
