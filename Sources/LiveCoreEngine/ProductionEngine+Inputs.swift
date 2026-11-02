@@ -297,7 +297,7 @@ extension ProductionEngine {
 
     /// The input a mixer channel belongs to (video file, capture or NDI audio), nil for devices/music.
     public static func inputOfChannel(_ channelID: String) -> InputID? {
-        for prefix in ["file:", "screen:", "ndi:"] where channelID.hasPrefix(prefix) { return InputID(String(channelID.dropFirst(prefix.count))) }
+        for prefix in ["file:", "screen:", "ndi:", "live:"] where channelID.hasPrefix(prefix) { return InputID(String(channelID.dropFirst(prefix.count))) }
         return nil
     }
 
@@ -496,6 +496,7 @@ extension ProductionEngine {
         ptzConfigs[id] = nil
         if let r = removed, r === replaySource { replayRemoved() }
         if removed is BrowserSource { updateWebAudio() }
+        if removed is LiveCallSource { mixer.removeChannel(id: Self.liveChannelID(id)); onAudioChannelsChange?() }
         if removed is VideoFileSource || removed is ScreenCaptureSource || removed is PresentationSource {
             mixer.removeChannel(id: Self.fileChannelID(id))
             mixer.removeChannel(id: Self.screenChannelID(id))

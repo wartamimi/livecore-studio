@@ -41,6 +41,8 @@ public final class ProductionEngine {
 
     // MARK: Callbacks (main thread)
     public var onProgramFrame: ((CVPixelBuffer) -> Void)?
+    /// LCS Live (0.52.0): the app wires each new call input to its signaling server before it starts.
+    public var liveCallConnector: ((LiveCallSource) -> Void)?
     public var onPreviewFrame: ((CVPixelBuffer) -> Void)?
     public var onThumbnails: (([InputID: CVPixelBuffer]) -> Void)?
     /// Full-size picture of `detailInput` (per-input viewer). Main thread.

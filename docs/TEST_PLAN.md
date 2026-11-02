@@ -67,7 +67,7 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-259 | Warna › Generator LUT: pilih preset, geser slider, Simpan & Terapkan; lalu Batal di sesi lain | Input berubah live; Simpan menaruh .cube di pustaka; Batal mengembalikan LUT sebelumnya |
 | T-260 | Generator LUT › Ekspor .cube, buka di DaVinci Resolve | Resolve menerima file, tampilan sama |
 | T-261 | Help › Bantuan LiveCore Studio (⌘?) dengan bahasa Indonesia, lalu Inggris | Topik dan isi mengikuti bahasa; pencarian jalan |
-| T-262 | Menu LiveCore Studio › Tentang | Ikon, versi 0.51.0 (68), deskripsi singkat, "Dibuat oleh Munawar Tamimi" |
+| T-262 | Menu LiveCore Studio › Tentang | Ikon, versi 0.52.0 (69), deskripsi singkat, "Dibuat oleh Munawar Tamimi" |
 | T-263 | Drop saat buka app (0.49.0) | Buka app tanpa input, tunggu 30 dtk | Drop tetap 0 (pemanasan 5 dtk pertama tidak dihitung, dicatat di log); klik angka Drop → kembali 0 |
 | T-264 | Loop default off | Tambah 1 video dan 1 playlist | Repeat/Loop mati untuk keduanya |
 | T-265 | Menu Program | Klik 2 jari di monitor Program | Menu Screenshot (PNG + banner) dan Grab as Still (PNG jadi input gambar baru) |
@@ -94,6 +94,13 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-281 | Mask bentuk | Kamera › Mask Circle, soft edge 0,05; lalu Rectangle radius 0,2; Invert | Gambar terpotong lingkaran/kotak membulat dengan tepi halus di semua output dan layer |
 | T-282 | Mask gambar | Mask Image (white = visible) dengan PNG hitam-putih | Area putih terlihat, hitam transparan |
 | T-283 | Transcription Advanced | Realtime Transcription › Advanced: vocabulary nama mempelai, ElevenLabs keyterms, silence 0,8 s, clear 2 s, UPPERCASE | Nama dikenali lebih baik, kalimat berganti lebih cepat, teks huruf besar, hilang 2 dtk setelah diam |
+| T-284 | LCS Live lokal | + Input › LCS Live › Uji di Mac ini › Buka (Safari/Chrome di Mac yang sama), isi nama, Gabung, izinkan kamera/mic | Status di sheet "<nama> sedang terhubung"; input menampilkan kamera tamu; kanal mixer "LCS Live" bergerak saat bicara |
+| T-285 | Return feed | Saat T-284 berjalan, masukkan input lain ke Program dan putar musik | Halaman tamu menampilkan Program (≈12 fps) dan memutar suara acara TANPA suara tamu sendiri (mix-minus); matikan toggle return → gambar hitam/suara berhenti |
+| T-286 | Link online | `brew install cloudflared`, sheet › Buat link online, buka link di HP (4G) | Halaman https terbuka, kamera HP masuk ke input, HP mendengar mix-minus; catat jenis jaringan bila gagal tersambung |
+| T-287 | Putus & sambung | Matikan Wi-Fi HP 10 dtk lalu nyalakan | Halaman tamu "menyambung ulang…" lalu terhubung lagi tanpa operator berbuat apa-apa |
+| T-288 | Tutup / Link baru | Tutup panggilan dari sheet; lalu Link baru | Tamu terputus; link lama menampilkan "Link panggilan tidak aktif" |
+| T-289 | Dua tamu | Tambah 2 input LCS Live, dua perangkat bergabung | Dua input & dua kanal terpisah; masing-masing tidak mendengar suaranya sendiri |
+| T-290 | TURN | Isi server TURN di Advanced, uji dari jaringan kantor/4G yang sebelumnya gagal | Tersambung lewat relay |
 
 ## AY. Tes manual build 0.47.0
 
