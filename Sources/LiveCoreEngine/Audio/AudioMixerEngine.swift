@@ -54,7 +54,7 @@ public final class MixerChannel: @unchecked Sendable {
     deinit { selfL.deallocate(); selfR.deallocate() }
 
     /// A channel that is not part of any mixer (its audio goes nowhere). Used as a safe fallback.
-    static func detached() -> MixerChannel { MixerChannel(id: "detached", name: "", sampleRate: 48_000) }
+    public static func detached() -> MixerChannel { MixerChannel(id: "detached", name: "", sampleRate: 48_000) }
 }
 
 /// Audio mixer built on AVAudioEngine with a single AVAudioSourceNode that performs all

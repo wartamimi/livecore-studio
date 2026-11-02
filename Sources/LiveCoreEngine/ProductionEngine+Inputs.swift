@@ -297,7 +297,7 @@ extension ProductionEngine {
 
     /// The input a mixer channel belongs to (video file, capture or NDI audio), nil for devices/music.
     public static func inputOfChannel(_ channelID: String) -> InputID? {
-        for prefix in ["file:", "screen:", "ndi:", "live:"] where channelID.hasPrefix(prefix) { return InputID(String(channelID.dropFirst(prefix.count))) }
+        for prefix in ["file:", "screen:", "ndi:", "live:", "srt:", "decklink:"] where channelID.hasPrefix(prefix) { return InputID(String(channelID.dropFirst(prefix.count))) }
         return nil
     }
 
@@ -319,6 +319,64 @@ extension ProductionEngine {
         add(src)
         src.start()
         return src.id
+    }
+
+    /// Mixer channel for an input's own audio (NDI, SRT, DeckLink), created on first use.
+    func inputAudioChannel(_ chID: String, input srcID: InputID, name: String) -> MixerChannel {
+        if let existing = mixer.channelList.first(where: { $0.id == chID }) { return existing }
+        let ch = mixer.addChannel(id: chID, name: name, primeFrames: 2048, maxBufferedFrames: 9600)
+        if let saved = pendingFileChannelSettings.removeValue(forKey: srcID) { restore(saved, to: ch) }
+        applyAFV()
+        onAudioChannelsChange?()
+        return ch
+    }
+
+    /// SRT stream from an encoder as an input (0.54.0); its audio gets a mixer channel.
+    @discardableResult
+    public func addSRTInput(_ config: ProjectSRTInput, id: InputID? = nil) -> InputID {
+        let src = SRTSource(id: id ?? InputID(UUID().uuidString), config: config)
+        let srcID = src.id
+        src.audioChannelProvider = { [weak self, weak src] in
+            guard let self else { return MixerChannel.detached() }
+            return self.inputAudioChannel("srt:\(srcID.raw)", input: srcID, name: src?.name ?? "SRT")
+        }
+        add(src)
+        src.start()
+        return src.id
+    }
+
+    /// The SRT input already listening on this UDP port, if any.
+    public func inputListeningSRT(port: Int, except: InputID? = nil) -> InputID? {
+        control.read { st in
+            st.order.first { id in
+                guard id != except, let s = st.sources[id] as? SRTSource else { return false }
+                return s.config.mode == .listener && s.config.port == port
+            }
+        }
+    }
+
+    /// Blackmagic DeckLink capture as an input (0.54.0); embedded audio gets a mixer channel.
+    @discardableResult
+    public func addDeckLink(_ config: ProjectDeckLink, id: InputID? = nil) -> InputID {
+        let src = DeckLinkSource(id: id ?? InputID(UUID().uuidString), config: config)
+        let srcID = src.id
+        src.audioChannelProvider = { [weak self, weak src] in
+            guard let self else { return MixerChannel.detached() }
+            return self.inputAudioChannel("decklink:\(srcID.raw)", input: srcID, name: src?.name ?? "DeckLink")
+        }
+        add(src)
+        src.start()
+        return src.id
+    }
+
+    /// The input already capturing from this DeckLink device, if any.
+    public func inputUsingDeckLink(_ config: ProjectDeckLink, except: InputID? = nil) -> InputID? {
+        control.read { st in
+            st.order.first { id in
+                guard id != except, let s = st.sources[id] as? DeckLinkSource else { return false }
+                return s.config.deviceName == config.deviceName && s.config.deviceIndex == config.deviceIndex
+            }
+        }
     }
 
     /// The input already receiving this NDI source, if any.
@@ -497,6 +555,12 @@ extension ProductionEngine {
         if let r = removed, r === replaySource { replayRemoved() }
         if removed is BrowserSource { updateWebAudio() }
         if removed is LiveCallSource { mixer.removeChannel(id: Self.liveChannelID(id)); onAudioChannelsChange?() }
+        if removed is SRTSource || removed is DeckLinkSource || removed is NDISource {
+            mixer.removeChannel(id: "srt:\(id.raw)")
+            mixer.removeChannel(id: "decklink:\(id.raw)")
+            mixer.removeChannel(id: Self.ndiChannelID(id))
+            onAudioChannelsChange?()
+        }
         if removed is VideoFileSource || removed is ScreenCaptureSource || removed is PresentationSource {
             mixer.removeChannel(id: Self.fileChannelID(id))
             mixer.removeChannel(id: Self.screenChannelID(id))

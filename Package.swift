@@ -5,6 +5,8 @@
 //   CAtomics          C11 atomics shim (lock-free primitives for real-time threads). Portable.
 //   CObjCSupport      Objective-C @try/@catch shim so a misbehaving capture driver cannot crash the app.
 //   CSyphon           Vendored Syphon server (BSD) for sending outputs to other apps (OBS, Resolume...).
+//   CDeckLink         Blackmagic DeckLink capture: DeckLink API loaded from the installed Desktop Video
+//                     driver at run time; vendored SDK 12.0 interface headers (Blackmagic permissive licence).
 //   CNDI              NDI® output: loads the installed NDI runtime with dlopen; vendored MIT SDK headers.
 //   LiveCoreCore      Platform-independent logic: switcher state, transitions, layout math,
 //                     audio DSP, FLV/AMF0/RTMP protocol (sans-IO). Builds & tests on Linux + macOS.
@@ -18,6 +20,7 @@
 //   livecore-ndi-check     CI check: an NDI receiver finds a LiveCore-style NDI source and reads a frame.
 //   livecore-iso-check     CI check: Program + MultiCorder ISO recorders write two playable files.
 //   livecore-title-check   CI check: every Title Designer template renders; writes a contact sheet.
+//   livecore-srt-input-check  Dev check: receives SRT (listener/caller) through SRTInputLink and demuxes it.
 //   livecore-rtmp-push  CLI that pushes H.264/AAC elementary streams through the LiveCoreCore RTMP
 //                     client (used for protocol validation against a real RTMP server).
 import PackageDescription
@@ -37,6 +40,7 @@ let package = Package(
         .target(name: "CAtomics"),
         .target(name: "CObjCSupport"),   // NSException guard for capture-driver calls (Apple only)
         .target(name: "CNDI", exclude: ["README.md"]),   // NDI runtime loader (dlopen; Apple only)
+        .target(name: "CDeckLink", exclude: ["README.md", "decklink"]),   // DeckLink API via Desktop Video (Apple only)
         .target(name: "CSyphon", exclude: ["README.md", "License.txt"],
                 linkerSettings: [.linkedFramework("Metal", .when(platforms: [.macOS])),
                                  .linkedFramework("IOSurface", .when(platforms: [.macOS])),
@@ -45,7 +49,7 @@ let package = Package(
         .target(name: "LiveCoreRemote", dependencies: ["LiveCoreCore"]),
         .target(name: "LiveCoreServices", dependencies: ["LiveCoreCore"]),
         .target(name: "LiveCoreEngine", dependencies: [
-            "LiveCoreCore", "LiveCoreServices", "CAtomics", "CObjCSupport", "CSyphon", "CNDI",
+            "LiveCoreCore", "LiveCoreServices", "CAtomics", "CObjCSupport", "CSyphon", "CNDI", "CDeckLink",
         ]),
         .target(
             name: "LiveCoreUI",
@@ -61,6 +65,7 @@ let package = Package(
         .executableTarget(name: "livecore-title-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-soak-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-radio-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
+        .executableTarget(name: "livecore-srt-input-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .testTarget(name: "LiveCoreCoreTests", dependencies: ["LiveCoreCore", "LiveCoreRemote", "LiveCoreServices"]),
     ]
 )

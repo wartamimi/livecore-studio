@@ -20,6 +20,8 @@ struct InputPanelView: View {
     @State private var editingCapture: InputID?
     @State private var showNDISheet = false
     @State private var editingNDI: InputID?
+    @State private var showSRTSheet = false
+    @State private var showDeckLinkSheet = false
     @State private var showFrameSheet = false
     @State private var showFlagSheet = false
     @State private var editingFrame: InputID?
@@ -122,6 +124,8 @@ struct InputPanelView: View {
         .sheet(item: $editingSubtitles) { id in SubtitleSheet(input: id).environmentObject(model) }
         .sheet(item: $editingLiveCall) { id in LiveCallSheet(input: id).environmentObject(model) }
         .sheet(item: $editingNDI) { id in NDIInputSheet(editing: id).environmentObject(model) }
+        .sheet(isPresented: $showSRTSheet) { SRTInputSheet(editing: nil).environmentObject(model) }
+        .sheet(isPresented: $showDeckLinkSheet) { DeckLinkInputSheet(editing: nil).environmentObject(model) }
         .sheet(isPresented: $showCaptureCard) { CaptureCardSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCaptureCard) { id in CaptureCardSheet(editing: id).environmentObject(model) }
         .sheet(item: $adjusting) { id in InputAdjustSheet(input: id).environmentObject(model) }
@@ -233,6 +237,8 @@ struct InputPanelView: View {
                 if !model.isOperatorMode {
                     Button(L10n.t("capture.add")) { showCaptureSheet = true }
                     Button(L10n.t("ndi.add")) { showNDISheet = true }
+                    Button(L10n.t("srtin.add")) { showSRTSheet = true }
+                    Button(L10n.t("decklink.add")) { showDeckLinkSheet = true }
                     Button(L10n.t("inputs.colorbars")) { model.addColorBars() }
                 }
             }
@@ -530,6 +536,8 @@ struct InputTile: View {
         case .gtTitle: return "rectangle.bottomthird.inset.filled"
         case .subtitles: return "captions.bubble"
         case .liveCall: return "person.wave.2"
+        case .srt: return "dot.radiowaves.up.forward"
+        case .decklink: return "rectangle.connected.to.line.below"
         }
     }
 }
