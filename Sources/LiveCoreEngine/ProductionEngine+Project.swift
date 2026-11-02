@@ -50,6 +50,8 @@ extension ProductionEngine {
             case let f as FrameSource: ps = .frame(f.design)
             case let sub as SubtitleSource: ps = .subtitles(sub.style)
             case let lc as LiveCallSource: ps = .liveCall(lc.config)
+            case let sr as SRTSource: ps = .srt(sr.config)
+            case let dl as DeckLinkSource: ps = .decklink(dl.config)
             case let g as GTTitleSource:
                 ps = .gtTitle(ProjectGTTitle(file: ProjectMediaRef(path: g.url.path, relativePath: rel(g.url)), fields: g.fields,
                                               overrides: g.overrides.isEmpty ? nil : g.overrides, speed: g.speed == 1 ? nil : g.speed))
@@ -213,7 +215,7 @@ extension ProductionEngine {
                 addAudioInput(uniqueID: uid)
                 if let mc = mixer.channelList.first(where: { $0.id == uid }) { restore(ch, to: mc) }
             } else if let iid = ch.inputID, created.contains(iid) {
-                if let mc = mixer.channelList.first(where: { [Self.fileChannelID(iid), Self.screenChannelID(iid), Self.ndiChannelID(iid), Self.liveChannelID(iid)].contains($0.id) }) { restore(ch, to: mc) }
+                if let mc = mixer.channelList.first(where: { [Self.fileChannelID(iid), Self.screenChannelID(iid), Self.ndiChannelID(iid), Self.liveChannelID(iid), "srt:\(iid.raw)", "decklink:\(iid.raw)"].contains($0.id) }) { restore(ch, to: mc) }
                 else { pendingFileChannelSettings[iid] = ch }
             }
         }
@@ -305,6 +307,10 @@ extension ProductionEngine {
             addSubtitles(st, id: pi.id)
         case let .liveCall(c):
             addLiveCall(c, id: pi.id)
+        case let .srt(c):
+            addSRTInput(c, id: pi.id)
+        case let .decklink(c):
+            addDeckLink(c, id: pi.id)
         case let .gtTitle(g):
             // A missing or broken .gtzip keeps its place as an empty title.
             let url = mediaURL(g.file.path, g.file.relativePath)
