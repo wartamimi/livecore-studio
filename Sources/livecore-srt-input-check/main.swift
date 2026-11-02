@@ -24,6 +24,19 @@ func fail(_ s: String) -> Never { print("FAIL: \(s)"); exit(1) }
 #if os(macOS)
 /// The app's SRT input end to end: ffmpeg (libsrt) calls an SRTSource listener; the source must
 /// decode video (VideoToolbox) and AAC audio and show frames at about the sent rate.
+func ffmpegHasSRT(_ ffmpeg: String) -> Bool {
+    let p = Process()
+    p.executableURL = URL(fileURLWithPath: ffmpeg)
+    p.arguments = ["-hide_banner", "-protocols"]
+    let pipe = Pipe()
+    p.standardOutput = pipe
+    p.standardError = FileHandle.nullDevice
+    guard (try? p.run()) != nil else { return false }
+    let out = String(decoding: pipe.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+    p.waitUntilExit()
+    return out.split(separator: "\n").contains { $0.trimmingCharacters(in: .whitespaces) == "srt" }
+}
+
 func engineCheck() -> Never {
     let ffmpeg = ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"].first { FileManager.default.isExecutableFile(atPath: $0) }
     guard let ffmpeg else { fail("ffmpeg not found") }
@@ -32,12 +45,22 @@ func engineCheck() -> Never {
         let src = SRTSource(id: InputID("srt-check-\(i)"), config: ProjectSRTInput(mode: .listener, port: port, latencyMs: 200))
         src.audioChannelProvider = { MixerChannel.detached() }
         src.start()
+        // Homebrew's ffmpeg may lack libsrt: then ffmpeg writes TS to a pipe and srt-live-transmit
+        // (Homebrew "srt") sends it, as the soak check does.
+        let encode = "'\(ffmpeg)' -hide_banner -loglevel error -re -f lavfi -i testsrc2=size=1280x720:rate=30 "
+            + "-f lavfi -i sine=frequency=1000:sample_rate=48000 -t 8 -c:v \(codec) -preset ultrafast -g 30 -bf 2 "
+            + "-c:a aac -ac 2 -f mpegts"
+        let target = "srt://127.0.0.1:\(port)?mode=caller&latency=200000&streamid=check\(i)"
+        let slt = ["/opt/homebrew/bin/srt-live-transmit", "/usr/local/bin/srt-live-transmit"].first { FileManager.default.isExecutableFile(atPath: $0) }
         let p = Process()
-        p.executableURL = URL(fileURLWithPath: ffmpeg)
-        p.arguments = ["-hide_banner", "-loglevel", "error", "-re", "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=30",
-                       "-f", "lavfi", "-i", "sine=frequency=1000:sample_rate=48000", "-t", "8", "-c:v", codec, "-preset", "ultrafast",
-                       "-g", "30", "-bf", "2", "-c:a", "aac", "-ac", "2", "-f", "mpegts",
-                       "srt://127.0.0.1:\(port)?mode=caller&latency=200000&streamid=check\(i)"]
+        p.executableURL = URL(fileURLWithPath: "/bin/sh")
+        if ffmpegHasSRT(ffmpeg) {
+            p.arguments = ["-c", "\(encode) '\(target)'"]
+        } else if let slt {
+            p.arguments = ["-c", "\(encode) - | '\(slt)' -q -a:no file://con 'srt://127.0.0.1:\(port)?mode=caller&latency=200&streamid=check\(i)'"]
+        } else {
+            fail("no SRT sender: ffmpeg without libsrt and no srt-live-transmit")
+        }
         do { try p.run() } catch { fail("ffmpeg: \(error)") }
         let end = Date().addingTimeInterval(9)
         var sawLive = false
