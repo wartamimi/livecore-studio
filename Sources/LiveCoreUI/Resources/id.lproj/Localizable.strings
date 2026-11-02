@@ -1493,3 +1493,9 @@
 "help.remote.body" = "• Web Controller: kendalikan LiveCore dari ponsel atau tablet di jaringan yang sama (Settings › Remote). Lindungi dengan PIN; PIN disimpan di Keychain.\n• MIDI: petakan tombol dan fader controller MIDI dengan Learn (Settings › MIDI).\n• Shortcut keyboard bisa diubah di Settings › Shortcuts.";
 "help.tips.title" = "Tips dan pemecahan masalah";
 "help.tips.body" = "• Frame drop: samakan frame rate output dengan kamera (misalnya 30 atau 25), tutup jendela yang tidak dipakai dan gunakan sumber 1080p.\n• Warna capture card abu-abu: buka Warna dan periksa Level video (otomatis atau limited › full).\n• Kamera tidak muncul: cabut dan pasang lagi, lalu tekan Refresh di jendela Video Capture. Izinkan akses kamera dan mikrofon di System Settings › Privacy.\n• Streaming gagal: periksa stream key dan kecepatan upload (sekitar 1,5× bitrate stream).\n• Help › Ekspor Log & Diagnostik membuat file untuk dikirim ke dukungan (tanpa stream key).";
+
+
+/* 0.49.0 */
+"program.screenshot" = "Screenshot";
+"program.grab_still" = "Grab as Still";
+"top.dropped_reset" = "Frame render yang drop sejak aplikasi dibuka (5 detik pertama pemanasan tidak dihitung). Klik untuk reset ke 0.";

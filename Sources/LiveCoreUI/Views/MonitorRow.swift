@@ -65,13 +65,31 @@ struct MonitorView: View {
                 .overlay(alignment: .top) { if notRecording { NotRecordingBadge().padding(.top, 8) } }
                 .overlay { if let designer { DesignerCanvasIfActive(state: designer) } }
                 .overlay { if snapshot != nil { SnapshotConfirmation() } }
+                .modifier(ProgramContextMenu(enabled: snapshot != nil))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             if let designer { DesignerBarIfActive(state: designer) }
-            // PHOTO lives in the output dock since 0.46.0, so Preview and Program are the same
-            // size; the Program monitor still shows the saved-photo confirmation.
+            // Screenshot / Grab as Still: right-click (two-finger click) on Program (0.49.0).
         }
         .padding(4)
         .panel()
+    }
+}
+
+/// Program monitor right-click (two-finger click on a trackpad), 0.49.0: Screenshot saves a PNG
+/// of Program, Grab as Still also adds it as a new image input. Replaces the PHOTO dock button.
+private struct ProgramContextMenu: ViewModifier {
+    @EnvironmentObject var model: AppModel
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content.contextMenu {
+                Button { model.saveSnapshot() } label: { Label(L10n.t("program.screenshot"), systemImage: "camera") }
+                Button { model.grabStill() } label: { Label(L10n.t("program.grab_still"), systemImage: "photo.badge.plus") }
+            }
+        } else {
+            content
+        }
     }
 }
 

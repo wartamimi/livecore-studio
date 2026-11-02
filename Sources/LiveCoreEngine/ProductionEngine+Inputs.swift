@@ -64,11 +64,11 @@ extension ProductionEngine {
 
     /// A video input; several URLs make a playlist played in order.
     @discardableResult
-    /// `loop` nil (new inputs): a single clip loops, a playlist does not (repeat off by default, 0.48.0).
+    /// `loop` nil (new inputs): repeat off by default for clips and playlists (0.49.0).
     public func addVideoFile(urls: [URL], id: InputID? = nil, loop: Bool? = nil, autoPlay: VideoFileSource.AutoPlay = .off,
                              autoRestart: Bool = true) -> InputID {
         let src = VideoFileSource(id: id ?? InputID(UUID().uuidString), urls: urls)
-        src.loop = loop ?? (urls.count <= 1)
+        src.loop = loop ?? false
         src.autoPlay = autoPlay
         src.autoRestart = autoRestart
         let srcID = src.id

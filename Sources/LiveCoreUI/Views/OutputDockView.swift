@@ -8,7 +8,7 @@ extension RecordReminderMode {
     static let storageKey = "record.reminder"
 }
 
-/// vMix-style bottom bar: RECORD, MULTICORDER, STREAM and PHOTO, each with its settings (⚙)
+/// vMix-style bottom bar: RECORD, MULTICORDER, STREAM and OUTPUTS, each with its settings (⚙)
 /// beside it, and the four outputs. It is always shown (cannot be minimized).
 struct OutputDockView: View {
     @EnvironmentObject var model: AppModel
@@ -89,11 +89,10 @@ struct OutputDockView: View {
                     .padding(12).frame(width: 360)
                 }
             }
-            // EXTERNAL (Syphon / NDI) lives in the OUTPUTS panel only (0.48.0).
-            // PHOTO (0.46.0): a still of Program, next to the other outputs instead of under the
-            // Program monitor (which made Program shorter than Preview).
-            mainButton(L10n.t("snapshot.button_big"), icon: "camera.fill", status: L10n.t("snapshot.help"),
-                       color: Theme.accent, active: false) { model.saveSnapshot() }
+            // OUTPUTS (fullscreen / external) moved here from the top bar where PHOTO was (0.49.0);
+            // Screenshot / Grab as Still are on the Program monitor's right-click menu.
+            mainButton(L10n.t("outputs.button"), icon: "square.stack.3d.up", status: L10n.t("outputs.help"),
+                       color: Theme.accent, active: false) { model.showOutputsPanel = true }
                 .padding(.leading, 4)
             Spacer(minLength: 0)
         }

@@ -226,6 +226,9 @@ public final class AppModel: ObservableObject {
         e.onRecordStats = { [weak self] s in self?.recordStats = s }
         e.onISOStats = { [weak self] s in self?.isoStats = s }
         e.onError = { [weak self] msg in self?.report(msg) }
+        e.onWarmupDrops = { n in
+            FileLog.shared.info("render warm-up: \(n) frames missed in the first \(Int(ProductionEngine.warmupSeconds)) s (not counted as Drop)")
+        }
         e.onAudioChannelsChange = { [weak self] in self?.reloadAudioChannels() }
         e.replay.onAvailableChange = { [weak self] a in self?.replayAvailable = a }
         e.onReplayChange = { [weak self] in self?.objectWillChange.send() }

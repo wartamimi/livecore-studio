@@ -34,7 +34,7 @@ public final class VideoFileSource: NSObject, VideoSource {
     }
     public var onStatusChange: ((SourceStatus) -> Void)?
     /// Single clip: repeat it. Playlist: go back to the first clip after the last.
-    public var loop = true
+    public var loop = false
     /// Playlist: pick a random other clip when one ends (and on "next").
     public var shuffle = false
     /// Repeat One: the current clip starts again when it ends.
@@ -84,8 +84,8 @@ public final class VideoFileSource: NSObject, VideoSource {
     public init(id: InputID, urls: [URL]) {
         precondition(!urls.isEmpty)
         self.id = id; self.urls = urls
-        // A new playlist does not repeat by default (0.45.0); a single clip still loops.
-        self.loop = urls.count <= 1
+        // New media does not repeat by default (single clips too since 0.49.0).
+        self.loop = false
         self.name = urls.count > 1 ? "Playlist" : urls[0].deletingPathExtension().lastPathComponent
         output = AVPlayerItemVideoOutput(pixelBufferAttributes: [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,

@@ -155,6 +155,25 @@ public final class ProductionEngine {
     public let droppedLate = AtomicCounter()
     public let droppedGPUBusy = AtomicCounter()
     public let droppedFailed = AtomicCounter()
+    /// Frames missed while the render loop warms up (app launch, format change: first Metal
+    /// frames, window creation, device scans). Kept apart from the live drop counter (0.49.0) so
+    /// the Drop reading only shows drops that can reach Program; logged once after warm-up.
+    public let droppedWarmup = AtomicCounter()
+    public static let warmupSeconds = 5.0
+    var warmupUntil: Double = 0
+    var warmupLogged = true
+    /// Called once, on the render queue, when warm-up ends with the frames it missed.
+    public var onWarmupDrops: ((UInt64) -> Void)?
+
+    /// Sets the Drop reading (and its causes) back to 0.
+    public func resetDropCounters() {
+        droppedRenderFrames.reset(); droppedLate.reset(); droppedGPUBusy.reset(); droppedFailed.reset()
+    }
+
+    private func countDrop(_ cause: AtomicCounter, _ n: UInt64 = 1, now: Double) {
+        if now < warmupUntil { droppedWarmup.add(n); return }
+        droppedRenderFrames.add(n); cause.add(n)
+    }
     let gpuMsAverage = AtomicFloat(0)
     let renderedFrames = AtomicCounter()
     var lastFPSSample: (time: Double, frames: UInt64) = (0, 0)
@@ -231,6 +250,9 @@ public final class ProductionEngine {
         }
         let fps = Double(settings.output.frameRate)
         clockStart = HostClock.now()
+        warmupUntil = clockStart + Self.warmupSeconds
+        warmupLogged = false
+        droppedWarmup.reset()
         lastFrameIndex = -1
         let t = DispatchSource.makeTimerSource(flags: .strict, queue: renderQueue)
         // Tick at 2x frame rate; the frame index is derived from the host clock, so jitter in the
@@ -248,8 +270,12 @@ public final class ProductionEngine {
         let index = Int64(((now - clockStart) * fps).rounded(.down))
         guard index > lastFrameIndex else { return }
         if lastFrameIndex >= 0 && index > lastFrameIndex + 1 {
-            droppedRenderFrames.add(UInt64(index - lastFrameIndex - 1))
-            droppedLate.add(UInt64(index - lastFrameIndex - 1))
+            countDrop(droppedLate, UInt64(index - lastFrameIndex - 1), now: now)
+        }
+        if !warmupLogged && now >= warmupUntil {
+            warmupLogged = true
+            let n = droppedWarmup.value
+            if n > 0 { onWarmupDrops?(n) }
         }
         lastFrameIndex = index
         let frameHost = clockStart + Double(index) / fps
@@ -284,8 +310,7 @@ public final class ProductionEngine {
         // Up to three frames queued on the GPU: rides out short GPU stalls (window animations,
         // other apps) at the cost of at most one more frame of latency.
         guard inFlight.mutate({ n -> Bool in if n >= 3 { return false }; n += 1; return true }) else {
-            droppedRenderFrames.add()
-            droppedGPUBusy.add()
+            countDrop(droppedGPUBusy, now: now)
             return
         }
 
@@ -306,7 +331,7 @@ public final class ProductionEngine {
             self.renderedFrames.add()
             let avg = self.gpuMsAverage.value
             self.gpuMsAverage.value = avg == 0 ? Float(result.gpuMs) : avg * 0.95 + Float(result.gpuMs) * 0.05
-            guard let program = result.program else { self.droppedRenderFrames.add(); self.droppedFailed.add(); return }
+            guard let program = result.program else { self.countDrop(self.droppedFailed, now: now); return }
             let outs = self.outputs.current
             outs.streamEncoder?.encode(program, pts: pts)
             if outs.recording { self.recorder.append(video: program, pts: pts) }
@@ -326,8 +351,7 @@ public final class ProductionEngine {
         }
         if !ok {
             inFlight.mutate { $0 -= 1 }
-            droppedRenderFrames.add()
-            droppedFailed.add()
+            countDrop(droppedFailed, now: now)
         }
         if frameCounter % Int64(fps) == 0 { compositor.flushCache() }
     }

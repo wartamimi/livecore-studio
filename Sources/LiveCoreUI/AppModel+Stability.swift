@@ -395,4 +395,15 @@ public struct EditorUndo {
     public var undo: () -> Void
     public var redo: () -> Void
 }
+
+extension AppModel {
+    /// Top bar Drop reading back to 0 (click on it, 0.49.0).
+    public func resetDropCounter() {
+        guard let e = engine else { return }
+        e.resetDropCounters()
+        lastDropCounts = (0, 0, 0)
+        var p = performance; p.droppedRenderFrames = 0; performance = p
+        FileLog.shared.info("Drop counter reset by the operator")
+    }
+}
 #endif
