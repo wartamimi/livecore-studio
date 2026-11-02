@@ -58,6 +58,9 @@ final class V050Tests: XCTestCase {
         XCTAssertEqual(ElevenLabsRealtime.parse(#"{"message_type":"auth_error","error":"bad key"}"#), .error(type: "auth_error", message: "bad key", fatal: true))
         XCTAssertEqual(ElevenLabsRealtime.parse(#"{"message_type":"rate_limited","error":"slow"}"#), .error(type: "rate_limited", message: "slow", fatal: false))
         XCTAssertEqual(ElevenLabsRealtime.parse("nope"), .other)
+        XCTAssertTrue(ElevenLabsRealtime.url(sampleRate: 16_000, languageCode: nil, token: "sutkn_1")!.absoluteString.contains("token=sutkn_1"))
+        XCTAssertEqual(ElevenLabsRealtime.parseToken(Data(#"{"token":"sutkn_9"}"#.utf8)), "sutkn_9")
+        XCTAssertEqual(ElevenLabsRealtime.errorText(Data(#"{"detail":{"status":"missing_permissions","message":"The API key is missing speech_to_text"}}"#.utf8)), "The API key is missing speech_to_text")
         XCTAssertEqual(ElevenLabsRealtime.downmix(left: [1, 1, 1, 0.5], right: [1, 1, 1, 0.5], factor: 3), [32767])
     }
 
