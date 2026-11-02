@@ -101,7 +101,116 @@ public struct SubtitleStyle: Codable, Equatable, Sendable {
     public var boxOpacity: Double = 0.6
     /// Bottom margin, fraction of the output height.
     public var bottomMargin: Double = 0.08
+    /// Who turns speech into text (0.50.0): Apple speech recognition or ElevenLabs realtime
+    /// speech-to-text (internet, the operator's own API key).
+    public var provider: SubtitleProvider = .apple
     public init() {}
+
+    /// A "Realtime Transcription" input: ElevenLabs, language detected automatically.
+    public static var elevenLabs: SubtitleStyle {
+        var s = SubtitleStyle()
+        s.provider = .elevenLabs
+        s.locale = "auto"
+        return s
+    }
+
+    /// ElevenLabs `language_code` for `locale` ("id-ID" → "id"); nil = detect automatically.
+    public var languageCode: String? {
+        let code = locale.split(separator: "-").first.map(String.init)?.lowercased() ?? ""
+        return code.isEmpty || code == "auto" ? nil : code
+    }
+
+    // Older projects have no `provider`: every field is optional when decoding.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        locale = try c.decodeIfPresent(String.self, forKey: .locale) ?? locale
+        allowServer = try c.decodeIfPresent(Bool.self, forKey: .allowServer) ?? allowServer
+        fontSize = try c.decodeIfPresent(Double.self, forKey: .fontSize) ?? fontSize
+        maxLines = try c.decodeIfPresent(Int.self, forKey: .maxLines) ?? maxLines
+        boxOpacity = try c.decodeIfPresent(Double.self, forKey: .boxOpacity) ?? boxOpacity
+        bottomMargin = try c.decodeIfPresent(Double.self, forKey: .bottomMargin) ?? bottomMargin
+        provider = (try? c.decodeIfPresent(SubtitleProvider.self, forKey: .provider)) ?? .apple
+    }
+}
+
+public enum SubtitleProvider: String, Codable, Sendable, CaseIterable {
+    case apple
+    case elevenLabs
+}
+
+/// ElevenLabs realtime speech-to-text protocol (0.50.0): the WebSocket URL, the audio message and
+/// the server messages. Pure logic so it is tested on Linux.
+public enum ElevenLabsRealtime {
+    public static let host = "api.elevenlabs.io"
+    public static let keychainAccount = "elevenlabs-api-key"
+
+    /// Formats the service accepts as raw 16-bit PCM.
+    public static let sampleRates = [8_000, 16_000, 22_050, 24_000, 44_100, 48_000]
+
+    /// The rate sent for audio mixed at `mixRate`: 16 kHz when it divides evenly (smaller upload),
+    /// else the mix rate itself when the service accepts it.
+    public static func sendRate(forMixRate mixRate: Int) -> Int? {
+        if mixRate % 16_000 == 0 { return 16_000 }
+        return sampleRates.contains(mixRate) ? mixRate : nil
+    }
+
+    public static func url(sampleRate: Int, languageCode: String?) -> URL? {
+        var c = URLComponents()
+        c.scheme = "wss"; c.host = host; c.path = "/v1/speech-to-text/realtime"
+        var q = [URLQueryItem(name: "model_id", value: "scribe_v2_realtime"),
+                 URLQueryItem(name: "audio_format", value: "pcm_\(sampleRate)"),
+                 URLQueryItem(name: "commit_strategy", value: "vad")]
+        if let languageCode { q.append(URLQueryItem(name: "language_code", value: languageCode)) }
+        c.queryItems = q
+        return c.url
+    }
+
+    /// One `input_audio_chunk` message with little-endian 16-bit PCM.
+    public static func audioMessage(pcm: [Int16], sampleRate: Int) -> String {
+        let data = pcm.withUnsafeBufferPointer { b -> Data in
+            var d = Data(capacity: b.count * 2)
+            for v in b { let u = UInt16(bitPattern: v); d.append(UInt8(u & 0xff)); d.append(UInt8(u >> 8)) }
+            return d
+        }
+        return "{\"message_type\":\"input_audio_chunk\",\"audio_base_64\":\"\(data.base64EncodedString())\",\"commit\":false,\"sample_rate\":\(sampleRate)}"
+    }
+
+    public enum Event: Equatable, Sendable {
+        case started
+        case partial(String)
+        case committed(String)
+        /// `fatal` errors (bad key, no quota, terms not accepted) are not retried.
+        case error(type: String, message: String, fatal: Bool)
+        case other
+    }
+
+    public static func parse(_ text: String) -> Event {
+        guard let obj = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any],
+              let type = obj["message_type"] as? String else { return .other }
+        switch type {
+        case "session_started": return .started
+        case "partial_transcript": return .partial(obj["text"] as? String ?? "")
+        case "committed_transcript", "committed_transcript_with_timestamps": return .committed(obj["text"] as? String ?? "")
+        case "warning": return .other
+        default:
+            guard let err = obj["error"] as? String ?? obj["message"] as? String else { return .other }
+            let fatal = ["auth_error", "quota_exceeded", "unaccepted_terms", "invalid_request"].contains(type)
+            return .error(type: type, message: err, fatal: fatal)
+        }
+    }
+
+    /// Mono 16-bit PCM from stereo float samples, averaging `factor` input samples per output one.
+    public static func downmix(left: [Float], right: [Float], factor: Int) -> [Int16] {
+        let f = max(1, factor), n = min(left.count, right.count) / f
+        var out = [Int16](repeating: 0, count: n)
+        for i in 0..<n {
+            var acc: Float = 0
+            for k in 0..<f { acc += left[i * f + k] + right[i * f + k] }
+            let v = min(max(acc / Float(2 * f), -1), 1)
+            out[i] = Int16(v * 32767)
+        }
+        return out
+    }
 }
 
 public enum SubtitleText {

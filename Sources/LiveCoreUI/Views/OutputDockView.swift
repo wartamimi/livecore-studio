@@ -27,7 +27,7 @@ struct OutputDockView: View {
     var body: some View {
         // Output chips show their source name when the window is wide enough for it.
         GeometryReader { geo in
-            content(chipNames: geo.size.width >= 1200)
+            content(chipNames: geo.size.width >= 1200, compactStats: geo.size.width < 1150)
                 .frame(width: geo.size.width, height: geo.size.height)
         }
         .padding(.horizontal, 8).padding(.vertical, 5)
@@ -35,7 +35,7 @@ struct OutputDockView: View {
         .panel()
     }
 
-    private func content(chipNames: Bool) -> some View {
+    private func content(chipNames: Bool, compactStats: Bool) -> some View {
         HStack(spacing: 12) {
             // One padlock for the whole dock: while locked RECORD and STREAM cannot start or stop.
             LockButton(locked: Binding(get: { model.recordLocked && model.streamLocked },
@@ -95,6 +95,8 @@ struct OutputDockView: View {
                        color: Theme.accent, active: false) { model.showOutputsPanel = true }
                 .padding(.leading, 4)
             Spacer(minLength: 0)
+            // Machine readings and stream / record status, bottom right (0.50.0).
+            Live(model.live) { PerformanceReadouts(compact: compactStats) }
         }
     }
 

@@ -519,3 +519,11 @@ Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; k
 |---|---|---|---|
 | Nomor overlay 1–4 di bawah tiap kotak input (vMix-style) | Implemented (0.23.0), belum dites | kompilasi CI | Klik = Preview (oranye), klik kanan / dua jari = Program (hijau); selalu layar penuh + fade. Dock Overlay (pilihan source, posisi, animasi) dihapus (T-91) |
 | Instant replay di bawah T-bar | Implemented (0.23.0), belum dites | kompilasi CI | Panel kontrol kanan dihapus; mixer dan Playlist mendapat ruang lebih (T-92) |
+
+## 0.50.0
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| CPU/GPU/RAM/FPS/Drop + status stream & rekam di kanan bawah dock | Implemented | kompilasi CI | Dipindah dari bar atas (T-267) |
+| Input Realtime Transcription (ElevenLabs Scribe v2 realtime) | Implemented, belum dites di Mac | L (protokol), M | WebSocket `wss://api.elevenlabs.io/v1/speech-to-text/realtime`, PCM 16 kHz mono, commit VAD; API key milik pengguna di Keychain; perlu internet dan kuota ElevenLabs (T-268..T-270) |
+| Advanced audio channel: frekuensi Low/High shelf, Mid Q, LPF, kurva EQ, Attack/Hold/Release gate, Knee kompresor, Limiter per channel | Implemented | L (DSP), M | Disimpan di proyek (`advanced`), proyek lama tetap terbuka (T-271..T-274) |
+| Audio Monitor di Web Controller (Master / Bus A–D) | Implemented, belum dites di Mac | L (buffer/route), M | Polling PCM 16-bit stereo 24 kHz (≈0,8 Mbps) dengan PIN yang sama; latensi ≈0,3–0,5 dtk; bukan WebRTC (T-275, T-276) |

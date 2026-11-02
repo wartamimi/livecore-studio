@@ -162,6 +162,12 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
  display:grid;place-items:center;box-shadow:0 8px 24px rgba(255,59,69,.35)}
 .logo::after{content:"";width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 0 5px rgba(255,255,255,.25)}
 .foot{display:flex;justify-content:center;margin-top:12px}
+.listen{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px}
+.listen .lbtn{padding:8px 12px;border-radius:8px;background:#2a2f3a;font-weight:700;font-size:13px}
+.listen .lbtn.on{background:#1f8f4e}
+.listen select{background:#1b1f27;color:inherit;border:1px solid #333a46;border-radius:6px;padding:6px}
+.listen input{flex:1;min-width:90px}
+.listen .note{margin:0}
 .foot button{color:var(--dim);font-size:12px;padding:10px 14px}
 
 /* Tablet / landscape: a two-column surface */
@@ -286,6 +292,12 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
     </div>
     <div class="mod a-audio">
       <h2 data-t="audio"></h2>
+      <div class="listen">
+        <button id="lsn" class="lbtn" data-t="listen"></button>
+        <select id="lbus"><option value="master">Master</option><option value="busA">Bus A</option><option value="busB">Bus B</option><option value="busC">Bus C</option><option value="busD">Bus D</option></select>
+        <input id="lvol" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="volume">
+        <span id="lst" class="note"></span>
+      </div>
       <div id="strips" class="strips"></div>
     </div>
   </div>
@@ -295,8 +307,8 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 <script>
 "use strict";
 const T={
- en:{pinHint:"Enter the PIN shown in LiveCore Studio › Settings › Remote.",inputs:"Inputs",transition:"Transition",replay:"Instant replay",output:"Record & stream",audio:"Audio mixer",signOut:"Sign out",wrong:"Wrong PIN.",locked:"Too many wrong PINs. Try again in {s} s.",offline:"Cannot reach LiveCore Studio.",stopRec:"Stop recording?",stopLive:"Stop streaming?",startLive:"Start streaming?",recLocked:"Recording is locked in the app.",liveLocked:"Streaming is locked in the app.",noInputs:"No inputs yet.",noAudio:"No audio channels.",mute:"MUTE",ovHint:"Tap = Preview · hold = Program"},
- id:{pinHint:"Masukkan PIN yang tampil di LiveCore Studio › Settings › Remote.",inputs:"Input",transition:"Transisi",replay:"Instant replay",output:"Rekam & stream",audio:"Mixer audio",signOut:"Keluar",wrong:"PIN salah.",locked:"Terlalu banyak PIN salah. Coba lagi dalam {s} detik.",offline:"LiveCore Studio tidak terjangkau.",stopRec:"Hentikan rekaman?",stopLive:"Hentikan streaming?",startLive:"Mulai streaming?",recLocked:"Rekaman dikunci di aplikasi.",liveLocked:"Streaming dikunci di aplikasi.",noInputs:"Belum ada input.",noAudio:"Belum ada kanal audio.",mute:"MUTE",ovHint:"Ketuk = Preview · tahan = Program"}
+ en:{pinHint:"Enter the PIN shown in LiveCore Studio › Settings › Remote.",inputs:"Inputs",transition:"Transition",replay:"Instant replay",output:"Record & stream",audio:"Audio mixer",signOut:"Sign out",wrong:"Wrong PIN.",locked:"Too many wrong PINs. Try again in {s} s.",offline:"Cannot reach LiveCore Studio.",stopRec:"Stop recording?",stopLive:"Stop streaming?",startLive:"Start streaming?",recLocked:"Recording is locked in the app.",liveLocked:"Streaming is locked in the app.",noInputs:"No inputs yet.",noAudio:"No audio channels.",listen:"🎧 Listen",listenStop:"🎧 Stop",listening:"Listening (≈0.4 s behind)",mute:"MUTE",ovHint:"Tap = Preview · hold = Program"},
+ id:{pinHint:"Masukkan PIN yang tampil di LiveCore Studio › Settings › Remote.",inputs:"Input",transition:"Transisi",replay:"Instant replay",output:"Rekam & stream",audio:"Mixer audio",signOut:"Keluar",wrong:"PIN salah.",locked:"Terlalu banyak PIN salah. Coba lagi dalam {s} detik.",offline:"LiveCore Studio tidak terjangkau.",stopRec:"Hentikan rekaman?",stopLive:"Hentikan streaming?",startLive:"Mulai streaming?",recLocked:"Rekaman dikunci di aplikasi.",liveLocked:"Streaming dikunci di aplikasi.",noInputs:"Belum ada input.",noAudio:"Belum ada kanal audio.",listen:"🎧 Dengar",listenStop:"🎧 Berhenti",listening:"Mendengarkan (≈0,4 dtk terlambat)",mute:"MUTE",ovHint:"Ketuk = Preview · tahan = Program"}
 };
 const lang=(navigator.language||"en").slice(0,2), L=T[lang]||T.en;
 document.documentElement.lang=T[lang]?lang:"en";
@@ -340,7 +352,7 @@ function pad(){
 function dots(){const d=$("dots");d.textContent="";for(let i=0;i<Math.max(6,typed.length);i++)d.appendChild(el("i",i<typed.length?"f":""))}
 document.addEventListener("keydown",e=>{if(!$("login").classList.contains("hidden")){
   if(/^\d$/.test(e.key)&&typed.length<8)typed+=e.key;else if(e.key==="Backspace")typed=typed.slice(0,-1);else if(e.key==="Enter")signIn(typed);dots()}});
-function signedOut(msg){clearInterval(timer);timer=null;stopFrames();$("app").classList.add("hidden");$("login").classList.remove("hidden");$("err").textContent=msg||"";typed="";dots()}
+function signedOut(msg){stopListen();clearInterval(timer);timer=null;stopFrames();$("app").classList.add("hidden");$("login").classList.remove("hidden");$("err").textContent=msg||"";typed="";dots()}
 async function signIn(p){
   if(p)pin=p; if(!pin)return; $("err").textContent="";
   try{await api("/api/ping");store.set(pin);typed="";$("login").classList.add("hidden");$("app").classList.remove("hidden");poll();timer=setInterval(poll,250);startFrames()}
@@ -496,6 +508,42 @@ function renderAudio(){
 }
 
 /* Buttons */
+// Audio Monitor (0.50.0): PCM pulled from /api/listen and played with Web Audio.
+let aCtx=null,aGain=null,listenGen=null,nextSeq=0,playT=0;
+function stopListen(){listenGen=null;nextSeq=0;const b=$("lsn");if(b){b.classList.remove("on");b.textContent=L.listen}$("lst").textContent="";if(aCtx){aCtx.close();aCtx=null}}
+function startListen(){
+  stopListen();
+  aCtx=new (window.AudioContext||window.webkitAudioContext)();
+  aGain=aCtx.createGain();aGain.gain.value=+$("lvol").value;aGain.connect(aCtx.destination);
+  playT=0;const gen=listenGen={};$("lsn").classList.add("on");$("lsn").textContent=L.listenStop;$("lst").textContent=L.listening;
+  listenLoop(gen);
+}
+async function listenLoop(gen){
+  if(listenGen!==gen)return;
+  const t0=performance.now();
+  try{
+    const r=await api("/api/listen?bus="+$("lbus").value+"&since="+nextSeq);
+    if(listenGen!==gen)return;
+    if(r.status===200){
+      const b=await r.arrayBuffer(),dv=new DataView(b);
+      nextSeq=dv.getUint32(0,true);const rate=dv.getUint32(4,true),ch=dv.getUint32(8,true);
+      const n=Math.floor((b.byteLength-12)/2/ch);
+      if(n>0&&aCtx){
+        const buf=aCtx.createBuffer(ch,n,rate);
+        for(let c=0;c<ch;c++){const d=buf.getChannelData(c);for(let i=0;i<n;i++)d[i]=dv.getInt16(12+(i*ch+c)*2,true)/32768}
+        const src=aCtx.createBufferSource();src.buffer=buf;src.connect(aGain);
+        const now=aCtx.currentTime;
+        if(playT<now+0.03||playT>now+1.2)playT=now+0.25;
+        src.start(playT);playT+=buf.duration;
+      }
+    }
+  }catch(e){if(listenGen!==gen)return}
+  setTimeout(()=>listenLoop(gen),Math.max(0,120-(performance.now()-t0)));
+}
+$("lsn").onclick=()=>{if(listenGen)stopListen();else startListen()};
+$("lsn").textContent=L.listen;
+$("lvol").oninput=()=>{if(aGain)aGain.gain.value=+$("lvol").value};
+$("lbus").onchange=()=>{nextSeq=0;playT=0};
 $("out").onclick=()=>{store.set("");pin="";signedOut("")};
 $("cut").onclick=()=>{if(st&&st.preview){const p=st.program;st.program=st.preview;st.preview=p;render()}send("/api/cut")};
 $("auto").onclick=()=>send("/api/auto");

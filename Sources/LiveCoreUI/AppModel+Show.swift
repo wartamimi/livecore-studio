@@ -56,6 +56,8 @@ extension AppModel {
     }
 
     public func addSubtitles() -> InputID? { engine?.addSubtitles(SubtitleStyle()) }
+    /// "Realtime Transcription" input: ElevenLabs speech-to-text of the Program sound (0.50.0).
+    public func addTranscription() -> InputID? { engine?.addSubtitles(.elevenLabs) }
     public func subtitleSource(_ id: InputID) -> SubtitleSource? { engine?.source(id) as? SubtitleSource }
 
     // MARK: Rundown

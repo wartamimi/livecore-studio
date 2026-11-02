@@ -346,6 +346,13 @@ extension ProductionEngine {
         eq.eqEnabled = c.eqEnabled.value
         eq.lowDB = c.eqLowDB.value; eq.midDB = c.eqMidDB.value; eq.midHz = c.eqMidHz.value; eq.highDB = c.eqHighDB.value
         p.eq = eq
+        var a = ProjectAudioAdvanced()
+        a.eqLowHz = c.eqLowHz.value; a.eqHighHz = c.eqHighHz.value; a.eqMidQ = c.eqMidQ.value
+        a.lowPassEnabled = c.lowPassEnabled.value; a.lowPassHz = c.lowPassHz.value
+        a.gateAttackMs = c.gateAttackMs.value; a.gateHoldMs = c.gateHoldMs.value; a.gateReleaseMs = c.gateReleaseMs.value
+        a.compKneeDB = c.compKneeDB.value
+        a.limiterEnabled = c.limiterEnabled.value; a.limiterCeilingDB = c.limiterCeilingDB.value; a.limiterReleaseMs = c.limiterReleaseMs.value
+        p.advanced = a
         return p
     }
 
@@ -387,6 +394,13 @@ extension ProductionEngine {
             c.eqEnabled.value = eq.eqEnabled
             c.eqLowDB.value = eq.lowDB; c.eqMidDB.value = eq.midDB; c.eqMidHz.value = eq.midHz; c.eqHighDB.value = eq.highDB
         }
+        let a = p.advanced ?? ProjectAudioAdvanced()
+        c.eqLowHz.value = a.eqLowHz ?? 120; c.eqHighHz.value = a.eqHighHz ?? 8_000; c.eqMidQ.value = a.eqMidQ ?? 0.9
+        c.lowPassEnabled.value = a.lowPassEnabled ?? false; c.lowPassHz.value = a.lowPassHz ?? 18_000
+        c.gateAttackMs.value = a.gateAttackMs ?? 2; c.gateHoldMs.value = a.gateHoldMs ?? 60; c.gateReleaseMs.value = a.gateReleaseMs ?? 150
+        c.compKneeDB.value = a.compKneeDB ?? 6
+        c.limiterEnabled.value = a.limiterEnabled ?? false; c.limiterCeilingDB.value = a.limiterCeilingDB ?? -1
+        c.limiterReleaseMs.value = a.limiterReleaseMs ?? 80
     }
 }
 #endif

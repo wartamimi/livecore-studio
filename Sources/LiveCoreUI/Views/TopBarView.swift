@@ -24,8 +24,6 @@ struct TopBarView: View {
                 Text("\(model.settings.output.label)").font(.system(size: 11)).foregroundStyle(Theme.textDim)
             }
             Spacer(minLength: 0)
-            Live(model.live) { liveStats(compact: compact) }
-            Divider().frame(height: 18)
             Button { openWindow(id: "rundown") } label: {
                 Label(L10n.t("rundown.button"), systemImage: "list.number").labelStyle(AdaptiveLabelStyle(iconOnly: compact))
             }
@@ -50,8 +48,18 @@ struct TopBarView: View {
         .padding(.horizontal, 10).padding(.vertical, 6)
         .panel()
     }
+}
 
-    /// Readings that change every second, redrawn on their own (0.48.0).
+/// CPU / GPU / RAM / FPS / Drop and the stream and recording status. Moved from the top bar to
+/// the bottom-right of the output dock (0.50.0); redrawn on their own via `Live`.
+struct PerformanceReadouts: View {
+    @EnvironmentObject var model: AppModel
+    let compact: Bool
+
+    var body: some View {
+        HStack(spacing: compact ? 8 : 12) { liveStats(compact: compact) }
+    }
+
     @ViewBuilder
     private func liveStats(compact: Bool) -> some View {
         if !model.isOperatorMode && !compact { machineStats }

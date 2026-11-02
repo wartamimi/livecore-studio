@@ -40,6 +40,9 @@ public final class RemoteServer: @unchecked Sendable {
     private var seen: [String: Double] = [:]          // client address → last signed-in request
     private var frames: [String: [UInt8]] = [:]        // "program" / "preview" → JPEG
     private var lastFrameRequest: Double = -.infinity
+    /// Audio Monitor (0.50.0): one ring per bus, and when each bus was last asked for.
+    private var audioRings: [String: RemoteAudioRing] = [:]
+    private var lastListen: [String: Double] = [:]
     private let requestedPort: Int
     private var boundPort = 0
     private let commandQueue: DispatchQueue
@@ -73,6 +76,20 @@ public final class RemoteServer: @unchecked Sendable {
     public func setFrame(_ jpeg: [UInt8], bus: String) { lock.sync { frames[bus] = jpeg } }
 
     /// A page asked for a picture in the last `window` seconds, so encoding them is worth it.
+    /// Buses a web page listened to in the last `window` seconds (only those are converted).
+    public func listenedBuses(window: Double = 3) -> [String] {
+        let now = Self.now()
+        return lock.sync { lastListen.filter { now - $0.value < window }.map(\.key) }
+    }
+
+    /// Interleaved 16-bit stereo of `bus` at `sampleRate` (audio thread, kept short).
+    public func pushAudio(_ interleaved: [Int16], bus: String, sampleRate: Int) {
+        lock.sync {
+            if audioRings[bus]?.sampleRate != sampleRate { audioRings[bus] = RemoteAudioRing(sampleRate: sampleRate) }
+            audioRings[bus]?.append(interleaved)
+        }
+    }
+
     public func wantsFrames(window: Double = 3) -> Bool {
         let now = Self.now()
         return lock.sync { now - lastFrameRequest < window }
@@ -235,6 +252,19 @@ public final class RemoteServer: @unchecked Sendable {
             let jpeg: [UInt8]? = lock.sync { lastFrameRequest = Self.now(); return frames[bus] }
             guard let jpeg else { return HTTPResponse(status: 204) }
             return HTTPResponse(status: 200, contentType: "image/jpeg", body: jpeg)
+        case let .listen(bus, since):
+            let r: (next: UInt32, pcm: [Int16], rate: Int)? = lock.sync {
+                lastListen[bus] = Self.now()
+                guard let ring = audioRings[bus] else { return nil }
+                let x = ring.read(since: since)
+                return (x.next, x.pcm, ring.sampleRate)
+            }
+            guard let r else {
+                return HTTPResponse(status: 200, contentType: "application/octet-stream",
+                                    body: RemoteAudioRing.body(next: 0, sampleRate: 24_000, channels: 2, pcm: []))
+            }
+            return HTTPResponse(status: 200, contentType: "application/octet-stream",
+                                body: RemoteAudioRing.body(next: r.next, sampleRate: r.rate, channels: 2, pcm: r.pcm))
         case let .command(cmd):
             let handler = onCommand
             commandQueue.async { handler(cmd) }

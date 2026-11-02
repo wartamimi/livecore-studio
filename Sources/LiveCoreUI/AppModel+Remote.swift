@@ -26,6 +26,7 @@ extension AppModel {
         UserDefaults.standard.set(on, forKey: Self.remoteEnabledKey)
         remoteServer?.stop()
         remoteServer = nil
+        engine?.audioPump.removeSink(Self.remoteListenSink)
         if !on { remoteTunnel.stop() }
         remoteClients = 0
         remoteError = nil
@@ -36,12 +37,44 @@ extension AppModel {
         do {
             try server.start()
             remoteServer = server
+            startRemoteListen(server)
             remoteAddresses = RemoteServer.lanAddresses()
             pushRemoteState(clients: true)
         } catch {
             remoteError = "\(error)"
             remoteEnabled = false
             UserDefaults.standard.set(false, forKey: Self.remoteEnabledKey)
+        }
+    }
+
+    static let remoteListenSink = "remote-listen"
+
+    /// Audio Monitor (0.50.0): the buses a web page listens to, halved in rate (24 kHz at a 48 kHz
+    /// mix) as 16-bit stereo. Nothing is converted while nobody listens.
+    private func startRemoteListen(_ server: RemoteServer) {
+        let rate = Int(settings.audio.sampleRate)
+        let factor = rate % 2 == 0 ? 2 : 1
+        var lastCheck = 0.0
+        var buses: [OutputBus] = []
+        engine?.audioPump.addSink(Self.remoteListenSink) { [weak server] chunk in
+            guard let server else { return }
+            let now = Date().timeIntervalSinceReferenceDate
+            if now - lastCheck > 0.25 {
+                lastCheck = now
+                buses = server.listenedBuses().compactMap(OutputBus.init(rawValue:))
+            }
+            for b in buses {
+                let c = chunk.bus(b)
+                let n = min(c.left.count, c.right.count) / factor
+                var out = [Int16](repeating: 0, count: n * 2)
+                for i in 0..<n {
+                    var l: Float = 0, r: Float = 0
+                    for k in 0..<factor { l += c.left[i * factor + k]; r += c.right[i * factor + k] }
+                    out[2 * i] = Int16(min(max(l / Float(factor), -1), 1) * 32767)
+                    out[2 * i + 1] = Int16(min(max(r / Float(factor), -1), 1) * 32767)
+                }
+                server.pushAudio(out, bus: b.rawValue, sampleRate: rate / factor)
+            }
         }
     }
 

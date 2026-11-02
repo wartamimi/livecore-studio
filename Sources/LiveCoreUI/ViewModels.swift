@@ -36,6 +36,19 @@ public final class ChannelVM: ObservableObject, Identifiable {
     @Published public var eqMid: Double { didSet { channel.controls.eqMidDB.value = Float(eqMid) } }
     @Published public var eqMidHz: Double { didSet { channel.controls.eqMidHz.value = Float(eqMidHz) } }
     @Published public var eqHigh: Double { didSet { channel.controls.eqHighDB.value = Float(eqHigh) } }
+    // Advanced audio settings (0.50.0)
+    @Published public var eqLowHz: Double { didSet { channel.controls.eqLowHz.value = Float(eqLowHz) } }
+    @Published public var eqHighHz: Double { didSet { channel.controls.eqHighHz.value = Float(eqHighHz) } }
+    @Published public var eqMidQ: Double { didSet { channel.controls.eqMidQ.value = Float(eqMidQ) } }
+    @Published public var lowPass: Bool { didSet { channel.controls.lowPassEnabled.value = lowPass } }
+    @Published public var lowPassHz: Double { didSet { channel.controls.lowPassHz.value = Float(lowPassHz) } }
+    @Published public var gateAttack: Double { didSet { channel.controls.gateAttackMs.value = Float(gateAttack) } }
+    @Published public var gateHold: Double { didSet { channel.controls.gateHoldMs.value = Float(gateHold) } }
+    @Published public var gateRelease: Double { didSet { channel.controls.gateReleaseMs.value = Float(gateRelease) } }
+    @Published public var compKnee: Double { didSet { channel.controls.compKneeDB.value = Float(compKnee) } }
+    @Published public var limiter: Bool { didSet { channel.controls.limiterEnabled.value = limiter } }
+    @Published public var limiterCeiling: Double { didSet { channel.controls.limiterCeilingDB.value = Float(limiterCeiling) } }
+    @Published public var limiterRelease: Double { didSet { channel.controls.limiterReleaseMs.value = Float(limiterRelease) } }
     // Audio properties (0.15.0)
     @Published public var name: String { didSet { channel.name = name } }
     @Published public var compMakeup: Double { didSet { channel.controls.compMakeupDB.value = Float(compMakeup) } }
@@ -91,6 +104,18 @@ public final class ChannelVM: ObservableObject, Identifiable {
         eqMid = Double(c.eqMidDB.value)
         eqMidHz = Double(c.eqMidHz.value)
         eqHigh = Double(c.eqHighDB.value)
+        eqLowHz = Double(c.eqLowHz.value)
+        eqHighHz = Double(c.eqHighHz.value)
+        eqMidQ = Double(c.eqMidQ.value)
+        lowPass = c.lowPassEnabled.value
+        lowPassHz = Double(c.lowPassHz.value)
+        gateAttack = Double(c.gateAttackMs.value)
+        gateHold = Double(c.gateHoldMs.value)
+        gateRelease = Double(c.gateReleaseMs.value)
+        compKnee = Double(c.compKneeDB.value)
+        limiter = c.limiterEnabled.value
+        limiterCeiling = Double(c.limiterCeilingDB.value)
+        limiterRelease = Double(c.limiterReleaseMs.value)
     }
 }
 
@@ -116,6 +141,7 @@ public final class MeterModel: ObservableObject {
     public struct Level: Equatable {
         public var l: Float; public var r: Float; public var holdL: Float; public var holdR: Float; public var gr: Float
         public var gate: Float = 0
+        public var limiter: Float = 0
     }
     @Published public var levels: [String: Level] = [:]
     @Published public var master = Level(l: -120, r: -120, holdL: -120, holdR: -120, gr: 0)
@@ -149,7 +175,7 @@ public final class MeterModel: ObservableObject {
             br.update(peakLinear: c.peakR.exchange(0), dt: dt, now: now)
             ballistics[key] = (bl, br)
             return Level(l: bl.levelDB, r: br.levelDB, holdL: bl.peakHoldDB, holdR: br.peakHoldDB, gr: c.gainReductionDB.value,
-                         gate: c.gateReductionDB.value)
+                         gate: c.gateReductionDB.value, limiter: c.limiterReductionDB.value)
         }
         for ch in channels { out[ch.id] = step(ch.id, ch.controls) }
         let mm = step("__master", m)

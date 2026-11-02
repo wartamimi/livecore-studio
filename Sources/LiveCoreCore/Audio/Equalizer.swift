@@ -7,7 +7,7 @@ import Glibc
 /// Second-order IIR section (Transposed Direct Form II), stereo state.
 /// Coefficients follow the RBJ "Audio EQ Cookbook" formulas (public-domain reference maths).
 public struct Biquad: Sendable {
-    public enum Kind: Sendable, Equatable { case highPass, lowShelf, peaking, highShelf }
+    public enum Kind: Sendable, Equatable { case highPass, lowShelf, peaking, highShelf, lowPass }
     private var b0: Float = 1, b1: Float = 0, b2: Float = 0, a1: Float = 0, a2: Float = 0
     private var zL1: Float = 0, zL2: Float = 0, zR1: Float = 0, zR2: Float = 0
 
@@ -23,6 +23,9 @@ public struct Biquad: Sendable {
         switch kind {
         case .highPass:
             nb0 = (1 + cw) / 2; nb1 = -(1 + cw); nb2 = (1 + cw) / 2
+            na0 = 1 + alpha; na1 = -2 * cw; na2 = 1 - alpha
+        case .lowPass:
+            nb0 = (1 - cw) / 2; nb1 = 1 - cw; nb2 = (1 - cw) / 2
             na0 = 1 + alpha; na1 = -2 * cw; na2 = 1 - alpha
         case .peaking:
             nb0 = 1 + alpha * A; nb1 = -2 * cw; nb2 = 1 - alpha * A
@@ -86,11 +89,17 @@ public struct ChannelEQ: Sendable {
         public var midGainDB: Double = 0       // peak, Q 0.9
         public var midHz: Double = 1_000
         public var highGainDB: Double = 0      // shelf at 8 kHz
+        // Advanced (0.50.0): shelf frequencies, mid Q and a low-pass filter.
+        public var lowHz: Double = 120
+        public var highHz: Double = 8_000
+        public var midQ: Double = 0.9
+        public var lowPassEnabled = false
+        public var lowPassHz: Double = 18_000
         public init() {}
     }
     public private(set) var params: Params
     public let sampleRate: Double
-    private var hpf = Biquad(), low = Biquad(), mid = Biquad(), high = Biquad()
+    private var hpf = Biquad(), lpf = Biquad(), low = Biquad(), mid = Biquad(), high = Biquad()
 
     public init(sampleRate: Double) {
         self.sampleRate = sampleRate
@@ -103,18 +112,21 @@ public struct ChannelEQ: Sendable {
     private mutating func configure(force: Bool, _ p: Params) {
         let old = params
         if force || p.highPassHz != old.highPassHz { hpf.configure(.highPass, frequency: p.highPassHz, gainDB: 0, q: 0.707, sampleRate: sampleRate) }
-        if force || p.lowGainDB != old.lowGainDB { low.configure(.lowShelf, frequency: 120, gainDB: p.lowGainDB, q: 0.707, sampleRate: sampleRate) }
-        if force || p.midGainDB != old.midGainDB || p.midHz != old.midHz {
-            mid.configure(.peaking, frequency: p.midHz, gainDB: p.midGainDB, q: 0.9, sampleRate: sampleRate)
+        if force || p.lowPassHz != old.lowPassHz { lpf.configure(.lowPass, frequency: p.lowPassHz, gainDB: 0, q: 0.707, sampleRate: sampleRate) }
+        if force || p.lowGainDB != old.lowGainDB || p.lowHz != old.lowHz { low.configure(.lowShelf, frequency: p.lowHz, gainDB: p.lowGainDB, q: 0.707, sampleRate: sampleRate) }
+        if force || p.midGainDB != old.midGainDB || p.midHz != old.midHz || p.midQ != old.midQ {
+            mid.configure(.peaking, frequency: p.midHz, gainDB: p.midGainDB, q: p.midQ, sampleRate: sampleRate)
         }
-        if force || p.highGainDB != old.highGainDB { high.configure(.highShelf, frequency: 8_000, gainDB: p.highGainDB, q: 0.707, sampleRate: sampleRate) }
+        if force || p.highGainDB != old.highGainDB || p.highHz != old.highHz { high.configure(.highShelf, frequency: p.highHz, gainDB: p.highGainDB, q: 0.707, sampleRate: sampleRate) }
         if p.highPassEnabled && !old.highPassEnabled { hpf.reset() }
+        if p.lowPassEnabled && !old.lowPassEnabled { lpf.reset() }
         if p.eqEnabled && !old.eqEnabled { low.reset(); mid.reset(); high.reset() }
         params = p
     }
 
     public mutating func processHighPass(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>, frames: Int) {
         if params.highPassEnabled { hpf.process(left: left, right: right, frames: frames) }
+        if params.lowPassEnabled { lpf.process(left: left, right: right, frames: frames) }
     }
 
     public mutating func processEQ(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>, frames: Int) {
@@ -128,6 +140,7 @@ public struct ChannelEQ: Sendable {
     public func responseDB(at f: Double) -> Double {
         var db = 0.0
         if params.highPassEnabled { db += hpf.responseDB(at: f, sampleRate: sampleRate) }
+        if params.lowPassEnabled { db += lpf.responseDB(at: f, sampleRate: sampleRate) }
         if params.eqEnabled {
             if params.lowGainDB != 0 { db += low.responseDB(at: f, sampleRate: sampleRate) }
             if params.midGainDB != 0 { db += mid.responseDB(at: f, sampleRate: sampleRate) }
