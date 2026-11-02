@@ -91,6 +91,14 @@ final class V050Tests: XCTestCase {
         XCTAssertGreaterThan(eq.responseDB(at: 200), -0.5)
     }
 
+    func testCaptionPages() {
+        XCTAssertEqual(SubtitleText.page("satu dua tiga", maxChars: 20, lines: 2), ["satu dua tiga"])
+        // Lines stay where they were as the sentence grows; a third line starts a new page.
+        XCTAssertEqual(SubtitleText.page("aaaa bbbb cccc dddd", maxChars: 9, lines: 2), ["aaaa bbbb", "cccc dddd"])
+        XCTAssertEqual(SubtitleText.page("aaaa bbbb cccc dddd eeee", maxChars: 9, lines: 2), ["eeee"])
+        XCTAssertEqual(SubtitleText.page("", maxChars: 9, lines: 2), [])
+    }
+
     func testAdvancedSettingsDecodeOptional() throws {
         let ch = try JSONDecoder().decode(ProjectAudioChannel.self, from: Data(#"{"name":"Mic","faderDB":0,"gainDB":0,"pan":0,"muted":false,"toProgram":true,"compressorEnabled":false,"compThresholdDB":-18,"compRatio":3,"gateEnabled":false,"gateThresholdDB":-50}"#.utf8))
         XCTAssertNil(ch.advanced)

@@ -233,6 +233,24 @@ public enum ElevenLabsRealtime {
 }
 
 public enum SubtitleText {
+    /// Broadcast-style captions (0.50.2): the text is wrapped from its start into lines of
+    /// `maxChars` and cut into pages of `lines`; the last page is shown. Words stay on their line
+    /// while the sentence grows, and a full page is replaced by a fresh one instead of scrolling.
+    public static func page(_ text: String, maxChars: Int, lines: Int) -> [String] {
+        let words = text.split(whereSeparator: { $0 == " " || $0 == "\n" }).map(String.init)
+        var all: [String] = []
+        var line = ""
+        for w in words {
+            let candidate = line.isEmpty ? w : line + " " + w
+            if candidate.count <= maxChars || line.isEmpty { line = candidate } else { all.append(line); line = w }
+        }
+        if !line.isEmpty { all.append(line) }
+        guard !all.isEmpty else { return [] }
+        let n = max(1, lines)
+        let start = (all.count - 1) / n * n
+        return Array(all[start...])
+    }
+
     /// The last words of a running transcript that fit `maxChars` per line on `lines` lines,
     /// broken at spaces (a caption shows what is being said now, not the whole speech).
     public static func tail(_ transcript: String, maxChars: Int, lines: Int) -> [String] {

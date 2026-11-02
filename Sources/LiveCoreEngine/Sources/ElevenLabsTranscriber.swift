@@ -155,10 +155,10 @@ final class ElevenLabsTranscriber: NSObject, URLSessionWebSocketDelegate {
             partial = text
             publish()
         case let .committed(text):
+            // One sentence at a time (0.50.2): the finished sentence stays until the next starts.
             partial = ""
             let t = text.trimmingCharacters(in: .whitespaces)
-            if !t.isEmpty { committed = committed.isEmpty ? t : committed + " " + t }
-            if committed.count > 600 { committed = String(committed.suffix(400)) }
+            if !t.isEmpty { committed = t }
             publish()
         case let .error(type, message, fatal):
             Log.devices.error("elevenlabs \(type, privacy: .public): \(message, privacy: .public)")
@@ -177,7 +177,7 @@ final class ElevenLabsTranscriber: NSObject, URLSessionWebSocketDelegate {
     }
 
     private func publish() {
-        let text = partial.isEmpty ? committed : (committed.isEmpty ? partial : committed + " " + partial)
+        let text = partial.isEmpty ? committed : partial
         onText?(text)
     }
 
