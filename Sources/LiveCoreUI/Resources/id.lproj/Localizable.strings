@@ -1502,7 +1502,7 @@
 "audio.lpf" = "Filter low-pass";
 "audio.limiter" = "Limiter";
 "audio.limiter_help" = "Batas atas keras untuk channel ini setelah kompresor, sebelum fader. Limiter Program tetap berlaku.";
-"transcription.add" = "Realtime Transcription (ElevenLabs)";
+"transcription.add" = "Realtime Transcription";
 "transcription.title" = "Realtime Transcription";
 "transcription.engine" = "Mesin";
 "transcription.apple" = "Pengenalan suara Apple";

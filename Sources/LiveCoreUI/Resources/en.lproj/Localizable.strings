@@ -1502,7 +1502,7 @@
 "audio.lpf" = "Low-pass filter";
 "audio.limiter" = "Limiter";
 "audio.limiter_help" = "Hard ceiling for this channel after the compressor, before the fader. The Program limiter stays on top.";
-"transcription.add" = "Realtime Transcription (ElevenLabs)";
+"transcription.add" = "Realtime Transcription";
 "transcription.title" = "Realtime Transcription";
 "transcription.engine" = "Engine";
 "transcription.apple" = "Apple speech recognition";

@@ -217,7 +217,6 @@ struct InputPanelView: View {
                 Button(L10n.t("timer.add")) { showTimerSheet = true }
                 Button(L10n.t("frame.add")) { showFrameSheet = true }
                 Button(L10n.t("gt.add")) { if let id = model.addGTTitle() { editingGT = id } }
-                Button(L10n.t("subtitles.add")) { if let id = model.addSubtitles() { editingSubtitles = id } }
                 Button(L10n.t("transcription.add")) { if let id = model.addTranscription() { editingSubtitles = id } }
                 Button(L10n.t("scene.new")) { if let id = model.addScene() { editingScene = id } }
             }
