@@ -197,6 +197,46 @@ public final class ProductionEngine {
     var aacEncoders: [AACEncoder] = []
     var audioInputs: [String: AudioCaptureInput] = [:]
     var lastSwitcher = SwitcherSnapshot()
+
+    /// Frames waiting for the main thread (monitors, thumbnails). One slot, newest wins (0.49.0):
+    /// before, every frame was queued with its own main-queue block, so while the main thread was
+    /// busy (app launch, menus, sheets) the queued blocks held all pool buffers and the compositor
+    /// could not get a new one ("render drops … failed" in the log, Drop 366 right after launch).
+    /// Now the UI simply skips frames it had no time to show; Program output keeps rendering.
+    struct UIMailbox {
+        var program: CVPixelBuffer?
+        var preview: CVPixelBuffer?
+        var thumbs: [InputID: CVPixelBuffer] = [:]
+        var detail: (InputID, CVPixelBuffer)?
+        var scheduled = false
+    }
+    let uiMailbox = Locked(UIMailbox())
+
+    func deliverToUI(program: CVPixelBuffer, preview: CVPixelBuffer?, thumbs: [InputID: CVPixelBuffer],
+                     detail: (InputID, CVPixelBuffer)?) {
+        let schedule = uiMailbox.mutate { m -> Bool in
+            m.program = program
+            if let preview { m.preview = preview }
+            m.thumbs.merge(thumbs) { _, new in new }
+            if let detail { m.detail = detail }
+            if m.scheduled { return false }
+            m.scheduled = true
+            return true
+        }
+        guard schedule else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            let m = self.uiMailbox.mutate { m -> UIMailbox in
+                let out = m
+                m = UIMailbox()
+                return out
+            }
+            if let d = m.detail { self.onDetailFrame?(d.0, d.1) }
+            if let p = m.program { self.onProgramFrame?(p) }
+            if let p = m.preview { self.onPreviewFrame?(p) }
+            if !m.thumbs.isEmpty { self.onThumbnails?(m.thumbs) }
+        }
+    }
     /// Mixer settings from a loaded project for video-file channels that appear once the file's
     /// audio track has loaded.
     var pendingFileChannelSettings: [InputID: ProjectAudioChannel] = [:]
@@ -342,12 +382,7 @@ public final class ProductionEngine {
             let preview = result.preview
             let thumbs = result.thumbnails
             let detail = result.detail
-            DispatchQueue.main.async {
-                if let detail, let detailID { self.onDetailFrame?(detailID, detail) }
-                self.onProgramFrame?(program)
-                if let preview { self.onPreviewFrame?(preview) }
-                if !thumbs.isEmpty { self.onThumbnails?(thumbs) }
-            }
+            self.deliverToUI(program: program, preview: preview, thumbs: thumbs, detail: detailID.flatMap { id in detail.map { (id, $0) } })
         }
         if !ok {
             inFlight.mutate { $0 -= 1 }
