@@ -50,7 +50,7 @@ let package = Package(
         .target(
             name: "LiveCoreUI",
             dependencies: ["LiveCoreEngine", "LiveCoreCore", "LiveCoreRemote", "LiveCoreServices"],
-            resources: [.process("Resources")]
+            resources: [.process("Resources"), .copy("Flags")]
         ),
         .executableTarget(name: "LiveCoreStudio", dependencies: ["LiveCoreUI"], path: "App"),
         .executableTarget(name: "livecore-rtmp-push", dependencies: ["LiveCoreCore"]),

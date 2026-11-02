@@ -2,6 +2,8 @@
 import CoreVideo
 import Foundation
 import Metal
+import MetalKit
+import QuartzCore
 import LiveCoreCore
 
 /// GPU compositor. Turns a `FramePlan` into:
@@ -213,9 +215,29 @@ public final class MetalCompositor {
                                          range: Int32(a.range.rawValue), deinterlace: a.deinterlace ? 1 : 0)
             let lutTex = a.activeLUT.flatMap(lutTexture)
             if lutTex != nil { params.lutMix = Float(a.lutStrength) }
+            params.targetSize = SIMD2(Float(size.width), Float(size.height))
+            var maskTex: MTLTexture?
+            if a.mask.isActive {
+                let m = a.mask
+                params.maskShape = Int32(m.shape.rawValue)
+                params.maskRect = SIMD4(Float(m.x), Float(m.y), Float(m.width), Float(m.height))
+                params.maskRadius = Float(m.radius); params.maskFeather = Float(m.feather)
+                params.maskInvert = m.invert ? 1 : 0
+                if m.shape == .imageLuma || m.shape == .imageAlpha {
+                    maskTex = m.imagePath.flatMap(maskTexture)
+                    if maskTex == nil { params.maskShape = 0 }
+                }
+            }
+            if a.wave.enabled {
+                let w = a.wave
+                params.waveOn = 1; params.waveAmp = Float(w.amplitude); params.waveFreq = Float(w.frequency)
+                params.waveShade = Float(w.shading)
+                params.wavePhase = Float((CACurrentMediaTime() * w.speed).truncatingRemainder(dividingBy: 1000) * 2 * .pi)
+            }
             enc.setFragmentBytes(&params, length: MemoryLayout<AdjustParamsGPU>.stride, index: 0)
             enc.setFragmentTexture(src, index: 0)
             enc.setFragmentTexture(lutTex ?? identityLUT, index: 1)
+            enc.setFragmentTexture(maskTex ?? whiteMask, index: 2)
             enc.drawPrimitives(type: .triangleStrip, vertexStart: 0, vertexCount: 4)
             enc.endEncoding()
             textures[id] = (dst, size)
@@ -345,10 +367,41 @@ public final class MetalCompositor {
         return mode != (kCVImageBufferAlphaChannelMode_PremultipliedAlpha as String)
     }
 
-    /// Matches `AdjustParams` in the shader (4 floats, 4 ints).
+    /// Matches `AdjustParams` in the shader (96 bytes: 8 scalars, float4, float2 + 2, 4 + 4 scalars).
     private struct AdjustParamsGPU {
         var brightness: Float, contrast: Float, saturation: Float, invGamma: Float
         var straight: Int32, range: Int32 = 0, deinterlace: Int32 = 0, lutMix: Float = 0
+        var maskRect = SIMD4<Float>(0, 0, 1, 1)
+        var targetSize = SIMD2<Float>(1, 1)
+        var maskRadius: Float = 0, maskFeather: Float = 0
+        var maskShape: Int32 = 0, maskInvert: Int32 = 0, waveOn: Int32 = 0, waveAmp: Float = 0
+        var waveFreq: Float = 0, wavePhase: Float = 0, waveShade: Float = 0, pad: Float = 0
+    }
+
+    /// Mask images by file path (render queue only), like the LUT cache.
+    private var maskTextures: [String: MTLTexture] = [:]
+    private var failedMasks: Set<String> = []
+    private lazy var whiteMask: MTLTexture? = {
+        let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 1, height: 1, mipmapped: false)
+        d.usage = .shaderRead
+        guard let t = device.makeTexture(descriptor: d) else { return nil }
+        var px: [UInt8] = [255, 255, 255, 255]
+        t.replace(region: MTLRegionMake2D(0, 0, 1, 1), mipmapLevel: 0, withBytes: &px, bytesPerRow: 4)
+        return t
+    }()
+
+    private func maskTexture(_ path: String) -> MTLTexture? {
+        if let t = maskTextures[path] { return t }
+        if failedMasks.contains(path) { return nil }
+        let loader = MTKTextureLoader(device: device)
+        guard let t = try? loader.newTexture(URL: URL(fileURLWithPath: path),
+                                             options: [.SRGB: false, .textureUsage: MTLTextureUsage.shaderRead.rawValue]) else {
+            failedMasks.insert(path)
+            return nil
+        }
+        if maskTextures.count > 32 { maskTextures.removeAll() }
+        maskTextures[path] = t
+        return t
     }
 
     private func flattenTexture(_ id: InputID) -> MTLTexture? {

@@ -36,7 +36,8 @@ struct SettingsView: View {
          (1, L10n.t("stream.title"), "dot.radiowaves.left.and.right"), (2, L10n.t("record.title"), "record.circle"),
          (8, "MultiCorder", "square.grid.2x2"), (3, L10n.t("audio.title"), "speaker.wave.2"),
          (4, L10n.t("settings.shortcuts"), "keyboard"), (5, "MIDI", "pianokeys"), (7, "Remote", "iphone"),
-         (9, L10n.t("preflight.button"), "checklist"), (10, L10n.t("settings.language"), "globe")]
+         (9, L10n.t("preflight.button"), "checklist"), (10, L10n.t("settings.language"), "globe"),
+         (11, "Security", "lock")]
     }
 
     var body: some View {
@@ -63,6 +64,7 @@ struct SettingsView: View {
                     case 7: RemoteSettingsView()
                     case 9: PreflightSheet(embedded: true)
                     case 10: languageTab
+                    case 11: SecretStorageSettings()
                     default: outputTab
                     }
                 }
@@ -371,6 +373,27 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private struct SecretStorageSettings: View {
+        @State private var mode = KeychainStore.mode
+        @State private var message = ""
+        var body: some View {
+            Form {
+                Picker("Store stream keys, PIN and API keys in", selection: $mode) {
+                    ForEach(KeychainStore.Mode.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.radioGroup)
+                .onChange(of: mode) { m in
+                    do { try KeychainStore.setMode(m); message = "Moved all secrets." }
+                    catch { message = error.localizedDescription; mode = KeychainStore.mode }
+                }
+                if !message.isEmpty { Text(message).font(.caption) }
+                Text("All secrets are one item, read once per launch. LiveCore Studio is not signed with an Apple Developer ID, so every new build looks like a new app to macOS: with plain Keychain it asks for the password once after each update (click Always Allow). \"Never ask\" and \"Local file\" stop the prompts, but any app running as your macOS user could read the keys.")
+                    .font(.caption).foregroundStyle(Theme.textDim)
+            }
+            .formStyle(.grouped)
+        }
     }
 
     private var languageTab: some View {

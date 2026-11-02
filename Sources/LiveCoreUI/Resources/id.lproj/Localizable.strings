@@ -356,8 +356,8 @@
 "audio.state" = "Status";
 "audio.gain_reduction" = "Pengurangan gain";
 "audio.route_program" = "Ke Program (stream / rekaman)";
-"adjust.menu" = "Warna & Orientasi…";
-"adjust.title" = "Warna & Orientasi";
+"adjust.menu" = "Warna, Orientasi & Mask…";
+"adjust.title" = "Warna, Orientasi & Mask";
 "adjust.brightness" = "Kecerahan";
 "adjust.contrast" = "Kontras";
 "adjust.saturation" = "Saturasi";
@@ -1511,3 +1511,5 @@
 "transcription.key_stored" = "Tersimpan di Keychain (ketik untuk mengganti)";
 "transcription.note" = "Suara Program dikirim ke ElevenLabs lewat internet dengan API key Anda sendiri dan memakai kuota ElevenLabs Anda. Teks tampil sebagai overlay transparan; pasang input ini di kanal overlay.";
 "transcription.live" = "Live (ElevenLabs)";
+
+"flag.add" = "Bendera…";

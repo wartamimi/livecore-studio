@@ -46,7 +46,11 @@ public final class SubtitleSource: VideoSource {
     public var transcript: String { lock.withLock { text } }
 
     public func update(_ s: SubtitleStyle) {
+        func engineSide(_ a: TranscriptionAdvanced) -> TranscriptionAdvanced {
+            var a = a; a.clearAfter = 0; a.uppercase = false; return a
+        }
         let restart = s.locale != style.locale || s.allowServer != style.allowServer || s.provider != style.provider
+            || engineSide(s.advanced) != engineSide(style.advanced)
         style = s
         if restart { stop(); start() } else { redraw() }
     }
@@ -81,8 +85,9 @@ public final class SubtitleSource: VideoSource {
             self?.clearTimer?.invalidate()
             self?.clearTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
                 guard let self else { return }
-                // Captions disappear after 4 s of silence.
-                if Date().timeIntervalSince(self.lock.withLock({ self.lastSpeech })) > 4, !self.transcript.isEmpty {
+                // Captions disappear after N s of silence (Advanced, default 4; 0 = never).
+                let hold = self.style.advanced.clearAfter
+                if hold > 0, Date().timeIntervalSince(self.lock.withLock({ self.lastSpeech })) > hold, !self.transcript.isEmpty {
                     self.lock.withLock { self.text = "" }
                     self.lock.withLock({ self.eleven })?.resetText()
                     self.redraw()
@@ -96,7 +101,8 @@ public final class SubtitleSource: VideoSource {
         guard let key = (try? KeychainStore.load(account: ElevenLabsRealtime.keychainAccount)) ?? nil, !key.isEmpty else {
             return setStatus(.error("Enter your ElevenLabs API key in this input's settings."))
         }
-        guard let t = ElevenLabsTranscriber(apiKey: key, languageCode: style.languageCode, mixRate: mixRate) else {
+        guard let t = ElevenLabsTranscriber(apiKey: key, languageCode: style.languageCode, mixRate: mixRate,
+                                            advanced: style.advanced) else {
             return setStatus(.error("ElevenLabs cannot take audio at \(mixRate) Hz. Use 48 kHz or 44.1 kHz in Settings › Audio."))
         }
         t.onText = { [weak self] text in
@@ -132,8 +138,14 @@ public final class SubtitleSource: VideoSource {
         // not downloaded, which failed every request and showed no captions.
         let useServer = style.allowServer
         req.requiresOnDeviceRecognition = !useServer
-        req.taskHint = .dictation
-        if #available(macOS 13.0, *) { req.addsPunctuation = true }
+        switch style.advanced.appleTaskHint {
+        case .unspecified: req.taskHint = .unspecified
+        case .dictation: req.taskHint = .dictation
+        case .search: req.taskHint = .search
+        case .confirmation: req.taskHint = .confirmation
+        }
+        req.contextualStrings = style.advanced.cleanVocabulary
+        if #available(macOS 13.0, *) { req.addsPunctuation = style.advanced.applePunctuation }
         lock.withLock { request = req; recognizer = r }
         task = r.recognitionTask(with: req) { [weak self] result, error in
             guard let self else { return }
@@ -204,7 +216,7 @@ public final class SubtitleSource: VideoSource {
     }
 
     private func redraw() {
-        let t = transcript
+        let t = style.advanced.uppercase ? transcript.uppercased() : transcript
         let charWidth: Double = style.fontSize * Double(outputSize.height) / 1080.0 * 0.52
         let maxChars = max(12, Int(Double(outputSize.width) * 0.8 / max(charWidth, 1)))
         let lines = SubtitleText.page(t, maxChars: maxChars, lines: max(1, style.maxLines))

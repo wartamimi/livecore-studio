@@ -67,7 +67,7 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-259 | Warna › Generator LUT: pilih preset, geser slider, Simpan & Terapkan; lalu Batal di sesi lain | Input berubah live; Simpan menaruh .cube di pustaka; Batal mengembalikan LUT sebelumnya |
 | T-260 | Generator LUT › Ekspor .cube, buka di DaVinci Resolve | Resolve menerima file, tampilan sama |
 | T-261 | Help › Bantuan LiveCore Studio (⌘?) dengan bahasa Indonesia, lalu Inggris | Topik dan isi mengikuti bahasa; pencarian jalan |
-| T-262 | Menu LiveCore Studio › Tentang | Ikon, versi 0.50.4 (67), deskripsi singkat, "Dibuat oleh Munawar Tamimi" |
+| T-262 | Menu LiveCore Studio › Tentang | Ikon, versi 0.51.0 (68), deskripsi singkat, "Dibuat oleh Munawar Tamimi" |
 | T-263 | Drop saat buka app (0.49.0) | Buka app tanpa input, tunggu 30 dtk | Drop tetap 0 (pemanasan 5 dtk pertama tidak dihitung, dicatat di log); klik angka Drop → kembali 0 |
 | T-264 | Loop default off | Tambah 1 video dan 1 playlist | Repeat/Loop mati untuk keduanya |
 | T-265 | Menu Program | Klik 2 jari di monitor Program | Menu Screenshot (PNG + banner) dan Grab as Still (PNG jadi input gambar baru) |
@@ -87,6 +87,13 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-274 | Simpan proyek | Ubah semua setelan advanced, simpan, buka lagi | Semua nilai kembali |
 | T-275 | Audio Monitor web | Web Controller di HP › Mixer audio › 🎧 Dengar, pilih Master lalu Bus A | Suara mix terdengar di HP (≈0,3–0,5 dtk terlambat), tanpa putus di Wi-Fi yang sama; volume slider bekerja |
 | T-276 | Audio Monitor tunnel | Sama, lewat Cloudflare tunnel (4G) | Terdengar; boleh sesekali patah jika sinyal lemah |
+| T-277 | Keychain sekali | Pasang build 0.51.0 di atas versi lama, buka app, mulai stream/transcription | Password diminta paling banyak SATU kali (klik Always Allow); tidak diminta lagi selama build ini |
+| T-278 | Keychain tanpa prompt | Settings › Security › "Keychain, never ask" atau "Local file"; tutup & buka app | Tidak ada prompt password; stream key, PIN, API key ElevenLabs masih ada |
+| T-279 | Bendera | Input + › Bendera…, cari Indonesia, Animate on, Add | Input "Flag – Indonesia", proporsi 2:3 benar, berkibar halus di Preview/Program tanpa drop |
+| T-280 | Atur kibaran | Properties › Warna, Orientasi & Mask › Wave: ubah tinggi/kecepatan, matikan | Berubah langsung; mati = bendera diam |
+| T-281 | Mask bentuk | Kamera › Mask Circle, soft edge 0,05; lalu Rectangle radius 0,2; Invert | Gambar terpotong lingkaran/kotak membulat dengan tepi halus di semua output dan layer |
+| T-282 | Mask gambar | Mask Image (white = visible) dengan PNG hitam-putih | Area putih terlihat, hitam transparan |
+| T-283 | Transcription Advanced | Realtime Transcription › Advanced: vocabulary nama mempelai, ElevenLabs keyterms, silence 0,8 s, clear 2 s, UPPERCASE | Nama dikenali lebih baik, kalimat berganti lebih cepat, teks huruf besar, hilang 2 dtk setelah diam |
 
 ## AY. Tes manual build 0.47.0
 

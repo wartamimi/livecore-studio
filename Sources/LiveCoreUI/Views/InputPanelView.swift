@@ -21,6 +21,7 @@ struct InputPanelView: View {
     @State private var showNDISheet = false
     @State private var editingNDI: InputID?
     @State private var showFrameSheet = false
+    @State private var showFlagSheet = false
     @State private var editingFrame: InputID?
     @State private var editingGT: InputID?
     @State private var editingSubtitles: InputID?
@@ -114,6 +115,7 @@ struct InputPanelView: View {
         .sheet(item: $editingCapture) { id in CaptureSheet(editing: id).environmentObject(model) }
         .sheet(isPresented: $showNDISheet) { NDIInputSheet(editing: nil).environmentObject(model) }
         .sheet(isPresented: $showFrameSheet) { FrameSheet(editing: nil).environmentObject(model) }
+        .sheet(isPresented: $showFlagSheet) { FlagSheet().environmentObject(model) }
         .sheet(item: $editingFrame) { id in FrameSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingGT) { id in GTTitleSheet(input: id).environmentObject(model) }
         .sheet(item: $editingSubtitles) { id in SubtitleSheet(input: id).environmentObject(model) }
@@ -216,6 +218,7 @@ struct InputPanelView: View {
                 Button(L10n.t("inputs.title_menu")) { showTitleSheet = true }
                 Button(L10n.t("timer.add")) { showTimerSheet = true }
                 Button(L10n.t("frame.add")) { showFrameSheet = true }
+                Button(L10n.t("flag.add")) { showFlagSheet = true }
                 Button(L10n.t("gt.add")) { if let id = model.addGTTitle() { editingGT = id } }
                 Button(L10n.t("transcription.add")) { if let id = model.addTranscription() { editingSubtitles = id } }
                 Button(L10n.t("scene.new")) { if let id = model.addScene() { editingScene = id } }

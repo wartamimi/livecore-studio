@@ -249,8 +249,10 @@ struct InputAdjustSheet: View {
                 .pickerStyle(.segmented)
                 Text(L10n.t("adjust.rotate_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
                 LUTSection(input: input, adjust: $a)
+                MaskWaveSection(adjust: Binding(get: { a }, set: { a = $0; model.setAdjust(input, $0) }))
             }
             .formStyle(.grouped)
+            .frame(minHeight: 420)
             HStack {
                 Button(L10n.t("adjust.reset")) { a = a.resetKeepingSignalFixes; model.setAdjust(input, a) }
                 Spacer()

@@ -14,6 +14,7 @@ final class ElevenLabsTranscriber: NSObject, URLSessionWebSocketDelegate {
 
     private let apiKey: String
     private let languageCode: String?
+    private let advanced: TranscriptionAdvanced
     private let mixRate: Int
     private let sendRate: Int
     private let factor: Int
@@ -28,9 +29,9 @@ final class ElevenLabsTranscriber: NSObject, URLSessionWebSocketDelegate {
     private var committed = ""
     private var partial = ""
 
-    init?(apiKey: String, languageCode: String?, mixRate: Int) {
+    init?(apiKey: String, languageCode: String?, mixRate: Int, advanced: TranscriptionAdvanced = TranscriptionAdvanced()) {
         guard let rate = ElevenLabsRealtime.sendRate(forMixRate: mixRate) else { return nil }
-        self.apiKey = apiKey; self.languageCode = languageCode; self.mixRate = mixRate
+        self.apiKey = apiKey; self.languageCode = languageCode; self.mixRate = mixRate; self.advanced = advanced
         sendRate = rate
         factor = max(1, mixRate / rate)
         super.init()
@@ -118,7 +119,8 @@ final class ElevenLabsTranscriber: NSObject, URLSessionWebSocketDelegate {
     }
 
     private func open(token: String) {
-        guard running, let url = ElevenLabsRealtime.url(sampleRate: sendRate, languageCode: languageCode, token: token) else { return }
+        guard running, let url = ElevenLabsRealtime.url(sampleRate: sendRate, languageCode: languageCode, token: token,
+                                                                    advanced: advanced) else { return }
         var req = URLRequest(url: url)
         req.timeoutInterval = 15
         let s = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
@@ -177,7 +179,7 @@ final class ElevenLabsTranscriber: NSObject, URLSessionWebSocketDelegate {
     }
 
     private func publish() {
-        let text = partial.isEmpty ? committed : partial
+        let text = partial.isEmpty || !advanced.showPartial ? committed : partial
         onText?(text)
     }
 
