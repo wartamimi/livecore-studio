@@ -62,6 +62,8 @@ func engineCheck() -> Never {
         let port = 9310 + i
         let src = SRTSource(id: InputID("srt-check-\(i)"), config: ProjectSRTInput(mode: .listener, port: port, latencyMs: 200))
         src.audioChannelProvider = { MixerChannel.detached() }
+        let dumpPath = NSTemporaryDirectory() + "srt-received-\(i).ts"
+        src.debugDumpPath = dumpPath
         src.start()
         // Homebrew's ffmpeg may lack libsrt: then ffmpeg writes TS to a pipe and srt-live-transmit
         // (Homebrew "srt") sends it, as the soak check does.
@@ -101,6 +103,9 @@ func engineCheck() -> Never {
         let s = src.signal
         print("\(name): status \(src.status.label), \(s.width)x\(s.height) \(s.videoCodec), frames \(s.frames), audio frames \(s.audioFrames) (\(s.audio)), decode errors \(s.decodeErrors) (last \(s.lastDecodeError)), decoder dropped \(s.decoderDropped), peer \(s.peer) streamid '\(s.streamID)', SRT received \(link.receivedPackets) lost \(link.lostPackets) recovered \(link.recoveredPackets), decoded \(s.decoded), TS CC errors \(s.continuityErrors), damaged \(s.damagedUnits), SRT dropped \(link.droppedPackets), decoder \(s.decoder), first failure: \(s.firstDecodeFailure.isEmpty ? "-" : s.firstDecodeFailure)")
         src.stop()
+        let received = [UInt8]((try? Data(contentsOf: URL(fileURLWithPath: dumpPath))) ?? Data())
+        let offline = SRTSource.decodeCheck(received)
+        print("\(name): received TS decoded again offline: \(received.count) bytes, decoded \(offline.decoded), errors \(offline.errors), first failure: \(offline.firstFailure.isEmpty ? "-" : offline.firstFailure)")
         var problems: [String] = []
         if !sawLive { problems.append("never went live") }
         if let pb = src.currentFrame(), CVPixelBufferGetWidth(pb) == 1280, CVPixelBufferGetHeight(pb) == 720 {} else { problems.append("no 1280x720 frame") }
