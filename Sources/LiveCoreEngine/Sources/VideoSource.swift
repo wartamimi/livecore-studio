@@ -4,7 +4,7 @@ import Foundation
 import LiveCoreCore
 
 public enum InputKind: String, Codable, Sendable {
-    case camera, image, videoFile, color, text
+    case camera, image, videoFile, color, text, browser, timer, screen, replay, colorBars, scene, ticker, slideshow, ndi, presentation, frame, gtTitle, subtitles, liveCall, srt, decklink, qrCode
 }
 
 public enum SourceStatus: Equatable, Sendable {
@@ -86,9 +86,40 @@ public enum PixelBufferFactory {
         return pool
     }
 
-    /// Draws with CoreGraphics into a new BGRA (premultiplied alpha) buffer.
+    private static let poolLock = NSLock()
+    private static var pools: [Int: CVPixelBufferPool] = [:]
+
+    /// A BGRA buffer from a shared per-size pool, so sources that redraw every frame (browser,
+    /// LCS Live, tickers) recycle IOSurfaces instead of allocating a new one per frame.
+    /// Falls back to a plain allocation if the pool cannot be made.
+    public static func pooled(width: Int, height: Int) -> CVPixelBuffer? {
+        guard width > 0, height > 0 else { return nil }
+        let key = width << 20 | height
+        poolLock.lock()
+        var pool = pools[key]
+        if pool == nil {
+            if pools.count >= 24 { pools.removeAll() }   // many sizes seen: start over
+            pool = makePool(width: width, height: height, minimumCount: 0)
+            pools[key] = pool
+        }
+        poolLock.unlock()
+        var pb: CVPixelBuffer?
+        if let pool, CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &pb) == kCVReturnSuccess, let pb {
+            return pb
+        }
+        return make(width: width, height: height)
+    }
+
+    /// Releases shared-pool buffers nobody used for about a second (a removed browser or LCS Live
+    /// input no longer keeps its pictures in memory). Called ~1 Hz from the render loop (0.56.0).
+    public static func flushIdlePools() {
+        poolLock.lock(); let all = Array(pools.values); poolLock.unlock()
+        for pool in all { CVPixelBufferPoolFlush(pool, []) }
+    }
+
+    /// Draws with CoreGraphics into a cleared BGRA (premultiplied alpha) buffer from the shared pool.
     public static func draw(width: Int, height: Int, _ body: (CGContext) -> Void) -> CVPixelBuffer? {
-        guard let pb = make(width: width, height: height) else { return nil }
+        guard let pb = pooled(width: width, height: height) else { return nil }
         CVPixelBufferLockBaseAddress(pb, [])
         defer { CVPixelBufferUnlockBaseAddress(pb, []) }
         guard let ctx = CGContext(data: CVPixelBufferGetBaseAddress(pb), width: width, height: height,
