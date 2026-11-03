@@ -9,8 +9,6 @@ import LiveCoreServices
 /// last recording, YouTube chapters from the rundown, and vertical 9:16 highlight clips around
 /// the moments marked with ★ HIGHLIGHT.
 extension AppModel {
-    public var highlightCount: Int { showMarks.filter { $0.kind == .highlight }.count }
-
     public func makeClientPackage() {
         guard let e = engine else { return }
         guard !isRecording else { report(L10n.t("package.stop_first")); return }
