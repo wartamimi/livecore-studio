@@ -567,10 +567,29 @@ extension ProductionEngine {
             mixer.removeChannel(id: Self.ndiChannelID(id))
             onAudioChannelsChange?()
         }
+        // Any audio channel still belonging to this input (file, capture, NDI, LCS Live, SRT,
+        // DeckLink) goes too, whatever the input type (0.56.0).
+        let leftover = mixer.channelList.filter { Self.inputOfChannel($0.id) == id }
+        for ch in leftover { mixer.removeChannel(id: ch.id) }
+        if !leftover.isEmpty { onAudioChannelsChange?() }
+        pendingFileChannelSettings[id] = nil
+        if let r = removed { watchRelease(r, name: id.raw) }
         // Channels that followed this input are no longer gated.
         afvLinks = afvLinks.filter { $0.value != id && Self.inputOfChannel($0.key) != id }
         applyAFV()
         publishInputs()
+    }
+
+    /// Checks that a removed input really left memory (0.56.0): if something still holds it 10 s
+    /// later, the log says so (Help › Export Logs), which points at the leak.
+    func watchRelease(_ source: VideoSource, name: String) {
+        weak var weakSource: AnyObject? = source
+        let kind = "\(type(of: source))"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            if weakSource != nil {
+                self?.onDiagnostic?("removed input \(kind) \(name) is still in memory 10 s after removal")
+            }
+        }
     }
 
     /// New format / options for a camera or capture-card input (applied without removing it).

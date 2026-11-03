@@ -51,6 +51,8 @@ public final class AppModel: ObservableObject {
     /// Outputs the top-bar FULLSCREEN button opens on their displays (Output 1 by default).
     @Published public internal(set) var fullscreenOutputs: Set<Int> = [1]
     public internal(set) var thumbnailFeeds: [InputID: FrameFeed] = [:]
+    var occlusionObserver: NSObjectProtocol?
+    var demandUpdateScheduled = false
     /// The four extra outputs: one feed per output window / full-screen display.
     public let outputFeeds: [Int: FrameFeed] = Dictionary(uniqueKeysWithValues: (1...OutputRouting.count).map { ($0, FrameFeed()) })
     public internal(set) lazy var outputFullscreens: [Int: FullscreenOutput] = makeOutputFullscreens()
@@ -173,6 +175,27 @@ public final class AppModel: ObservableObject {
         RunLoop.main.add(t, forMode: .common)
         statsTimer = t
         startStutterLog()
+        FrameFeed.onVisibilityChange = { [weak self] in self?.scheduleUIDemandUpdate() }
+        occlusionObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didChangeOcclusionStateNotification, object: nil, queue: .main
+        ) { [weak self] _ in self?.scheduleUIDemandUpdate() }
+    }
+
+    /// Tells the engine which input thumbnails and whether Preview are on screen (0.56.0), so a
+    /// minimised or covered window, a closed Multiview and tiles scrolled out of view cost no GPU
+    /// or main-thread time. Checked twice a second and whenever a window or monitor view changes.
+    func updateUIDemand() {
+        demandUpdateScheduled = false
+        guard let e = engine else { return }
+        let visible = Set(thumbnailFeeds.compactMap { $0.value.isOnScreen ? $0.key : nil })
+        let preview = previewFeed.isOnScreen || remoteServer != nil
+        e.setUIDemand(thumbnails: visible, preview: preview)
+    }
+
+    func scheduleUIDemandUpdate() {
+        guard !demandUpdateScheduled else { return }
+        demandUpdateScheduled = true
+        DispatchQueue.main.async { [weak self] in self?.updateUIDemand() }
     }
 
     public func shutdown() {
@@ -218,6 +241,8 @@ public final class AppModel: ObservableObject {
             self.inputs = list
             self.noteInputsChanged(list)
             let ids = Set(list.map(\.id))
+            // Feeds of deleted inputs let go of their last pictures at once (0.56.0).
+            for (id, f) in self.thumbnailFeeds where !ids.contains(id) { f.clear() }
             self.thumbnailFeeds = self.thumbnailFeeds.filter { ids.contains($0.key) }
             self.outputInputsChanged()
             self.overlays = e.overlays
@@ -226,6 +251,7 @@ public final class AppModel: ObservableObject {
         e.onRecordStats = { [weak self] s in self?.recordStats = s }
         e.onISOStats = { [weak self] s in self?.isoStats = s }
         e.onError = { [weak self] msg in self?.report(msg) }
+        e.onDiagnostic = { msg in FileLog.shared.warning(msg) }
         e.onWarmupDrops = { n in
             FileLog.shared.info("render warm-up: \(n) frames missed in the first \(Int(ProductionEngine.warmupSeconds)) s (not counted as Drop)")
         }
@@ -309,6 +335,7 @@ public final class AppModel: ObservableObject {
         guard let e = engine else { return }
         meters.update(channels: e.audioChannels, master: e.mixer.master, aux: e.mixer.aux)
         tickCount += 1
+        if tickCount % 15 == 0 { updateUIDemand() }
         if tickCount % 3 == 0 { meters.updateLoudness(e.mixer) }
         if tickCount % 30 == 0 { performance = e.samplePerformance(); refreshExternalStatus(); logRenderDrops(e) }
         if remoteServer != nil, tickCount % 3 == 0 { pushRemoteState(clients: tickCount % 30 == 0) }
