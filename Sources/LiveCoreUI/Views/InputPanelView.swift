@@ -18,6 +18,7 @@ struct InputPanelView: View {
     @State private var editingFrame: InputID?
     @State private var editingGT: InputID?
     @State private var editingSubtitles: InputID?
+    @Environment(\.openWindow) private var openWindow
     @State private var editingLiveCall: InputID?
     @State private var closing: InputID?
     @State private var editingCaptureCard: InputID?
@@ -249,7 +250,10 @@ struct InputPanelView: View {
         }
         if info.kind == .frame { Button(L10n.t("frame.edit")) { editingFrame = info.id } }
         if info.kind == .gtTitle { Button(L10n.t("gt.edit")) { editingGT = info.id } }
-        if info.kind == .subtitles { Button(L10n.t("subtitles.edit")) { editingSubtitles = info.id } }
+        if info.kind == .subtitles {
+            Button(L10n.t("subtitles.edit")) { editingSubtitles = info.id }
+            Button(L10n.t("transcript.open")) { model.transcriptInput = info.id; openWindow(id: "transcript") }
+        }
         if info.kind == .liveCall { Button(L10n.t("lcslive.edit")) { editingLiveCall = info.id } }
         if info.kind == .timer {
             Button(L10n.t("timer.start")) { model.timerControl(info.id, "play") }

@@ -1553,3 +1553,20 @@
 "transport.play_pause" = "Play / Pause";
 "transport.next" = "Next clip";
 "transport.none" = "No playback controls for this input";
+
+/* 0.57.0 Groq transcription + Transcript window */
+"transcription.groq_key" = "Groq API key";
+"transcription.groq_model" = "Groq model";
+"transcription.groq_live" = "Live (Groq Whisper)";
+"transcription.groq_note" = "Program sound is cut at pauses and sent to Groq (Whisper) over the internet with your own API key (console.groq.com › API Keys); it uses your Groq quota. Text appears a few seconds after it is spoken. Captions appear as a transparent overlay; put this input on an overlay channel.";
+"transcript.title" = "Transcript";
+"transcript.open" = "Open Transcript Window";
+"transcript.timestamps" = "Timestamps";
+"transcript.follow" = "Follow live";
+"transcript.count" = "%@ lines";
+"transcript.clear" = "Clear";
+"transcript.save" = "Save as Text…";
+"transcript.copy" = "Copy All";
+"transcript.copied" = "Copied";
+"transcript.empty" = "Text appears here as it is transcribed. Select any part to copy it.";
+"transcript.no_input" = "Add a Realtime Transcription input first (Add Input › Realtime Transcription).";

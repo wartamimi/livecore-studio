@@ -7,6 +7,7 @@ import LiveCoreEngine
 struct SubtitleSheet: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openWindow) private var openWindow
     let input: InputID
     @State private var style = SubtitleStyle()
     /// ElevenLabs API key (Keychain); empty field = keep the stored key.
@@ -25,17 +26,26 @@ struct SubtitleSheet: View {
                 Picker(L10n.t("transcription.engine"), selection: $style.provider) {
                     Text(L10n.t("transcription.apple")).tag(SubtitleProvider.apple)
                     Text("ElevenLabs (Scribe realtime)").tag(SubtitleProvider.elevenLabs)
+                    Text("Groq (Whisper large-v3)").tag(SubtitleProvider.groq)
                 }
                 .onChange(of: style.provider) { p in
                     if p == .apple && style.locale == "auto" { style.locale = "id-ID" }
+                    apiKey = ""
+                    hasKey = Self.storedKey(p)
                 }
                 Picker(L10n.t("subtitles.language"), selection: $style.locale) {
-                    if style.provider == .elevenLabs { Text(L10n.t("transcription.auto")).tag("auto") }
+                    if style.provider != .apple { Text(L10n.t("transcription.auto")).tag("auto") }
                     ForEach(Self.languages, id: \.0) { Text($0.1).tag($0.0) }
                 }
                 if style.provider == .elevenLabs {
                     SecureField(L10n.t("transcription.key"), text: $apiKey,
                                 prompt: Text(hasKey ? L10n.t("transcription.key_stored") : "xi-api-key"))
+                } else if style.provider == .groq {
+                    SecureField(L10n.t("transcription.groq_key"), text: $apiKey,
+                                prompt: Text(hasKey ? L10n.t("transcription.key_stored") : "gsk_…"))
+                    Picker(L10n.t("transcription.groq_model"), selection: $style.advanced.groqModel) {
+                        ForEach(GroqTranscription.models, id: \.0) { Text($0.1).tag($0.0) }
+                    }
                 } else {
                     Toggle(L10n.t("subtitles.allow_server"), isOn: $style.allowServer)
                 }
@@ -51,17 +61,20 @@ struct SubtitleSheet: View {
             if let s = model.subtitleSource(input) {
                 Text(statusLine(s)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-            Text(style.provider == .elevenLabs ? L10n.t("transcription.note") : L10n.t("subtitles.note")).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(noteText).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
+                Button(L10n.t("transcript.open")) { model.transcriptInput = input; openWindow(id: "transcript") }
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }.keyboardShortcut(.cancelAction)
                 Button(L10n.t("settings.apply")) {
-                    // "auto" exists only for ElevenLabs; Apple needs a real locale.
+                    // "auto" exists only for the online models; Apple needs a real locale.
                     if style.provider == .apple && style.locale == "auto" { style.locale = "id-ID" }
                     let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !key.isEmpty { try? KeychainStore.save(streamKey: key, account: ElevenLabsRealtime.keychainAccount) }
+                    if !key.isEmpty, let account = Self.keyAccount(style.provider) {
+                        try? KeychainStore.save(streamKey: key, account: account)
+                    }
                     let src = model.subtitleSource(input)
-                    let restart = !key.isEmpty && src?.style.provider == .elevenLabs && style.provider == .elevenLabs
+                    let restart = !key.isEmpty && src?.style.provider == style.provider && style.provider != .apple
                     src?.update(style)
                     if restart { src?.reconnect() }
                     dismiss()
@@ -72,8 +85,29 @@ struct SubtitleSheet: View {
         .frame(width: 460)
         .onAppear {
             if let s = model.subtitleSource(input) { style = s.style }
-            hasKey = ((try? KeychainStore.load(account: ElevenLabsRealtime.keychainAccount)) ?? nil)?.isEmpty == false
+            hasKey = Self.storedKey(style.provider)
         }
+    }
+
+    private var noteText: String {
+        switch style.provider {
+        case .apple: return L10n.t("subtitles.note")
+        case .elevenLabs: return L10n.t("transcription.note")
+        case .groq: return L10n.t("transcription.groq_note")
+        }
+    }
+
+    private static func keyAccount(_ p: SubtitleProvider) -> String? {
+        switch p {
+        case .apple: return nil
+        case .elevenLabs: return ElevenLabsRealtime.keychainAccount
+        case .groq: return GroqTranscription.keychainAccount
+        }
+    }
+
+    private static func storedKey(_ p: SubtitleProvider) -> Bool {
+        guard let a = keyAccount(p) else { return false }
+        return ((try? KeychainStore.load(account: a)) ?? nil)?.isEmpty == false
     }
 
     private struct TranscriptionAdvancedView: View {
@@ -103,6 +137,10 @@ struct SubtitleSheet: View {
                     }
                     Toggle("Automatic punctuation", isOn: $adv.applePunctuation)
                     Text("Apple uses the vocabulary as preferred words (free).").font(.caption).foregroundStyle(.secondary)
+                } else if provider == .groq {
+                    Stepper(String(format: "Longest piece sent at once: %.0f s", adv.groqMaxChunk),
+                            value: $adv.groqMaxChunk, in: 3...30, step: 1)
+                    Text("Groq has no live stream: speech is cut at pauses (or at this length) and each piece is sent to Whisper, so text appears a few seconds after it is spoken. Shorter = quicker text but more requests (free plan: 20 per minute). The vocabulary is sent as a hint prompt.").font(.caption).foregroundStyle(.secondary)
                 } else {
                     Toggle("Send vocabulary as keyterms (max 50, ElevenLabs charges +20%)", isOn: $adv.elevenKeyterms)
                     Picker("Sentence end", selection: $adv.commitStrategy) {
@@ -146,6 +184,7 @@ struct SubtitleSheet: View {
     private func statusLine(_ s: SubtitleSource) -> String {
         switch s.status {
         case .live where s.style.provider == .elevenLabs: return L10n.t("transcription.live")
+        case .live where s.style.provider == .groq: return L10n.t("transcription.groq_live")
         case .live: return s.onDevice ? L10n.t("subtitles.on_device") : L10n.t("subtitles.server")
         default: return s.status.label
         }

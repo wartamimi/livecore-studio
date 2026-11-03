@@ -367,6 +367,8 @@ public final class AppModel: ObservableObject {
 
     /// Per-input viewer (fullscreen button on the tiles).
     @Published public internal(set) var viewerInput: InputID?
+    /// Transcription input shown in the Transcript window (0.57.0).
+    @Published public var transcriptInput: InputID?
     public let viewerFeed = FrameFeed()
 
     /// While locked, the stream / recording cannot be started or stopped (buttons, menu, shortcuts).
