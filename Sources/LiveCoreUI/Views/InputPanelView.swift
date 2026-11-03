@@ -968,7 +968,7 @@ struct MediaClock: View {
             Text(label)
                 .font(.system(size: 8, weight: .heavy))
                 .frame(height: 13)
-                .padding(.horizontal, 4)
+                .padding(.horizontal, 6)
                 .background(on ? Theme.accent : Theme.panel)
                 .foregroundStyle(on ? Color.white : Theme.textDim)
                 .clipShape(RoundedRectangle(cornerRadius: 3))

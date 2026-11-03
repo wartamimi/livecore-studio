@@ -123,8 +123,18 @@ extension AppModel {
     public func addMediaPlaylist() {
         let urls = pickMedia()
         guard !urls.isEmpty, let e = engine else { return }
-        if urls.allSatisfy(Self.isAudioOnly) { e.addMusic(urls: urls) } else { e.addVideoFile(urls: urls, autoPlay: .restartPause) }
+        let key: String
+        if urls.allSatisfy(Self.isAudioOnly) { key = "music:" + e.addMusic(urls: urls).channel.id }
+        else { key = "input:" + e.addVideoFile(urls: urls, autoPlay: .restartPause).raw }
         reloadAudioChannels()
+        // Show the Playlist dock opened on the new playlist (0.55.1).
+        UserDefaults.standard.set(false, forKey: "dock.playlist.minimized")
+        UserDefaults.standard.set(key, forKey: "dock.playlist.selection")
+    }
+
+    /// Playlist dock shown only when a playlist exists (more than one clip / track).
+    public var hasPlaylists: Bool {
+        musicInputs.contains { $0.tracks.count > 1 } || inputs.contains { $0.kind == .videoFile && videoFile($0.id)?.isPlaylist == true }
     }
 
 
