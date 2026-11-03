@@ -41,6 +41,18 @@ func engineCheck() -> Never {
     let ffmpeg = ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"].first { FileManager.default.isExecutableFile(atPath: $0) }
     guard let ffmpeg else { fail("ffmpeg not found") }
     var failures: [String] = []
+    // The decoder alone, from a file (no network): tells a transport fault from a decoder fault.
+    for (codec, preset) in [("libx264", "ultrafast"), ("libx264", "veryfast")] {
+        let file = NSTemporaryDirectory() + "srt-check-\(preset).ts"
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: ffmpeg)
+        p.arguments = ["-hide_banner", "-loglevel", "error", "-y", "-f", "lavfi", "-i", "testsrc2=size=1280x720:rate=30", "-t", "4",
+                       "-c:v", codec, "-preset", preset, "-g", "30", "-bf", "2", "-f", "mpegts", file]
+        try? p.run(); p.waitUntilExit()
+        let bytes = [UInt8]((try? Data(contentsOf: URL(fileURLWithPath: file))) ?? Data())
+        let r = SRTSource.decodeCheck(bytes)
+        print("file \(codec) \(preset): \(bytes.count) bytes, decoded \(r.decoded), errors \(r.errors), first failure: \(r.firstFailure.isEmpty ? "-" : r.firstFailure)")
+    }
     // ultrafast x264 = CAVLC with B-pictures; veryfast = CABAC (what OBS and most encoders send).
     let cases = [("libx264", "ultrafast"), ("libx264", "veryfast"), ("libx265", "ultrafast")]
     for (i, (codec, preset)) in cases.enumerated() {
@@ -82,7 +94,7 @@ func engineCheck() -> Never {
         while p.isRunning && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
         if p.isRunning { p.terminate() }
         let s = src.signal
-        print("\(name): status \(src.status.label), \(s.width)x\(s.height) \(s.videoCodec), frames \(s.frames), audio frames \(s.audioFrames) (\(s.audio)), decode errors \(s.decodeErrors) (last \(s.lastDecodeError)), decoder dropped \(s.decoderDropped), peer \(s.peer) streamid '\(s.streamID)', lost \(s.srt.lostPackets), decoder \(s.decoder), first failure: \(s.firstDecodeFailure.isEmpty ? "-" : s.firstDecodeFailure)")
+        print("\(name): status \(src.status.label), \(s.width)x\(s.height) \(s.videoCodec), frames \(s.frames), audio frames \(s.audioFrames) (\(s.audio)), decode errors \(s.decodeErrors) (last \(s.lastDecodeError)), decoder dropped \(s.decoderDropped), peer \(s.peer) streamid '\(s.streamID)', lost \(s.srt.lostPackets), decoded \(s.decoded), TS CC errors \(s.continuityErrors), damaged \(s.damagedUnits), SRT dropped \(s.srt.droppedPackets), decoder \(s.decoder), first failure: \(s.firstDecodeFailure.isEmpty ? "-" : s.firstDecodeFailure)")
         src.stop()
         var problems: [String] = []
         if !sawLive { problems.append("never went live") }
