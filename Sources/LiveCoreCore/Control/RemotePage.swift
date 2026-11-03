@@ -34,6 +34,8 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 .led{width:9px;height:9px;border-radius:50%;background:#3a3f48;box-shadow:inset 0 1px 1px rgba(0,0,0,.6);flex:none}
 .led.ok{background:var(--green);box-shadow:0 0 8px var(--green)}
 .led.bad{background:var(--red);box-shadow:0 0 8px var(--red)}
+.netw{font-size:11px;color:#f5a623;margin-left:6px}
+.led.weak{background:#f5a623;box-shadow:0 0 8px #f5a623}
 .tally{display:flex;align-items:center;gap:6px;padding:4px 9px 4px 7px;border-radius:7px;background:var(--deck);border:1px solid var(--edge);
  font:700 11px/1 ui-monospace,"SF Mono",Menlo,monospace;letter-spacing:.06em;color:var(--dim)}
 .tally.on{color:#fff;border-color:var(--red2);background:linear-gradient(#3a1215,#250a0c)}
@@ -247,7 +249,7 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 
 <div id="app" class="hidden">
   <div class="bar">
-    <div class="who"><span id="conn" class="led"></span><h1 id="title">LiveCore Studio</h1></div>
+    <div class="who"><span id="conn" class="led"></span><h1 id="title">LiveCore Studio</h1><span id="netw" class="netw"></span></div>
     <span id="recT" class="tally"><span class="led"></span>REC <time>00:00:00</time></span>
     <span id="liveT" class="tally"><span class="led"></span>LIVE <time>00:00:00</time></span>
   </div>
@@ -307,8 +309,8 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 <script>
 "use strict";
 const T={
- en:{pinHint:"Enter the PIN shown in LiveCore Studio › Settings › Remote.",inputs:"Inputs",transition:"Transition",replay:"Instant replay",output:"Record & stream",audio:"Audio mixer",signOut:"Sign out",wrong:"Wrong PIN.",locked:"Too many wrong PINs. Try again in {s} s.",offline:"Cannot reach LiveCore Studio.",stopRec:"Stop recording?",stopLive:"Stop streaming?",startLive:"Start streaming?",recLocked:"Recording is locked in the app.",liveLocked:"Streaming is locked in the app.",noInputs:"No inputs yet.",noAudio:"No audio channels.",listen:"🎧 Listen",listenStop:"🎧 Stop",listening:"Listening (≈0.4 s behind)",mute:"MUTE",ovHint:"Tap = Preview · hold = Program"},
- id:{pinHint:"Masukkan PIN yang tampil di LiveCore Studio › Settings › Remote.",inputs:"Input",transition:"Transisi",replay:"Instant replay",output:"Rekam & stream",audio:"Mixer audio",signOut:"Keluar",wrong:"PIN salah.",locked:"Terlalu banyak PIN salah. Coba lagi dalam {s} detik.",offline:"LiveCore Studio tidak terjangkau.",stopRec:"Hentikan rekaman?",stopLive:"Hentikan streaming?",startLive:"Mulai streaming?",recLocked:"Rekaman dikunci di aplikasi.",liveLocked:"Streaming dikunci di aplikasi.",noInputs:"Belum ada input.",noAudio:"Belum ada kanal audio.",listen:"🎧 Dengar",listenStop:"🎧 Berhenti",listening:"Mendengarkan (≈0,4 dtk terlambat)",mute:"MUTE",ovHint:"Ketuk = Preview · tahan = Program"}
+ en:{pinHint:"Enter the PIN shown in LiveCore Studio › Settings › Remote.",inputs:"Inputs",transition:"Transition",replay:"Instant replay",output:"Record & stream",audio:"Audio mixer",signOut:"Sign out",wrong:"Wrong PIN.",locked:"Too many wrong PINs. Try again in {s} s.",offline:"Cannot reach LiveCore Studio.",stopRec:"Stop recording?",stopLive:"Stop streaming?",startLive:"Start streaming?",recLocked:"Recording is locked in the app.",liveLocked:"Streaming is locked in the app.",noInputs:"No inputs yet.",noAudio:"No audio channels.",listen:"🎧 Listen",listenStop:"🎧 Stop",listening:"Listening (≈{s} s behind)",weak:"Weak connection: lighter pictures and sound",mute:"MUTE",ovHint:"Tap = Preview · hold = Program"},
+ id:{pinHint:"Masukkan PIN yang tampil di LiveCore Studio › Settings › Remote.",inputs:"Input",transition:"Transisi",replay:"Instant replay",output:"Rekam & stream",audio:"Mixer audio",signOut:"Keluar",wrong:"PIN salah.",locked:"Terlalu banyak PIN salah. Coba lagi dalam {s} detik.",offline:"LiveCore Studio tidak terjangkau.",stopRec:"Hentikan rekaman?",stopLive:"Hentikan streaming?",startLive:"Mulai streaming?",recLocked:"Rekaman dikunci di aplikasi.",liveLocked:"Streaming dikunci di aplikasi.",noInputs:"Belum ada input.",noAudio:"Belum ada kanal audio.",listen:"🎧 Dengar",listenStop:"🎧 Berhenti",listening:"Mendengarkan (≈{s} dtk terlambat)",weak:"Koneksi lemah: gambar dan suara diringankan",mute:"MUTE",ovHint:"Ketuk = Preview · tahan = Program"}
 };
 const lang=(navigator.language||"en").slice(0,2), L=T[lang]||T.en;
 document.documentElement.lang=T[lang]?lang:"en";
@@ -326,8 +328,32 @@ document.addEventListener("pointerdown",e=>{const k=e.target.closest(".key");if(
 const up=()=>document.querySelectorAll(".key.down").forEach(k=>k.classList.remove("down"));
 document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up);
 
-async function api(path,method){
-  const r=await fetch(path,{method:method||"GET",headers:{"X-LiveCore-PIN":pin},cache:"no-store"});
+/* Connection quality (0.54.2): round-trip times and failures decide "weak" mode (lighter pictures,
+   mono audio, slower polling). It turns on quickly and off only after 15 s of good replies. */
+const net={rtt:150,fails:[],weak:false,since:0,
+  ok(ms){this.rtt=this.rtt*0.8+Math.min(ms,5000)*0.2;this.eval()},
+  fail(){this.fails.push(Date.now());this.eval()},
+  eval(){const now=Date.now();this.fails=this.fails.filter(t=>now-t<10000);
+    const bad=this.rtt>450||this.fails.length>=2,good=this.rtt<220&&!this.fails.length;
+    if(bad)this.since=now;
+    if(!this.weak&&bad){this.weak=true;netChanged()}
+    else if(this.weak&&good&&now-this.since>15000){this.weak=false;netChanged()}}};
+function netChanged(){
+  const c=$("conn");if(c&&c.classList.contains("ok")||c&&c.classList.contains("weak"))c.className="led "+(net.weak?"weak":"ok");
+  const w=$("netw");if(w)w.textContent=net.weak?L.weak:"";
+  if(listenGen&&listenAbort&&listenLow!==net.weak){listenRestart=true;listenAbort.abort()}
+}
+// Every request has a time limit (no hanging forever on a dead link); opt.timeout 0 = none.
+async function api(path,method,opt){
+  opt=opt||{};const ac=new AbortController(),lim=opt.timeout!=null?opt.timeout:(net.weak?8000:5000);
+  const to=lim?setTimeout(()=>ac.abort(),lim):null;
+  if(opt.signal)opt.signal.addEventListener("abort",()=>ac.abort());
+  const h={"X-LiveCore-PIN":pin};if(opt.rid)h["X-LCS-Req"]=opt.rid;
+  const t0=performance.now();let r;
+  try{r=await fetch(path,{method:method||"GET",headers:h,cache:"no-store",signal:ac.signal})}
+  catch(e){if(to)clearTimeout(to);if(!opt.signal||!opt.signal.aborted)net.fail();throw e}
+  if(to)clearTimeout(to);
+  if(!opt.noRtt)net.ok(performance.now()-t0);
   if(r.status===401){signedOut(L.wrong);throw new Error("auth")}
   if(r.status===429){signedOut(L.locked.replace("{s}",r.headers.get("Retry-After")||"60"));throw new Error("locked")}
   if(!r.ok)throw new Error("http "+r.status);
@@ -339,7 +365,19 @@ function holdTap(b,tap,hold){let t=null,held=false;
   const end=()=>{if(t){clearTimeout(t);t=null;if(!held)tap()}};
   b.addEventListener("pointerup",end);b.addEventListener("pointerleave",()=>{if(t){clearTimeout(t);t=null}});
   b.addEventListener("contextmenu",e=>e.preventDefault())}
-function send(path){api(path,"POST").then(()=>setTimeout(poll,60)).catch(()=>{})}
+// Commands carry an id and are re-sent up to 3 times when the reply is lost; the app runs each
+// id once, so a CUT never happens twice.
+let ridN=0;
+function send(path){
+  const rid=Date.now().toString(36)+"-"+(++ridN)+"-"+Math.random().toString(36).slice(2,6);
+  const go=n=>api(path,"POST",{rid}).then(()=>setTimeout(poll,60)).catch(e=>{
+    if(e.message==="auth"||e.message==="locked"||/^http 4/.test(e.message))return;
+    if(n<3)setTimeout(()=>go(n+1),500*(n+1))});
+  go(0);
+}
+let pollGen=null;
+function startPoll(){const g=pollGen={};(async function loop(){if(pollGen!==g)return;const t0=performance.now();await poll();
+  setTimeout(loop,Math.max(0,(net.weak?1000:250)-(performance.now()-t0)))})()}
 
 /* Sign in with an on-screen keypad */
 function pad(){
@@ -352,10 +390,10 @@ function pad(){
 function dots(){const d=$("dots");d.textContent="";for(let i=0;i<Math.max(6,typed.length);i++)d.appendChild(el("i",i<typed.length?"f":""))}
 document.addEventListener("keydown",e=>{if(!$("login").classList.contains("hidden")){
   if(/^\d$/.test(e.key)&&typed.length<8)typed+=e.key;else if(e.key==="Backspace")typed=typed.slice(0,-1);else if(e.key==="Enter")signIn(typed);dots()}});
-function signedOut(msg){stopListen();clearInterval(timer);timer=null;stopFrames();$("app").classList.add("hidden");$("login").classList.remove("hidden");$("err").textContent=msg||"";typed="";dots()}
+function signedOut(msg){stopListen();pollGen=null;clearInterval(timer);timer=null;stopFrames();$("app").classList.add("hidden");$("login").classList.remove("hidden");$("err").textContent=msg||"";typed="";dots()}
 async function signIn(p){
   if(p)pin=p; if(!pin)return; $("err").textContent="";
-  try{await api("/api/ping");store.set(pin);typed="";$("login").classList.add("hidden");$("app").classList.remove("hidden");poll();timer=setInterval(poll,250);startFrames()}
+  try{await api("/api/ping");store.set(pin);typed="";$("login").classList.add("hidden");$("app").classList.remove("hidden");startPoll();startFrames()}
   catch(e){if(e.message!=="auth"&&e.message!=="locked")$("err").textContent=L.offline;typed="";dots()}
 }
 async function poll(){
@@ -375,13 +413,17 @@ async function frameLoop(bus,gen){
   const t0=performance.now();
   if(st&&st.frames&&!document.hidden){
     const img=$(bus==="program"?"imgPgm":"imgPvw");
-    try{const r=await api("/api/frame?bus="+bus+(fseq[bus]!=null?"&since="+fseq[bus]:""));
+    const lo=net.weak?"&q=low":"",k=bus+lo;
+    try{const r=await api("/api/frame?bus="+bus+lo+(fseq[k]!=null?"&since="+fseq[k]:""),"GET",{noRtt:true});
       const q=r.headers.get("X-Frame-Seq");
-      if(r.status===200){if(q!=null)fseq[bus]=q;const u=URL.createObjectURL(await r.blob());img.src=u;
+      if(r.status!==200)net.ok(performance.now()-t0);
+      if(r.status===200){if(q!=null)fseq[k]=q;const u=URL.createObjectURL(await r.blob());net.ok(performance.now()-t0);img.src=u;
         try{await img.decode()}catch(e){}
         img.classList.add("ready");if(urls[bus])URL.revokeObjectURL(urls[bus]);urls[bus]=u}}catch(e){}
   }
-  setTimeout(()=>frameLoop(bus,gen),Math.max(document.hidden||!st||!st.frames?300:0,66-(performance.now()-t0)));
+  // Weak link: Program ≈5 fps and Preview 1 fps, so the picture that matters keeps moving.
+  const every=net.weak?(bus==="program"?200:1000):66;
+  setTimeout(()=>frameLoop(bus,gen),Math.max(document.hidden||!st||!st.frames?300:0,every-(performance.now()-t0)));
 }
 
 const name=n=>{const i=st.inputs.find(x=>x.n===n);return i?n+"  "+i.name:"—"};
@@ -398,7 +440,7 @@ function buildBus(box,isPgm){
     box.appendChild(b)});
 }
 function render(){
-  $("conn").className="led ok";
+  $("conn").className="led "+(net.weak?"weak":"ok");
   $("title").textContent=st.title;
   $("pgmName").textContent=st.program?name(st.program):"—";
   $("pvwName").textContent=st.preview?name(st.preview):"—";
@@ -511,12 +553,15 @@ function renderAudio(){
 /* Buttons */
 // Audio Monitor: PCM pushed over one streaming response (0.53.0); polling /api/listen is the fallback.
 let aCtx=null,aGain=null,listenGen=null,nextSeq=0,playT=0;
+// Adaptive buffer (0.54.2): grows by 0.25 s after each gap (up to 1.5 s), shrinks after 30 s without one.
+let aLead=0.35,aGapT=0,listenAbort=null,listenLow=false,listenRestart=false;
+const lstText=()=>{$("lst").textContent=L.listening.replace("{s}",(aLead+0.1).toFixed(1))+(listenLow?" · mono":"")};
 function stopListen(){listenGen=null;nextSeq=0;const b=$("lsn");if(b){b.classList.remove("on");b.textContent=L.listen}$("lst").textContent="";if(aCtx){aCtx.close();aCtx=null}}
 function startListen(){
   stopListen();
   aCtx=new (window.AudioContext||window.webkitAudioContext)();
   aGain=aCtx.createGain();aGain.gain.value=+$("lvol").value;aGain.connect(aCtx.destination);
-  playT=0;const gen=listenGen={};$("lsn").classList.add("on");$("lsn").textContent=L.listenStop;$("lst").textContent=L.listening;
+  playT=0;aLead=net.weak?0.6:0.35;aGapT=Date.now();const gen=listenGen={};$("lsn").classList.add("on");$("lsn").textContent=L.listenStop;lstText();
   listenStream(gen);
 }
 function playBlock(b){
@@ -528,18 +573,25 @@ function playBlock(b){
     for(let c=0;c<ch;c++){const d=buf.getChannelData(c);for(let i=0;i<n;i++)d[i]=dv.getInt16(12+(i*ch+c)*2,true)/32768}
     const src=aCtx.createBufferSource();src.buffer=buf;src.connect(aGain);
     const now=aCtx.currentTime;
-    if(playT<now+0.02||playT>now+1.5)playT=now+0.35;
+    if(playT<now+0.02){
+      if(playT>0){aLead=Math.min(1.5,aLead+0.25);aGapT=Date.now();lstText()}
+      playT=now+aLead;
+    }else if(playT>now+aLead+1.2)playT=now+aLead;
+    else if(aLead>0.35&&Date.now()-aGapT>30000){aLead=Math.max(0.35,aLead-0.1);aGapT=Date.now();lstText()}
     src.start(playT);playT+=buf.duration;
   }
 }
 async function listenStream(gen){
-  let got=false;
+  let got=false,last=Date.now();
+  const ac=new AbortController();listenAbort=ac;listenLow=net.weak;listenRestart=false;lstText();
+  // Watchdog: the app sends at least one block a second; 4 s of silence = a dead link, reconnect.
+  const wd=setInterval(()=>{if(Date.now()-last>4000)ac.abort()},1000);
   try{
-    const r=await api("/api/listen?stream=1&bus="+$("lbus").value);
+    const r=await api("/api/listen?stream=1&bus="+$("lbus").value+(listenLow?"&q=low":""),"GET",{timeout:0,signal:ac.signal,noRtt:true});
     if(!r.body||!r.body.getReader)throw new Error("no stream");
     const rd=r.body.getReader();let acc=new Uint8Array(0);
     while(listenGen===gen){
-      const x=await rd.read();if(x.done)break;
+      const x=await rd.read();if(x.done)break;last=Date.now();
       const m=new Uint8Array(acc.length+x.value.length);m.set(acc);m.set(x.value,acc.length);acc=m;
       while(acc.length>=4){
         const len=acc[0]|acc[1]<<8|acc[2]<<16|acc[3]<<24;
@@ -549,9 +601,11 @@ async function listenStream(gen){
     }
     try{rd.cancel()}catch(e){}
   }catch(e){}
+  clearInterval(wd);if(listenAbort===ac)listenAbort=null;
   if(listenGen!==gen)return;
-  // Stream ended: reconnect if it was working, otherwise fall back to polling.
-  if(got)setTimeout(()=>listenStream(gen),300);else listenLoop(gen);
+  // Quality change or ended stream: reconnect if it was working, otherwise fall back to polling.
+  if(listenRestart)listenStream(gen);
+  else if(got)setTimeout(()=>listenStream(gen),net.weak?1000:300);else listenLoop(gen);
 }
 async function listenLoop(gen){
   if(listenGen!==gen)return;
@@ -561,7 +615,7 @@ async function listenLoop(gen){
     if(listenGen!==gen)return;
     if(r.status===200)playBlock(await r.arrayBuffer());
   }catch(e){if(listenGen!==gen)return}
-  setTimeout(()=>listenLoop(gen),Math.max(0,120-(performance.now()-t0)));
+  setTimeout(()=>listenLoop(gen),Math.max(0,(net.weak?250:120)-(performance.now()-t0)));
 }
 $("lsn").onclick=()=>{if(listenGen)stopListen();else startListen()};
 $("lsn").textContent=L.listen;

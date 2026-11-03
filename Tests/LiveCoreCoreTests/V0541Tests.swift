@@ -55,4 +55,41 @@ final class V0541Tests: XCTestCase {
             XCTAssertTrue(String(decoding: got, as: UTF8.self).contains("Connection: keep-alive"))
         }
     }
+
+    // 0.54.2: weak-connection mode.
+    func testLowFramesFallBackThenServeSmallPicture() {
+        let s = RemoteServer(port: 0, pin: "123456", onCommand: { _ in })
+        s.setFrame([1, 1, 1, 1], bus: "program")
+        let req = HTTPRequest(method: "GET", path: "/api/frame", query: ["bus": "program", "q": "low"],
+                              headers: ["host": "localhost", "x-livecore-pin": "123456"])
+        XCTAssertEqual(s.handle(req, client: "c").body.count, 4, "normal picture until a small one exists")
+        XCTAssertTrue(s.wantsLowFrames())
+        s.setFrame([2], bus: "program-low")
+        XCTAssertEqual(s.handle(req, client: "c").body, [2])
+    }
+
+    func testLowAudioIsMonoHalfRate() {
+        let (pcm, rate) = RemoteServer.lowAudio([100, 300, 100, 300, -8, -8, -8, -8], rate: 24_000)
+        XCTAssertEqual(rate, 12_000)
+        XCTAssertEqual(pcm, [200, -8])
+    }
+
+    func testRepeatedCommandIdRunsOnce() {
+        let count = Counter()
+        let s = RemoteServer(port: 0, pin: "123456", commandQueue: DispatchQueue(label: "cmd")) { _ in count.add() }
+        let req = HTTPRequest(method: "POST", path: "/api/cut",
+                              headers: ["host": "localhost", "x-livecore-pin": "123456", "x-lcs-req": "abc-1"])
+        XCTAssertEqual(s.handle(req, client: "c").status, 200)
+        XCTAssertTrue(String(decoding: s.handle(req, client: "c").body, as: UTF8.self).contains("repeat"))
+        var other = req; other.headers["x-lcs-req"] = "abc-2"
+        _ = s.handle(other, client: "c")
+        Thread.sleep(forTimeInterval: 0.2)
+        XCTAssertEqual(count.value, 2)
+    }
+}
+
+private final class Counter: @unchecked Sendable {
+    private let l = NSLock(); private var n = 0
+    func add() { l.lock(); n += 1; l.unlock() }
+    var value: Int { l.lock(); defer { l.unlock() }; return n }
 }

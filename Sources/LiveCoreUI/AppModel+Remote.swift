@@ -176,9 +176,12 @@ extension AppModel {
             return true
         }) else { return }
         let frames = [("program", lastProgramFrame), ("preview", lastPreviewFrame)]
+        let low = server.wantsLowFrames()
         Self.remoteEncodeQueue.async {
             for case let (bus, pb?) in frames {
                 if let jpeg = Self.remoteJPEG(pb) { server.setFrame(jpeg, bus: bus) }
+                // Weak connection (0.54.2): a small, lighter picture as well (≈1/4 of the bytes).
+                if low, let jpeg = Self.remoteJPEG(pb, width: 320, quality: 0.45) { server.setFrame(jpeg, bus: bus + "-low") }
             }
             Self.remoteEncoding.mutate { $0 = false }
         }
@@ -190,14 +193,14 @@ extension AppModel {
     private static var remoteCI: CIContext { SharedCI.standard }
 
     /// 640 px wide JPEG (quality 0.55).
-    static func remoteJPEG(_ pb: CVPixelBuffer, width: CGFloat = 640) -> [UInt8]? {
+    static func remoteJPEG(_ pb: CVPixelBuffer, width: CGFloat = 640, quality: CGFloat = 0.55) -> [UInt8]? {
         var img = CIImage(cvPixelBuffer: pb)
         let scale = min(1, width / max(img.extent.width, 1))
         img = img.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         guard let cg = remoteCI.createCGImage(img, from: img.extent) else { return nil }
         let data = NSMutableData()
         guard let dest = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
-        CGImageDestinationAddImage(dest, cg, [kCGImageDestinationLossyCompressionQuality: 0.55] as CFDictionary)
+        CGImageDestinationAddImage(dest, cg, [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
         guard CGImageDestinationFinalize(dest) else { return nil }
         return [UInt8](data as Data)
     }

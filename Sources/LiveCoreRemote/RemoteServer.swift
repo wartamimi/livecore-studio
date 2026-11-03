@@ -41,6 +41,10 @@ public final class RemoteServer: @unchecked Sendable {
     private var frames: [String: [UInt8]] = [:]        // "program" / "preview" → JPEG
     private var frameSeq: [String: Int] = [:]          // bumps with every new JPEG (0.54.1)
     private var lastFrameRequest: Double = -.infinity
+    private var lastLowFrameRequest: Double = -.infinity
+    /// Recent command ids (X-LCS-Req, 0.54.2): a page that re-sends a command after a lost reply
+    /// (weak network) never makes it run twice.
+    private var recentCommands: [String] = []
     /// Audio Monitor (0.50.0): one ring per bus, and when each bus was last asked for.
     private var audioRings: [String: RemoteAudioRing] = [:]
     private var lastListen: [String: Double] = [:]
@@ -99,6 +103,12 @@ public final class RemoteServer: @unchecked Sendable {
             if audioRings[bus]?.sampleRate != sampleRate { audioRings[bus] = RemoteAudioRing(sampleRate: sampleRate) }
             audioRings[bus]?.append(interleaved)
         }
+    }
+
+    /// A page on a weak connection asked for the small pictures (`<bus>-low`, 0.54.2).
+    public func wantsLowFrames(window: Double = 3) -> Bool {
+        let now = Self.now()
+        return lock.sync { now - lastLowFrameRequest < window }
     }
 
     public func wantsFrames(window: Double = 3) -> Bool {
@@ -228,8 +238,9 @@ public final class RemoteServer: @unchecked Sendable {
                 }
                 break parsing
             }
-            if let bus = response.headers.first(where: { $0.0 == Self.streamMarker })?.1 {
-                streamAudio(c, bus: bus)
+            if let mark = response.headers.first(where: { $0.0 == Self.streamMarker })?.1 {
+                let low = mark.hasSuffix("|low")
+                streamAudio(c, bus: low ? String(mark.dropLast(4)) : mark, low: low)
                 return
             }
             served += 1
@@ -241,7 +252,7 @@ public final class RemoteServer: @unchecked Sendable {
     /// Audio Monitor push: keeps the connection open and writes each new run of PCM as
     /// [UInt32 LE length][listen body]. An empty body every second doubles as a keep-alive and
     /// is how a closed tab is noticed (the write fails).
-    private func streamAudio(_ c: Int32, bus: String) {
+    private func streamAudio(_ c: Int32, bus: String, low: Bool = false) {
         defer { lock.sync { audioStreams -= 1 } }
         let head = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nCache-Control: no-store\r\n"
             + "X-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n"
@@ -260,7 +271,13 @@ public final class RemoteServer: @unchecked Sendable {
             var body: [UInt8]?
             if let r, !r.pcm.isEmpty {
                 since = r.next
-                body = RemoteAudioRing.body(next: r.next, sampleRate: r.rate, channels: 2, pcm: r.pcm)
+                if low {
+                    // Weak connection (0.54.2): mono at half the rate, a quarter of the data.
+                    let (pcm, rate) = Self.lowAudio(r.pcm, rate: r.rate)
+                    body = RemoteAudioRing.body(next: r.next, sampleRate: rate, channels: 1, pcm: pcm)
+                } else {
+                    body = RemoteAudioRing.body(next: r.next, sampleRate: r.rate, channels: 2, pcm: r.pcm)
+                }
             } else if now - lastWrite > 1 {
                 body = RemoteAudioRing.body(next: since, sampleRate: r?.rate ?? 24_000, channels: 2, pcm: [])
             }
@@ -272,6 +289,18 @@ public final class RemoteServer: @unchecked Sendable {
             }
             usleep(40_000)
         }
+    }
+
+    /// Interleaved stereo → mono at half the rate (pairs of frames averaged).
+    static func lowAudio(_ stereo: [Int16], rate: Int) -> (pcm: [Int16], rate: Int) {
+        let frames = stereo.count / 2
+        let n = frames / 2
+        var out = [Int16](repeating: 0, count: n)
+        for i in 0..<n {
+            let s = Int(stereo[4 * i]) + Int(stereo[4 * i + 1]) + Int(stereo[4 * i + 2]) + Int(stereo[4 * i + 3])
+            out[i] = Int16(clamping: s / 4)
+        }
+        return (out, rate / 2)
     }
 
     private static func writeAll(_ c: Int32, _ out: [UInt8]) -> Bool {
@@ -326,9 +355,15 @@ public final class RemoteServer: @unchecked Sendable {
         case let .frame(bus):
             // ?since=<seq>: 204 while the picture is unchanged (0.54.1), so a page never downloads
             // the same JPEG twice; the new sequence number comes back in X-Frame-Seq.
+            // ?q=low (0.54.2): a page on a weak connection gets the small picture (≈320 px).
             let since = Int(req.query["since"] ?? "")
+            let low = req.query["q"] == "low"
             let r: (jpeg: [UInt8]?, seq: Int) = lock.sync {
                 lastFrameRequest = Self.now()
+                if low { lastLowFrameRequest = lastFrameRequest }
+                let key = low ? bus + "-low" : bus
+                // Until the first small picture exists, the normal one is served.
+                if low, let j = frames[key] { return (j, frameSeq[key] ?? 0) }
                 return (frames[bus], frameSeq[bus] ?? 0)
             }
             guard let jpeg = r.jpeg, since != r.seq else { return HTTPResponse(status: 204, headers: [("X-Frame-Seq", "\(r.seq)")]) }
@@ -346,6 +381,15 @@ public final class RemoteServer: @unchecked Sendable {
             }
             return HTTPResponse(status: 200, contentType: "application/octet-stream",
                                 body: RemoteAudioRing.body(next: r.next, sampleRate: r.rate, channels: 2, pcm: r.pcm))
+        case let .listenStream(bus) where req.query["q"] == "low":
+            let ok: Bool = lock.sync {
+                guard audioStreams < Self.maxAudioStreams else { return false }
+                audioStreams += 1
+                lastListen[bus] = Self.now()
+                return true
+            }
+            guard ok else { return .error(503, "too many listeners") }
+            return HTTPResponse(status: 200, contentType: "application/octet-stream", headers: [(Self.streamMarker, bus + "|low")])
         case let .listenStream(bus):
             let ok: Bool = lock.sync {
                 guard audioStreams < Self.maxAudioStreams else { return false }
@@ -356,6 +400,15 @@ public final class RemoteServer: @unchecked Sendable {
             guard ok else { return .error(503, "too many listeners") }
             return HTTPResponse(status: 200, contentType: "application/octet-stream", headers: [(Self.streamMarker, bus)])
         case let .command(cmd):
+            if let rid = req.headers["x-lcs-req"], !rid.isEmpty {
+                let dup: Bool = lock.sync {
+                    if recentCommands.contains(rid) { return true }
+                    recentCommands.append(rid)
+                    if recentCommands.count > 128 { recentCommands.removeFirst(recentCommands.count - 128) }
+                    return false
+                }
+                if dup { return .json("{\"ok\":true,\"repeat\":true}") }
+            }
             let handler = onCommand
             commandQueue.async { handler(cmd) }
             return .json("{\"ok\":true}")
