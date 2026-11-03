@@ -66,7 +66,7 @@ struct NDIInputSheet: View {
             HStack {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
-                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                Button(editing == nil ? L10n.t("common.add") : L10n.t("settings.apply")) {
                     let c = ProjectNDI(sourceName: selection.trimmingCharacters(in: .whitespaces),
                                        lowBandwidth: lowBandwidth ? true : nil, audio: audio ? nil : false)
                     if let id = editing { model.updateNDI(id, c) } else { model.addNDI(c) }

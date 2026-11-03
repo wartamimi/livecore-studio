@@ -1574,3 +1574,5 @@
 "decklink.format_first" = "Card default (this card cannot detect the format)";
 "decklink.signal" = "%ld × %ld · %.2f fps · %@";
 "decklink.note" = "Uses the Blackmagic Desktop Video driver installed on this Mac (API %@). 8-bit video, embedded audio channels 1–2. A card can be used by one application at a time: close other apps (OBS, Media Express) that use the same input.";
+
+"common.add" = "Add";

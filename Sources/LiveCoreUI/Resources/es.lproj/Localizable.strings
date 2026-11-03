@@ -104,3 +104,5 @@
 "preflight.confirm_title" = "¿Ejecutar la comprobación previa?";
 "mixer.minimize_details" = "Minimizar detalles del medidor";
 "mixer.expand_details" = "Mostrar detalles del medidor";
+
+"common.add" = "Añadir";

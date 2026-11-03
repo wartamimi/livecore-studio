@@ -1574,3 +1574,5 @@
 "decklink.format_first" = "Bawaan kartu (kartu ini tidak bisa mendeteksi format)";
 "decklink.signal" = "%ld × %ld · %.2f fps · %@";
 "decklink.note" = "Memakai driver Blackmagic Desktop Video yang terpasang di Mac ini (API %@). Video 8-bit, audio tertanam kanal 1–2. Satu kartu hanya bisa dipakai satu aplikasi: tutup aplikasi lain (OBS, Media Express) yang memakai input yang sama.";
+
+"common.add" = "Tambah";
