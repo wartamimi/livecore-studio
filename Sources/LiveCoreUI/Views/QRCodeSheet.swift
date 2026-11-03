@@ -322,7 +322,7 @@ struct QRCodeSheet: View {
     private var showPage: some View {
         Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 7) {
             row(L10n.t("qr.animation")) {
-                Picker("", selection: $design.style.animation) {
+                Picker("", selection: Binding(get: { design.style.animation }, set: { design.style.animation = $0 })) {
                     ForEach(OverlayAnimation.selectable, id: \.self) { Text(L10n.t("overlay.anim." + $0.rawValue)).tag($0) }
                 }.labelsHidden()
             }
