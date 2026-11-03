@@ -54,6 +54,8 @@ func engineCheck() -> Never {
         print("file \(codec) \(preset): \(bytes.count) bytes, decoded \(r.decoded), errors \(r.errors), first failure: \(r.firstFailure.isEmpty ? "-" : r.firstFailure)")
     }
     // ultrafast x264 = CAVLC with B-pictures; veryfast = CABAC (what OBS and most encoders send).
+    // 3 Mb/s, like a real contribution feed: srt-live-transmit (the CI sender when Homebrew's ffmpeg
+    // lacks libsrt) loses stdin data at unlimited x264 ultrafast rates (~7 Mb/s bursts) before SRT sees it.
     let cases = [("libx264", "ultrafast"), ("libx264", "veryfast"), ("libx265", "ultrafast")]
     for (i, (codec, preset)) in cases.enumerated() {
         let name = "\(codec) \(preset)"
@@ -64,7 +66,7 @@ func engineCheck() -> Never {
         // Homebrew's ffmpeg may lack libsrt: then ffmpeg writes TS to a pipe and srt-live-transmit
         // (Homebrew "srt") sends it, as the soak check does.
         let encode = "'\(ffmpeg)' -hide_banner -loglevel error -re -f lavfi -i testsrc2=size=1280x720:rate=30 "
-            + "-f lavfi -i sine=frequency=1000:sample_rate=48000 -t 8 -c:v \(codec) -preset \(preset) -g 30 -bf 2 "
+            + "-f lavfi -i sine=frequency=1000:sample_rate=48000 -t 8 -c:v \(codec) -preset \(preset) -b:v 3M -maxrate 3M -bufsize 1500k -g 30 -bf 2 "
             + "-c:a aac -ac 2 -f mpegts"
         let target = "srt://127.0.0.1:\(port)?mode=caller&latency=200000&streamid=check\(i)"
         let slt = ["/opt/homebrew/bin/srt-live-transmit", "/usr/local/bin/srt-live-transmit"].first { FileManager.default.isExecutableFile(atPath: $0) }
