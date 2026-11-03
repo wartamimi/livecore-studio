@@ -27,8 +27,11 @@ fi
 echo "== Environment"
 sw_vers; uname -m; xcodebuild -version; swift --version
 
-echo "== Unit tests (LiveCoreCore)"
-swift test
+# CI runs the tests in a parallel job (LIVECORE_SKIP_TESTS=1) so the DMG is ready sooner.
+if [ "${LIVECORE_SKIP_TESTS:-0}" != "1" ]; then
+  echo "== Unit tests (LiveCoreCore)"
+  swift test
+fi
 
 echo "== Generate Xcode project"
 command -v xcodegen >/dev/null || { echo "Install XcodeGen: brew install xcodegen"; exit 1; }
@@ -43,8 +46,18 @@ tail -n 5 build/xcodebuild.log
 
 APP="build/DerivedData/Build/Products/$XC_CONFIG/LiveCoreStudio.app"
 echo "== Verify bundle"
-plutil -p "$APP/Contents/Info.plist" | grep -E "NSCameraUsage|NSMicrophoneUsage|LSMinimumSystemVersion"
+plutil -p "$APP/Contents/Info.plist" | grep -E "NSCameraUsage|NSMicrophoneUsage|NSLocalNetworkUsage|_ndi._tcp|LSMinimumSystemVersion"
 lipo -archs "$APP/Contents/MacOS/LiveCoreStudio"
+# Every @rpath framework the app links must be embedded, or the app cannot launch.
+for fw in $(otool -L "$APP/Contents/MacOS/LiveCoreStudio" | awk '/@rpath\/.*\.framework/{print $1}' | sed -E 's#@rpath/([^/]+\.framework).*#\1#' | sort -u); do
+  [ -d "$APP/Contents/Frameworks/$fw" ] || { echo "ERROR: $fw is linked but not embedded in the app"; exit 1; }
+  echo "embedded: $fw"
+done
+scripts/check_app_loadable.sh "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP" || true
+# The NDI runtime is signed by NDI, so the hardened-runtime app must allow other signers' libraries.
+codesign -d --entitlements - "$APP" 2>/dev/null | grep -q "disable-library-validation" \
+  || { echo "ERROR: com.apple.security.cs.disable-library-validation is missing (NDI cannot load)"; exit 1; }
+echo "entitlement: disable-library-validation"
 echo "Built: $APP"
 echo "Run:   open \"$APP\""

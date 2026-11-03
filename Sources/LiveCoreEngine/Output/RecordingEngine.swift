@@ -3,6 +3,7 @@ import AVFoundation
 import CoreMedia
 import Foundation
 import LiveCoreCore
+import VideoToolbox
 
 /// Local recording of the Program output with AVAssetWriter (H.264 + AAC in MP4 or MOV).
 ///
@@ -48,6 +49,10 @@ public final class RecordingEngine {
     private var monitorTimer: DispatchSourceTimer?
     private var settings = RecordingSettings()
     private var url: URL?
+    private let fileLock = UnfairLock()
+    private var lastFile: URL?
+    /// The file of the current or last recording.
+    public var lastFileURL: URL? { fileLock.withLock { lastFile } }
 
     public init() {}
 
@@ -57,22 +62,36 @@ public final class RecordingEngine {
         return movies.appendingPathComponent("LiveCore Studio", isDirectory: true)
     }
 
+    /// Free space on the folder's volume. The "important usage" figure (which counts purgeable
+    /// space) is 0 or missing on many external and disk-image volumes (HFS+, exFAT), so fall back
+    /// to the plain available capacity there.
     public static func freeBytes(at folder: URL) -> Int64 {
-        let values = try? folder.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-        return values?.volumeAvailableCapacityForImportantUsage ?? 0
+        let values = try? folder.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey])
+        if let important = values?.volumeAvailableCapacityForImportantUsage, important > 0 { return important }
+        return Int64(values?.volumeAvailableCapacity ?? 0)
+    }
+
+    /// Free space below which a running recording is closed: half the start minimum, plus four
+    /// seconds at the current write rate.
+    public static func stopThreshold(minimumFree: Int64, bytesPerSecond: Int64) -> Int64 {
+        minimumFree / 2 + 4 * bytesPerSecond
     }
 
     // MARK: Control
 
-    public func start(settings: RecordingSettings, output: OutputFormat, audio: AudioEncoderSettings) {
-        queue.async { self.startOnQueue(settings: settings, output: output, audio: audio) }
+    /// `fileSuffix` (MultiCorder ISO files) goes before the extension; `date` names the file, so
+    /// the Program file and its ISO files share one time stamp.
+    public func start(settings: RecordingSettings, output: OutputFormat, audio: AudioEncoderSettings,
+                      fileSuffix: String? = nil, date: Date = Date()) {
+        queue.async { self.startOnQueue(settings: settings, output: output, audio: audio, fileSuffix: fileSuffix, date: date) }
     }
 
     public func stop() {
         queue.async { self.finish(reason: nil) }
     }
 
-    private func startOnQueue(settings: RecordingSettings, output: OutputFormat, audio: AudioEncoderSettings) {
+    private func startOnQueue(settings: RecordingSettings, output: OutputFormat, audio: AudioEncoderSettings,
+                              fileSuffix: String?, date: Date) {
         guard writer == nil else { return }
         self.settings = settings
         stats = Stats()
@@ -87,44 +106,44 @@ public final class RecordingEngine {
             return report(.failed("Not enough disk space (\(ByteCountFormatter.string(fromByteCount: free, countStyle: .file)) free)."))
         }
         // Unique file name.
-        let c = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: Date())
+        let c = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
         var fileURL: URL
         var n = 1
+        let container = settings.effectiveContainer
+        let ext = container.fileExtension
         repeat {
-            let name = FileNaming.fileName(pattern: settings.fileNamePattern, year: c.year ?? 0, month: c.month ?? 0, day: c.day ?? 0,
+            var name = FileNaming.fileName(pattern: settings.fileNamePattern, year: c.year ?? 0, month: c.month ?? 0, day: c.day ?? 0,
                                            hour: c.hour ?? 0, minute: c.minute ?? 0, second: c.second ?? 0, counter: n,
-                                           ext: settings.container.fileExtension)
-            fileURL = folder.appendingPathComponent(n == 1 ? name : name.replacingOccurrences(of: ".\(settings.container.fileExtension)", with: " (\(n)).\(settings.container.fileExtension)"))
+                                           ext: ext)
+            if let fileSuffix { name = MultiCorderConfig.isoFileName(name, suffix: fileSuffix) }
+            fileURL = folder.appendingPathComponent(n == 1 ? name : name.replacingOccurrences(of: ".\(ext)", with: " (\(n)).\(ext)"))
             n += 1
         } while FileManager.default.fileExists(atPath: fileURL.path)
 
         do {
-            let w = try AVAssetWriter(outputURL: fileURL, fileType: settings.container == .mov ? .mov : .mp4)
-            if settings.container == .mov { w.movieFragmentInterval = CMTime(seconds: 10, preferredTimescale: 600) }
-            let v = AVAssetWriterInput(mediaType: .video, outputSettings: [
-                AVVideoCodecKey: AVVideoCodecType.h264,
-                AVVideoWidthKey: output.size.width,
-                AVVideoHeightKey: output.size.height,
-                AVVideoCompressionPropertiesKey: [
-                    AVVideoAverageBitRateKey: settings.bitrateKbps * 1000,
-                    AVVideoMaxKeyFrameIntervalKey: output.frameRate * 2,
-                    AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
-                    AVVideoExpectedSourceFrameRateKey: output.frameRate,
-                ] as [String: Any],
-            ])
+            let w = try AVAssetWriter(outputURL: fileURL, fileType: container == .mov ? .mov : .mp4)
+            if container == .mov { w.movieFragmentInterval = CMTime(seconds: 10, preferredTimescale: 600) }
+            // Settings the writer refuses would raise an exception in AVAssetWriterInput, so
+            // they are checked first and the recording fails with a message instead.
+            let videoSettings = Self.videoSettings(settings, output: output)
+            guard w.canApply(outputSettings: videoSettings, forMediaType: .video) else {
+                throw NSError(domain: "LiveCore", code: 5, userInfo: [NSLocalizedDescriptionKey:
+                    "\(settings.videoCodec.label) recording is not supported on this Mac at \(output.size.width)×\(output.size.height)."])
+            }
+            let v = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
             v.expectsMediaDataInRealTime = true
-            let a = AVAssetWriterInput(mediaType: .audio, outputSettings: [
-                AVFormatIDKey: kAudioFormatMPEG4AAC,
-                AVSampleRateKey: audio.sampleRate,
-                AVNumberOfChannelsKey: audio.channels,
-                AVEncoderBitRateKey: max(audio.bitrateKbps, 128) * 1000,
-            ])
+            let audioSettings = Self.audioSettings(settings, audio: audio)
+            guard w.canApply(outputSettings: audioSettings, forMediaType: .audio) else {
+                throw NSError(domain: "LiveCore", code: 6, userInfo: [NSLocalizedDescriptionKey: "Audio format not supported for this file type."])
+            }
+            let a = AVAssetWriterInput(mediaType: .audio, outputSettings: audioSettings)
             a.expectsMediaDataInRealTime = true
             guard w.canAdd(v), w.canAdd(a) else { throw NSError(domain: "LiveCore", code: 3, userInfo: [NSLocalizedDescriptionKey: "Writer rejected inputs"]) }
             w.add(v); w.add(a)
             adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: v, sourcePixelBufferAttributes: nil)
             guard w.startWriting() else { throw w.error ?? NSError(domain: "LiveCore", code: 4) }
             writer = w; videoInput = v; audioInput = a; url = fileURL
+            fileLock.withLock { lastFile = fileURL }
             audioFormat = Self.makePCMFormat(sampleRate: Double(audio.sampleRate))
             sessionStart = nil
             lastVideoPTS = .invalid
@@ -136,6 +155,46 @@ public final class RecordingEngine {
             cleanup()
             report(.failed("Cannot start recording: \(error.localizedDescription)"))
         }
+    }
+
+    /// Writer video settings for the chosen codec. H.264 / HEVC: hardware encoder, average
+    /// bitrate, keyframe interval in seconds, no B-frames unless asked (less encoder work and
+    /// memory per stream, which matters with four MultiCorder files at once).
+    static func videoSettings(_ s: RecordingSettings, output: OutputFormat) -> [String: Any] {
+        var v: [String: Any] = [AVVideoWidthKey: output.size.width, AVVideoHeightKey: output.size.height]
+        switch s.videoCodec {
+        case .proRes422Proxy: v[AVVideoCodecKey] = AVVideoCodecType.proRes422Proxy
+        case .proRes422LT: v[AVVideoCodecKey] = AVVideoCodecType.proRes422LT
+        case .proRes422: v[AVVideoCodecKey] = AVVideoCodecType.proRes422
+        case .proRes422HQ: v[AVVideoCodecKey] = AVVideoCodecType.proRes422HQ
+        case .h264, .hevc:
+            let h264 = s.videoCodec == .h264
+            v[AVVideoCodecKey] = h264 ? AVVideoCodecType.h264 : AVVideoCodecType.hevc
+            var c: [String: Any] = [
+                AVVideoAverageBitRateKey: s.bitrateKbps * 1000,
+                AVVideoMaxKeyFrameIntervalDurationKey: s.keyframeInterval,
+                AVVideoMaxKeyFrameIntervalKey: max(1, Int((Double(output.frameRate) * s.keyframeInterval).rounded())),
+                AVVideoAllowFrameReorderingKey: s.bFrames,
+                AVVideoExpectedSourceFrameRateKey: output.frameRate,
+            ]
+            if h264 {
+                c[AVVideoProfileLevelKey] = AVVideoProfileLevelH264HighAutoLevel
+                c[AVVideoH264EntropyModeKey] = AVVideoH264EntropyModeCABAC
+            }
+            v[AVVideoCompressionPropertiesKey] = c
+            v[AVVideoEncoderSpecificationKey] = [kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder as String: true]
+        }
+        return v
+    }
+
+    static func audioSettings(_ s: RecordingSettings, audio: AudioEncoderSettings) -> [String: Any] {
+        if s.usesPCM {
+            return [AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: audio.sampleRate, AVNumberOfChannelsKey: audio.channels,
+                    AVLinearPCMBitDepthKey: 24, AVLinearPCMIsFloatKey: false, AVLinearPCMIsBigEndianKey: false,
+                    AVLinearPCMIsNonInterleaved: false]
+        }
+        return [AVFormatIDKey: kAudioFormatMPEG4AAC, AVSampleRateKey: audio.sampleRate, AVNumberOfChannelsKey: audio.channels,
+                AVEncoderBitRateKey: s.audioKbps * 1000]
     }
 
     // MARK: Media (called from render completion / audio pump threads)
@@ -218,20 +277,22 @@ public final class RecordingEngine {
     private func startMonitor(folder: URL) {
         let t = DispatchSource.makeTimerSource(queue: queue)
         t.schedule(deadline: .now() + 1, repeating: 1)
-        var tick = 0
+        var lastFileBytes: Int64 = 0
         t.setEventHandler { [weak self] in
             guard let self, let w = self.writer, let url = self.url else { return }
-            tick += 1
             if let start = self.sessionStart, self.lastVideoPTS.isValid {
                 self.stats.duration = CMTimeGetSeconds(CMTimeSubtract(self.lastVideoPTS, start))
             }
-            if tick % 5 == 0 {
-                self.stats.freeBytes = Self.freeBytes(at: folder)
-                self.stats.fileBytes = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
-                if self.stats.freeBytes < self.settings.minimumFreeBytes / 2 {
-                    self.finish(reason: "Disk space is running out.")
-                    return
-                }
+            // Checked every second: at high bitrates (ProRes, or a small drive) a slower check can
+            // let the disk fill up between two looks. Keep room for a few seconds of writing plus
+            // what the writer still has buffered, so the file is closed before the disk is full.
+            self.stats.freeBytes = Self.freeBytes(at: folder)
+            self.stats.fileBytes = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
+            let perSecond = max(0, self.stats.fileBytes - lastFileBytes)
+            lastFileBytes = self.stats.fileBytes
+            if self.stats.freeBytes < Self.stopThreshold(minimumFree: self.settings.minimumFreeBytes, bytesPerSecond: perSecond) {
+                self.finish(reason: "Disk space is running out.")
+                return
             }
             if w.status == .failed { self.checkWriterFailure(); return }
             self.publish()
