@@ -251,3 +251,6 @@
     datar, Feather/crop gambar diabaikan, animasi keluar dan data source belum ada. File .gtzip harus tetap ada di tempatnya.
 95. **Font otomatis (0.40.0)**: hanya dari Google Fonts. Font berbayar atau "personal use" tidak tersedia dan harus dipasang
     manual; perhatikan lisensinya sebelum dipakai di siaran.
+96. **Input SRT H.264 di CI (0.54.0)**: cek otomatis `macos-srt-input-check` masih menemukan error dekode H.264 lewat
+    srt-live-transmit di Mac virtual CI (HEVC dan dekode dari file lolos; SRT dari Larix jalan di Mac pengguna). Langkah CI ini
+    dilaporkan tanpa menggagalkan build sampai penyebabnya ketemu.
