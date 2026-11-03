@@ -80,5 +80,6 @@ private struct StudioButtonBody: View {
             .overlay(RoundedRectangle(cornerRadius: 5).stroke(active ? color : (hovering && enabled ? Color.white.opacity(0.25) : Theme.border), lineWidth: active ? 2 : 1))
             .contentShape(Rectangle())
             .onHover { hovering = $0 }
+    }
 }
 #endif
