@@ -25,8 +25,8 @@ struct PlaylistDockView: View {
     private struct Choice: Identifiable { let id: String; let title: String; let icon: String }
 
     private var choices: [Choice] {
-        model.musicInputs.map { Choice(id: "music:" + $0.channel.id, title: $0.name, icon: "music.note.list") }
-            + model.inputs.filter { $0.kind == .videoFile }.map { Choice(id: "input:" + $0.id.raw, title: "\($0.number) \($0.name)", icon: "film.stack") }
+        model.musicInputs.filter { $0.tracks.count > 1 }.map { Choice(id: "music:" + $0.channel.id, title: $0.name, icon: "music.note.list") }
+            + model.inputs.filter { $0.kind == .videoFile && model.videoFile($0.id)?.isPlaylist == true }.map { Choice(id: "input:" + $0.id.raw, title: "\($0.number) \($0.name)", icon: "film.stack") }
     }
 
     private var current: Source? {

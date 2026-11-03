@@ -13,7 +13,8 @@ struct MainView: View {
     @AppStorage("welcome.showAtLaunch") private var welcomeAtLaunch = true
 
     /// The Playlist dock appears once a music playlist or a video (playlist) input exists.
-    private var showPlaylist: Bool { !model.musicInputs.isEmpty || model.inputs.contains { $0.kind == .videoFile } }
+    /// Only for real playlists (0.55.1): a single file from Add Media does not open it.
+    private var showPlaylist: Bool { model.hasPlaylists }
 
     var body: some View {
         Group {

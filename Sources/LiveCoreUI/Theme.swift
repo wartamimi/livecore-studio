@@ -20,6 +20,7 @@ enum Theme {
     static let meterYellow = Color(red: 0.95, green: 0.82, blue: 0.2)
     static let meterRed = Color(red: 0.95, green: 0.2, blue: 0.2)
     /// "All" filter and inputs without a colour label: a dark light grey (0.55.0).
+    static let panelHover = Color(red: 0.21, green: 0.215, blue: 0.24)
     static let labelAll = Color(red: 0.44, green: 0.45, blue: 0.48)
 }
 
@@ -53,6 +54,19 @@ struct StudioButtonStyle: ButtonStyle {
     var color: Color = Theme.panelRaised
     var active = false
     func makeBody(configuration: Configuration) -> some View {
+        StudioButtonBody(configuration: configuration, color: color, active: active)
+    }
+}
+
+/// Body of `StudioButtonStyle`, with a hover highlight (0.55.1).
+private struct StudioButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    let color: Color
+    let active: Bool
+    @State private var hovering = false
+    @Environment(\.isEnabled) private var enabled
+
+    var body: some View {
         configuration.label
             .font(.system(size: 13, weight: .bold))
             // Always one line ("FULLSCREEN" must not wrap); shrinks a little instead.
@@ -61,9 +75,10 @@ struct StudioButtonStyle: ButtonStyle {
             .foregroundStyle(Theme.text)
             .padding(.vertical, 8).padding(.horizontal, 12)
             .frame(maxWidth: .infinity)
-            .background(active ? color : (configuration.isPressed ? color.opacity(0.7) : Theme.panelRaised))
+            .background(active ? color : (configuration.isPressed ? color.opacity(0.7) : (hovering && enabled ? Theme.panelHover : Theme.panelRaised)))
             .clipShape(RoundedRectangle(cornerRadius: 5))
-            .overlay(RoundedRectangle(cornerRadius: 5).stroke(active ? color : Theme.border, lineWidth: active ? 2 : 1))
-    }
+            .overlay(RoundedRectangle(cornerRadius: 5).stroke(active ? color : (hovering && enabled ? Color.white.opacity(0.25) : Theme.border), lineWidth: active ? 2 : 1))
+            .contentShape(Rectangle())
+            .onHover { hovering = $0 }
 }
 #endif

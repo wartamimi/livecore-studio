@@ -179,23 +179,26 @@ private struct DesignerBarIfActive: View {
 
 /// Controller under the Program monitor (0.55.0): transport of the input on Program. Video
 /// files and playlists get restart / previous / play-pause / next and a seek bar; presentations
-/// get first / previous / next slide. Other inputs show the same bar disabled, so the layout does
-/// not jump when switching. Narrow monitors drop the remaining time and the AUTO / loop toggles.
+/// get first / previous / next slide. Hidden for other inputs (0.55.1). Narrow monitors drop the
+/// remaining time and the AUTO / loop toggles.
 struct ProgramTransportBar: View {
     @EnvironmentObject var model: AppModel
     @State private var scrub: Double?
 
     private var programID: InputID? { model.switcher.transition?.to ?? model.switcher.program }
 
+    /// Hidden while the input on Program has nothing to control (camera, title, colour...).
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.25)) { _ in
-            ViewThatFits(in: .horizontal) {
-                bar(compact: false)
-                bar(compact: true)
+        if let id = programID, model.videoFile(id) != nil || model.presentationSource(id) != nil {
+            TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+                ViewThatFits(in: .horizontal) {
+                    bar(compact: false)
+                    bar(compact: true)
+                }
             }
+            .padding(.horizontal, 6).padding(.top, 4).padding(.bottom, 2)
+            .frame(height: 30)
         }
-        .padding(.horizontal, 6).padding(.top, 4).padding(.bottom, 2)
-        .frame(height: 30)
     }
 
     @ViewBuilder private func bar(compact: Bool) -> some View {
@@ -235,16 +238,6 @@ struct ProgramTransportBar: View {
                 key("chevron.right", L10n.t("presentation.next")) { p.next() }
                 if let s = info?.slide, s.count > 0 { Text(L10n.f("presentation.counter", String(s.index), String(s.count))) }
                 Spacer(minLength: 0)
-            } else {
-                Group {
-                    key("backward.end.fill", L10n.t("transport.restart")) {}
-                    key("backward.fill", L10n.t("transport.previous")) {}
-                    key("play.fill", L10n.t("transport.play_pause")) {}
-                    key("forward.fill", L10n.t("transport.next")) {}
-                }
-                .disabled(true)
-                Text(L10n.t("transport.none")).lineLimit(1)
-                Spacer(minLength: 0)
             }
         }
         .font(.system(size: 11).monospacedDigit())
@@ -272,7 +265,7 @@ struct ProgramTransportBar: View {
             Text(label)
                 .font(.system(size: 9, weight: .heavy))
                 .frame(minWidth: 26, minHeight: 22)
-                .padding(.horizontal, 2)
+                .padding(.horizontal, 7)
                 .background(on ? Theme.accent : Theme.panelRaised)
                 .foregroundStyle(on ? Color.white : Theme.textDim)
                 .clipShape(RoundedRectangle(cornerRadius: 4))

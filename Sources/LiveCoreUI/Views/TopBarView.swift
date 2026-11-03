@@ -24,18 +24,17 @@ struct TopBarView: View {
                 Text("\(model.settings.output.label)").font(.system(size: 11)).foregroundStyle(Theme.textDim)
             }
             Spacer(minLength: 0)
-            // Rundown: a plain icon like Multiview and Settings (0.55.0); red while a rundown runs.
-            Button { openWindow(id: "rundown") } label: { Image(systemName: "list.number") }
-                .foregroundStyle(model.rundownIndex != nil ? Theme.program : Theme.text)
-                .help(L10n.t("rundown.title"))
-                .buttonStyle(.borderless)
+            // Rundown lives in Production › Create Rundown… (0.55.1). Multiview and Settings are
+            // real buttons with a hover, like the padlock in the bottom dock.
             Button { openWindow(id: "multiview") } label: { Image(systemName: "square.grid.3x2") }
                 .help(L10n.t("multiview.open"))
-                .buttonStyle(.borderless)
+                .buttonStyle(StudioButtonStyle())
+                .frame(width: 36)
             if !model.isOperatorMode {
                 Button { showSettings = true } label: { Image(systemName: "gearshape") }
                     .help(L10n.t("settings.title"))
-                    .buttonStyle(.borderless)
+                    .buttonStyle(StudioButtonStyle())
+                    .frame(width: 36)
             }
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
@@ -70,8 +69,13 @@ struct PerformanceReadouts: View {
                 Label("Thermal", systemImage: "thermometer.high").foregroundStyle(Theme.warning).font(.system(size: 11, weight: .bold))
             }
             Divider().frame(height: 18)
-            StatusPill(text: streamText, color: streamColor, systemImage: "dot.radiowaves.left.and.right")
-            StatusPill(text: recordText, color: model.isRecording ? Theme.program : Theme.panelRaised, systemImage: "record.circle")
+            // Narrow window: idle pills become icons (the full text is in the tooltip).
+            StatusPill(text: streamText, color: streamColor, systemImage: "dot.radiowaves.left.and.right",
+                       iconOnly: compact && !model.isStreamingActive)
+                .help(streamText)
+            StatusPill(text: recordText, color: model.isRecording ? Theme.program : Theme.panelRaised, systemImage: "record.circle",
+                       iconOnly: compact && !model.isRecording)
+                .help(recordText)
     }
 
     @ViewBuilder
@@ -243,9 +247,14 @@ struct StatusPill: View {
     let text: String
     let color: Color
     let systemImage: String
+    var iconOnly = false
     var body: some View {
+        // One line, never wraps upward (0.55.1); the bar drops it to an icon when narrow.
         Label(text, systemImage: systemImage)
+            .labelStyle(AdaptiveLabelStyle(iconOnly: iconOnly))
             .font(.system(size: 11, weight: .bold))
+            .lineLimit(1)
+            .fixedSize()
             .padding(.horizontal, 8).padding(.vertical, 4)
             .background(color)
             .clipShape(Capsule())
