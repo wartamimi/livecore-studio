@@ -1553,3 +1553,20 @@
 "transport.play_pause" = "Putar / Jeda";
 "transport.next" = "Klip berikutnya";
 "transport.none" = "Input ini tidak punya kontrol putar";
+
+/* 0.57.0 Transkripsi Groq + jendela Transcript */
+"transcription.groq_key" = "API key Groq";
+"transcription.groq_model" = "Model Groq";
+"transcription.groq_live" = "Live (Groq Whisper)";
+"transcription.groq_note" = "Suara Program dipotong per jeda dan dikirim ke Groq (Whisper) lewat internet dengan API key Anda sendiri (console.groq.com › API Keys); memakai kuota Groq Anda. Teks muncul beberapa detik setelah diucapkan. Teks tampil sebagai overlay transparan; pasang input ini di kanal overlay.";
+"transcript.title" = "Transkrip";
+"transcript.open" = "Buka Jendela Transkrip";
+"transcript.timestamps" = "Jam";
+"transcript.follow" = "Ikuti live";
+"transcript.count" = "%@ baris";
+"transcript.clear" = "Hapus";
+"transcript.save" = "Simpan sebagai Teks…";
+"transcript.copy" = "Salin Semua";
+"transcript.copied" = "Tersalin";
+"transcript.empty" = "Teks muncul di sini saat ditranskrip. Pilih bagian mana saja untuk menyalinnya.";
+"transcript.no_input" = "Tambahkan input Realtime Transcription dulu (Add Input › Realtime Transcription).";
