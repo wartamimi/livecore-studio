@@ -142,9 +142,11 @@ public final class MetalCompositor {
         self.outputSize = outputSize
         programPool = PixelBufferFactory.makePool(width: outputSize.width, height: outputSize.height, minimumCount: 6)
         previewPool = PixelBufferFactory.makePool(width: previewSize.width, height: previewSize.height, minimumCount: 4)
-        thumbPool = PixelBufferFactory.makePool(width: Self.thumbnailSize.width, height: Self.thumbnailSize.height, minimumCount: 24)
-        detailPool = PixelBufferFactory.makePool(width: outputSize.width, height: outputSize.height, minimumCount: 3)
-        extraPool = PixelBufferFactory.makePool(width: outputSize.width, height: outputSize.height, minimumCount: 8)
+        // Pools for optional pictures keep no buffers of their own (0.56.0): what a closed viewer,
+        // a stopped MultiCorder or hidden thumbnails used is released by `flushCache` once idle.
+        thumbPool = PixelBufferFactory.makePool(width: Self.thumbnailSize.width, height: Self.thumbnailSize.height, minimumCount: 0)
+        detailPool = PixelBufferFactory.makePool(width: outputSize.width, height: outputSize.height, minimumCount: 0)
+        extraPool = PixelBufferFactory.makePool(width: outputSize.width, height: outputSize.height, minimumCount: 0)
         let td = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: outputSize.width,
                                                           height: outputSize.height, mipmapped: false)
         td.usage = [.renderTarget, .shaderRead]
@@ -170,14 +172,15 @@ public final class MetalCompositor {
     /// `completion` runs on a Metal completion thread once the GPU finished; the returned buffers
     /// are safe to read/encode from then on.
     /// `keys` holds the enabled chroma keys, so thumbnails show the keyed picture too.
+    /// `drawPreview` false skips the Preview picture (no Preview monitor on screen, 0.56.0).
     public func render(plan: FramePlan, frames: [InputID: CVPixelBuffer],
-                       adjusts: [InputID: InputAdjust] = [:],
+                       adjusts: [InputID: InputAdjust] = [:], drawPreview: Bool = true,
                        completion: @escaping (Result) -> Void) -> Bool {
         guard let cb = queue.makeCommandBuffer(), let programPool, let previewPool,
-              let programPB = makeBuffer(programPool), let previewPB = makeBuffer(previewPool),
-              let programTex = texture(for: programPB), let previewTex = texture(for: previewPB)
+              let programPB = makeBuffer(programPool), let programTex = texture(for: programPB)
         else { return false }
-        var keepAlive: [CVMetalTexture] = [programTex.cv, previewTex.cv]
+        var previewPB: CVPixelBuffer?
+        var keepAlive: [CVMetalTexture] = [programTex.cv]
         var textures: [InputID: (MTLTexture, PixelSize)] = [:]
         var straightSources = Set<InputID>()
         for (id, pb) in frames {
@@ -298,8 +301,12 @@ public final class MetalCompositor {
             drawComposition(cb, target: programTex.tex, size: outputSize, layers: plan.program + plan.overlays + top,
                             textures: textures, load: .clear, straight: straightSources)
         }
-        drawComposition(cb, target: previewTex.tex, size: previewSize, layers: plan.preview, textures: textures, load: .clear,
-                        straight: straightSources)
+        if drawPreview, let pb = makeBuffer(previewPool), let t = texture(for: pb) {
+            keepAlive.append(t.cv)
+            drawComposition(cb, target: t.tex, size: previewSize, layers: plan.preview, textures: textures, load: .clear,
+                            straight: straightSources)
+            previewPB = pb
+        }
 
         // Thumbnails (caller decides the rate): each input's whole scene on a transparent background.
         var thumbs: [InputID: CVPixelBuffer] = [:]
@@ -576,6 +583,11 @@ public final class MetalCompositor {
     }
 
     /// Periodically flush stale cache entries (call ~1 Hz).
-    public func flushCache() { if let textureCache { CVMetalTextureCacheFlush(textureCache, 0) } }
+    public func flushCache() {
+        if let textureCache { CVMetalTextureCacheFlush(textureCache, 0) }
+        // Free pool buffers that have not been used for a while (0.56.0).
+        for pool in [thumbPool, detailPool, extraPool, previewPool].compactMap({ $0 }) { CVPixelBufferPoolFlush(pool, []) }
+        PixelBufferFactory.flushIdlePools()
+    }
 }
 #endif

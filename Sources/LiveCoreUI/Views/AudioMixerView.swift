@@ -150,7 +150,9 @@ struct ChannelStripView: View {
             }
                 .buttonStyle(.borderless).font(.system(size: 10))
                 .help(L10n.t("audio.properties"))
-                .sheet(isPresented: $showDSP) { AudioPropertiesSheet(vm: vm).environmentObject(model).environmentObject(model.meters) }
+                .sheet(isPresented: $showDSP) {
+                    AudioPropertiesSheet(vm: vm, meter: model.meters.meter(vm.id)).environmentObject(model).environmentObject(model.meters)
+                }
                 .contextMenu {
                     Button(L10n.t("audio.properties")) { showDSP = true }
                     Divider()
@@ -268,12 +270,13 @@ struct MusicTransport: View {
 /// EQ, noise gate, compressor and routing, with live meters.
 struct AudioPropertiesSheet: View {
     @EnvironmentObject var model: AppModel
-    @EnvironmentObject var meters: MeterModel
     @ObservedObject var vm: ChannelVM
+    /// The sheet's live meters (gate / compressor / limiter readouts) follow this channel only.
+    @ObservedObject var meter: ChannelMeter
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        let level = meters.levels[vm.id]
+        let level: MeterModel.Level? = meter.level
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
                 Text(L10n.t("audio.properties")).font(.headline)
@@ -526,29 +529,35 @@ struct MasterStripView: View {
 /// are not redrawn on every meter update, which keeps dragging smooth and the CPU low.
 struct StereoMeter: View {
     enum Source { case channel(String), aux(Int), master, masterGR }
+    /// Not observed for changes (MeterModel publishes nothing); each meter watches its own channel.
     @EnvironmentObject var meters: MeterModel
     let source: Source
 
     var body: some View {
         switch source {
-        case .masterGR:
-            if meters.master.gr > 0.1 {
-                Text(String(format: "GR %.1f dB", meters.master.gr)).font(.system(size: 9)).foregroundStyle(Theme.warning)
-            }
-        default:
-            let level = self.level
-            HStack(spacing: 4) {
-                MeterView(levelDB: level?.l ?? -120, holdDB: level?.holdL ?? -120)
-                MeterView(levelDB: level?.r ?? -120, holdDB: level?.holdR ?? -120)
-            }
+        case let .channel(id): StereoMeterBars(meter: meters.meter(id), grOnly: false)
+        case let .aux(i): StereoMeterBars(meter: meters.meter(MeterModel.auxKey(i)), grOnly: false)
+        case .master: StereoMeterBars(meter: meters.meter(MeterModel.masterKey), grOnly: false)
+        case .masterGR: StereoMeterBars(meter: meters.meter(MeterModel.masterKey), grOnly: true)
         }
     }
+}
 
-    private var level: MeterModel.Level? {
-        switch source {
-        case let .channel(id): return meters.levels[id]
-        case let .aux(i): return i < meters.aux.count ? meters.aux[i] : nil
-        case .master, .masterGR: return meters.master
+struct StereoMeterBars: View {
+    @ObservedObject var meter: ChannelMeter
+    let grOnly: Bool
+
+    var body: some View {
+        let level = meter.level
+        if grOnly {
+            if level.gr > 0.1 {
+                Text(String(format: "GR %.1f dB", level.gr)).font(.system(size: 9)).foregroundStyle(Theme.warning)
+            }
+        } else {
+            HStack(spacing: 4) {
+                MeterView(levelDB: level.l, holdDB: level.holdL)
+                MeterView(levelDB: level.r, holdDB: level.holdR)
+            }
         }
     }
 }
