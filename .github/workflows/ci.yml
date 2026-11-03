@@ -94,11 +94,13 @@ jobs:
       # decode errors (HEVC and file decoding pass; the user confirmed SRT works on a real Mac), so
       # the result is reported without failing the build until that is fixed (user's call, 0.54.0).
       - run: scripts/ci_run.sh macos-srt-input-check swift run livecore-srt-input-check engine
+        if: false   # switched off for now at the user's request (2026-11-03); remove this line to run it again
         timeout-minutes: 5
         continue-on-error: true
       # Engine run with recording + streaming, a stream drop in the middle and a full disk.
       # Its disk-full part is known to fail (docs/KNOWN_ISSUES.md); the result is still reported.
       - run: scripts/ci_run.sh macos-soak-check swift run livecore-soak-check
+        if: false   # switched off for now at the user's request (2026-11-03); remove this line to run it again
         continue-on-error: true
         env:
           SOAK_SECONDS: "90"
