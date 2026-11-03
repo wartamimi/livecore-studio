@@ -5,47 +5,8 @@ import LiveCoreCore
 import LiveCoreEngine
 import LiveCoreServices
 
-/// Vertical 9:16 output and the event rundown (0.42.0).
+/// Event rundown and on-device AI (0.42.0).
 extension AppModel {
-    // MARK: Vertical output
-
-    public var verticalSettings: VerticalSettings { settings.verticalOutput }
-
-    public func setVertical(_ v: VerticalSettings) {
-        settings.vertical = v
-        engine?.setVerticalSettings(v)
-        if let d = try? JSONEncoder().encode(settings) { UserDefaults.standard.set(d, forKey: "settings") }
-    }
-
-    public var isVerticalStreaming: Bool { engine?.isVerticalStreaming ?? false }
-
-    public func hasVerticalKey() -> Bool { ((try? KeychainStore.load(account: verticalSettings.keychainAccount)) ?? nil)?.isEmpty == false }
-
-    public func saveVerticalKey(_ key: String) {
-        do { try KeychainStore.save(streamKey: key, account: verticalSettings.keychainAccount) } catch {
-            report("Keychain: \(error.localizedDescription)")
-        }
-        objectWillChange.send()
-    }
-
-    public func toggleVerticalStream() {
-        guard let e = engine else { return }
-        if e.isVerticalStreaming {
-            e.stopVerticalStream()
-            verticalStreamStats = nil
-        } else {
-            do {
-                guard let key = try KeychainStore.load(account: verticalSettings.keychainAccount), !key.isEmpty else {
-                    report(L10n.t("vertical.no_key")); return
-                }
-                try e.startVerticalStream(url: RTMPURL.parse(serverURL: verticalSettings.streamURL, streamKey: key))
-            } catch {
-                report(L10n.f("vertical.stream_failed", "\(error.localizedDescription)"))
-            }
-        }
-        objectWillChange.send()
-    }
-
     // MARK: On-device AI
 
     public var aiAvailable: Bool { AISupport.isAvailable }

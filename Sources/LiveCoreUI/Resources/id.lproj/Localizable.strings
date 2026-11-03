@@ -1143,31 +1143,6 @@
 "overlay.anim.hold" = "Animasi title sendiri";
 
 /* 0.42.0: vertical output, rundown */
-"vertical.window" = "Output vertikal 9:16";
-"vertical.crop" = "Crop";
-"vertical.follow" = "Ikuti";
-"vertical.follow.faces" = "Wajah (otomatis)";
-"vertical.follow.center" = "Tengah";
-"vertical.follow.manual" = "Manual";
-"vertical.position" = "Posisi";
-"vertical.speed" = "Kecepatan mengikuti";
-"vertical.size" = "Ukuran";
-"vertical.record" = "Rekaman";
-"vertical.record_with" = "Rekam file vertikal setiap RECORD berjalan";
-"vertical.stream" = "Stream vertikal";
-"vertical.server" = "URL server";
-"vertical.key" = "Stream key";
-"vertical.key_saved" = "Stream key tersimpan (Keychain) – ketik untuk mengganti";
-"vertical.save_key" = "Simpan key";
-"vertical.bitrate" = "Video %@ kbps";
-"vertical.start" = "Mulai stream vertikal";
-"vertical.stop" = "Hentikan stream vertikal";
-"vertical.connecting" = "Menghubungkan…";
-"vertical.reconnecting" = "Menyambung ulang (%@)…";
-"vertical.waiting" = "Menunggu Program…";
-"vertical.note" = "Ini crop 9:16 dari Program, jadi title dan logo di tepi kiri/kanan akan terpotong. Wajah dideteksi di Mac ini (Vision), tidak ada yang diunggah. TikTok/Instagram Live butuh URL RTMP(S) dan key dari platformnya.";
-"vertical.no_key" = "Simpan dulu stream key vertikal.";
-"vertical.stream_failed" = "Stream vertikal: %@";
 "rundown.title" = "Rundown acara";
 "rundown.button" = "RUNDOWN";
 "rundown.templates" = "Template";
@@ -1400,20 +1375,6 @@
 "scene.align.bottom" = "Rata bawah";
 "scene.fill_canvas" = "Penuhi seluruh kanvas";
 "scene.nudge" = "Geser 1 %";
-"vertical.fill" = "Isi";
-"vertical.fill.crop" = "Potong (mengikuti orang)";
-"vertical.fill.fitBlur" = "Gambar utuh + latar blur";
-"vertical.fill.fitBlack" = "Gambar utuh di latar hitam";
-"vertical.fit_position" = "Posisi gambar (atas … bawah)";
-"vertical.blur" = "Blur latar";
-"vertical.framing" = "Framing";
-"vertical.zoom" = "Zoom %@";
-"vertical.center_y" = "Tinggi potongan (ruang kepala)";
-"vertical.dead_zone" = "Ketenangan (dead zone)";
-"vertical.dead_zone_help" = "Seberapa jauh orang harus bergerak sebelum potongan mengikuti. Makin tinggi = gambar makin tenang.";
-"vertical.format" = "Format";
-"vertical.audio_bitrate" = "Bitrate audio";
-"vertical.keyframe" = "Interval keyframe";
 "titletpl.weddingFloral" = "Nama pengantin (rose gold)";
 "titletpl.weddingElegant" = "Nama pengantin (kartu ivory)";
 "titletpl.weddingCenter" = "Nama pengantin (tengah)";
@@ -1576,3 +1537,19 @@
 "decklink.note" = "Memakai driver Blackmagic Desktop Video yang terpasang di Mac ini (API %@). Video 8-bit, audio tertanam kanal 1–2. Satu kartu hanya bisa dipakai satu aplikasi: tutup aplikasi lain (OBS, Media Express) yang memakai input yang sama.";
 
 "common.add" = "Tambah";
+
+/* 0.55.0 */
+"settings.menu" = "Pengaturan…";
+"multiview.menu" = "Mode Multiview";
+"rundown.create_menu" = "Buat Rundown…";
+"dock.add_input" = "TAMBAH INPUT";
+"groups.add_label" = "Tambah Label…";
+"groups.add_label_title" = "Tambah Label";
+"groups.label_color" = "Pilih warna. Warna yang sudah dipakai menampilkan namanya; input ikut label itu.";
+"groups.label_name" = "Nama label";
+"inputs.meter_help" = "Level audio input ini";
+"transport.restart" = "Kembali ke awal";
+"transport.previous" = "Klip sebelumnya";
+"transport.play_pause" = "Putar / Jeda";
+"transport.next" = "Klip berikutnya";
+"transport.none" = "Input ini tidak punya kontrol putar";

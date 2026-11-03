@@ -37,6 +37,24 @@ struct OutputDockView: View {
 
     private func content(chipNames: Bool, compactStats: Bool) -> some View {
         HStack(spacing: 12) {
+            // ADD INPUT in the bottom-left corner, then a divider like the output groups (0.55.0).
+            group {
+                Menu { AddInputMenuItems() } label: {
+                    // Icon only on narrow windows, like the top bar.
+                    Label(L10n.t("dock.add_input"), systemImage: "plus.circle.fill")
+                        .labelStyle(AdaptiveLabelStyle(iconOnly: compactStats))
+                        .font(.system(size: 13, weight: .bold))
+                        .lineLimit(1)
+                }
+                .menuStyle(.borderlessButton)
+                .menuIndicator(.hidden)
+                .fixedSize()
+                .padding(.vertical, 6).padding(.horizontal, 12)
+                .background(Theme.panelRaised)
+                .clipShape(RoundedRectangle(cornerRadius: 5))
+                .overlay(RoundedRectangle(cornerRadius: 5).stroke(Theme.border, lineWidth: 1))
+                .help(L10n.t("inputs.add"))
+            }
             // One padlock for the whole dock: while locked RECORD and STREAM cannot start or stop.
             LockButton(locked: Binding(get: { model.recordLocked && model.streamLocked },
                                        set: { model.recordLocked = $0; model.streamLocked = $0 }),

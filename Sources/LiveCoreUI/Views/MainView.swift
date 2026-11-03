@@ -9,8 +9,6 @@ struct MainView: View {
     @State private var settingsTab = 6   // Canvas, the first tab
     // Docked panels that are minimized to a slim bar (remembered between launches).
     @AppStorage("dock.inputs.minimized") private var inputsMin = false
-    @AppStorage("dock.mixer.minimized") private var mixerMin = false
-    @AppStorage("dock.monitors.minimized") private var monitorsMin = false
     @AppStorage("dock.playlist.minimized") private var playlistMin = false
     @AppStorage("welcome.showAtLaunch") private var welcomeAtLaunch = true
 
@@ -40,44 +38,23 @@ struct MainView: View {
                                     .dockHandle { inputsMin = true }
                                     .frame(minWidth: 180, idealWidth: 260, maxWidth: 360)
                             }
-                            VStack(spacing: 6) {
-                                if monitorsMin {
-                                    DockBar(title: L10n.t("dock.monitors"), axis: .horizontal) { monitorsMin = false }
-                                }
-                                VSplitView {
-                                    if !monitorsMin {
-                                        MonitorRow()
-                                            .dockHandle { monitorsMin = true }
-                                            .frame(minHeight: 200)
-                                    }
-                                    if !(mixerMin && (playlistMin || !showPlaylist)) {
-                                        HStack(alignment: .top, spacing: 6) {
-                                            if mixerMin {
-                                                DockBar(title: L10n.t("audio.title"), axis: .vertical) { mixerMin = false }
-                                            } else {
-                                                AudioMixerView().dockHandle { mixerMin = true }
-                                            }
-                                            if showPlaylist {
-                                                if playlistMin {
-                                                    DockBar(title: L10n.t("playlist.dock"), axis: .vertical) { playlistMin = false }
-                                                } else {
-                                                    PlaylistDockView()
-                                                        .dockHandle { playlistMin = true }
-                                                        .frame(minWidth: 200, idealWidth: 290, maxWidth: 320)
-                                                }
-                                            }
-                                        }
-                                        .frame(minHeight: 160, idealHeight: 280)
-                                    }
-                                }
-                                if mixerMin && (playlistMin || !showPlaylist) {
-                                    HStack(spacing: 6) {
-                                        DockBar(title: L10n.t("audio.title"), axis: .horizontal) { mixerMin = false }
-                                        if showPlaylist {
-                                            DockBar(title: L10n.t("playlist.dock"), axis: .horizontal) { playlistMin = false }
+                            // Monitors + Transition and the Audio Mixer cannot be minimized (0.55.0).
+                            VSplitView {
+                                MonitorRow()
+                                    .frame(minHeight: 200)
+                                HStack(alignment: .top, spacing: 6) {
+                                    AudioMixerView()
+                                    if showPlaylist {
+                                        if playlistMin {
+                                            DockBar(title: L10n.t("playlist.dock"), axis: .vertical) { playlistMin = false }
+                                        } else {
+                                            PlaylistDockView()
+                                                .dockHandle { playlistMin = true }
+                                                .frame(minWidth: 200, idealWidth: 290, maxWidth: 320)
                                         }
                                     }
                                 }
+                                .frame(minHeight: 160, idealHeight: 280)
                             }
                         }
                     }
@@ -99,6 +76,12 @@ struct MainView: View {
             settingsTab = 9
             showSettings = true
         }
+        .onChange(of: model.openSettingsRequest) { open in
+            guard open else { return }
+            model.openSettingsRequest = false
+            showSettings = true
+        }
+        .addInputSheets(model)
         .sheet(isPresented: $model.showOutputsPanel) { OutputsPanelSheet().environmentObject(model) }
         .sheet(isPresented: $model.showTemplates) { TemplatesSheet().environmentObject(model) }
         .onAppear {

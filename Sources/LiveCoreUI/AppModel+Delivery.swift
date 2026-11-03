@@ -87,16 +87,15 @@ extension AppModel {
             let chapters = ClientPackage.chapters(marks, recordingStart: start, duration: duration)
             try chapters.write(to: folder.appendingPathComponent("Bab (chapters YouTube).txt"), atomically: true, encoding: .utf8)
             count += 1
-            // Highlights: vertical file when there is one, else a centre 9:16 crop of Program.
+            // Highlights: a centre 9:16 crop of Program (the separate vertical output was removed in 0.55.0).
             let ranges = ClientPackage.highlightRanges(marks, recordingStart: start, duration: duration)
             if !ranges.isEmpty {
                 let hl = folder.appendingPathComponent("Highlight 9x16", isDirectory: true)
                 try fm.createDirectory(at: hl, withIntermediateDirectories: true)
-                let vertical = files.first { $0.lastPathComponent.contains("Vertical") }
                 for (i, r) in ranges.enumerated() {
                     progress(L10n.f("package.highlight", "\(i + 1)", "\(ranges.count)"))
                     let out = hl.appendingPathComponent(String(format: "Highlight %02d.mp4", i + 1))
-                    try await exportClip(from: vertical ?? program, range: r, cropToVertical: vertical == nil, to: out)
+                    try await exportClip(from: program, range: r, cropToVertical: true, to: out)
                     count += 1
                 }
             }

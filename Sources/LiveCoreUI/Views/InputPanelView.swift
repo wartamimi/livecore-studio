@@ -6,34 +6,23 @@ import LiveCoreEngine
 
 struct InputPanelView: View {
     @EnvironmentObject var model: AppModel
-    @State private var showTitleSheet = false
     @State private var editingTitle: InputID?
     @State private var keying: InputID?
     @State private var editingScene: InputID?
     @State private var renaming: InputID?
     @State private var renameText = ""
-    @State private var showBrowserSheet = false
     @State private var editingBrowser: InputID?
-    @State private var showTimerSheet = false
     @State private var editingTimer: InputID?
-    @State private var showCaptureSheet = false
     @State private var editingCapture: InputID?
-    @State private var showNDISheet = false
     @State private var editingNDI: InputID?
-    @State private var showSRTSheet = false
-    @State private var showDeckLinkSheet = false
-    @State private var showFrameSheet = false
-    @State private var showFlagSheet = false
     @State private var editingFrame: InputID?
     @State private var editingGT: InputID?
     @State private var editingSubtitles: InputID?
     @State private var editingLiveCall: InputID?
     @State private var closing: InputID?
-    @State private var showCaptureCard = false
     @State private var editingCaptureCard: InputID?
     @State private var adjusting: InputID?
     @State private var editingTicker: InputID?
-    @State private var showSlideshowSheet = false
     @State private var editingSlideshow: InputID?
     @State private var editingData: InputID?
     @State private var editingPTZ: InputID?
@@ -42,6 +31,7 @@ struct InputPanelView: View {
     @State private var collapsedGroups: Set<String> = []
     @State private var renamingGroup: InputColorTag?
     @State private var groupNameText = ""
+    @State private var labeling: InputID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -104,36 +94,26 @@ struct InputPanelView: View {
         }
         .padding(8)
         .panel()
-        .sheet(isPresented: $showTitleSheet) { TitleSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingTitle) { id in TitleSheet(editing: id).environmentObject(model) }
         .sheet(item: $properties) { id in InputPropertiesSheet(input: id).environmentObject(model) }
         .sheet(item: $editingAI) { id in InputAISheet(input: id).environmentObject(model) }
         .sheet(item: $keying) { id in ChromaKeySheet(input: id).environmentObject(model) }
         .sheet(item: $editingScene) { id in SceneEditorSheet(input: id).environmentObject(model) }
-        .sheet(isPresented: $showBrowserSheet) { BrowserSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingBrowser) { id in BrowserSheet(editing: id).environmentObject(model) }
-        .sheet(isPresented: $showTimerSheet) { TimerSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingTimer) { id in TimerSheet(editing: id).environmentObject(model) }
-        .sheet(isPresented: $showCaptureSheet) { CaptureSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCapture) { id in CaptureSheet(editing: id).environmentObject(model) }
-        .sheet(isPresented: $showNDISheet) { NDIInputSheet(editing: nil).environmentObject(model) }
-        .sheet(isPresented: $showFrameSheet) { FrameSheet(editing: nil).environmentObject(model) }
-        .sheet(isPresented: $showFlagSheet) { FlagSheet().environmentObject(model) }
         .sheet(item: $editingFrame) { id in FrameSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingGT) { id in GTTitleSheet(input: id).environmentObject(model) }
         .sheet(item: $editingSubtitles) { id in SubtitleSheet(input: id).environmentObject(model) }
         .sheet(item: $editingLiveCall) { id in LiveCallSheet(input: id).environmentObject(model) }
         .sheet(item: $editingNDI) { id in NDIInputSheet(editing: id).environmentObject(model) }
-        .sheet(isPresented: $showSRTSheet) { SRTInputSheet(editing: nil).environmentObject(model) }
-        .sheet(isPresented: $showDeckLinkSheet) { DeckLinkInputSheet(editing: nil).environmentObject(model) }
-        .sheet(isPresented: $showCaptureCard) { CaptureCardSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingCaptureCard) { id in CaptureCardSheet(editing: id).environmentObject(model) }
         .sheet(item: $adjusting) { id in InputAdjustSheet(input: id).environmentObject(model) }
         .sheet(item: $editingTicker) { id in TitleSheet(editing: id).environmentObject(model) }
-        .sheet(isPresented: $showSlideshowSheet) { SlideshowSheet(editing: nil).environmentObject(model) }
         .sheet(item: $editingSlideshow) { id in SlideshowSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingData) { id in DataSourceSheet(input: id).environmentObject(model) }
         .sheet(item: $editingPTZ) { id in PTZSheet(input: id).environmentObject(model) }
+        .sheet(item: $labeling) { id in ColorLabelSheet(input: id).environmentObject(model) }
         .alert(L10n.f("inputs.close_confirm", model.inputs.first { $0.id == closing }?.name ?? ""),
                isPresented: Binding(get: { closing != nil }, set: { if !$0 { closing = nil } })) {
             Button(L10n.t("inputs.close"), role: .destructive) { if let id = closing { model.remove(id) }; closing = nil }
@@ -171,13 +151,13 @@ struct InputPanelView: View {
         let on = model.inputFilter == tag
         return Button { model.inputFilter = tag } label: {
             HStack(spacing: 4) {
-                if let tag { Circle().fill(tag.color).frame(width: 8, height: 8) }
+                Circle().fill(tag?.color ?? Theme.labelAll).frame(width: 8, height: 8)
                 Text(label).font(.system(size: 10, weight: on ? .bold : .regular)).lineLimit(1)
             }
             .padding(.horizontal, 7).padding(.vertical, 3)
-            .background(on ? (tag?.color.opacity(0.35) ?? Theme.accent.opacity(0.35)) : Theme.panelRaised)
+            .background(on ? (tag?.color ?? Theme.labelAll).opacity(0.35) : Theme.panelRaised)
             .clipShape(Capsule())
-            .overlay(Capsule().stroke(on ? (tag?.color ?? Theme.accent) : Theme.border, lineWidth: 1))
+            .overlay(Capsule().stroke(on ? (tag?.color ?? Theme.labelAll) : Theme.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -186,7 +166,7 @@ struct InputPanelView: View {
         let collapsed = collapsedGroups.contains(g.key)
         return HStack(spacing: 6) {
             Image(systemName: collapsed ? "chevron.right" : "chevron.down").font(.system(size: 9, weight: .bold)).frame(width: 10)
-            RoundedRectangle(cornerRadius: 2).fill(g.tag?.color ?? Theme.textDim.opacity(0.5)).frame(width: 14, height: 8)
+            RoundedRectangle(cornerRadius: 2).fill(g.tag?.color ?? Theme.labelAll).frame(width: 14, height: 8)
             Text(model.groupName(g.tag)).font(.system(size: 11, weight: .semibold))
             Text("\(g.inputs.count)").font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.textDim)
             Rectangle().fill((g.tag?.color ?? Theme.border).opacity(0.35)).frame(height: 1)
@@ -203,52 +183,7 @@ struct InputPanelView: View {
     }
 
     private var addMenu: some View {
-        Menu {
-            // One entry for every camera, capture card and iPhone (0.46.0, like vMix's "Video
-            // Capture Device"): the device, format and audio are picked in the sheet.
-            Section(L10n.t("inputs.camera_group")) {
-                Button { model.refreshDevices(); showCaptureCard = true } label: {
-                    Label(L10n.t("inputs.video_capture"), systemImage: "video")
-                }
-            }
-            // Media files grouped in one place: video, video playlist, image, slideshow, presentation.
-            Section(L10n.t("inputs.media_group")) {
-                Button(L10n.t("media.add")) { model.addMedia() }
-                Button(L10n.t("media.add_playlist")) { model.addMediaPlaylist() }
-                Button(L10n.t("inputs.image")) { model.addImage() }
-                Button(L10n.t("slideshow.add")) { showSlideshowSheet = true }
-                Button(L10n.t("presentation.add")) { model.addPresentation() }
-            }
-            Section(L10n.t("inputs.graphics_group")) {
-                // Titles, lower thirds and running text are all made in the Title Designer.
-                Button(L10n.t("inputs.title_menu")) { showTitleSheet = true }
-                Button(L10n.t("timer.add")) { showTimerSheet = true }
-                Button(L10n.t("frame.add")) { showFrameSheet = true }
-                Button(L10n.t("flag.add")) { showFlagSheet = true }
-                Button(L10n.t("gt.add")) { if let id = model.addGTTitle() { editingGT = id } }
-                Button(L10n.t("transcription.add")) { if let id = model.addTranscription() { editingSubtitles = id } }
-                Button(L10n.t("scene.new")) { if let id = model.addScene() { editingScene = id } }
-            }
-            Section(L10n.t("inputs.other_group")) {
-                Button { if let id = model.addLiveCall() { editingLiveCall = id } } label: {
-                    Label("LCS Live", systemImage: "person.wave.2")
-                }
-                Button(L10n.t("browser.add")) { showBrowserSheet = true }
-                if !model.isOperatorMode {
-                    Button(L10n.t("capture.add")) { showCaptureSheet = true }
-                    Button(L10n.t("ndi.add")) { showNDISheet = true }
-                    Button(L10n.t("srtin.add")) { showSRTSheet = true }
-                    Button(L10n.t("decklink.add")) { showDeckLinkSheet = true }
-                    Button(L10n.t("inputs.colorbars")) { model.addColorBars() }
-                }
-            }
-            Menu(L10n.t("inputs.color")) {
-                Button("Black") { model.addColor(.black, name: "Black") }
-                Button("White") { model.addColor(.white, name: "White") }
-                Button("Blue") { model.addColor(NSColor(calibratedRed: 0.05, green: 0.2, blue: 0.55, alpha: 1), name: "Blue") }
-                Button("Green screen") { model.addColor(NSColor(calibratedRed: 0, green: 0.7, blue: 0.25, alpha: 1), name: "Green") }
-            }
-        } label: {
+        Menu { AddInputMenuItems() } label: {
             Image(systemName: "plus.circle.fill")
         }
         .menuStyle(.borderlessButton)
@@ -263,11 +198,9 @@ struct InputPanelView: View {
         Button(L10n.t("inputs.cutdirect")) { model.cutDirect(info.id) }
         Button(info.locked ? L10n.t("lock.unlock_input") : L10n.t("lock.lock_input")) { model.toggleLock(info.id) }
         Button(model.minimizedInputs.contains(info.id) ? L10n.t("groups.expand") : L10n.t("groups.minimize")) { model.toggleMinimized(info.id) }
+        // Two entries only (0.55.0): Add Label… (pick a colour and type its name) and No Label.
         Menu(L10n.t("groups.color_label")) {
-            ForEach(InputColorTag.allCases, id: \.self) { t in
-                Button((model.inputTags[info.id] == t ? "✓ " : "") + model.groupName(t)) { model.setColorTag(t, for: info.id) }
-            }
-            Divider()
+            Button(L10n.t("groups.add_label")) { labeling = info.id }
             Button((model.inputTags[info.id] == nil ? "✓ " : "") + L10n.t("groups.no_label")) { model.setColorTag(nil, for: info.id) }
         }
         Divider()
@@ -458,9 +391,10 @@ struct InputTile: View {
             }
             HStack(spacing: 4) {
                 Circle().fill(statusColor).frame(width: 7, height: 7).help(info.status.label)
+                // Input type icon before the name (0.55.0).
+                Image(systemName: info.kind.symbol).font(.system(size: 10)).foregroundStyle(Theme.textDim)
                 Text(info.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
                 Spacer(minLength: 0)
-                Image(systemName: icon).font(.system(size: 10)).foregroundStyle(Theme.textDim)
                 Button { model.toggleLock(info.id) } label: {
                     Image(systemName: info.locked ? "lock.fill" : "lock.open")
                         .font(.system(size: 10))
@@ -468,6 +402,8 @@ struct InputTile: View {
                 }
                 .buttonStyle(.plain)
                 .help(info.locked ? L10n.t("lock.unlock_input") : L10n.t("lock.lock_input"))
+                // Small audio meter after the padlock when the input has sound in the mixer (0.55.0).
+                if let ch = model.meterChannel(for: info.id) { InputTileMeter(channelID: ch) }
             }
             if info.kind == .browser, model.browserSource(info.id)?.isEditing == true {
                 Label(L10n.t("browser.editing_badge"), systemImage: "hand.point.up.left.fill")
@@ -514,9 +450,12 @@ struct InputTile: View {
         case .error: return Theme.program
         }
     }
+}
 
-    private var icon: String {
-        switch info.kind {
+extension InputKind {
+    /// SF Symbol of the input type (tiles, minimized rows and the add menus).
+    var symbol: String {
+        switch self {
         case .camera: return "video.fill"
         case .image: return "photo"
         case .videoFile: return "film"
@@ -542,6 +481,78 @@ struct InputTile: View {
     }
 }
 
+/// Tiny stereo meter on an input tile (0.55.0). Watches the 30 Hz meter model on its own so
+/// the tile itself is not redrawn with every meter update.
+struct InputTileMeter: View {
+    @EnvironmentObject var meters: MeterModel
+    let channelID: String
+
+    var body: some View {
+        let lv = meters.levels[channelID]
+        VStack(spacing: 1) {
+            bar(lv?.l ?? -120)
+            bar(lv?.r ?? -120)
+        }
+        .frame(width: 28, height: 7)
+        .help(L10n.t("inputs.meter_help"))
+    }
+
+    private func bar(_ db: Float) -> some View {
+        GeometryReader { geo in
+            let f = MeterView.fraction(db)
+            ZStack(alignment: .leading) {
+                Rectangle().fill(Color.black.opacity(0.5))
+                Rectangle().fill(db > -6 ? Theme.meterRed : (db > -18 ? Theme.meterYellow : Theme.meterGreen))
+                    .frame(width: geo.size.width * f)
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 1))
+    }
+}
+
+/// "Add Label…" (0.55.0): pick one of the label colours and type its name. A colour that is
+/// already used shows its name, so the input joins that label; a new name renames the label.
+struct ColorLabelSheet: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    let input: InputID
+    @State private var tag: InputColorTag = .blue
+    @State private var name = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(L10n.t("groups.add_label_title")).font(.headline)
+            Text(L10n.t("groups.label_color")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
+            HStack(spacing: 8) {
+                ForEach(InputColorTag.allCases, id: \.self) { t in
+                    Circle().fill(t.color).frame(width: 22, height: 22)
+                        .overlay(Circle().stroke(Color.white, lineWidth: tag == t ? 2 : 0))
+                        .contentShape(Circle())
+                        .onTapGesture { tag = t; name = model.groupName(t) }
+                        .help(model.groupName(t))
+                }
+            }
+            TextField(L10n.t("groups.label_name"), text: $name).textFieldStyle(.roundedBorder)
+            HStack {
+                Spacer()
+                Button(L10n.t("settings.cancel"), role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(L10n.t("common.add")) {
+                    model.renameGroup(tag, name)
+                    model.setColorTag(tag, for: input)
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(16)
+        .frame(width: 340)
+        .onAppear {
+            tag = model.inputTags[input] ?? InputColorTag.allCases.first { t in !model.inputTags.values.contains(t) } ?? .blue
+            name = model.groupName(tag)
+        }
+    }
+}
+
 /// Minimized input (vMix-style): one compact row with the colour label, tally number, name and
 /// status. Click = Preview, double-click = Cut; the square button opens it again.
 struct MiniInputTile: View {
@@ -560,6 +571,7 @@ struct MiniInputTile: View {
                 .padding(.vertical, 1)
                 .background(isProgram ? Theme.program : (isPreview ? Theme.preview : Color.black.opacity(0.5)))
                 .clipShape(RoundedRectangle(cornerRadius: 3))
+            Image(systemName: info.kind.symbol).font(.system(size: 9)).foregroundStyle(Theme.textDim)
             Text(info.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
             Spacer(minLength: 0)
             if info.locked { Image(systemName: "lock.fill").font(.system(size: 9)).foregroundStyle(Theme.warning) }

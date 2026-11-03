@@ -49,7 +49,6 @@ extension ProductionEngine {
         if formatChanged && isOutputActive { return ["Stop streaming and recording before changing resolution or frame rate."] }
         let customChanged = new.customTransition != settings.customTransition
         settings = new
-        vertical.settings = new.verticalOutput
         if customChanged, let err = setCustomTransition(new.customTransition) { return ["Custom transition: \(err)"] }
         if formatChanged {
             renderQueue.sync { compositor.configure(outputSize: new.output.size) }
@@ -186,7 +185,6 @@ extension ProductionEngine {
         let bus = settings.recording.bus
         audioPump.addSink("record") { [weak recorder] chunk in recorder?.append(audio: chunk.bus(bus)) }
         recordingStartDate = Date()
-        startVerticalRecording(date: Date())
     }
 
     public func stopRecording() {
@@ -194,7 +192,6 @@ extension ProductionEngine {
         recorder.stop()
         outputs.mutate { $0.recording = false }
         audioPump.removeSink("record")
-        stopVerticalRecording()
     }
 
     // MARK: MultiCorder

@@ -228,7 +228,7 @@ Paket 8 permintaan. Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Bel
 | Bug menu AI (on this Mac) berkedip | Implemented | M | Submenu diganti satu item yang membuka jendela kecil (hapus latar, auto-framing, zoom). Penyebab diduga: submenu dibangun ulang tiap thumbnail di-refresh. Belum dikonfirmasi di Mac. |
 | Layout scene editor | Implemented | L, M | 10 layout baru (17 total): PiP kiri bawah, 2 PiP, belah dua tinggi, grid 3×3, 1 atas + 3 bawah, sidebar, meja berita, bentuk L, panel 3, panel 4. |
 | Scene editor lebih advance | Implemented | L, M | X/Y/W/H dalam persen bisa diketik, rata kiri/tengah/kanan/atas/bawah, penuhi kanvas, geser 1 %, duplikat layer, ratakan jarak mendatar / menurun. (Snap, crop, rotasi tidak berubah dari sebelumnya.) |
-| Vertical output lebih advance | Implemented | L, M | Mode isi: potong (ikuti orang) / gambar utuh + latar blur / gambar utuh di hitam; zoom 1–2,5× dan ruang kepala; ketenangan (dead zone); posisi gambar dan kekuatan blur; bitrate audio dan interval keyframe stream vertikal; ukuran baru 1080×1350 (4:5) dan 1080×1080. Setting lama tetap terbaca. |
+| Vertical output lebih advance | Removed (0.55.0) | L, M | Output 9:16 terpisah dan kodenya dihapus atas permintaan user (0.55.0). Canvas 9:16 (Settings › Canvas) tetap ada. |
 | Template nama pengantin | Implemented | L, M | Title: Nama pengantin (tengah), Save the date. Lower third: rose gold (huruf naik satu per satu), kartu ivory (huruf memantul). Pojok: hashtag pernikahan. Running text: Pernikahan emas, Pernikahan pink. Font script/Didot bawaan macOS. |
 | Frame meeting & conference | Implemented | L, M | 4 frame baru: Konferensi (kamera besar + panel pembicara + strip aksen), Meeting (terang, sudut membulat, bayangan), Webinar (judul kiri, presenter kanan dengan glow), Keynote (kamera tengah, garis aksen). |
 
@@ -287,8 +287,8 @@ Verifikasi: L = unit test Linux, M = kompilasi CI macOS. Belum ada yang dites di
 |---|---|---|---|
 | Output vertikal 9:16 (720×1280 / 1080×1920) dari Program | Implemented, belum dites | L (crop) + M | Crop dari Program di GPU (Core Image). Tombol "9:16" di bar atas membuka monitor + setelan |
 | Crop mengikuti wajah | Implemented, belum dites | L (pelacak) + M | Vision di Mac, ±6 deteksi/detik, badan atas sebagai cadangan, gerak halus + dead zone; mode Tengah dan Manual |
-| Stream vertikal terpisah (1 tujuan RTMP/RTMPS) | Implemented, belum dites | M | Encoder H.264 + AAC sendiri; key di Keychain (akun "vertical"). Belum: SRT, multi-tujuan vertikal |
-| Rekaman vertikal bersama RECORD | Implemented, belum dites | M | File "… - Vertical" di folder rekaman, setelan codec sama dengan Recorder |
+| Stream vertikal terpisah (1 tujuan RTMP/RTMPS) | Removed (0.55.0) | M | Output 9:16 terpisah dan kodenya dihapus atas permintaan user (0.55.0). Canvas 9:16 (Settings › Canvas) tetap ada. |
+| Rekaman vertikal bersama RECORD | Removed (0.55.0) | M | Output 9:16 terpisah dan kodenya dihapus atas permintaan user (0.55.0). Canvas 9:16 (Settings › Canvas) tetap ada. |
 | Title/overlay khusus vertikal | Planned | – | Sekarang title ikut ter-crop dari Program; title di tepi kiri/kanan terpotong |
 | Rundown acara: segmen, GO / BERIKUTNYA (⌘↩), hitung mundur | Implemented, belum dites | L (aksi) + M | Tombol RUNDOWN di bar atas; template Pernikahan dan Seminar; disimpan di proyek |
 | Per segmen: input ke Program (CUT/AUTO), title di overlay 1–4, musik putar/stop, lanjut otomatis saat waktu habis | Implemented, belum dites | L + M | Title dari segmen sebelumnya dimatikan otomatis; musik dari input Musik di mixer |

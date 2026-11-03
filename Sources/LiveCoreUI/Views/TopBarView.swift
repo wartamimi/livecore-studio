@@ -24,18 +24,11 @@ struct TopBarView: View {
                 Text("\(model.settings.output.label)").font(.system(size: 11)).foregroundStyle(Theme.textDim)
             }
             Spacer(minLength: 0)
-            Button { openWindow(id: "rundown") } label: {
-                Label(L10n.t("rundown.button"), systemImage: "list.number").labelStyle(AdaptiveLabelStyle(iconOnly: compact))
-            }
-                .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.rundownIndex != nil))
-                .fixedSize()
+            // Rundown: a plain icon like Multiview and Settings (0.55.0); red while a rundown runs.
+            Button { openWindow(id: "rundown") } label: { Image(systemName: "list.number") }
+                .foregroundStyle(model.rundownIndex != nil ? Theme.program : Theme.text)
                 .help(L10n.t("rundown.title"))
-            Button { openWindow(id: "vertical") } label: {
-                Label("9:16", systemImage: "rectangle.portrait").labelStyle(AdaptiveLabelStyle(iconOnly: compact))
-            }
-                .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isVerticalStreaming))
-                .fixedSize()
-                .help(L10n.t("vertical.window"))
+                .buttonStyle(.borderless)
             Button { openWindow(id: "multiview") } label: { Image(systemName: "square.grid.3x2") }
                 .help(L10n.t("multiview.open"))
                 .buttonStyle(.borderless)
