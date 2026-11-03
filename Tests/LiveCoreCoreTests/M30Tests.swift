@@ -218,6 +218,12 @@ final class M30Tests: XCTestCase {
         a.sin_addr = in_addr(s_addr: UInt32(0x7F000001).bigEndian)
         let rc = withUnsafePointer(to: &a) { $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { connect(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) } }
         guard rc == 0 else { throw FetchError() }
+        // One-shot client that reads until EOF: ask the server to close after the response
+        // (it keeps connections alive by default since 0.54.1).
+        var request = request
+        if !request.lowercased().contains("connection:"), let r = request.range(of: "\r\n\r\n") {
+            request.replaceSubrange(r, with: "\r\nConnection: close\r\n\r\n")
+        }
         let bytes = Array(request.utf8)
         _ = bytes.withUnsafeBytes { send(fd, $0.baseAddress, $0.count, 0) }
         var out: [UInt8] = []
