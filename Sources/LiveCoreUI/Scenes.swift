@@ -30,6 +30,8 @@ public enum LiveCoreScenes {
                 Button(L10n.t("project.save_as")) { model.saveProjectAs() }.keyboardShortcut("s", modifiers: [.command, .shift])
             }
             CommandMenu("Production") {
+                WindowCommand(title: L10n.t("rundown.create_menu"), id: "rundown", key: "r", modifiers: [.command, .shift])
+                Divider()
                 Button(L10n.t("transition.cut")) { model.cut() }
                 Button(L10n.t("transition.auto")) { model.auto() }
                 Divider()
@@ -46,6 +48,16 @@ public enum LiveCoreScenes {
                 Button(L10n.t("package.menu")) { model.makeClientPackage() }
             }
             CommandGroup(replacing: .appInfo) { AboutCommand() }
+            // LiveCore Studio ▸ Settings… (⌘,), View ▸ Multiview Mode, Production ▸ Create Rundown (0.55.0).
+            CommandGroup(replacing: .appSettings) {
+                Button(L10n.t("settings.menu")) { model.openSettingsRequest = true }
+                    .keyboardShortcut(",", modifiers: [.command])
+                    .disabled(model.isOperatorMode)
+            }
+            CommandGroup(before: .toolbar) {
+                WindowCommand(title: L10n.t("multiview.menu"), id: "multiview", key: "m", modifiers: [.command, .option])
+                Divider()
+            }
             CommandGroup(replacing: .help) { HelpCommands(model: model) }
         }
 
@@ -70,12 +82,6 @@ public enum LiveCoreScenes {
             SourceViewerWindow()
                 .environmentObject(model)
                 .frame(minWidth: 480, minHeight: 300)
-                .preferredColorScheme(.dark)
-        }
-
-        Window(L10n.t("vertical.window"), id: "vertical") {
-            VerticalOutputView()
-                .environmentObject(model)
                 .preferredColorScheme(.dark)
         }
 

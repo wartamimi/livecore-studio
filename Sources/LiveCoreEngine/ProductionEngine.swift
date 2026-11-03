@@ -188,14 +188,10 @@ public final class ProductionEngine {
         var iso: [(InputID, RecordingEngine)] = []
     }
     let outputs = Locked(Outputs())
-    /// Portrait 9:16 output and its stream (0.42.0).
-    public let vertical = VerticalOutput()
     /// When the current / last RECORD started (client package chapters, 0.43.0).
     public internal(set) var recordingStartDate: Date?
     /// On-device AI per input (0.43.0), only on Apple Silicon.
     let aiProcessors = Locked([InputID: AIProcessor]())
-    var verticalStream: (StreamingEngine, AACEncoder)?
-    public var onVerticalStreamStats: ((StreamingEngine.Stats) -> Void)?
     var aacEncoders: [AACEncoder] = []
     var audioInputs: [String: AudioCaptureInput] = [:]
     var lastSwitcher = SwitcherSnapshot()
@@ -252,7 +248,6 @@ public final class ProductionEngine {
         self.settings = settings
         compositor = try MetalCompositor(outputSize: settings.output.size)
         mixer.onError = { [weak self] msg in DispatchQueue.main.async { self?.onError?(msg) } }
-        vertical.settings = settings.verticalOutput
         recorder.onStats = { [weak self] s in
             if case .recording = s.state {} else { self?.recordingEnded(s) }
             self?.onRecordStats?(s)
@@ -325,7 +320,9 @@ public final class ProductionEngine {
         // Snapshot control state and advance transitions.
         var events: [SwitcherEvent] = []
         frameCounter += 1
-        let thumbTick = frameCounter % Int64(max(1, Int(fps / 10))) == 0   // ~10 fps thumbnails (inputs panel + multiview)
+        // Input thumbnails (inputs panel + multiview) at 25–30 fps (0.55.0; was ~10 fps, which
+        // made the small previews of cameras and videos look jerky).
+        let thumbTick = frameCounter % Int64(max(1, Int((fps / 25).rounded()))) == 0
         let (plan, sources, snapshot, adjusts) = control.mutate { st -> (FramePlan, [InputID: VideoSource], SwitcherSnapshot, [InputID: InputAdjust]) in
             events = st.switcher.update(now: now)
             let layers = st.layers
@@ -378,7 +375,6 @@ public final class ProductionEngine {
             outs.streamEncoder?.encode(program, pts: pts)
             if outs.recording { self.recorder.append(video: program, pts: pts) }
             for (id, r) in outs.iso { if let pb = result.extra[id] { r.append(video: pb, pts: pts) } }
-            if self.vertical.isActive { self.vertical.process(program, pts: pts) }
             if outs.replay { self.replay.append(program, hostTime: pts.seconds) }
             self.outputFrameHandler?(OutputFrames(program: program, preview: result.fullPreview, inputs: result.extra, pts: pts))
             let preview = result.preview

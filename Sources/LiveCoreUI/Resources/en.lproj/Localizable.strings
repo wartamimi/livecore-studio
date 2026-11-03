@@ -1143,31 +1143,6 @@
 "overlay.anim.hold" = "Title's own animation";
 
 /* 0.42.0: vertical output, rundown */
-"vertical.window" = "Vertical output 9:16";
-"vertical.crop" = "Crop";
-"vertical.follow" = "Follow";
-"vertical.follow.faces" = "Faces (automatic)";
-"vertical.follow.center" = "Centre";
-"vertical.follow.manual" = "Manual";
-"vertical.position" = "Position";
-"vertical.speed" = "Follow speed";
-"vertical.size" = "Size";
-"vertical.record" = "Recording";
-"vertical.record_with" = "Record a vertical file whenever RECORD runs";
-"vertical.stream" = "Vertical stream";
-"vertical.server" = "Server URL";
-"vertical.key" = "Stream key";
-"vertical.key_saved" = "Stream key saved (Keychain) – type to replace";
-"vertical.save_key" = "Save key";
-"vertical.bitrate" = "Video %@ kbps";
-"vertical.start" = "Start vertical stream";
-"vertical.stop" = "Stop vertical stream";
-"vertical.connecting" = "Connecting…";
-"vertical.reconnecting" = "Reconnecting (%@)…";
-"vertical.waiting" = "Waiting for Program…";
-"vertical.note" = "A 9:16 crop of Program, so titles and logos near the left and right edges are cut. Faces are detected on this Mac (Vision), nothing is uploaded. TikTok/Instagram Live need an RTMP(S) URL and key from the platform.";
-"vertical.no_key" = "Save the vertical stream key first.";
-"vertical.stream_failed" = "Vertical stream: %@";
 "rundown.title" = "Event rundown";
 "rundown.button" = "RUNDOWN";
 "rundown.templates" = "Templates";
@@ -1400,20 +1375,6 @@
 "scene.align.bottom" = "Align bottom";
 "scene.fill_canvas" = "Fill the whole canvas";
 "scene.nudge" = "Nudge 1 %";
-"vertical.fill" = "Fill";
-"vertical.fill.crop" = "Crop (follows people)";
-"vertical.fill.fitBlur" = "Whole picture + blurred background";
-"vertical.fill.fitBlack" = "Whole picture on black";
-"vertical.fit_position" = "Picture position (top … bottom)";
-"vertical.blur" = "Background blur";
-"vertical.framing" = "Framing";
-"vertical.zoom" = "Zoom %@";
-"vertical.center_y" = "Height of the crop (headroom)";
-"vertical.dead_zone" = "Calmness (dead zone)";
-"vertical.dead_zone_help" = "How far a person must move before the crop follows. Higher = calmer picture.";
-"vertical.format" = "Format";
-"vertical.audio_bitrate" = "Audio bitrate";
-"vertical.keyframe" = "Keyframe interval";
 "titletpl.weddingFloral" = "Wedding names (rose gold)";
 "titletpl.weddingElegant" = "Wedding names (ivory card)";
 "titletpl.weddingCenter" = "Wedding names (centre)";
@@ -1576,3 +1537,19 @@
 "decklink.note" = "Uses the Blackmagic Desktop Video driver installed on this Mac (API %@). 8-bit video, embedded audio channels 1–2. A card can be used by one application at a time: close other apps (OBS, Media Express) that use the same input.";
 
 "common.add" = "Add";
+
+/* 0.55.0 */
+"settings.menu" = "Settings…";
+"multiview.menu" = "Multiview Mode";
+"rundown.create_menu" = "Create Rundown…";
+"dock.add_input" = "ADD INPUT";
+"groups.add_label" = "Add Label…";
+"groups.add_label_title" = "Add Label";
+"groups.label_color" = "Pick a colour. A colour already in use shows its name; the input joins that label.";
+"groups.label_name" = "Label name";
+"inputs.meter_help" = "Audio level of this input";
+"transport.restart" = "Back to start";
+"transport.previous" = "Previous clip";
+"transport.play_pause" = "Play / Pause";
+"transport.next" = "Next clip";
+"transport.none" = "No playback controls for this input";

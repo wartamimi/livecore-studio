@@ -27,28 +27,6 @@ final class Release046Tests: XCTestCase {
         XCTAssertEqual(dup.source, InputID("a"))
     }
 
-    func testVerticalZoomAndFit() {
-        let src = PixelSize(width: 1920, height: 1080)
-        let r = VerticalCrop.rect(source: src, aspect: 9.0 / 16, centerX: 0.5, zoom: 2, centerY: 0)
-        XCTAssertEqual(r.height, 540, accuracy: 1e-6)
-        XCTAssertEqual(r.y, 0, accuracy: 1e-6, "kept inside at the top")
-        let f = VerticalCrop.fitRect(source: src, output: PixelSize(width: 1080, height: 1920), position: 0.5)
-        XCTAssertEqual(f.width, 1080, accuracy: 1e-6)
-        XCTAssertEqual(f.height, 607.5, accuracy: 1e-6)
-        XCTAssertEqual(f.y, (1920 - 607.5) / 2, accuracy: 1e-6)
-    }
-
-    func testOldVerticalSettingsStillDecode() throws {
-        let json = #"{"enabled":true,"size":{"width":1080,"height":1920},"follow":"center","manualX":0.5,"smoothing":0.06,"streamURL":"","keychainAccount":"vertical","bitrateKbps":6000,"recordWithProgram":false}"#
-        let v = try JSONDecoder().decode(VerticalSettings.self, from: Data(json.utf8))
-        XCTAssertEqual(v.bitrateKbps, 6000)
-        XCTAssertEqual(v.fill, .crop)
-        XCTAssertEqual(v.zoom, 1)
-        XCTAssertEqual(v.audioBitrateKbps, 128)
-        var w = v; w.fill = .fitBlur; w.zoom = 1.5
-        XCTAssertEqual(try JSONDecoder().decode(VerticalSettings.self, from: JSONEncoder().encode(w)), w)
-    }
-
     func testWeddingAndMeetingTemplates() {
         XCTAssertEqual(TitleTemplate.weddingCenter.category, .title)
         XCTAssertEqual(TitleTemplate.weddingFloral.category, .lowerThird)

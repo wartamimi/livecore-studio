@@ -53,7 +53,7 @@ struct PlaylistDockView: View {
                 .labelsHidden()
                 TextField(L10n.t("playlist.search"), text: $query).textFieldStyle(.roundedBorder).controlSize(.small)
                 if let src = current {
-                    TimelineView(.periodic(from: .now, by: 0.5)) { _ in
+                    TimelineView(.periodic(from: .now, by: 0.25)) { _ in
                         VStack(spacing: 4) { list(src); progress(src) }
                     }
                     controls(src)
@@ -133,7 +133,12 @@ struct PlaylistDockView: View {
             switch s {
             case let .music(m):
                 Button { m.previous() } label: { Image(systemName: "backward.fill") }
-                Button { playPickedOrToggle(s) } label: { Image(systemName: m.isPlaying && pickedIndex(s) == nil ? "pause.fill" : "play.fill") }
+                Button { playPickedOrToggle(s) } label: {
+                    // Redrawn on its own so it follows the input tile's play/pause and auto play (0.55.0).
+                    TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+                        Image(systemName: m.isPlaying && pickedIndex(s) == nil ? "pause.fill" : "play.fill")
+                    }
+                }
                     .help(L10n.t("playlist.play_help"))
                 Button { m.next() } label: { Image(systemName: "forward.fill") }
                 repeatButton(m.repeatMode) { m.repeatMode = m.repeatMode.cycled }
@@ -146,7 +151,12 @@ struct PlaylistDockView: View {
                 Button { model.addTracks(toMusic: m.channel.id) } label: { Image(systemName: "plus") }.help(L10n.t("music.add_tracks"))
             case let .video(id, v):
                 Button { v.previousClip() } label: { Image(systemName: "backward.fill") }
-                Button { playPickedOrToggle(s) } label: { Image(systemName: v.isPlaying && pickedIndex(s) == nil ? "pause.fill" : "play.fill") }
+                Button { playPickedOrToggle(s) } label: {
+                    // Redrawn on its own so it follows the input tile's play/pause and auto play (0.55.0).
+                    TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+                        Image(systemName: v.isPlaying && pickedIndex(s) == nil ? "pause.fill" : "play.fill")
+                    }
+                }
                     .help(L10n.t("playlist.play_help"))
                 Button { v.nextClip() } label: { Image(systemName: "forward.fill") }
                 repeatButton(v.repeatMode) { v.repeatMode = v.repeatMode.cycled }

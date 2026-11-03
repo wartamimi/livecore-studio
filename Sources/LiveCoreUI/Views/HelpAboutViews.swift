@@ -109,6 +109,18 @@ struct HelpCommands: View {
     }
 }
 
+/// Menu item that opens one of the app's windows (Multiview, Rundown).
+struct WindowCommand: View {
+    @Environment(\.openWindow) private var openWindow
+    let title: String
+    let id: String
+    let key: KeyEquivalent
+    let modifiers: EventModifiers
+    var body: some View {
+        Button(title) { openWindow(id: id) }.keyboardShortcut(key, modifiers: modifiers)
+    }
+}
+
 struct AboutCommand: View {
     @Environment(\.openWindow) private var openWindow
     var body: some View {

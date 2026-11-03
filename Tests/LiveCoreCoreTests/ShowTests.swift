@@ -2,27 +2,9 @@ import Foundation
 import XCTest
 @testable import LiveCoreCore
 
-/// 0.42.0: vertical 9:16 output crop and the event rundown.
+/// 0.42.0: event rundown (the 9:16 output was removed in 0.55.0).
 final class ShowTests: XCTestCase {
-    func testVerticalCropStaysInsideFrame() {
-        let src = PixelSize(width: 1920, height: 1080)
-        let c = VerticalCrop.rect(source: src, aspect: 9.0 / 16, centerX: 0.5)
-        XCTAssertEqual(c.width, 607.5, accuracy: 0.01)
-        XCTAssertEqual(c.height, 1080)
-        XCTAssertEqual(c.x + c.width / 2, 960, accuracy: 0.01)
-        XCTAssertEqual(VerticalCrop.rect(source: src, aspect: 9.0 / 16, centerX: 0).x, 0)
-        let right = VerticalCrop.rect(source: src, aspect: 9.0 / 16, centerX: 1)
-        XCTAssertEqual(right.x + right.width, 1920, accuracy: 0.01)
-        // A portrait canvas narrower than 9:16 crops height instead.
-        let tall = VerticalCrop.rect(source: PixelSize(width: 500, height: 1080), aspect: 9.0 / 16, centerX: 0.5)
-        XCTAssertEqual(tall.width, 500); XCTAssertLessThan(tall.height, 1080)
-    }
-
-    func testFaceTargetAndFollower() {
-        XCTAssertNil(VerticalCrop.target(faces: []))
-        // The big face (speaker close to camera) dominates.
-        let t = VerticalCrop.target(faces: [(0.2, 0.2), (0.8, 0.05)])!
-        XCTAssertLessThan(t, 0.3)
+    func testCropFollower() {
         var f = CropFollower(x: 0.5, deadZone: 0.05)
         f.aim(at: 0.52)                 // inside the dead zone: no move
         XCTAssertEqual(f.target, 0.5)
@@ -52,12 +34,10 @@ final class ShowTests: XCTestCase {
         XCTAssertEqual(Rundown.template("wedding").segments[1].title, "Akad nikah")
     }
 
-    func testRundownAndVerticalSaved() throws {
+    func testRundownSaved() throws {
         var doc = ProjectDocument()
         doc.rundown = Rundown.template("seminar")
-        doc.settings.vertical = VerticalSettings()
         let back = try JSONDecoder().decode(ProjectDocument.self, from: JSONEncoder().encode(doc))
         XCTAssertEqual(back.rundown, doc.rundown)
-        XCTAssertEqual(back.settings.verticalOutput.size.height, 1280)
     }
 }

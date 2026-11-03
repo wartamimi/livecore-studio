@@ -223,7 +223,6 @@ public final class AppModel: ObservableObject {
             self.overlays = e.overlays
         }
         e.onStreamStats = { [weak self] id, s in self?.destinationStats[id] = s }
-        e.onVerticalStreamStats = { [weak self] s in DispatchQueue.main.async { self?.verticalStreamStats = s } }
         e.onRecordStats = { [weak self] s in self?.recordStats = s }
         e.onISOStats = { [weak self] s in self?.isoStats = s }
         e.onError = { [weak self] msg in self?.report(msg) }
@@ -382,10 +381,11 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var ptzStatus: [InputID: String] = [:]
     /// Panels opened from the menus.
     @Published public var showPreflight = false
-    // Vertical 9:16 output and event rundown (0.42.0).
-    public var verticalStreamStats: StreamingEngine.Stats? {
-        didSet { liveChanged(stateChanged: oldValue?.state != verticalStreamStats?.state) }
-    }
+    /// LiveCore Studio ▸ Settings… asks the main window to open its Settings sheet (0.55.0).
+    @Published public var openSettingsRequest = false
+    /// Sheet asked for by an add-input menu (Inputs panel or ADD INPUT in the bottom bar).
+    @Published public var addInputSheet: AddInputSheet?
+    // Event rundown (0.42.0).
     @Published public var rundown = Rundown()
     @Published public var rundownIndex: Int?
     @Published public var rundownStart: Date?

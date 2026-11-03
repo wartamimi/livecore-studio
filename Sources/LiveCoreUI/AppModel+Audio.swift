@@ -57,6 +57,13 @@ extension AppModel {
 
     // MARK: Audio follow video
 
+    /// Mixer channel whose meter an input tile shows (0.55.0): the input's own sound (video
+    /// file, capture, NDI, SRT, DeckLink, call) or the device channel that follows it (AFV).
+    public func meterChannel(for id: InputID) -> String? {
+        if let vm = audioChannels.first(where: { ProductionEngine.inputOfChannel($0.id) == id }) { return vm.id }
+        return engine?.afvLinks.first { $0.value == id }?.key
+    }
+
     public func afvLink(_ channelID: String) -> InputID? { engine?.afvLinks[channelID] }
 
     public func setAFV(_ channelID: String, input: InputID?) {

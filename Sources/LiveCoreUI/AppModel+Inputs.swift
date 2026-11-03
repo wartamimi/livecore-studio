@@ -92,9 +92,9 @@ extension AppModel {
     public func addImageInput(_ url: URL) { engine?.addImage(url: url) }
 
     /// Media files: video or audio. Several can be picked at once.
-    func pickMedia() -> [URL] {
+    func pickMedia(multiple: Bool = true) -> [URL] {
         let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = true
+        panel.allowsMultipleSelection = multiple
         panel.canChooseDirectories = false
         panel.allowedContentTypes = [.movie, .audio]
         return panel.runModal() == .OK ? panel.urls : []
@@ -108,9 +108,10 @@ extension AppModel {
     /// "Add Media": every picked file becomes its own input. Video files become video inputs
     /// (with their audio in the mixer); audio files become music inputs (a mixer channel with
     /// transport controls).
+    /// "Add Media": exactly one file (0.55.0); several files go through "Add Media Playlist".
     public func addMedia() {
         guard let e = engine else { return }
-        for url in pickMedia() {
+        for url in pickMedia(multiple: false).prefix(1) {
             // New media inputs play from the start when they go on Program (vMix Auto Play + Auto Restart).
             if Self.isAudioOnly(url) { e.addMusic(urls: [url]) } else { e.addVideoFile(url: url, autoPlay: .restartPause) }
         }

@@ -2,6 +2,7 @@
 import AppKit
 import SwiftUI
 import LiveCoreCore
+import LiveCoreEngine
 
 /// Preview | Transition controls | Program
 struct MonitorRow: View {
@@ -68,6 +69,7 @@ struct MonitorView: View {
                 .modifier(ProgramContextMenu(enabled: snapshot != nil))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             if let designer { DesignerBarIfActive(state: designer) }
+            if snapshot != nil { ProgramTransportBar() }
             // Screenshot / Grab as Still: right-click (two-finger click) on Program (0.49.0).
         }
         .padding(4)
@@ -173,6 +175,112 @@ private struct DesignerCanvasIfActive: View {
 private struct DesignerBarIfActive: View {
     @ObservedObject var state: LayerDesignerState
     var body: some View { if state.active { LayerDesignerBar(state: state) } }
+}
+
+/// Controller under the Program monitor (0.55.0): transport of the input on Program. Video
+/// files and playlists get restart / previous / play-pause / next and a seek bar; presentations
+/// get first / previous / next slide. Other inputs show the same bar disabled, so the layout does
+/// not jump when switching. Narrow monitors drop the remaining time and the AUTO / loop toggles.
+struct ProgramTransportBar: View {
+    @EnvironmentObject var model: AppModel
+    @State private var scrub: Double?
+
+    private var programID: InputID? { model.switcher.transition?.to ?? model.switcher.program }
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 0.25)) { _ in
+            ViewThatFits(in: .horizontal) {
+                bar(compact: false)
+                bar(compact: true)
+            }
+        }
+        .padding(.horizontal, 6).padding(.top, 4).padding(.bottom, 2)
+        .frame(height: 30)
+    }
+
+    @ViewBuilder private func bar(compact: Bool) -> some View {
+        let video = programID.flatMap { model.videoFile($0) }
+        let slides = video == nil ? programID.flatMap { model.presentationSource($0) } : nil
+        let info = programID.flatMap { id in model.inputs.first { $0.id == id } }
+        HStack(spacing: 6) {
+            if let v = video {
+                key("backward.end.fill", L10n.t("transport.restart")) { v.seek(to: 0) }
+                key("backward.fill", L10n.t("transport.previous")) { v.previousClip() }
+                key(v.isPlaying ? "pause.fill" : "play.fill", L10n.t("transport.play_pause"), on: v.isPlaying) {
+                    v.isPlaying ? v.pause() : v.play()
+                }
+                key("forward.fill", L10n.t("transport.next")) { v.nextClip() }.disabled(!v.isPlaylist)
+                if let d = v.duration, d > 0 {
+                    Slider(value: Binding(get: { scrub ?? min(v.position, d) }, set: { scrub = $0; v.seek(to: $0) }),
+                           in: 0...d, onEditingChanged: { if !$0 { scrub = nil } })
+                        .controlSize(.small)
+                        .frame(minWidth: 60)
+                    Text(TimerMath.duration(scrub ?? v.position)).foregroundStyle(Theme.text)
+                    if !compact { Text("-" + TimerMath.duration(max(d - (scrub ?? v.position), 0))).foregroundStyle(Theme.program) }
+                } else {
+                    Spacer(minLength: 0)
+                }
+                if v.isPlaylist { Text("\(v.index + 1)/\(v.urls.count)") }
+                if !compact {
+                    toggle("AUTO", on: v.autoPlayEnabled, help: L10n.t("media.auto_help")) {
+                        model.setAutoPlayEnabled(!v.autoPlayEnabled, for: v.id)
+                    }
+                    toggle("↺", on: v.autoRestart, help: L10n.t(v.autoRestart ? "media.restart_on_help" : "media.restart_off_help")) {
+                        model.setAutoRestart(!v.autoRestart, for: v.id)
+                    }
+                }
+            } else if let p = slides {
+                key("backward.end.fill", L10n.t("presentation.first")) { p.first() }
+                key("chevron.left", L10n.t("presentation.previous")) { p.previous() }
+                key("chevron.right", L10n.t("presentation.next")) { p.next() }
+                if let s = info?.slide, s.count > 0 { Text(L10n.f("presentation.counter", String(s.index), String(s.count))) }
+                Spacer(minLength: 0)
+            } else {
+                Group {
+                    key("backward.end.fill", L10n.t("transport.restart")) {}
+                    key("backward.fill", L10n.t("transport.previous")) {}
+                    key("play.fill", L10n.t("transport.play_pause")) {}
+                    key("forward.fill", L10n.t("transport.next")) {}
+                }
+                .disabled(true)
+                Text(L10n.t("transport.none")).lineLimit(1)
+                Spacer(minLength: 0)
+            }
+        }
+        .font(.system(size: 11).monospacedDigit())
+        .foregroundStyle(Theme.textDim)
+        .lineLimit(1)
+    }
+
+    /// Square transport key in the studio style (same look as the dock buttons, smaller).
+    private func key(_ symbol: String, _ help: String, on: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 11, weight: .bold))
+                .frame(width: 30, height: 22)
+                .background(on ? Theme.program : Theme.panelRaised)
+                .foregroundStyle(on ? Color.white : Theme.text)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(on ? Theme.program : Theme.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .help(help)
+    }
+
+    private func toggle(_ label: String, on: Bool, help: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 9, weight: .heavy))
+                .frame(minWidth: 26, minHeight: 22)
+                .padding(.horizontal, 2)
+                .background(on ? Theme.accent : Theme.panelRaised)
+                .foregroundStyle(on ? Color.white : Theme.textDim)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.border, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .help(help)
+    }
 }
 
 struct TransitionControls: View {

@@ -19,6 +19,8 @@ enum Theme {
     static let meterGreen = Color(red: 0.2, green: 0.85, blue: 0.35)
     static let meterYellow = Color(red: 0.95, green: 0.82, blue: 0.2)
     static let meterRed = Color(red: 0.95, green: 0.2, blue: 0.2)
+    /// "All" filter and inputs without a colour label: a dark light grey (0.55.0).
+    static let labelAll = Color(red: 0.44, green: 0.45, blue: 0.48)
 }
 
 struct PanelStyle: ViewModifier {
