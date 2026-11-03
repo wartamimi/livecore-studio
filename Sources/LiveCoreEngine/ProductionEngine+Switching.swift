@@ -233,7 +233,7 @@ extension ProductionEngine {
             // own position; full screen shows them as on Program instead of squeezing them
             // into the lower-third box.
             if preset == .lowerThird, let id = source,
-               (st.sources[id] as? TextSource)?.isFullCanvas == true || st.sources[id] is TickerSource {
+               (st.sources[id] as? TextSource)?.isFullCanvas == true || st.sources[id] is TickerSource || st.sources[id] is QRCodeSource {
                 st.overlays[i].preset = .fullScreen
             } else {
                 st.overlays[i].preset = preset
@@ -254,6 +254,7 @@ extension ProductionEngine {
     static func sourceAnimation(_ src: VideoSource?) -> (OverlayAnimation, Double)? {
         if let t = src as? TextSource, let d = t.style.design, !d.useOverlayAnimation { return (d.animation, d.animationDuration) }
         if let k = src as? TickerSource, let a = k.config.animation { return (a, k.config.animationDuration ?? 0.5) }
+        if let q = src as? QRCodeSource { return (q.design.style.animation, min(max(q.design.style.animationDuration, 0.1), 5)) }
         // A GT title plays its own in / out; the overlay just stays up until its out has finished.
         if let g = src as? GTTitleSource { return (.hold, max(0.1, g.template.outDuration + 0.05)) }
         return nil

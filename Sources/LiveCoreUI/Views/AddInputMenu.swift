@@ -7,7 +7,7 @@ import LiveCoreEngine
 /// Sheet opened from an "add input" menu. Shown by the main window (`addInputSheets()`), so the
 /// add menu works the same from the Inputs panel and from ADD INPUT in the bottom bar (0.55.0).
 public enum AddInputSheet: Identifiable, Equatable {
-    case title, timer, frame, flag, browser, capture, ndi, srt, decklink, captureCard, slideshow
+    case title, timer, frame, qr, flag, browser, capture, ndi, srt, decklink, captureCard, slideshow
     case gt(InputID), subtitles(InputID), scene(InputID), liveCall(InputID)
 
     public var id: String {
@@ -46,6 +46,7 @@ struct AddInputMenuItems: View {
             Button { model.addInputSheet = .title } label: { Label(L10n.t("inputs.title_menu"), systemImage: "textformat") }
             Button { model.addInputSheet = .timer } label: { Label(L10n.t("timer.add"), systemImage: "timer") }
             Button { model.addInputSheet = .frame } label: { Label(L10n.t("frame.add"), systemImage: "person.crop.rectangle") }
+            Button { model.addInputSheet = .qr } label: { Label(L10n.t("qr.add"), systemImage: "qrcode") }
             Button { model.addInputSheet = .flag } label: { Label(L10n.t("flag.add"), systemImage: "flag") }
             Button { if let id = model.addGTTitle() { model.addInputSheet = .gt(id) } } label: { Label(L10n.t("gt.add"), systemImage: "rectangle.bottomthird.inset.filled") }
             Button { if let id = model.addTranscription() { model.addInputSheet = .subtitles(id) } } label: { Label(L10n.t("transcription.add"), systemImage: "captions.bubble") }
@@ -89,6 +90,7 @@ private struct AddInputSheetView: View {
         case .title: TitleSheet(editing: nil)
         case .timer: TimerSheet(editing: nil)
         case .frame: FrameSheet(editing: nil)
+        case .qr: QRCodeSheet(editing: nil)
         case .flag: FlagSheet()
         case .browser: BrowserSheet(editing: nil)
         case .capture: CaptureSheet(editing: nil)

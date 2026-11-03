@@ -16,6 +16,7 @@ struct InputPanelView: View {
     @State private var editingCapture: InputID?
     @State private var editingNDI: InputID?
     @State private var editingFrame: InputID?
+    @State private var editingQR: InputID?
     @State private var editingGT: InputID?
     @State private var editingSubtitles: InputID?
     @Environment(\.openWindow) private var openWindow
@@ -104,6 +105,7 @@ struct InputPanelView: View {
         .sheet(item: $editingTimer) { id in TimerSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingCapture) { id in CaptureSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingFrame) { id in FrameSheet(editing: id).environmentObject(model) }
+        .sheet(item: $editingQR) { id in QRCodeSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingGT) { id in GTTitleSheet(input: id).environmentObject(model) }
         .sheet(item: $editingSubtitles) { id in SubtitleSheet(input: id).environmentObject(model) }
         .sheet(item: $editingLiveCall) { id in LiveCallSheet(input: id).environmentObject(model) }
@@ -249,6 +251,17 @@ struct InputPanelView: View {
             Button(L10n.t("capture.retry")) { model.captureSource(info.id)?.start() }
         }
         if info.kind == .frame { Button(L10n.t("frame.edit")) { editingFrame = info.id } }
+        if info.kind == .qrCode, let q = model.qrSource(info.id) {
+            Button(L10n.t("qr.edit")) { editingQR = info.id }
+            Button(L10n.t("qr.on_air")) { model.toggleQROnAir(info.id) }
+            if q.design.items.count > 1 {
+                Menu(L10n.t("qr.show_item")) {
+                    ForEach(Array(q.design.items.enumerated()), id: \.offset) { i, item in
+                        Button((i == q.design.selected ? "✓ " : "") + item.name) { model.selectQRItem(info.id, i) }
+                    }
+                }
+            }
+        }
         if info.kind == .gtTitle { Button(L10n.t("gt.edit")) { editingGT = info.id } }
         if info.kind == .subtitles {
             Button(L10n.t("subtitles.edit")) { editingSubtitles = info.id }
@@ -481,6 +494,7 @@ extension InputKind {
         case .liveCall: return "person.wave.2"
         case .srt: return "dot.radiowaves.up.forward"
         case .decklink: return "rectangle.connected.to.line.below"
+        case .qrCode: return "qrcode"
         }
     }
 }

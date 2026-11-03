@@ -52,6 +52,7 @@ extension ProductionEngine {
             case let lc as LiveCallSource: ps = .liveCall(lc.config)
             case let sr as SRTSource: ps = .srt(sr.config)
             case let dl as DeckLinkSource: ps = .decklink(dl.config)
+            case let q as QRCodeSource: ps = .qrCode(q.design)
             case let g as GTTitleSource:
                 ps = .gtTitle(ProjectGTTitle(file: ProjectMediaRef(path: g.url.path, relativePath: rel(g.url)), fields: g.fields,
                                               overrides: g.overrides.isEmpty ? nil : g.overrides, speed: g.speed == 1 ? nil : g.speed))
@@ -311,6 +312,8 @@ extension ProductionEngine {
             addSRTInput(c, id: pi.id)
         case let .decklink(c):
             addDeckLink(c, id: pi.id)
+        case let .qrCode(d):
+            addQRCode(d, id: pi.id)
         case let .gtTitle(g):
             // A missing or broken .gtzip keeps its place as an empty title.
             let url = mediaURL(g.file.path, g.file.relativePath)

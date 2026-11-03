@@ -45,6 +45,7 @@ public enum LiveCoreScenes {
                 Divider()
                 Button(L10n.f("package.highlight_button", "\(model.highlightCount)")) { model.markHighlight() }
                     .keyboardShortcut("h", modifiers: [.command, .shift])
+                WindowCommand(title: L10n.t("highlights.menu"), id: "highlights", key: "j", modifiers: [.command, .shift])
                 Button(L10n.t("package.menu")) { model.makeClientPackage() }
             }
             CommandGroup(replacing: .appInfo) { AboutCommand() }
@@ -93,6 +94,15 @@ public enum LiveCoreScenes {
                 .preferredColorScheme(.dark)
         }
         .defaultSize(width: 520, height: 600)
+
+        // Marked moments and the highlight video (0.58.0).
+        Window(L10n.t("highlights.title"), id: "highlights") {
+            HighlightsWindow()
+                .environmentObject(model)
+                .frame(minWidth: 560, minHeight: 420)
+                .preferredColorScheme(.dark)
+        }
+        .defaultSize(width: 640, height: 560)
 
         Window(L10n.t("rundown.title"), id: "rundown") {
             RundownView()
