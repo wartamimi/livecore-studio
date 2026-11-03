@@ -13,9 +13,15 @@ enum Theme {
     static let preview = Color(red: 0.16, green: 0.75, blue: 0.35)
     static let accent = Color(red: 0.25, green: 0.55, blue: 1.0)
     static let warning = Color(red: 1.0, green: 0.72, blue: 0.15)
+    /// Overlay buttons: waiting on Preview (orange) / on Program (green).
+    static let overlayPreview = Color(red: 1.0, green: 0.55, blue: 0.10)
+    static let overlayProgram = Color(red: 0.16, green: 0.75, blue: 0.35)
     static let meterGreen = Color(red: 0.2, green: 0.85, blue: 0.35)
     static let meterYellow = Color(red: 0.95, green: 0.82, blue: 0.2)
     static let meterRed = Color(red: 0.95, green: 0.2, blue: 0.2)
+    /// "All" filter and inputs without a colour label: a dark light grey (0.55.0).
+    static let panelHover = Color(red: 0.21, green: 0.215, blue: 0.24)
+    static let labelAll = Color(red: 0.44, green: 0.45, blue: 0.48)
 }
 
 struct PanelStyle: ViewModifier {
@@ -43,17 +49,37 @@ struct SectionHeader: View {
 
 /// Big console-style button.
 struct StudioButtonStyle: ButtonStyle {
+    /// Width shared by the big labelled buttons (RECORD, STREAM, EXTERNAL, FULLSCREEN, PHOTO).
+    static let mainWidth: CGFloat = 148
     var color: Color = Theme.panelRaised
     var active = false
     func makeBody(configuration: Configuration) -> some View {
+        StudioButtonBody(configuration: configuration, color: color, active: active)
+    }
+}
+
+/// Body of `StudioButtonStyle`, with a hover highlight (0.55.1).
+private struct StudioButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    let color: Color
+    let active: Bool
+    @State private var hovering = false
+    @Environment(\.isEnabled) private var enabled
+
+    var body: some View {
         configuration.label
             .font(.system(size: 13, weight: .bold))
+            // Always one line ("FULLSCREEN" must not wrap); shrinks a little instead.
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
             .foregroundStyle(Theme.text)
             .padding(.vertical, 8).padding(.horizontal, 12)
             .frame(maxWidth: .infinity)
-            .background(active ? color : (configuration.isPressed ? color.opacity(0.7) : Theme.panelRaised))
+            .background(active ? color : (configuration.isPressed ? color.opacity(0.7) : (hovering && enabled ? Theme.panelHover : Theme.panelRaised)))
             .clipShape(RoundedRectangle(cornerRadius: 5))
-            .overlay(RoundedRectangle(cornerRadius: 5).stroke(active ? color : Theme.border, lineWidth: active ? 2 : 1))
+            .overlay(RoundedRectangle(cornerRadius: 5).stroke(active ? color : (hovering && enabled ? Color.white.opacity(0.25) : Theme.border), lineWidth: active ? 2 : 1))
+            .contentShape(Rectangle())
+            .onHover { hovering = $0 }
     }
 }
 #endif
