@@ -231,6 +231,7 @@ public final class AppModel: ObservableObject {
         }
         e.onAudioChannelsChange = { [weak self] in self?.reloadAudioChannels() }
         e.replay.onAvailableChange = { [weak self] a in self?.replayAvailable = a }
+        e.replay.onError = { [weak self] msg in self?.report("Instant Replay: " + msg) }
         e.onReplayChange = { [weak self] in self?.objectWillChange.send() }
         e.onMusicChange = { [weak self] in
             self?.objectWillChange.send()

@@ -18,6 +18,9 @@ public final class ReplayRecorder {
 
     /// Seconds currently available (main thread).
     public var onAvailableChange: ((Double) -> Void)?
+    /// A segment could not be written (main thread, at most once per start).
+    public var onError: ((String) -> Void)?
+    private var errorReported = false
 
     private let queue = DispatchQueue(label: "livecore.replay", qos: .utility)
     private let folder: URL
@@ -47,6 +50,7 @@ public final class ReplayRecorder {
             try? FileManager.default.removeItem(at: self.folder)
             try? FileManager.default.createDirectory(at: self.folder, withIntermediateDirectories: true)
             self.isRunning = true
+            self.errorReported = false
         }
     }
 
@@ -70,6 +74,8 @@ public final class ReplayRecorder {
             guard let input = self.input, let adaptor = self.adaptor, input.isReadyForMoreMediaData else { return }
             if adaptor.append(pb, withPresentationTime: CMTime(seconds: hostTime, preferredTimescale: 90_000)) {
                 self.lastPTS = hostTime
+            } else {
+                self.report("append failed: \(self.writer?.error?.localizedDescription ?? "status \(self.writer?.status.rawValue ?? -1)")")
             }
         }
     }
@@ -98,7 +104,8 @@ public final class ReplayRecorder {
     private func openSegment(at host: Double) {
         let id = nextID
         nextID += 1
-        guard let w = try? AVAssetWriter(outputURL: url(id), fileType: .mp4) else { return }
+        let w: AVAssetWriter
+        do { w = try AVAssetWriter(outputURL: url(id), fileType: .mp4) } catch { return report("cannot create segment: \(error.localizedDescription)") }
         let pixels = output.size.width * output.size.height
         let v = AVAssetWriterInput(mediaType: .video, outputSettings: [
             AVVideoCodecKey: AVVideoCodecType.h264,
@@ -113,12 +120,12 @@ public final class ReplayRecorder {
             ] as [String: Any],
         ])
         v.expectsMediaDataInRealTime = true
-        guard w.canAdd(v) else { return }
+        guard w.canAdd(v) else { return report("H.264 input rejected") }
         w.add(v)
         // The adaptor must exist before startWriting(): AVFoundation throws an Objective-C exception
         // (an uncatchable crash in Swift) when it is created on a writer that has already started.
         let a = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: v, sourcePixelBufferAttributes: nil)
-        guard w.startWriting() else { return }
+        guard w.startWriting() else { return report("cannot start segment: \(w.error?.localizedDescription ?? "unknown")") }
         w.startSession(atSourceTime: CMTime(seconds: host, preferredTimescale: 90_000))
         writer = w; input = v
         adaptor = a
@@ -142,6 +149,7 @@ public final class ReplayRecorder {
                 if w.status == .completed, self.isRunning {
                     for old in self.index.add(seg) { try? FileManager.default.removeItem(at: self.url(old.id)) }
                 } else {
+                    if self.isRunning { self.report("segment not finished: \(w.error?.localizedDescription ?? "status \(w.status.rawValue)")") }
                     try? FileManager.default.removeItem(at: w.outputURL)
                 }
                 self.publish()
@@ -152,6 +160,13 @@ public final class ReplayRecorder {
 
     private func whenFinished(_ f: @escaping () -> Void) {
         if finishing == 0 { f() } else { waiters.append(f) }
+    }
+
+    private func report(_ msg: String) {
+        guard !errorReported else { return }
+        errorReported = true
+        NSLog("LiveCore replay: %@", msg)
+        DispatchQueue.main.async { self.onError?(msg) }
     }
 
     private func publish() {
