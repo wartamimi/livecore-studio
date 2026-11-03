@@ -176,13 +176,13 @@ public struct HTTPResponse: Equatable, Sendable {
     }
 
     /// The whole response; every connection is closed after one response.
-    public func serialized() -> [UInt8] {
+    public func serialized(keepAlive: Bool = false) -> [UInt8] {
         var head = "HTTP/1.1 \(status) \(Self.reason(status))\r\n"
         head += "Content-Type: \(contentType)\r\n"
         head += "Content-Length: \(body.count)\r\n"
         head += "Cache-Control: no-store\r\n"
         head += "X-Content-Type-Options: nosniff\r\n"
-        head += "Connection: close\r\n"
+        head += keepAlive ? "Connection: keep-alive\r\nKeep-Alive: timeout=5\r\n" : "Connection: close\r\n"
         for (k, v) in headers { head += "\(k): \(v)\r\n" }
         head += "\r\n"
         return Array(head.utf8) + body
