@@ -29,7 +29,7 @@ public final class RemoteServer: @unchecked Sendable {
 
     public static let defaultPort = 8088
     /// Connections served at the same time; more are closed at once.
-    public static let maxConnections = 16
+    public static let maxConnections = 32
 
     private let lock = NSLock()
     private var listenFD: Int32 = -1
@@ -39,6 +39,7 @@ public final class RemoteServer: @unchecked Sendable {
     private var lockout = RemoteLockout()
     private var seen: [String: Double] = [:]          // client address → last signed-in request
     private var frames: [String: [UInt8]] = [:]        // "program" / "preview" → JPEG
+    private var frameSeq: [String: Int] = [:]          // bumps with every new JPEG (0.54.1)
     private var lastFrameRequest: Double = -.infinity
     /// Audio Monitor (0.50.0): one ring per bus, and when each bus was last asked for.
     private var audioRings: [String: RemoteAudioRing] = [:]
@@ -83,7 +84,7 @@ public final class RemoteServer: @unchecked Sendable {
     public func update(state json: String) { lock.sync { stateJSON = json } }
 
     /// Latest JPEG for "program" or "preview" (served at /api/frame?bus=...).
-    public func setFrame(_ jpeg: [UInt8], bus: String) { lock.sync { frames[bus] = jpeg } }
+    public func setFrame(_ jpeg: [UInt8], bus: String) { lock.sync { frames[bus] = jpeg; frameSeq[bus, default: 0] += 1 } }
 
     /// A page asked for a picture in the last `window` seconds, so encoding them is worth it.
     /// Buses a web page listened to in the last `window` seconds (only those are converted).
@@ -176,7 +177,7 @@ public final class RemoteServer: @unchecked Sendable {
             }
             if c < 0 { continue }
             let client = Self.address(peer.sin_addr)
-            guard slots.wait(timeout: .now()) == .success else { close(c); continue }
+            guard slots.wait(timeout: .now() + 1) == .success else { close(c); continue }
             connections.async { [weak self] in
                 defer { self?.slots.signal() }
                 self?.serve(c, client: client)
@@ -193,29 +194,48 @@ public final class RemoteServer: @unchecked Sendable {
         var one: Int32 = 1
         setsockopt(c, SOL_SOCKET, SO_NOSIGPIPE, &one, socklen_t(MemoryLayout<Int32>.size))
         #endif
+        // 0.54.1: small writes (audio blocks, JSON) go out at once instead of waiting for Nagle +
+        // delayed ACK (up to ~200 ms per write, the cause of choppy Audio Monitor sound).
+        var nd: Int32 = 1
+        setsockopt(c, Int32(IPPROTO_TCP), TCP_NODELAY, &nd, socklen_t(MemoryLayout<Int32>.size))
         var buf: [UInt8] = []
-        var chunk = [UInt8](repeating: 0, count: 4096)
-        var response: HTTPResponse
-        let deadline = Self.now() + 10                 // a slow client cannot hold a slot
-        while true {
-            guard Self.now() < deadline else { return }
-            let n = chunk.withUnsafeMutableBytes { recv(c, $0.baseAddress, $0.count, 0) }
-            if n <= 0 { return }
-            buf.append(contentsOf: chunk[0..<n])
-            switch HTTPRequest.parse(buf, maxSize: maxRequestSize) {
-            case .incomplete: continue
-            case .invalid: response = .error(400, "bad request")
-            case .tooLarge: response = .error(413, "too large")
-            case let .request(req, _): response = handle(req, client: client)
-                if req.method == "HEAD" { response.body = [] }
+        var chunk = [UInt8](repeating: 0, count: 8192)
+        // 0.54.1: keep-alive. The page polls state and two picture feeds several times a second;
+        // a new TCP connection per request (handshake over Wi-Fi, or a new hop through the tunnel)
+        // made pictures stutter. One connection now serves up to 500 requests, idle ≤ 5 s.
+        var served = 0
+        while served < 500 {
+            var response: HTTPResponse
+            var keepAlive = false
+            let deadline = Self.now() + 10                 // a slow client cannot hold a slot
+            parsing: while true {
+                if case .incomplete = HTTPRequest.parse(buf, maxSize: maxRequestSize) {
+                    guard Self.now() < deadline else { return }
+                    let n = chunk.withUnsafeMutableBytes { recv(c, $0.baseAddress, $0.count, 0) }
+                    if n <= 0 { return }
+                    buf.append(contentsOf: chunk[0..<n])
+                    continue parsing
+                }
+                switch HTTPRequest.parse(buf, maxSize: maxRequestSize) {
+                case .incomplete: continue parsing
+                case .invalid: response = .error(400, "bad request"); buf = []
+                case .tooLarge: response = .error(413, "too large"); buf = []
+                case let .request(req, consumed):
+                    buf.removeFirst(min(consumed, buf.count))
+                    response = handle(req, client: client)
+                    if req.method == "HEAD" { response.body = [] }
+                    keepAlive = (req.headers["connection"] ?? "").lowercased() != "close"
+                }
+                break parsing
             }
-            break
+            if let bus = response.headers.first(where: { $0.0 == Self.streamMarker })?.1 {
+                streamAudio(c, bus: bus)
+                return
+            }
+            served += 1
+            keepAlive = keepAlive && served < 500 && isRunning
+            guard Self.writeAll(c, response.serialized(keepAlive: keepAlive)), keepAlive else { return }
         }
-        if let bus = response.headers.first(where: { $0.0 == Self.streamMarker })?.1 {
-            streamAudio(c, bus: bus)
-            return
-        }
-        _ = Self.writeAll(c, response.serialized())
     }
 
     /// Audio Monitor push: keeps the connection open and writes each new run of PCM as
@@ -304,9 +324,15 @@ public final class RemoteServer: @unchecked Sendable {
         case .ping:
             return .json("{\"ok\":true}")
         case let .frame(bus):
-            let jpeg: [UInt8]? = lock.sync { lastFrameRequest = Self.now(); return frames[bus] }
-            guard let jpeg else { return HTTPResponse(status: 204) }
-            return HTTPResponse(status: 200, contentType: "image/jpeg", body: jpeg)
+            // ?since=<seq>: 204 while the picture is unchanged (0.54.1), so a page never downloads
+            // the same JPEG twice; the new sequence number comes back in X-Frame-Seq.
+            let since = Int(req.query["since"] ?? "")
+            let r: (jpeg: [UInt8]?, seq: Int) = lock.sync {
+                lastFrameRequest = Self.now()
+                return (frames[bus], frameSeq[bus] ?? 0)
+            }
+            guard let jpeg = r.jpeg, since != r.seq else { return HTTPResponse(status: 204, headers: [("X-Frame-Seq", "\(r.seq)")]) }
+            return HTTPResponse(status: 200, contentType: "image/jpeg", body: jpeg, headers: [("X-Frame-Seq", "\(r.seq)")])
         case let .listen(bus, since):
             let r: (next: UInt32, pcm: [Int16], rate: Int)? = lock.sync {
                 lastListen[bus] = Self.now()

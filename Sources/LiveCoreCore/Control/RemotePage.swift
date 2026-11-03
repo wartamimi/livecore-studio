@@ -367,7 +367,7 @@ async function poll(){
    next request only after the last picture is decoded, so a slow network lowers the rate
    instead of piling up requests. Paused while the page is hidden. */
 let frameTimer=null;
-const urls={};
+const urls={},fseq={};
 function startFrames(){stopFrames();const gen=frameTimer={};frameLoop("program",gen);frameLoop("preview",gen)}
 function stopFrames(){frameTimer=null}
 async function frameLoop(bus,gen){
@@ -375,8 +375,9 @@ async function frameLoop(bus,gen){
   const t0=performance.now();
   if(st&&st.frames&&!document.hidden){
     const img=$(bus==="program"?"imgPgm":"imgPvw");
-    try{const r=await api("/api/frame?bus="+bus);
-      if(r.status===200){const u=URL.createObjectURL(await r.blob());img.src=u;
+    try{const r=await api("/api/frame?bus="+bus+(fseq[bus]!=null?"&since="+fseq[bus]:""));
+      const q=r.headers.get("X-Frame-Seq");
+      if(r.status===200){if(q!=null)fseq[bus]=q;const u=URL.createObjectURL(await r.blob());img.src=u;
         try{await img.decode()}catch(e){}
         img.classList.add("ready");if(urls[bus])URL.revokeObjectURL(urls[bus]);urls[bus]=u}}catch(e){}
   }
@@ -527,7 +528,7 @@ function playBlock(b){
     for(let c=0;c<ch;c++){const d=buf.getChannelData(c);for(let i=0;i<n;i++)d[i]=dv.getInt16(12+(i*ch+c)*2,true)/32768}
     const src=aCtx.createBufferSource();src.buffer=buf;src.connect(aGain);
     const now=aCtx.currentTime;
-    if(playT<now+0.03||playT>now+1.2)playT=now+0.25;
+    if(playT<now+0.02||playT>now+1.5)playT=now+0.35;
     src.start(playT);playT+=buf.duration;
   }
 }
