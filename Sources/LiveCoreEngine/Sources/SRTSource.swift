@@ -65,6 +65,9 @@ public final class SRTSource: VideoSource, @unchecked Sendable {
 
     public func currentFrame() -> CVPixelBuffer? { slot.get() }
 
+    /// Checks only: every received TS byte is also written here.
+    public var debugDumpPath: String?
+
     /// Main thread.
     public func start() {
         guard link == nil else { return }
@@ -83,7 +86,8 @@ public final class SRTSource: VideoSource, @unchecked Sendable {
         // Decoding runs on its own queue so the network thread always drains the socket: a decoder
         // stall (session set-up, a slow software decoder) must not overflow the UDP buffer.
         let queue = DispatchQueue(label: "livecore.srt-input.decode", qos: .userInteractive)
-        l.onPayload = { p in queue.async { pipeline.feed(p) } }
+        let dump = debugDumpPath.flatMap { FileManager.default.createFile(atPath: $0, contents: nil) ? FileHandle(forWritingAtPath: $0) : nil }
+        l.onPayload = { p in queue.async { dump?.write(Data(p)); pipeline.feed(p) } }
         l.onTick = { now in queue.async { pipeline.tick(now: now) } }
         l.onEvent = { [weak self] e in
             switch e {
