@@ -19,6 +19,7 @@
 //   livecore-syphon-check  CI check: another process discovers a LiveCore Syphon server and reads a frame.
 //   livecore-ndi-check     CI check: an NDI receiver finds a LiveCore-style NDI source and reads a frame.
 //   livecore-iso-check     CI check: Program + MultiCorder ISO recorders write two playable files.
+//   livecore-replay-check  CI check: the instant-replay buffer records, cuts a clip and the Replay input plays it.
 //   livecore-title-check   CI check: every Title Designer template renders; writes a contact sheet.
 //   livecore-srt-input-check  Dev check: receives SRT (listener/caller) through SRTInputLink and demuxes it.
 //   livecore-rtmp-push  CLI that pushes H.264/AAC elementary streams through the LiveCoreCore RTMP
@@ -62,6 +63,7 @@ let package = Package(
         .executableTarget(name: "livecore-syphon-check", dependencies: ["CSyphon"]),
         .executableTarget(name: "livecore-ndi-check", dependencies: ["CNDI", "LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-iso-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
+        .executableTarget(name: "livecore-replay-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-title-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-soak-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-radio-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
