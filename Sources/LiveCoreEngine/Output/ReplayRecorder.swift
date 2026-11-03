@@ -88,9 +88,16 @@ public final class ReplayRecorder {
             self.whenFinished {
                 guard let c = self.index.clip(lastSeconds: seconds) else { return DispatchQueue.main.async { completion(nil) } }
                 let urls = c.segments.map { self.url($0.id) }
-                Self.compose(urls) { comp in
+                Self.compose(urls) { result in
                     DispatchQueue.main.async {
-                        completion(comp.map { Clip(asset: $0, start: CMTime(seconds: c.startOffset, preferredTimescale: 600)) })
+                        switch result {
+                        case let .success(comp):
+                            completion(Clip(asset: comp, start: CMTime(seconds: c.startOffset, preferredTimescale: 600)))
+                        case let .failure(error):
+                            NSLog("LiveCore replay: clip failed: %@", error.localizedDescription)
+                            self.onError?("replay clip failed: " + error.localizedDescription)
+                            completion(nil)
+                        }
                     }
                 }
             }
@@ -174,30 +181,46 @@ public final class ReplayRecorder {
         DispatchQueue.main.async { self.onAvailableChange?(a) }
     }
 
-    /// Joins segment files into one composition (references the files; no re-encode).
-    static func compose(_ urls: [URL], completion: @escaping (AVComposition?) -> Void) {
-        let assets = urls.map { AVURLAsset(url: $0) }
-        var tracks = [AVAssetTrack?](repeating: nil, count: assets.count)
-        let group = DispatchGroup()
-        let lock = NSLock()
-        for (i, a) in assets.enumerated() {
-            group.enter()
-            a.loadTracks(withMediaType: .video) { t, _ in
-                lock.lock(); tracks[i] = t?.first; lock.unlock()
-                group.leave()
+    /// Joins segment files into one composition (references the files; no re-encode). Track
+    /// properties are loaded with the async API; why a segment could not be used is reported
+    /// (0.55.2: replays came back empty on macOS with no explanation).
+    static func compose(_ urls: [URL], completion: @escaping (Result<AVComposition, Error>) -> Void) {
+        Task.detached(priority: .userInitiated) {
+            do {
+                let comp = AVMutableComposition()
+                guard let out = comp.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) else {
+                    throw ReplayError("cannot create composition track")
+                }
+                var cursor = CMTime.zero
+                var problems: [String] = []
+                for url in urls {
+                    let asset = AVURLAsset(url: url)
+                    do {
+                        guard let t = try await asset.loadTracks(withMediaType: .video).first else {
+                            problems.append("\(url.lastPathComponent): no video track"); continue
+                        }
+                        let range = try await t.load(.timeRange)
+                        guard range.duration.isValid, range.duration > .zero else {
+                            problems.append("\(url.lastPathComponent): empty"); continue
+                        }
+                        try out.insertTimeRange(range, of: t, at: cursor)
+                        cursor = cursor + range.duration
+                    } catch {
+                        problems.append("\(url.lastPathComponent): \(error.localizedDescription)")
+                    }
+                }
+                guard cursor > .zero else { throw ReplayError(problems.isEmpty ? "no segments" : problems.joined(separator: "; ")) }
+                completion(.success(comp))
+            } catch {
+                completion(.failure(error))
             }
-        }
-        group.notify(queue: .global(qos: .userInitiated)) {
-            let comp = AVMutableComposition()
-            guard let out = comp.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) else { return completion(nil) }
-            var cursor = CMTime.zero
-            for t in tracks.compactMap({ $0 }) {
-                let range = t.timeRange
-                guard range.duration > .zero, (try? out.insertTimeRange(range, of: t, at: cursor)) != nil else { continue }
-                cursor = cursor + range.duration
-            }
-            completion(cursor > .zero ? comp : nil)
         }
     }
+}
+
+struct ReplayError: LocalizedError {
+    let message: String
+    init(_ m: String) { message = m }
+    var errorDescription: String? { message }
 }
 #endif
