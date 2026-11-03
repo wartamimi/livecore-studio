@@ -80,13 +80,16 @@ public final class SRTSource: VideoSource, @unchecked Sendable {
             guard let self else { return }
             self.signalLock.withLock { update(&self._signal) }
         }
-        l.onPayload = { pipeline.feed($0) }
-        l.onTick = { pipeline.tick(now: $0) }
+        // Decoding runs on its own queue so the network thread always drains the socket: a decoder
+        // stall (session set-up, a slow software decoder) must not overflow the UDP buffer.
+        let queue = DispatchQueue(label: "livecore.srt-input.decode", qos: .userInteractive)
+        l.onPayload = { p in queue.async { pipeline.feed(p) } }
+        l.onTick = { now in queue.async { pipeline.tick(now: now) } }
         l.onEvent = { [weak self] e in
             switch e {
             case let .waiting(s): self?.setStatus(.noSignal(s))
             case .connected: self?.setStatus(.noSignal("connected, waiting for video"))
-            case let .disconnected(s): pipeline.reset(); self?.setStatus(.noSignal(s))
+            case let .disconnected(s): queue.async { pipeline.reset() }; self?.setStatus(.noSignal(s))
             case let .failed(s): self?.setStatus(.error(s))
             }
         }
@@ -130,7 +133,7 @@ public final class SRTSource: VideoSource, @unchecked Sendable {
     }
 }
 
-/// Demux → decode → present, all on the SRT link thread.
+/// Demux → decode → present, all on one serial decode queue.
 final class SRTDecodePipeline: @unchecked Sendable {
     private let demux = MPEGTSDemuxer()
     private let slot: FrameSlot
@@ -155,7 +158,6 @@ final class SRTDecodePipeline: @unchecked Sendable {
     private(set) var lastDecodeError: OSStatus = 0
     private var decoderDropped = 0
     private var consecutiveErrors = 0
-    private var softwareOnly = false
     private var usingHardware = false
     private(set) var firstFailure = ""
     private var sinceKeyframe = 0
@@ -282,13 +284,6 @@ final class SRTDecodePipeline: @unchecked Sendable {
             consecutiveErrors += 1
             if st == kVTInvalidSessionErr { self.session = nil; paramSets = [] }
         }
-        // Some decoders (seen on virtual Macs) reject B-pictures the software decoder takes:
-        // after a run of failures on a hardware session, start again in software at the next keyframe.
-        if consecutiveErrors >= 3, usingHardware, !softwareOnly {
-            softwareOnly = true
-            consecutiveErrors = 0
-            if makeSession(sets: paramSets, hevc: hevc) == false { self.session = nil; paramSets = [] }
-        }
         // Anchor the presentation clock on the first decoded unit's decode time.
         if refPTS == nil {
             refPTS = dts
@@ -327,9 +322,7 @@ final class SRTDecodePipeline: @unchecked Sendable {
             kCVPixelBufferMetalCompatibilityKey as String: true,
         ]
         var s: VTDecompressionSession?
-        let spec: CFDictionary? = softwareOnly
-            ? [kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder as String: false] as CFDictionary : nil
-        let created = VTDecompressionSessionCreate(allocator: kCFAllocatorDefault, formatDescription: fd, decoderSpecification: spec,
+        let created = VTDecompressionSessionCreate(allocator: kCFAllocatorDefault, formatDescription: fd, decoderSpecification: nil,
                                                    imageBufferAttributes: attrs as CFDictionary, outputCallback: nil,
                                                    decompressionSessionOut: &s)
         guard created == noErr, let s else { decodeErrors += 1; return false }

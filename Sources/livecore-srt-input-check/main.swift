@@ -80,9 +80,12 @@ func engineCheck() -> Never {
         do { try p.run() } catch { fail("ffmpeg: \(error)") }
         let end = Date().addingTimeInterval(9)
         var sawLive = false
+        var link = SRTReceiver.Stats()
         while Date() < end {
             RunLoop.main.run(until: Date().addingTimeInterval(0.1))
             if src.status == .live { sawLive = true }
+            let now = src.signal.srt
+            if now.receivedPackets >= link.receivedPackets { link = now }   // the receiver resets when the sender leaves
         }
         // srt-live-transmit keeps waiting after its input ends: stop the senders, never hang.
         let kill = Process()
@@ -94,7 +97,7 @@ func engineCheck() -> Never {
         while p.isRunning && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
         if p.isRunning { p.terminate() }
         let s = src.signal
-        print("\(name): status \(src.status.label), \(s.width)x\(s.height) \(s.videoCodec), frames \(s.frames), audio frames \(s.audioFrames) (\(s.audio)), decode errors \(s.decodeErrors) (last \(s.lastDecodeError)), decoder dropped \(s.decoderDropped), peer \(s.peer) streamid '\(s.streamID)', lost \(s.srt.lostPackets), decoded \(s.decoded), TS CC errors \(s.continuityErrors), damaged \(s.damagedUnits), SRT dropped \(s.srt.droppedPackets), decoder \(s.decoder), first failure: \(s.firstDecodeFailure.isEmpty ? "-" : s.firstDecodeFailure)")
+        print("\(name): status \(src.status.label), \(s.width)x\(s.height) \(s.videoCodec), frames \(s.frames), audio frames \(s.audioFrames) (\(s.audio)), decode errors \(s.decodeErrors) (last \(s.lastDecodeError)), decoder dropped \(s.decoderDropped), peer \(s.peer) streamid '\(s.streamID)', SRT received \(link.receivedPackets) lost \(link.lostPackets) recovered \(link.recoveredPackets), decoded \(s.decoded), TS CC errors \(s.continuityErrors), damaged \(s.damagedUnits), SRT dropped \(link.droppedPackets), decoder \(s.decoder), first failure: \(s.firstDecodeFailure.isEmpty ? "-" : s.firstDecodeFailure)")
         src.stop()
         var problems: [String] = []
         if !sawLive { problems.append("never went live") }

@@ -148,8 +148,11 @@ public final class SRTInputLink: @unchecked Sendable {
         let fd = Self.udpSocket(family: family)
         guard fd >= 0 else { return "Socket error \(errno)" }
         defer { close(fd) }
-        var size: Int32 = 4 * 1024 * 1024
-        setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &size, socklen_t(MemoryLayout<Int32>.size))
+        // As large a receive buffer as the system allows (macOS refuses sizes above its limit outright).
+        for mb in [8, 4, 2, 1] as [Int32] {
+            var size = mb * 1024 * 1024
+            if setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &size, socklen_t(MemoryLayout<Int32>.size)) == 0 { break }
+        }
         let flags = fcntl(fd, F_GETFL, 0)
         _ = fcntl(fd, F_SETFL, flags | O_NONBLOCK)
 
