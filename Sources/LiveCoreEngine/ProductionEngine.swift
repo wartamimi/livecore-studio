@@ -210,6 +210,57 @@ public final class ProductionEngine {
     }
     let uiMailbox = Locked(UIMailbox())
 
+    /// What the UI shows right now (0.56.0): thumbnails only for input tiles that are on screen
+    /// (nil = all), Preview only while a Preview monitor is visible or a remote page needs it.
+    /// Program is always rendered (outputs, stream, recording need it).
+    struct UIDemand { var thumbnails: Set<InputID>?; var preview = true }
+    let uiDemand = Locked(UIDemand(thumbnails: nil))
+    public func setUIDemand(thumbnails: Set<InputID>?, preview: Bool) {
+        uiDemand.mutate { $0 = UIDemand(thumbnails: thumbnails, preview: preview) }
+    }
+
+    /// Last rendered thumbnail per input (render queue only, 0.56.0). A thumbnail whose sources still
+    /// show the same picture (same pixel buffer, same layers, keys and adjustments) is not drawn
+    /// again: logos, titles, colours, paused clips and frozen cameras cost nothing. Holding the
+    /// buffers keeps a pool from handing the same object back with a new picture in it.
+    struct ThumbSignature {
+        var commands: [DrawCommand]
+        var flatten: [FlattenPass]
+        var sources: [InputID]
+        var frames: [CVPixelBuffer?]
+        var adjusts: [InputAdjust?]
+        var time: Double
+    }
+    var thumbSignatures: [InputID: ThumbSignature] = [:]
+
+    /// Removes thumbnails that would look exactly like the last ones delivered (each is still
+    /// refreshed at least once a second, in case a frame failed on the GPU).
+    func dropUnchangedThumbnails(_ plan: inout FramePlan, sources: [InputID: VideoSource],
+                                 adjusts: [InputID: InputAdjust], ai: [InputID: AIProcessor], now: Double) {
+        thumbSignatures = thumbSignatures.filter { plan.thumbnails[$0.key] != nil }
+        var passes: [InputID: FlattenPass] = [:]
+        for p in plan.flatten where passes[p.input] == nil { passes[p.input] = p }
+        for (id, commands) in plan.thumbnails {
+            var srcs: [InputID] = [], flat: [FlattenPass] = [], seen = Set<InputID>()
+            var stack = commands.map(\.source)
+            while let s = stack.popLast() {
+                guard seen.insert(s).inserted else { continue }
+                srcs.append(s)
+                if let p = passes[s] { flat.append(p); stack += p.layers.map(\.source) }
+            }
+            if srcs.contains(where: { ai[$0] != nil }) { thumbSignatures[id] = nil; continue }
+            let frames = srcs.map { sources[$0]?.currentFrame() }
+            let adj = srcs.map { adjusts[$0] }
+            if let old = thumbSignatures[id], now - old.time < 1, old.sources == srcs, old.commands == commands,
+               old.flatten == flat, old.adjusts == adj, zip(old.frames, frames).allSatisfy({ $0 === $1 }) {
+                plan.thumbnails[id] = nil
+                continue
+            }
+            thumbSignatures[id] = ThumbSignature(commands: commands, flatten: flat, sources: srcs, frames: frames,
+                                                 adjusts: adj, time: now)
+        }
+    }
+
     func deliverToUI(program: CVPixelBuffer, preview: CVPixelBuffer?, thumbs: [InputID: CVPixelBuffer],
                      detail: (InputID, CVPixelBuffer)?) {
         let schedule = uiMailbox.mutate { m -> Bool in
@@ -323,14 +374,15 @@ public final class ProductionEngine {
         // Input thumbnails (inputs panel + multiview) at 25–30 fps (0.55.0; was ~10 fps, which
         // made the small previews of cameras and videos look jerky).
         let thumbTick = frameCounter % Int64(max(1, Int((fps / 25).rounded()))) == 0
-        let (plan, sources, snapshot, adjusts) = control.mutate { st -> (FramePlan, [InputID: VideoSource], SwitcherSnapshot, [InputID: InputAdjust]) in
+        let demand = uiDemand.current
+        let (plannedFrame, sources, snapshot, adjusts) = control.mutate { st -> (FramePlan, [InputID: VideoSource], SwitcherSnapshot, [InputID: InputAdjust]) in
             events = st.switcher.update(now: now)
             let layers = st.layers
             let keys = st.keys.filter { $0.value.enabled }.mapValues { $0.clamped }
             let draft = st.drafts
             let plan = FramePlanner.plan(snapshot: st.switcher.state, overlays: st.overlays, now: now,
                                          layersFor: { layers[$0] }, keyFor: { keys[$0] },
-                                         thumbnailsFor: thumbTick ? st.order : [],
+                                         thumbnailsFor: thumbTick ? (demand.thumbnails.map { v in st.order.filter { v.contains($0) } } ?? st.order) : [],
                                          composedThumbnails: thumbTick ? Set(st.sources.filter { $0.value is SceneSource }.keys) : [],
                                          detailInput: st.detail,
                                          extraInputs: st.extraInputs + st.isoInputs.filter { !st.extraInputs.contains($0) },
@@ -353,10 +405,12 @@ public final class ProductionEngine {
             return
         }
 
+        var plan = plannedFrame
+        let ai = aiProcessors.current
+        if thumbTick { dropUnchangedThumbnails(&plan, sources: sources, adjusts: adjusts, ai: ai, now: now) }
         var needed = Set<InputID>()
         for list in plan.allCommandLists { for c in list { needed.insert(c.source) } }
         var frames: [InputID: CVPixelBuffer] = [:]
-        let ai = aiProcessors.current
         for id in needed {
             guard let pb = sources[id]?.currentFrame() else { continue }
             frames[id] = ai[id]?.process(pb) ?? pb
@@ -364,7 +418,7 @@ public final class ProductionEngine {
 
         let pts = CMTime(seconds: frameHost, preferredTimescale: 90_000)
         let detailID = plan.detail == nil ? nil : control.read { $0.detail }
-        let ok = compositor.render(plan: plan, frames: frames, adjusts: adjusts) { [weak self] result in
+        let ok = compositor.render(plan: plan, frames: frames, adjusts: adjusts, drawPreview: demand.preview) { [weak self] result in
             guard let self else { return }
             self.inFlight.mutate { $0 -= 1 }
             self.renderedFrames.add()

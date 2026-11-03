@@ -143,9 +143,39 @@ public final class MeterModel: ObservableObject {
         public var gate: Float = 0
         public var limiter: Float = 0
     }
-    @Published public var levels: [String: Level] = [:]
-    @Published public var master = Level(l: -120, r: -120, holdL: -120, holdR: -120, gr: 0)
-    @Published public var aux: [Level] = []
+    public static let silent = Level(l: -120, r: -120, holdL: -120, holdR: -120, gr: 0)
+    /// Latest values for code (remote page, preflight). Not published (0.56.0): views watch one
+    /// `ChannelMeter` each, so a meter update redraws only that meter, and only when it moved.
+    public private(set) var levels: [String: Level] = [:]
+    public private(set) var master = MeterModel.silent
+    public private(set) var aux: [Level] = []
+    private var channelMeters: [String: ChannelMeter] = [:]
+    /// Program loudness (LUFS readout and panel), its own object so meters do not redraw it.
+    public let lufs = LoudnessMeter()
+
+    /// The observable meter of a mixer channel, `masterKey` or `auxKey(i)`.
+    public func meter(_ key: String) -> ChannelMeter {
+        if let m = channelMeters[key] { return m }
+        let m = ChannelMeter()
+        if key == Self.masterKey { m.level = master } else if let l = levels[key] { m.level = l }
+        channelMeters[key] = m
+        return m
+    }
+    public static let masterKey = "__master"
+    public static func auxKey(_ i: Int) -> String { "__aux\(i)" }
+
+    /// 0.5 dB steps (finer than a meter pixel), anything under -70 dB = silent: steady or silent
+    /// channels publish nothing.
+    static func quantized(_ l: Level) -> Level {
+        func q(_ v: Float) -> Float { v.isFinite && v > -70 ? (v * 2).rounded() / 2 : -120 }
+        func g(_ v: Float) -> Float { v.isFinite ? (v * 10).rounded() / 10 : 0 }
+        return Level(l: q(l.l), r: q(l.r), holdL: q(l.holdL), holdR: q(l.holdR), gr: g(l.gr), gate: g(l.gate), limiter: g(l.limiter))
+    }
+
+    private func publish(_ key: String, _ level: Level) {
+        guard let m = channelMeters[key], m.level != level else { return }
+        m.level = level
+    }
     /// Program loudness in LUFS (momentary, short-term, integrated) and the ducking reduction (dB).
     public struct Loudness: Equatable {
         public var momentary: Float = -.infinity
@@ -153,13 +183,13 @@ public final class MeterModel: ObservableObject {
         public var integrated: Float = -.infinity
         public var duckDB: Float = 0
     }
-    @Published public var loudness = Loudness()
+    public var loudness: Loudness { lufs.loudness }
 
     func updateLoudness(_ mixer: AudioMixerEngine) {
         func r(_ v: Float) -> Float { v.isFinite ? (v * 10).rounded() / 10 : v }
         let l = Loudness(momentary: r(mixer.lufsMomentary.value), shortTerm: r(mixer.lufsShortTerm.value),
                          integrated: r(mixer.lufsIntegrated.value), duckDB: r(mixer.ducking.reductionDB.value))
-        if l != loudness { loudness = l }
+        if l != lufs.loudness { lufs.loudness = l }
     }
     private var ballistics: [String: (MeterBallistics, MeterBallistics)] = [:]
     private var lastTime = HostClockUI.now()
@@ -174,16 +204,30 @@ public final class MeterModel: ObservableObject {
             bl.update(peakLinear: c.peakL.exchange(0), dt: dt, now: now)
             br.update(peakLinear: c.peakR.exchange(0), dt: dt, now: now)
             ballistics[key] = (bl, br)
-            return Level(l: bl.levelDB, r: br.levelDB, holdL: bl.peakHoldDB, holdR: br.peakHoldDB, gr: c.gainReductionDB.value,
-                         gate: c.gateReductionDB.value, limiter: c.limiterReductionDB.value)
+            let level = Self.quantized(Level(l: bl.levelDB, r: br.levelDB, holdL: bl.peakHoldDB, holdR: br.peakHoldDB,
+                                             gr: c.gainReductionDB.value, gate: c.gateReductionDB.value,
+                                             limiter: c.limiterReductionDB.value))
+            publish(key, level)
+            return level
         }
         for ch in channels { out[ch.id] = step(ch.id, ch.controls) }
-        let mm = step("__master", m)
-        if out != levels { levels = out }
-        if mm != master { master = mm }
-        let ax = auxControls.enumerated().map { step("__aux\($0.offset)", $0.element) }
-        if ax != aux { aux = ax }
+        levels = out
+        master = step(Self.masterKey, m)
+        aux = auxControls.enumerated().map { step(Self.auxKey($0.offset), $0.element) }
+        if ballistics.count > out.count + aux.count + 1 {
+            let keep = Set(out.keys).union([Self.masterKey]).union(aux.indices.map(Self.auxKey))
+            ballistics = ballistics.filter { keep.contains($0.key) }
+        }
     }
+}
+
+/// One meter's level; only the views of this meter redraw when it changes (0.56.0).
+public final class ChannelMeter: ObservableObject {
+    @Published public internal(set) var level = MeterModel.silent
+}
+
+public final class LoudnessMeter: ObservableObject {
+    @Published public internal(set) var loudness = MeterModel.Loudness()
 }
 
 enum HostClockUI {

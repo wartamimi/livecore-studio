@@ -99,7 +99,7 @@ public enum PixelBufferFactory {
         var pool = pools[key]
         if pool == nil {
             if pools.count >= 24 { pools.removeAll() }   // many sizes seen: start over
-            pool = makePool(width: width, height: height, minimumCount: 2)
+            pool = makePool(width: width, height: height, minimumCount: 0)
             pools[key] = pool
         }
         poolLock.unlock()
@@ -108,6 +108,13 @@ public enum PixelBufferFactory {
             return pb
         }
         return make(width: width, height: height)
+    }
+
+    /// Releases shared-pool buffers nobody used for about a second (a removed browser or LCS Live
+    /// input no longer keeps its pictures in memory). Called ~1 Hz from the render loop (0.56.0).
+    public static func flushIdlePools() {
+        poolLock.lock(); let all = Array(pools.values); poolLock.unlock()
+        for pool in all { CVPixelBufferPoolFlush(pool, []) }
     }
 
     /// Draws with CoreGraphics into a cleared BGRA (premultiplied alpha) buffer from the shared pool.

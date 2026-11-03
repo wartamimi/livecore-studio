@@ -15,6 +15,14 @@ public final class FrameFeed {
 
     public init() {}
 
+    /// Called when a view showing any feed joins or leaves a window (0.56.0), so the app can
+    /// tell the engine which pictures are on screen right away.
+    static var onVisibilityChange: (() -> Void)?
+
+    /// True when at least one view of this feed can be seen: in a visible, unoccluded window, not
+    /// hidden and not scrolled out of sight (0.56.0). Views not laid out yet count as visible.
+    public var isOnScreen: Bool { views.allObjects.contains { $0.isOnScreen } }
+
     public func push(_ pb: CVPixelBuffer) {
         previous = current
         current = pb
@@ -51,6 +59,17 @@ final class PixelBufferNSView: NSView {
         layer?.minificationFilter = .linear
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        FrameFeed.onVisibilityChange?()
+    }
+
+    var isOnScreen: Bool {
+        guard let w = window, w.isVisible, !w.isMiniaturized, w.occlusionState.contains(.visible),
+              !isHiddenOrHasHiddenAncestor else { return false }
+        return bounds.isEmpty || !visibleRect.isEmpty
+    }
 
     func show(_ pb: CVPixelBuffer) {
         CATransaction.begin()
