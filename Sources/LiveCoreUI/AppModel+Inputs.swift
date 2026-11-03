@@ -296,6 +296,13 @@ extension AppModel {
     public func slideshowSource(_ id: InputID) -> SlideshowSource? { engine?.source(id) as? SlideshowSource }
     public func presentationSource(_ id: InputID) -> PresentationSource? { engine?.source(id) as? PresentationSource }
     public func frameSource(_ id: InputID) -> FrameSource? { engine?.source(id) as? FrameSource }
+    // QR code inputs (0.58.0)
+    public func qrSource(_ id: InputID) -> QRCodeSource? { engine?.source(id) as? QRCodeSource }
+    @discardableResult
+    public func addQRCode(_ d: QRDesign) -> InputID? { engine?.addQRCode(d) }
+    public func updateQRCode(_ id: InputID, _ d: QRDesign) { engine?.updateQRCode(id, d); objectWillChange.send() }
+    public func selectQRItem(_ id: InputID, _ i: Int) { engine?.selectQRItem(id, i); objectWillChange.send() }
+    public func stepQRItem(_ id: InputID, by delta: Int) { engine?.stepQRItem(id, by: delta); objectWillChange.send() }
 
     /// Next / previous slide of the presentation on Program, else on Preview, else the first one
     /// (presentation clickers: Page Down / Page Up).

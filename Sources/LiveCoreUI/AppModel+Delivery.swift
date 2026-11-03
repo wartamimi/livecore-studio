@@ -9,11 +9,6 @@ import LiveCoreServices
 /// last recording, YouTube chapters from the rundown, and vertical 9:16 highlight clips around
 /// the moments marked with ★ HIGHLIGHT.
 extension AppModel {
-    public func markHighlight() {
-        showMarks.append(ShowMark(kind: .highlight, title: "", date: Date()))
-        FileLog.shared.info("highlight marked")
-    }
-
     public var highlightCount: Int { showMarks.filter { $0.kind == .highlight }.count }
 
     public func makeClientPackage() {
@@ -35,8 +30,9 @@ extension AppModel {
         stamp.dateFormat = "yyyy-MM-dd HH.mm"
         let folder = parent.appendingPathComponent(L10n.f("package.folder", stamp.string(from: start)), isDirectory: true)
         packageProgress = L10n.t("package.copying")
+        let settings = highlightSettings
         Task.detached(priority: .userInitiated) { [weak self] in
-            let result = await Self.buildPackage(folder: folder, program: program, start: start, marks: marks) { msg in
+            let result = await Self.buildPackage(folder: folder, program: program, start: start, marks: marks, settings: settings) { msg in
                 Task { @MainActor in self?.packageProgress = msg }
             }
             await MainActor.run {
@@ -66,7 +62,7 @@ extension AppModel {
         }
     }
 
-    static func buildPackage(folder: URL, program: URL, start: Date, marks: [ShowMark],
+    static func buildPackage(folder: URL, program: URL, start: Date, marks: [ShowMark], settings: HighlightSettings,
                                          progress: @escaping (String) -> Void) async -> Result<Int, Error> {
         let fm = FileManager.default
         do {
@@ -88,8 +84,16 @@ extension AppModel {
             try chapters.write(to: folder.appendingPathComponent("Bab (chapters YouTube).txt"), atomically: true, encoding: .utf8)
             count += 1
             // Highlights: a centre 9:16 crop of Program (the separate vertical output was removed in 0.55.0).
-            let ranges = ClientPackage.highlightRanges(marks, recordingStart: start, duration: duration)
+            let ranges = ClientPackage.highlightRanges(marks, recordingStart: start, duration: duration,
+                                                       before: settings.clamped.preRoll, after: settings.clamped.postRoll)
             if !ranges.isEmpty {
+                // All moments in one video (0.58.0).
+                progress(L10n.t("highlights.making"))
+                var reel = settings
+                reel.format = .landscape
+                try await HighlightReel.build(recording: program, marks: HighlightPlan.marks(marks, recordingStart: start),
+                                              settings: reel, to: folder.appendingPathComponent("Highlight.mp4"))
+                count += 1
                 let hl = folder.appendingPathComponent("Highlight 9x16", isDirectory: true)
                 try fm.createDirectory(at: hl, withIntermediateDirectories: true)
                 for (i, r) in ranges.enumerated() {

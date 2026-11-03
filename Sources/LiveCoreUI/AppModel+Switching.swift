@@ -131,6 +131,7 @@ extension AppModel {
         case let .cutDirect(n): if n >= 1, n <= inputs.count { cutDirect(inputs[n - 1].id) }
         case let .overlay(i): toggleOverlay(i)
         case let .overlayPreview(i): toggleOverlayPreview(i)
+        case .highlight: markHighlight()
         }
     }
 
@@ -148,6 +149,7 @@ extension AppModel {
         case let .cutDirect(n): return L10n.f("midi.cut_direct", n)
         case let .overlay(i): return "Overlay \(i)"
         case let .overlayPreview(i): return "Overlay \(i) → Preview"
+        case .highlight: return L10n.t("highlights.midi")
         }
     }
 
@@ -209,6 +211,18 @@ extension AppModel {
             e.setOverlayPreview(index, on: !ch.onPreview)
         }
         overlays = e.overlays
+    }
+
+    /// Puts a QR input on Program as an overlay (a free channel, its own motion), or takes it
+    /// off when it is already on air (0.58.0).
+    public func toggleQROnAir(_ id: InputID) {
+        guard let e = engine else { return }
+        if let ch = e.overlays.first(where: { $0.source == id && $0.isOn }) { toggleOverlay(ch.index); return }
+        guard let ch = e.overlays.first(where: { $0.source == id && !$0.isOn })
+                ?? e.overlays.first(where: { !$0.isOn && !$0.onPreview }) else {
+            report(L10n.t("overlay.all_busy")); return
+        }
+        overlayFromTile(ch.index, input: id, toProgram: true)
     }
 
     /// Secondary click (two fingers): straight to / off Program.

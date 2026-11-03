@@ -282,6 +282,8 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
       <div class="sub" data-t="ovHint"></div>
       <div class="sub" data-t="replay"></div>
       <div id="replays" class="grp3"></div>
+      <div class="sub" id="qrHead" data-t="qr"></div>
+      <div id="qrs"></div>
     </div>
     <div class="mod a-out out">
       <h2 data-t="output"></h2>
@@ -289,6 +291,9 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
         <button id="rec" class="key"><span class="cap">REC</span><time>00:00:00</time></button>
         <button id="live" class="key"><span class="cap">STREAM</span><time>00:00:00</time></button>
         <button id="snap" class="key"><span class="cap">PHOTO</span><time>&nbsp;</time></button>
+      </div>
+      <div class="grp3" style="margin-top:9px">
+        <button id="mark" class="key amber"><span class="cap">★ MARK</span><time>0</time></button>
       </div>
       <div class="note" id="locks"></div>
     </div>
@@ -309,8 +314,8 @@ button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:poin
 <script>
 "use strict";
 const T={
- en:{pinHint:"Enter the PIN shown in LiveCore Studio › Settings › Remote.",inputs:"Inputs",transition:"Transition",replay:"Instant replay",output:"Record & stream",audio:"Audio mixer",signOut:"Sign out",wrong:"Wrong PIN.",locked:"Too many wrong PINs. Try again in {s} s.",offline:"Cannot reach LiveCore Studio.",stopRec:"Stop recording?",stopLive:"Stop streaming?",startLive:"Start streaming?",recLocked:"Recording is locked in the app.",liveLocked:"Streaming is locked in the app.",noInputs:"No inputs yet.",noAudio:"No audio channels.",listen:"🎧 Listen",listenStop:"🎧 Stop",listening:"Listening (≈{s} s behind)",weak:"Weak connection: lighter pictures and sound",mute:"MUTE",ovHint:"Tap = Preview · hold = Program"},
- id:{pinHint:"Masukkan PIN yang tampil di LiveCore Studio › Settings › Remote.",inputs:"Input",transition:"Transisi",replay:"Instant replay",output:"Rekam & stream",audio:"Mixer audio",signOut:"Keluar",wrong:"PIN salah.",locked:"Terlalu banyak PIN salah. Coba lagi dalam {s} detik.",offline:"LiveCore Studio tidak terjangkau.",stopRec:"Hentikan rekaman?",stopLive:"Hentikan streaming?",startLive:"Mulai streaming?",recLocked:"Rekaman dikunci di aplikasi.",liveLocked:"Streaming dikunci di aplikasi.",noInputs:"Belum ada input.",noAudio:"Belum ada kanal audio.",listen:"🎧 Dengar",listenStop:"🎧 Berhenti",listening:"Mendengarkan (≈{s} dtk terlambat)",weak:"Koneksi lemah: gambar dan suara diringankan",mute:"MUTE",ovHint:"Ketuk = Preview · tahan = Program"}
+ en:{pinHint:"Enter the PIN shown in LiveCore Studio › Settings › Remote.",inputs:"Inputs",transition:"Transition",replay:"Instant replay",output:"Record & stream",audio:"Audio mixer",signOut:"Sign out",wrong:"Wrong PIN.",locked:"Too many wrong PINs. Try again in {s} s.",offline:"Cannot reach LiveCore Studio.",stopRec:"Stop recording?",stopLive:"Stop streaming?",startLive:"Start streaming?",recLocked:"Recording is locked in the app.",liveLocked:"Streaming is locked in the app.",noInputs:"No inputs yet.",noAudio:"No audio channels.",listen:"🎧 Listen",listenStop:"🎧 Stop",listening:"Listening (≈{s} s behind)",weak:"Weak connection: lighter pictures and sound",mute:"MUTE",ovHint:"Tap = Preview · hold = Program",qr:"QR code"},
+ id:{pinHint:"Masukkan PIN yang tampil di LiveCore Studio › Settings › Remote.",inputs:"Input",transition:"Transisi",replay:"Instant replay",output:"Rekam & stream",audio:"Mixer audio",signOut:"Keluar",wrong:"PIN salah.",locked:"Terlalu banyak PIN salah. Coba lagi dalam {s} detik.",offline:"LiveCore Studio tidak terjangkau.",stopRec:"Hentikan rekaman?",stopLive:"Hentikan streaming?",startLive:"Mulai streaming?",recLocked:"Rekaman dikunci di aplikasi.",liveLocked:"Streaming dikunci di aplikasi.",noInputs:"Belum ada input.",noAudio:"Belum ada kanal audio.",listen:"🎧 Dengar",listenStop:"🎧 Berhenti",listening:"Mendengarkan (≈{s} dtk terlambat)",weak:"Koneksi lemah: gambar dan suara diringankan",mute:"MUTE",ovHint:"Ketuk = Preview · tahan = Program",qr:"Kode QR"}
 };
 const lang=(navigator.language||"en").slice(0,2), L=T[lang]||T.en;
 document.documentElement.lang=T[lang]?lang:"en";
@@ -429,7 +434,7 @@ async function frameLoop(bus,gen){
 const name=n=>{const i=st.inputs.find(x=>x.n===n);return i?n+"  "+i.name:"—"};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s/60)%60,x=s%60;return[h,m,x].map(v=>String(v).padStart(2,"0")).join(":")};
 const sig=a=>JSON.stringify(a);
-let busSig="", ovSig="", rpSig="", kindSig="", durSig="", stripSig="";
+let qrSig="", busSig="", ovSig="", rpSig="", kindSig="", durSig="", stripSig="";
 
 function buildBus(box,isPgm){
   box.textContent="";
@@ -469,6 +474,17 @@ function render(){
   if(rs!==rpSig){rpSig=rs;const r=$("replays");r.textContent="";st.replayLengths.forEach(s=>{const b=el("button","key amber");b.dataset.s=s;
     b.append(el("span","num",s),el("span","nm","sec"));b.onclick=()=>send("/api/replay?sec="+s);r.appendChild(b)})}
   [...$("replays").children].forEach(b=>{b.disabled=st.replayAvailable<+b.dataset.s});
+  const qrs=st.qrs||[];const qs=sig(qrs.map(q=>[q.n,q.items.length]));
+  if(qs!==qrSig){qrSig=qs;const q=$("qrs");q.textContent="";qrs.forEach(x=>{const row=el("div","grp3");row.style.marginBottom="8px";
+    const b=el("button","key");b.append(el("span","num","QR "+x.n),el("span","nm",x.name));b.onclick=()=>send("/api/qr/show?input="+x.n);
+    const pv=el("button","key blue","◀");pv.onclick=()=>send("/api/qr/previous?input="+x.n);
+    const nx=el("button","key blue","▶");nx.onclick=()=>send("/api/qr/next?input="+x.n);
+    row.append(b,pv,nx);q.appendChild(row)})}
+  qrs.forEach((x,k)=>{const row=$("qrs").children[k];if(!row)return;const b=row.children[0];b.classList.toggle("on",x.on);b.classList.toggle("red",x.on);
+    b.querySelector(".nm").textContent=(x.items[x.item-1]||x.name)+(x.items.length>1?" ("+x.item+"/"+x.items.length+")":"");
+    row.children[1].disabled=row.children[2].disabled=x.items.length<2});
+  $("qrHead").style.display=qrs.length?"":"none";
+  $("mark").querySelector("time").textContent=st.highlights||0;
 
   $("rec").className="key red"+(st.recording?" on":"");$("live").className="key red"+(st.streaming?" on":"");
   $("rec").querySelector("time").textContent=hms(st.recordTime);$("live").querySelector("time").textContent=hms(st.streamTime);
@@ -625,6 +641,7 @@ $("out").onclick=()=>{store.set("");pin="";signedOut("")};
 $("cut").onclick=()=>{if(st&&st.preview){const p=st.program;st.program=st.preview;st.preview=p;render()}send("/api/cut")};
 $("auto").onclick=()=>send("/api/auto");
 $("snap").onclick=()=>send("/api/snapshot");
+$("mark").onclick=()=>{if(st){st.highlights=(st.highlights||0)+1;render()}send("/api/highlight")};
 $("rec").onclick=()=>{if(!st)return;if(st.recordLocked){alert(L.recLocked);return}
   if(st.recording){if(confirm(L.stopRec))send("/api/record/stop")}else send("/api/record/start")};
 $("live").onclick=()=>{if(!st)return;if(st.streamLocked){alert(L.liveLocked);return}

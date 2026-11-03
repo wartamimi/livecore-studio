@@ -423,6 +423,12 @@ public final class AppModel: ObservableObject {
     /// Chapters (rundown segments) and highlights marked during the show (0.43.0).
     @Published public var showMarks: [ShowMark] = []
     @Published public var packageProgress: String?
+    /// Highlight video (0.58.0): settings, the recording whose marks are shown, export progress.
+    @Published public var highlightSettings = HighlightSettings.saved() {
+        didSet { highlightSettings.save() }
+    }
+    @Published public var highlightSession: HighlightSession?
+    @Published public var highlightProgress: String?
     @Published public var showOutputsPanel = false
     @Published public var showTemplates = false
     /// True while the crash-recovery question is pending (the welcome screen waits for it).

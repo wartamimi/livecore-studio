@@ -211,6 +211,10 @@ public enum RemoteCommand: Equatable, Sendable {
     /// Title data source of input `input`: next (+1) / previous (-1) row, or row `n` (1-based).
     case dataRow(input: Int, delta: Int)
     case dataRowSet(input: Int, row: Int)
+    /// QR code input `input` (0.58.0): next / previous item, item `item` (1-based), show / hide on Program.
+    case qrItem(input: Int, delta: Int)
+    case qrItemSet(input: Int, item: Int)
+    case qrShow(input: Int)
 }
 
 public enum RemoteRoute: Equatable, Sendable {
@@ -313,6 +317,17 @@ public enum RemoteRouter {
         case "/api/data/next", "/api/data/previous":
             guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
             cmd = .dataRow(input: n, delta: r.path == "/api/data/next" ? 1 : -1)
+        case "/api/highlight": cmd = .action(.highlight)
+        case "/api/qr/next", "/api/qr/previous":
+            guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
+            cmd = .qrItem(input: n, delta: r.path == "/api/qr/next" ? 1 : -1)
+        case "/api/qr/item":
+            guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
+            guard let i = int(r.query["item"]), (1...999).contains(i) else { return .badRequest("item") }
+            cmd = .qrItemSet(input: n, item: i)
+        case "/api/qr/show":
+            guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
+            cmd = .qrShow(input: n)
         case "/api/data/row":
             guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
             guard let row = int(r.query["row"]), (1...100_000).contains(row) else { return .badRequest("row") }
@@ -447,6 +462,18 @@ public struct RemoteState: Equatable, Sendable {
         }
     }
 
+    /// A QR code input (0.58.0): its items and whether it is on air.
+    public struct QR: Equatable, Sendable {
+        public var number: Int
+        public var name: String
+        public var on: Bool
+        public var item: Int
+        public var items: [String]
+        public init(number: Int, name: String, on: Bool, item: Int, items: [String]) {
+            self.number = number; self.name = name; self.on = on; self.item = item; self.items = items
+        }
+    }
+
     public struct Choice: Equatable, Sendable {
         public var id: Int
         public var name: String
@@ -489,6 +516,9 @@ public struct RemoteState: Equatable, Sendable {
     public var channels: [Channel] = []
     /// A Program / Preview picture is available at /api/frame.
     public var frames = false
+    /// ★ marks so far (0.58.0).
+    public var highlights = 0
+    public var qrs: [QR] = []
 
     public init() {}
 
@@ -537,6 +567,13 @@ public struct RemoteState: Equatable, Sendable {
         o["master"] = Self.render(master)
         o["channels"] = JSON.array(channels.map(Self.render))
         o["frames"] = JSON.bool(frames)
+        o["highlights"] = "\(highlights)"
+        o["qrs"] = JSON.array(qrs.map { q in
+            var e = JSON.Object()
+            e["n"] = "\(q.number)"; e["name"] = JSON.string(q.name); e["on"] = JSON.bool(q.on); e["item"] = "\(q.item)"
+            e["items"] = JSON.array(q.items.map(JSON.string))
+            return e.rendered
+        })
         return o.rendered
     }
 }

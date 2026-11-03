@@ -144,6 +144,12 @@ extension AppModel {
                          levelL: Double(lv?.l ?? -120), levelR: Double(lv?.r ?? -120))
         }
         s.frames = true
+        s.highlights = highlightCount
+        s.qrs = inputs.filter { $0.kind == .qrCode }.compactMap { i -> RemoteState.QR? in
+            guard let q = qrSource(i.id) else { return nil }
+            return .init(number: i.number, name: i.name, on: overlays.contains { $0.source == i.id && $0.isOn },
+                         item: q.design.selected + 1, items: q.design.items.map(\.name))
+        }
         server.update(state: s.json)
         if clients {
             let n = server.activeClients()
@@ -242,6 +248,12 @@ extension AppModel {
             if let id = inputID(number: n) { stepDataRow(id, by: delta) }
         case let .dataRowSet(n, row):
             if let id = inputID(number: n) { setDataRow(id, row - 1) }
+        case let .qrItem(n, delta):
+            if let id = inputID(number: n) { stepQRItem(id, by: delta) }
+        case let .qrItemSet(n, item):
+            if let id = inputID(number: n) { selectQRItem(id, item - 1) }
+        case let .qrShow(n):
+            if let id = inputID(number: n), qrSource(id) != nil { toggleQROnAir(id) }
         }
         pushRemoteState(clients: false)
     }

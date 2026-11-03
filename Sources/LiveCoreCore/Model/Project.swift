@@ -190,6 +190,8 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case srt(ProjectSRTInput)
     /// Blackmagic DeckLink / UltraStudio capture (0.54.0).
     case decklink(ProjectDeckLink)
+    /// QR code card for donations, angpao, links, Wi-Fi… (0.58.0).
+    case qrCode(QRDesign)
 }
 
 /// A presentation input: the file and the slide on air.

@@ -192,6 +192,8 @@ public final class ProductionEngine {
     let outputs = Locked(Outputs())
     /// When the current / last RECORD started (client package chapters, 0.43.0).
     public internal(set) var recordingStartDate: Date?
+    /// Timed QR overlays (0.58.0).
+    let overlayAutoHide = OverlayAutoHide()
     /// On-device AI per input (0.43.0), only on Apple Silicon.
     let aiProcessors = Locked([InputID: AIProcessor]())
     var aacEncoders: [AACEncoder] = []
