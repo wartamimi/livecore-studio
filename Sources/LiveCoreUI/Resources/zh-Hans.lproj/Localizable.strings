@@ -104,3 +104,5 @@
 "preflight.confirm_title" = "运行开播前检查？";
 "mixer.minimize_details" = "最小化电平详情";
 "mixer.expand_details" = "显示电平详情";
+
+"common.add" = "添加";

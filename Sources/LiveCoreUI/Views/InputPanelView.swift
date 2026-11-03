@@ -639,7 +639,7 @@ struct CaptureSheet: View {
                 Button(L10n.t("capture.refresh")) { load() }
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
-                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                Button(editing == nil ? L10n.t("common.add") : L10n.t("settings.apply")) {
                     guard let cfg = config else { return }
                     if let id = editing { model.updateCapture(id, cfg) } else { model.addCapture(cfg) }
                     dismiss()
@@ -745,7 +745,7 @@ struct BrowserSheet: View {
             HStack {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
-                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                Button(editing == nil ? L10n.t("common.add") : L10n.t("settings.apply")) {
                     var c = config
                     c.width = size == 1080 ? 1920 : 1280
                     c.height = size
@@ -857,7 +857,7 @@ struct TimerSheet: View {
             HStack {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
-                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                Button(editing == nil ? L10n.t("common.add") : L10n.t("settings.apply")) {
                     config.durationSeconds = config.mode == .untilTime ? Double(minutes * 60) : Double(minutes * 60 + seconds)
                     let cal = Calendar.current
                     config.targetSecondsOfDay = target.timeIntervalSince(cal.startOfDay(for: target))

@@ -82,7 +82,7 @@ struct SRTInputSheet: View {
             HStack {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
-                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                Button(editing == nil ? L10n.t("common.add") : L10n.t("settings.apply")) {
                     var v = c
                     v.host = v.host.trimmingCharacters(in: .whitespaces)
                     v.latencyMs = v.clampedLatency
@@ -177,7 +177,7 @@ struct DeckLinkInputSheet: View {
             HStack {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
-                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                Button(editing == nil ? L10n.t("common.add") : L10n.t("settings.apply")) {
                     guard let d = currentDevice else { return }
                     let c = ProjectDeckLink(deviceName: d.name, deviceIndex: d.index, mode: mode == 0 ? nil : mode,
                                             connection: connection.isEmpty ? nil : connection, audio: audio ? nil : false)
