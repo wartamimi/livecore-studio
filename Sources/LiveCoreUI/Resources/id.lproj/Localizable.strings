@@ -1537,3 +1537,42 @@
 "transcription.live" = "Live (ElevenLabs)";
 
 "flag.add" = "Bendera…";
+
+/* 0.54.0 Input SRT */
+"srtin.add" = "Stream SRT (encoder)…";
+"srtin.add_title" = "Tambah input SRT";
+"srtin.edit_title" = "Input SRT";
+"srtin.mode" = "Mode";
+"srtin.listener" = "Dengar (encoder memanggil LiveCore)";
+"srtin.caller" = "Panggil (LiveCore memanggil encoder)";
+"srtin.host" = "Alamat encoder";
+"srtin.port" = "Port UDP";
+"srtin.latency" = "Latensi: %ld ms";
+"srtin.latency_help" = "Waktu stream ditahan agar paket yang hilang bisa dikirim ulang. Pakai kira-kira 4 × waktu bolak-balik: 120–200 ms di LAN, 500–2000 ms lewat internet atau jaringan seluler.";
+"srtin.streamid" = "Stream ID (opsional)";
+"srtin.paste" = "Atau tempel alamat srt:// lalu tekan Return";
+"srtin.encoder_url" = "Alamat yang diisi di encoder (OBS, vMix, Larix, encoder hardware)";
+"srtin.copy" = "Salin";
+"srtin.peer" = "Dari %@ · Stream ID %@";
+"srtin.signal" = "%ld × %ld · %.1f fps · %@ · audio %@ · %ld kbit/s";
+"srtin.stats" = "RTT %.1f ms · latensi %ld ms · hilang %ld · pulih %ld · dibuang %ld";
+"srtin.note" = "MPEG-TS lewat SRT dengan video H.264 atau HEVC dan audio AAC (yang dikirim OBS, vMix, Larix dan kebanyakan encoder hardware). Enkripsi (passphrase) belum didukung: kosongkan di encoder. Lewat internet, port UDP Mac yang mendengar harus bisa dijangkau (port forwarding di router), atau pakai mode Panggil.";
+"srtin.bad_port" = "Port harus antara 1 dan 65535.";
+"srtin.missing_host" = "Isi alamat encoder yang akan dipanggil.";
+
+/* 0.54.0 Input DeckLink */
+"decklink.add" = "Blackmagic DeckLink / UltraStudio…";
+"decklink.add_title" = "Tambah capture Blackmagic";
+"decklink.edit_title" = "Capture Blackmagic";
+"decklink.no_driver" = "Blackmagic Desktop Video belum terpasang. Pasang dulu (gratis, termasuk driver), buka ulang LiveCore, lalu tambahkan kartunya di sini.";
+"decklink.download" = "Unduh Desktop Video";
+"decklink.no_device" = "Desktop Video terpasang, tetapi tidak ada perangkat DeckLink, UltraStudio atau Intensity dengan input. Periksa kabel / Thunderbolt dan Blackmagic Desktop Video Setup.";
+"decklink.connection" = "Konektor input";
+"decklink.connection_default" = "Sesuai Desktop Video Setup";
+"decklink.format" = "Format video";
+"decklink.format_auto" = "Deteksi otomatis";
+"decklink.format_first" = "Bawaan kartu (kartu ini tidak bisa mendeteksi format)";
+"decklink.signal" = "%ld × %ld · %.2f fps · %@";
+"decklink.note" = "Memakai driver Blackmagic Desktop Video yang terpasang di Mac ini (API %@). Video 8-bit, audio tertanam kanal 1–2. Satu kartu hanya bisa dipakai satu aplikasi: tutup aplikasi lain (OBS, Media Express) yang memakai input yang sama.";
+
+"common.add" = "Tambah";

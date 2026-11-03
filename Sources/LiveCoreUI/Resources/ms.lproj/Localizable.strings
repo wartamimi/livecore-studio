@@ -104,3 +104,5 @@
 "preflight.confirm_title" = "Jalankan semakan pre-flight?";
 "mixer.minimize_details" = "Kecilkan butiran meter";
 "mixer.expand_details" = "Tunjuk butiran meter";
+
+"common.add" = "Tambah";

@@ -245,6 +245,39 @@ extension AppModel {
         src.reconfigure(c)
     }
 
+    // MARK: SRT and DeckLink inputs (0.54.0)
+
+    public func srtSource(_ id: InputID) -> SRTSource? { engine?.source(id) as? SRTSource }
+    /// "<number> <name>" of the input already listening on this UDP port.
+    public func srtPortInUse(_ port: Int, except: InputID? = nil) -> String? {
+        engine?.inputListeningSRT(port: port, except: except).flatMap(inputLabel)
+    }
+    public func addSRTInput(_ c: ProjectSRTInput) {
+        if c.mode == .listener, let used = srtPortInUse(c.port) { report(L10n.f("inputs.already_used", used)); return }
+        engine?.addSRTInput(c)
+    }
+    public func updateSRTInput(_ id: InputID, _ c: ProjectSRTInput) {
+        guard let src = srtSource(id) else { return }
+        if c.mode == .listener, let used = srtPortInUse(c.port, except: id) { report(L10n.f("inputs.already_used", used)); return }
+        if src.name == src.config.displayName { rename(id, c.displayName) }
+        src.reconfigure(c)
+    }
+
+    public func deckLinkSource(_ id: InputID) -> DeckLinkSource? { engine?.source(id) as? DeckLinkSource }
+    public func deckLinkInUse(_ c: ProjectDeckLink, except: InputID? = nil) -> String? {
+        engine?.inputUsingDeckLink(c, except: except).flatMap(inputLabel)
+    }
+    public func addDeckLink(_ c: ProjectDeckLink) {
+        if let used = deckLinkInUse(c) { report(L10n.f("inputs.already_used", used)); return }
+        engine?.addDeckLink(c)
+    }
+    public func updateDeckLink(_ id: InputID, _ c: ProjectDeckLink) {
+        guard let src = deckLinkSource(id) else { return }
+        if let used = deckLinkInUse(c, except: id) { report(L10n.f("inputs.already_used", used)); return }
+        if src.name == src.config.displayName { rename(id, c.displayName) }
+        src.reconfigure(c)
+    }
+
     public func timerSource(_ id: InputID) -> TimerSource? { engine?.source(id) as? TimerSource }
     public func tickerSource(_ id: InputID) -> TickerSource? { engine?.source(id) as? TickerSource }
     public func addTicker(_ c: TickerConfig) { engine?.addTicker(c) }

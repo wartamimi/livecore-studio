@@ -124,8 +124,9 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Fitur | Status | Catatan |
 |---|---|---|
 | Capture card HDMI/SDI yang tampil sebagai UVC/AVFoundation | Implemented (via jalur kamera) | Lihat `CAPTURE_DEVICES.md` |
-| Blackmagic DeckLink (Desktop Video SDK) | Blocked → Planned M3 | Perlu SDK (EULA, registrasi) + perangkat uji |
-| AJA / Magewell Pro | Planned M3 | Perlu SDK vendor |
+| Blackmagic DeckLink / UltraStudio / Intensity (SDI/HDMI) | Implemented (0.54.0), belum dites dengan kartu | Lihat bagian 0.54.0 |
+| AJA Io / Kona / T-TAP (NTV2) | Blocked | Belum diintegrasikan; AJA U-TAP (USB/UVC) jalan lewat jalur kamera |
+| Magewell Pro | Planned | Perlu SDK vendor |
 | NDI | Implemented: output (0.24.0) dan input (0.29.0) | Runtime NDI dimuat saat jalan (tidak disertakan); lihat bagian Input NDI 0.29.0 |
 | Virtual camera sendiri (Camera Extension seperti OBS) | Dihapus (0.23.0) | Dibuat di 0.22.0 lalu dihapus atas permintaan pemilik (butuh tanda tangan Developer ID). Pakai Syphon → OBS → OBS Virtual Camera |
 | Syphon (kirim output ke OBS, Resolume, MadMapper…) | Implemented (0.22.0), diperbaiki 0.23.0, belum dites di Mac pengguna | Server Syphon (kode BSD, di-vendor) per output; nyala saat EXTERNAL aktif (Output 1 otomatis bila belum ada yang dipilih); frame dikirim sejak server dibuat; status "aplikasi tersambung" di EXTERNAL ⚙. CI `livecore-syphon-check`: proses lain menemukan server lewat direktori Syphon dan membaca frame 1280×720 BGRA dari IOSurface (T-89) |
@@ -372,7 +373,8 @@ Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; k
 | Uji soak & kegagalan di CI | Implemented | CI macOS (engine asli) | Rekam + stream 90 dtk, server RTMP dimatikan di tengah (stream reconnect, rekaman tidak putus), cek kebocoran memori, SRT dari engine, disk 64 MB penuh (rekaman berhenti sendiri dan file tetap bisa diputar) |
 | ProductionEngine & AppModel dipecah per domain | Implemented | kompilasi CI + semua tes | Tidak ada perubahan perilaku |
 | Label Eksperimental | Implemented | — | PowerPoint Live, RSS teks berjalan, animasi per huruf, edit halaman web |
-| Input SRT, WebRTC/WHIP tamu | Planned | — | Butuh dekoder MPEG-TS + jitter buffer (SRT input) atau stack WebRTC (ICE/DTLS/SRTP/Opus) yang belum ada; tidak dimasukkan agar tidak setengah jadi |
+| Input SRT | Implemented (0.54.0) | Lihat bagian 0.54.0 | — |
+| Tamu WebRTC/WHIP | Lewat LCS Live (0.52.0) | — | — |
 | NV12 capture / ticker & slideshow di GPU | Planned | — | Optimasi kinerja; ditunda karena butuh pengukuran di Mac Intel pengguna |
 | Developer ID, auto-update Sparkle, HTTPS Web Controller | Blocked | — | Butuh akun Apple Developer pengguna (penandatanganan & notarisasi) |
 
@@ -533,3 +535,14 @@ Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; k
 | Advanced Realtime Transcription (vocabulary, clear time, uppercase, Apple task hint/punctuation, ElevenLabs VAD/turn prediction/keyterms/no verbatim/filter background/secondary languages) | Implemented, belum dites di Mac | L (URL), M | (T-283) |
 | LCS Live: tamu jarak jauh lewat link browser (seperti vMix Call): video + audio tamu jadi input dengan kanal mixer sendiri, return feed Program + mix-minus | Partially implemented, belum dites di Mac | L (signaling, mix-minus via API), M | WebRTC dijalankan WebKit (web view tersembunyi) + server signaling bawaan port 8089 (terpisah dari Web Controller); link online https via Cloudflare quick tunnel (`brew install cloudflared`), tanpa itu hanya "Uji di Mac ini" (localhost). Media peer to peer dengan STUN Google/Cloudflare; jaringan simetris/CGNAT butuh server TURN sendiri (Advanced). Alur offer/answer + track return diuji end-to-end di Chromium (CI Linux tidak punya WebKit); 1 tamu per input, video tamu diambil lewat snapshot (≤30 fps), return Program 640×360 ≈12 fps (T-284..T-290) |
 | Optimasi 0.53.0: pool buffer frame per ukuran (browser, LCS Live, ticker), satu CIContext Metal bersama, snapshot LCS Live ≤1280 px dan ±1 fps saat belum ada tamu, return tamu 1 panggilan JS per 80 ms, Audio Monitor web lewat satu respons streaming (fallback polling) | Implemented, belum diukur di Mac | — | Bandingkan CPU/RAM di Activity Monitor dengan 0.52.0 (T-291..T-293) |
+
+## 0.54.0: input SDI (Blackmagic) dan SRT
+| Fitur | Status | Verifikasi | Catatan |
+|---|---|---|---|
+| Input SRT mode Dengar (listener): encoder memanggil LiveCore | Implemented, belum dites di Mac | L: E2E dengan ffmpeg/libsrt sebagai pengirim (H.264 1080p50 8 Mbit/s, H.264 720p, HEVC); unit test 10% paket hilang → semua pulih berurutan. CI macOS `livecore-srt-input-check engine`: ffmpeg → input SRT, dekode H.264 dan HEVC + AAC | Stack SRT sendiri (tanpa libsrt): handshake v5, ACK/ACKACK, NAK langsung + berkala, TSBPD, buang paket terlambat, keep-alive. Satu pengirim per port; pengirim yang menyambung ulang diterima lagi (T-294) |
+| Input SRT mode Panggil (caller): LiveCore memanggil encoder yang mendengar | Implemented, belum dites di Mac | L: E2E dengan ffmpeg listener (HEVC + AAC mono 44,1 kHz, 10% paket dibuang → semua pulih) | Menyambung ulang tiap 2 dtk bila putus (T-295) |
+| Dekode video H.264 / HEVC (VideoToolbox) dan audio AAC → kanal mixer "srt:<input>" | Implemented, belum dites di Mac | CI macOS (lihat atas) | Frame ditampilkan menurut PTS (B-frame aman), audio di-resample ke 48 kHz. Sinkron A/V perkiraan (video ditunda 45 ms), belum diukur (T-296) |
+| Enkripsi SRT (passphrase), MPEG-2/AC-3/Opus di dalam TS | Belum didukung | — | Pengirim berpassphrase ditolak dengan pesan jelas |
+| Input Blackmagic DeckLink / UltraStudio / Intensity | Implemented, belum dites dengan kartu | Kompilasi CI; C++ dicek sintaksnya | Lewat driver Desktop Video yang terpasang (API dimuat saat jalan, tidak disertakan). Pilih kartu, konektor (SDI/HDMI/…) dan format (deteksi otomatis bila kartu bisa). 8-bit YUV 4:2:2 → BGRA (vImage, BT.709 untuk HD, BT.601 untuk SD); sinyal RGB 4:4:4 diambil BGRA. Audio tertanam kanal 1–2 → kanal mixer "decklink:<input>". Kartu dicabut / dipakai app lain → dicoba lagi tiap 3 dtk (T-297..T-300) |
+| Video 10-bit, audio tertanam >2 kanal, timecode, output DeckLink (playout) | Belum | — | — |
+| AJA Kona / Io / T-TAP (NTV2) | Blocked | — | SDK AJA (libajantv2) open source MIT, jadi bukan soal lisensi; butuh integrasi pustaka C++ besar dan perangkat AJA untuk diuji. AJA U-TAP (USB) = UVC, jalan lewat input kamera |

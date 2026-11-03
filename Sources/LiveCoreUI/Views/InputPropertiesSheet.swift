@@ -29,12 +29,12 @@ struct InputPropertiesSheet: View {
         var t: [Tab] = []
         switch kind {
         case .camera: if !operatorMode { t.append(.source) }
-        case .screen, .ndi: t.append(.source)
+        case .screen, .ndi, .srt, .decklink: t.append(.source)
         default: break
         }
         if kind != .scene { t.append(.color) }
-        if [.camera, .videoFile, .image, .ndi].contains(kind) { t.append(.key) }
-        if [.camera, .ndi, .videoFile, .screen].contains(kind) { t.append(.ai) }
+        if [.camera, .videoFile, .image, .ndi, .srt, .decklink].contains(kind) { t.append(.key) }
+        if [.camera, .ndi, .videoFile, .screen, .srt, .decklink].contains(kind) { t.append(.ai) }
         if kind == .camera { t.append(.ptz) }
         return t
     }
@@ -72,6 +72,8 @@ struct InputPropertiesSheet: View {
             case .camera: CaptureCardSheet(editing: input)
             case .screen: CaptureSheet(editing: input)
             case .ndi: NDIInputSheet(editing: input)
+            case .srt: SRTInputSheet(editing: input)
+            case .decklink: DeckLinkInputSheet(editing: input)
             default: EmptyView()
             }
         case .color: InputAdjustSheet(input: input)
