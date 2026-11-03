@@ -166,6 +166,8 @@ public final class ProductionEngine {
     var warmupLogged = true
     /// Called once, on the render queue, when warm-up ends with the frames it missed.
     public var onWarmupDrops: ((UInt64) -> Void)?
+    /// Warnings for the file log only (main thread), e.g. a removed input still in memory.
+    public var onDiagnostic: ((String) -> Void)?
 
     /// Sets the Drop reading (and its causes) back to 0.
     public func resetDropCounters() {

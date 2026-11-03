@@ -387,6 +387,9 @@ public final class MetalCompositor {
 
     /// Mask images by file path (render queue only), like the LUT cache.
     private var maskTextures: [String: MTLTexture] = [:]
+    /// Last time each mask / LUT texture was used; unused ones are freed after 30 s (0.56.0), so
+    /// the masks and LUTs of deleted inputs do not stay in GPU memory.
+    private var textureLastUse: [String: Double] = [:]
     private var failedMasks: Set<String> = []
     private lazy var whiteMask: MTLTexture? = {
         let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 1, height: 1, mipmapped: false)
@@ -398,6 +401,7 @@ public final class MetalCompositor {
     }()
 
     private func maskTexture(_ path: String) -> MTLTexture? {
+        textureLastUse["m:" + path] = HostClock.now()
         if let t = maskTextures[path] { return t }
         if failedMasks.contains(path) { return nil }
         let loader = MTKTextureLoader(device: device)
@@ -429,6 +433,7 @@ public final class MetalCompositor {
     private lazy var identityLUT: MTLTexture? = makeLUTTexture(CubeLUT.identity())
 
     private func lutTexture(_ path: String) -> MTLTexture? {
+        textureLastUse["l:" + path] = HostClock.now()
         if let t = lutTextures[path] { return t }
         if failedLUTs.contains(path) { return nil }
         guard let text = try? String(contentsOfFile: path, encoding: .utf8),
@@ -588,6 +593,10 @@ public final class MetalCompositor {
         // Free pool buffers that have not been used for a while (0.56.0).
         for pool in [thumbPool, detailPool, extraPool, previewPool].compactMap({ $0 }) { CVPixelBufferPoolFlush(pool, []) }
         PixelBufferFactory.flushIdlePools()
+        let now = HostClock.now()
+        for path in maskTextures.keys where now - (textureLastUse["m:" + path] ?? 0) > 30 { maskTextures[path] = nil }
+        for path in lutTextures.keys where now - (textureLastUse["l:" + path] ?? 0) > 30 { lutTextures[path] = nil }
+        textureLastUse = textureLastUse.filter { now - $0.value <= 30 }
     }
 }
 #endif
