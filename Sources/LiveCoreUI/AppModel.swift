@@ -241,6 +241,8 @@ public final class AppModel: ObservableObject {
             self.inputs = list
             self.noteInputsChanged(list)
             let ids = Set(list.map(\.id))
+            // Feeds of deleted inputs let go of their last pictures at once (0.56.0).
+            for (id, f) in self.thumbnailFeeds where !ids.contains(id) { f.clear() }
             self.thumbnailFeeds = self.thumbnailFeeds.filter { ids.contains($0.key) }
             self.outputInputsChanged()
             self.overlays = e.overlays
@@ -249,6 +251,7 @@ public final class AppModel: ObservableObject {
         e.onRecordStats = { [weak self] s in self?.recordStats = s }
         e.onISOStats = { [weak self] s in self?.isoStats = s }
         e.onError = { [weak self] msg in self?.report(msg) }
+        e.onDiagnostic = { msg in FileLog.shared.warning(msg) }
         e.onWarmupDrops = { n in
             FileLog.shared.info("render warm-up: \(n) frames missed in the first \(Int(ProductionEngine.warmupSeconds)) s (not counted as Drop)")
         }

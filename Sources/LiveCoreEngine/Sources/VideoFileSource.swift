@@ -201,9 +201,19 @@ public final class VideoFileSource: NSObject, VideoSource {
         item.audioMix = mix
     }
 
+    /// Removal / shutdown: frees the decoder, the audio tap and the last frame right away, even if
+    /// something still holds this object for a moment (0.56.0; before, it only paused).
     public func stop() {
         player.pause()
         tapContext?.active.value = false
+        statusObservation?.invalidate(); statusObservation = nil
+        if let endObserver { NotificationCenter.default.removeObserver(endObserver) }
+        endObserver = nil
+        item?.remove(output)
+        player.replaceCurrentItem(with: nil)
+        item = nil
+        slot.clear()
+        started = false
     }
     public func play() { wantsPlay = true; tapContext?.active.value = true; player.play() }
     public func pause() { wantsPlay = false; player.pause() }

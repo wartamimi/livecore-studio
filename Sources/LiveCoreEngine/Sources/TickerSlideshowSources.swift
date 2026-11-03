@@ -407,7 +407,11 @@ public final class SlideshowSource: VideoSource {
         t.resume()
         timer = t
     }
-    public func stop() { timer?.cancel(); timer = nil }
+    public func stop() {
+        timer?.cancel(); timer = nil
+        // Decoded pictures are freed on removal (0.56.0).
+        queue.async { [weak self] in self?.cache = [:]; self?.blurCache = [:]; self?.lastDrawn = nil }
+    }
     deinit { timer?.cancel() }
 
     public func update(urls: [URL], interval: Double, fade: Double, loop: Bool, kenBurns: Bool, folder: URL?) {
