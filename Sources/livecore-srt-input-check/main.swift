@@ -40,7 +40,11 @@ func ffmpegHasSRT(_ ffmpeg: String) -> Bool {
 func engineCheck() -> Never {
     let ffmpeg = ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/usr/bin/ffmpeg"].first { FileManager.default.isExecutableFile(atPath: $0) }
     guard let ffmpeg else { fail("ffmpeg not found") }
-    for (i, codec) in ["libx264", "libx265"].enumerated() {
+    var failures: [String] = []
+    // ultrafast x264 = CAVLC with B-pictures; veryfast = CABAC (what OBS and most encoders send).
+    let cases = [("libx264", "ultrafast"), ("libx264", "veryfast"), ("libx265", "ultrafast")]
+    for (i, (codec, preset)) in cases.enumerated() {
+        let name = "\(codec) \(preset)"
         let port = 9310 + i
         let src = SRTSource(id: InputID("srt-check-\(i)"), config: ProjectSRTInput(mode: .listener, port: port, latencyMs: 200))
         src.audioChannelProvider = { MixerChannel.detached() }
@@ -48,7 +52,7 @@ func engineCheck() -> Never {
         // Homebrew's ffmpeg may lack libsrt: then ffmpeg writes TS to a pipe and srt-live-transmit
         // (Homebrew "srt") sends it, as the soak check does.
         let encode = "'\(ffmpeg)' -hide_banner -loglevel error -re -f lavfi -i testsrc2=size=1280x720:rate=30 "
-            + "-f lavfi -i sine=frequency=1000:sample_rate=48000 -t 8 -c:v \(codec) -preset ultrafast -g 30 -bf 2 "
+            + "-f lavfi -i sine=frequency=1000:sample_rate=48000 -t 8 -c:v \(codec) -preset \(preset) -g 30 -bf 2 "
             + "-c:a aac -ac 2 -f mpegts"
         let target = "srt://127.0.0.1:\(port)?mode=caller&latency=200000&streamid=check\(i)"
         let slt = ["/opt/homebrew/bin/srt-live-transmit", "/usr/local/bin/srt-live-transmit"].first { FileManager.default.isExecutableFile(atPath: $0) }
@@ -78,14 +82,18 @@ func engineCheck() -> Never {
         while p.isRunning && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
         if p.isRunning { p.terminate() }
         let s = src.signal
-        print("\(codec): status \(src.status.label), \(s.width)x\(s.height) \(s.videoCodec), frames \(s.frames), audio frames \(s.audioFrames) (\(s.audio)), decode errors \(s.decodeErrors) (last \(s.lastDecodeError)), decoder dropped \(s.decoderDropped), peer \(s.peer) streamid '\(s.streamID)', lost \(s.srt.lostPackets)")
+        print("\(name): status \(src.status.label), \(s.width)x\(s.height) \(s.videoCodec), frames \(s.frames), audio frames \(s.audioFrames) (\(s.audio)), decode errors \(s.decodeErrors) (last \(s.lastDecodeError)), decoder dropped \(s.decoderDropped), peer \(s.peer) streamid '\(s.streamID)', lost \(s.srt.lostPackets), decoder \(s.decoder), first failure: \(s.firstDecodeFailure.isEmpty ? "-" : s.firstDecodeFailure)")
         src.stop()
-        guard sawLive else { fail("\(codec): the input never went live") }
-        guard let pb = src.currentFrame(), CVPixelBufferGetWidth(pb) == 1280, CVPixelBufferGetHeight(pb) == 720 else { fail("\(codec): no 1280x720 frame") }
-        guard s.frames >= 150 else { fail("\(codec): only \(s.frames) frames shown (expected ~210)") }
-        guard s.audioFrames >= 48_000 * 5 else { fail("\(codec): only \(s.audioFrames) audio frames decoded") }
-        guard s.decodeErrors == 0 else { fail("\(codec): \(s.decodeErrors) decode errors") }
+        var problems: [String] = []
+        if !sawLive { problems.append("never went live") }
+        if let pb = src.currentFrame(), CVPixelBufferGetWidth(pb) == 1280, CVPixelBufferGetHeight(pb) == 720 {} else { problems.append("no 1280x720 frame") }
+        if s.frames < 150 { problems.append("only \(s.frames) frames shown (expected ~210)") }
+        if s.audioFrames < 48_000 * 5 { problems.append("only \(s.audioFrames) audio frames decoded") }
+        // A software fallback costs the frames of one GOP; more errors than that is a failure.
+        if s.decodeErrors > 30 { problems.append("\(s.decodeErrors) decode errors") }
+        failures += problems.map { "\(name): \($0)" }
     }
+    if !failures.isEmpty { fail(failures.joined(separator: "; ")) }
     print("OK")
     exit(0)
 }

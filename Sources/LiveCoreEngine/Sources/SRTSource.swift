@@ -40,6 +40,9 @@ public final class SRTSource: VideoSource, @unchecked Sendable {
         /// Last decoder error (OSStatus) and frames the decoder skipped on purpose.
         public var lastDecodeError: Int32 = 0
         public var decoderDropped = 0
+        /// "hardware" or "software" decoder, and the first failed picture (NAL types, frame number in the GOP).
+        public var decoder = ""
+        public var firstDecodeFailure = ""
         /// Totals since the input started: pictures shown, audio frames decoded.
         public var frames = 0, audioFrames = 0
     }
@@ -134,6 +137,11 @@ final class SRTDecodePipeline: @unchecked Sendable {
     private var decodeErrors = 0
     private var lastDecodeError: OSStatus = 0
     private var decoderDropped = 0
+    private var consecutiveErrors = 0
+    private var softwareOnly = false
+    private var usingHardware = false
+    private var firstFailure = ""
+    private var sinceKeyframe = 0
     // Rates.
     private var windowStart = 0.0, windowFrames = 0, windowBytes = 0
     private var totalFrames = 0, totalAudio = 0
@@ -182,9 +190,10 @@ final class SRTDecodePipeline: @unchecked Sendable {
             let vc = demux.videoCodec?.name ?? ""
             let errs = decodeErrors, frames = totalFrames, audioFrames = totalAudio
             let lastErr = lastDecodeError, dropped = decoderDropped
+            let dec = session == nil ? "" : (usingHardware ? "hardware" : "software"), ff = firstFailure
             report { s in
                 s.fps = fps; s.kbps = kbps; s.width = w; s.height = h; s.videoCodec = vc; s.decodeErrors = errs
-                s.lastDecodeError = lastErr; s.decoderDropped = dropped
+                s.lastDecodeError = lastErr; s.decoderDropped = dropped; s.decoder = dec; s.firstDecodeFailure = ff
                 s.frames = frames; s.audioFrames = audioFrames
             }
             windowStart = now; windowFrames = 0; windowBytes = 0
@@ -226,6 +235,9 @@ final class SRTDecodePipeline: @unchecked Sendable {
         }
         guard let session, let format, !slices.isEmpty else { return }
         if !haveKeyframe { guard keyframe else { return }; haveKeyframe = true }
+        sinceKeyframe = keyframe ? 0 : sinceKeyframe + 1
+        let types = slices.map { hevc ? Int(HEVC.nalType($0.first!)) : Int(AVC.nalType($0.first!)) }
+        let frameNo = sinceKeyframe
         guard let sample = Self.sampleBuffer(slices, format: format, pts: au.pts ?? 0, dts: au.dts ?? au.pts ?? 0) else { return }
         let pts = au.pts ?? 0
         let dts = au.dts ?? pts
@@ -233,13 +245,28 @@ final class SRTDecodePipeline: @unchecked Sendable {
         let st = VTDecompressionSessionDecodeFrame(session, sampleBuffer: sample, flags: [], infoFlagsOut: &flags) { [weak self] status, info, image, _, _ in
             guard let self else { return }
             if info.contains(.frameDropped) { self.decoderDropped += 1; return }
-            if status != noErr || image == nil { self.decodeErrors += 1; self.lastDecodeError = status; return }
+            if status != noErr || image == nil {
+                self.decodeErrors += 1; self.lastDecodeError = status; self.consecutiveErrors += 1
+                if self.firstFailure.isEmpty {
+                    self.firstFailure = "status \(status), NAL \(types), picture \(frameNo) after the keyframe, \(self.usingHardware ? "hardware" : "software")"
+                }
+                return
+            }
+            self.consecutiveErrors = 0
             self.enqueue(pts: pts, pb: image!)
         }
         if st != noErr {
             decodeErrors += 1
             lastDecodeError = st
+            consecutiveErrors += 1
             if st == kVTInvalidSessionErr { self.session = nil; paramSets = [] }
+        }
+        // Some decoders (seen on virtual Macs) reject B-pictures the software decoder takes:
+        // after a run of failures on a hardware session, start again in software at the next keyframe.
+        if consecutiveErrors >= 3, usingHardware, !softwareOnly {
+            softwareOnly = true
+            consecutiveErrors = 0
+            if makeSession(sets: paramSets, hevc: hevc) == false { self.session = nil; paramSets = [] }
         }
         // Anchor the presentation clock on the first decoded unit's decode time.
         if refPTS == nil {
@@ -279,12 +306,17 @@ final class SRTDecodePipeline: @unchecked Sendable {
             kCVPixelBufferMetalCompatibilityKey as String: true,
         ]
         var s: VTDecompressionSession?
-        let created = VTDecompressionSessionCreate(allocator: kCFAllocatorDefault, formatDescription: fd, decoderSpecification: nil,
+        let spec: CFDictionary? = softwareOnly
+            ? [kVTVideoDecoderSpecification_EnableHardwareAcceleratedVideoDecoder as String: false] as CFDictionary : nil
+        let created = VTDecompressionSessionCreate(allocator: kCFAllocatorDefault, formatDescription: fd, decoderSpecification: spec,
                                                    imageBufferAttributes: attrs as CFDictionary, outputCallback: nil,
                                                    decompressionSessionOut: &s)
         guard created == noErr, let s else { decodeErrors += 1; return false }
         session = s
         format = fd
+        var hw: CFTypeRef?
+        usingHardware = VTSessionCopyProperty(s, key: kVTDecompressionPropertyKey_UsingHardwareAcceleratedVideoDecoder,
+                                              allocator: kCFAllocatorDefault, valueOut: &hw) == noErr && (hw as? Bool ?? false)
         size = (Int(dims.width), Int(dims.height))
         haveKeyframe = false
         return true
