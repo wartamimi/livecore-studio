@@ -43,6 +43,9 @@ public final class SRTSource: VideoSource, @unchecked Sendable {
         /// "hardware" or "software" decoder, and the first failed picture (NAL types, frame number in the GOP).
         public var decoder = ""
         public var firstDecodeFailure = ""
+        /// Pictures the decoder returned; TS continuity errors and damaged access units seen.
+        public var decoded = 0
+        public var continuityErrors = 0, damagedUnits = 0
         /// Totals since the input started: pictures shown, audio frames decoded.
         public var frames = 0, audioFrames = 0
     }
@@ -107,6 +110,18 @@ public final class SRTSource: VideoSource, @unchecked Sendable {
         start()
     }
 
+    /// Decodes a whole MPEG-TS recording through the same pipeline, without the network (checks).
+    public static func decodeCheck(_ ts: [UInt8]) -> (decoded: Int, errors: Int, firstFailure: String) {
+        let p = SRTDecodePipeline(slot: FrameSlot(), channel: nil) { _ in }
+        var o = 0
+        while o < ts.count {
+            let k = min(1316, ts.count - o)
+            p.feed(ts[o..<(o + k)])
+            o += k
+        }
+        return (p.decoded, p.decodeErrors, p.firstFailure)
+    }
+
     private func setStatus(_ s: SourceStatus) {
         DispatchQueue.main.async { [weak self] in
             guard let self, self.link != nil else { return }
@@ -134,13 +149,15 @@ final class SRTDecodePipeline: @unchecked Sendable {
     private var refTime = 0.0
     private var lastArrival = 0.0
     private var live = false
-    private var decodeErrors = 0
-    private var lastDecodeError: OSStatus = 0
+    private(set) var decodeErrors = 0
+    private(set) var decoded = 0
+    private var damagedUnits = 0
+    private(set) var lastDecodeError: OSStatus = 0
     private var decoderDropped = 0
     private var consecutiveErrors = 0
     private var softwareOnly = false
     private var usingHardware = false
-    private var firstFailure = ""
+    private(set) var firstFailure = ""
     private var sinceKeyframe = 0
     // Rates.
     private var windowStart = 0.0, windowFrames = 0, windowBytes = 0
@@ -190,10 +207,12 @@ final class SRTDecodePipeline: @unchecked Sendable {
             let vc = demux.videoCodec?.name ?? ""
             let errs = decodeErrors, frames = totalFrames, audioFrames = totalAudio
             let lastErr = lastDecodeError, dropped = decoderDropped
+            let okCount = decoded, cc = demux.continuityErrors, dmg = damagedUnits
             let dec = session == nil ? "" : (usingHardware ? "hardware" : "software"), ff = firstFailure
             report { s in
                 s.fps = fps; s.kbps = kbps; s.width = w; s.height = h; s.videoCodec = vc; s.decodeErrors = errs
                 s.lastDecodeError = lastErr; s.decoderDropped = dropped; s.decoder = dec; s.firstDecodeFailure = ff
+                s.decoded = okCount; s.continuityErrors = cc; s.damagedUnits = dmg
                 s.frames = frames; s.audioFrames = audioFrames
             }
             windowStart = now; windowFrames = 0; windowBytes = 0
@@ -208,6 +227,7 @@ final class SRTDecodePipeline: @unchecked Sendable {
 
     private func video(_ au: MPEGTSDemuxer.AccessUnit, now: Double) {
         lastArrival = now
+        if au.damaged { damagedUnits += 1 }
         let nals = AVC.splitAnnexB(au.data)
         guard !nals.isEmpty else { return }
         let hevc = au.codec == .hevc
@@ -253,6 +273,7 @@ final class SRTDecodePipeline: @unchecked Sendable {
                 return
             }
             self.consecutiveErrors = 0
+            self.decoded += 1
             self.enqueue(pts: pts, pb: image!)
         }
         if st != noErr {
