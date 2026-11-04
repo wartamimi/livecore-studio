@@ -49,8 +49,10 @@ public final class ProductionEngine {
     /// monitors and the fullscreen output keep moving. Only touch thread-safe state here.
     public var onDisplayFrames: ((DisplayFrames) -> Void)?
     public struct DisplayFrames {
-        public let program: CVPixelBuffer
-        public let preview: CVPixelBuffer?
+        public var program: CVPixelBuffer
+        public var preview: CVPixelBuffer?
+        /// Input thumbnails (inputs panel, Multiview), newest per input.
+        public var thumbs: [InputID: CVPixelBuffer]
     }
     public var onThumbnails: (([InputID: CVPixelBuffer]) -> Void)?
     /// Full-size picture of `detailInput` (per-input viewer). Main thread.
@@ -278,12 +280,16 @@ public final class ProductionEngine {
     func deliverToUI(program: CVPixelBuffer, preview: CVPixelBuffer?, thumbs: [InputID: CVPixelBuffer],
                      detail: (InputID, CVPixelBuffer)?) {
         if let display = onDisplayFrames {
-            displayMailbox.post(DisplayFrames(program: program, preview: preview), display)
+            displayMailbox.post(DisplayFrames(program: program, preview: preview, thumbs: thumbs), merge: { old, new in
+                old.program = new.program
+                if let p = new.preview { old.preview = p }
+                old.thumbs.merge(new.thumbs) { _, n in n }
+            }, display)
         }
         let schedule = uiMailbox.mutate { m -> Bool in
             m.program = program
             if let preview { m.preview = preview }
-            m.thumbs.merge(thumbs) { _, new in new }
+            if onDisplayFrames == nil { m.thumbs.merge(thumbs) { _, new in new } }
             if let detail { m.detail = detail }
             if m.scheduled { return false }
             m.scheduled = true
@@ -300,7 +306,7 @@ public final class ProductionEngine {
             if let d = m.detail { self.onDetailFrame?(d.0, d.1) }
             if let p = m.program { self.onProgramFrame?(p) }
             if let p = m.preview { self.onPreviewFrame?(p) }
-            if !m.thumbs.isEmpty { self.onThumbnails?(m.thumbs) }
+            if !m.thumbs.isEmpty, self.onDisplayFrames == nil { self.onThumbnails?(m.thumbs) }
         }
     }
     /// Mixer settings from a loaded project for video-file channels that appear once the file's
