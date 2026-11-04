@@ -2,6 +2,7 @@
 import AppKit
 import AudioToolbox
 import AVFoundation
+import CoreAudioKit
 import CVST3
 import LiveCoreCore
 
