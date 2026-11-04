@@ -129,7 +129,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Magewell Pro | Planned | Perlu SDK vendor |
 | NDI | Implemented: output (0.24.0) dan input (0.29.0) | Runtime NDI dimuat saat jalan (tidak disertakan); lihat bagian Input NDI 0.29.0 |
 | Virtual camera sendiri (Camera Extension seperti OBS) | Dihapus (0.23.0) | Dibuat di 0.22.0 lalu dihapus atas permintaan pemilik (butuh tanda tangan Developer ID). Pakai Syphon → OBS → OBS Virtual Camera |
-| Syphon (kirim output ke OBS, Resolume, MadMapper…) | Implemented (0.22.0), diperbaiki 0.23.0, belum dites di Mac pengguna | Server Syphon (kode BSD, di-vendor) per output; nyala saat EXTERNAL aktif (Output 1 otomatis bila belum ada yang dipilih); frame dikirim sejak server dibuat; status "aplikasi tersambung" di EXTERNAL ⚙. CI `livecore-syphon-check`: proses lain menemukan server lewat direktori Syphon dan membaca frame 1280×720 BGRA dari IOSurface (T-89) |
+| Syphon (kirim output ke OBS, Resolume, MadMapper…) | Dihapus (0.62.0) atas permintaan pengguna; routing Syphon di proyek lama menjadi NDI. Sebelumnya: | Server Syphon (kode BSD, di-vendor) per output; nyala saat EXTERNAL aktif (Output 1 otomatis bila belum ada yang dipilih); frame dikirim sejak server dibuat; status "aplikasi tersambung" di EXTERNAL ⚙. CI `livecore-syphon-check`: proses lain menemukan server lewat direktori Syphon dan membaca frame 1280×720 BGRA dari IOSurface (T-89) |
 
 ## Kontrol
 | Fitur | Status | Verifikasi | Catatan |
@@ -321,7 +321,7 @@ Impor template title vMix GT (.gtzip). Diuji dengan sampel "Blue news.gtzip" dar
 
 | Fitur | Status | Verifikasi | Catatan |
 |---|---|---|---|
-| Impor .gtzip (Graphics › Title vMix GT) | Implemented, belum dites | L (5 tes) + M (kompilasi) | Membaca document.xml + resources.xml; layer diratakan dan dipotong sesuai kotak layer |
+| Impor .gtzip (Graphics › Title vMix GT) | Dihapus (0.62.0) atas permintaan pengguna; input GT di proyek lama dilewati dengan peringatan. Sebelumnya: | L (5 tes) + M (kompilasi) | Membaca document.xml + resources.xml; layer diratakan dan dipotong sesuai kotak layer |
 | Elemen: Rectangle, Ellipse, TextBlock, Image | Implemented, belum dites | M (kompilasi) | Warna solid, gradasi linear/radial, sudut tumpul, garis tepi, skew, bayangan sederhana |
 | Text3D | Partial | M (kompilasi) | Digambar sebagai teks datar + bayangan; efek 3D/ekstrusi tidak ada |
 | Animasi masuk saat On Air (Reveal, Expand, Zoom, Fade) | Implemented, belum dites | L (perhitungan frame) | Diputar tiap input masuk Program; di Preview tampil versi selesai. Animasi keluar dan jenis lain belum |
@@ -561,3 +561,14 @@ Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; k
 | Input gambar semua format (0.61.0): semua tipe yang bisa dibaca ImageIO di Mac tersebut (PNG, JPEG, HEIC/HEIF, AVIF, WebP, TIFF, GIF, BMP, ICO, ICNS, TGA, PSD, OpenEXR, JPEG 2000, RAW kamera — tergantung versi macOS), orientasi EXIF diikuti; PDF/EPS (halaman pertama) dan SVG (bila NSImage versi macOS itu bisa membaca SVG) dirender ke bitmap; juga untuk slideshow | Implemented, belum dites di Mac | — | GIF/WebP animasi hanya frame pertama. T-329 |
 | Online Library by Pixabay (0.61.0): cari foto/ilustrasi/vektor/video gratis Pixabay dengan API key sendiri (disimpan di Keychain), pilih beberapa, tiap item diunduh sekali ke Application Support/LiveCore Studio/Pixabay lalu jadi input gambar/video biasa; video maks. 1080p | Implemented, belum dites di Mac | L (URL & parsing JSON) | Vektor lewat API gratis berupa PNG/JPG (SVG asli butuh akses API penuh). T-330 |
 | Web Controller online lewat Tailscale (0.61.0): metode Cloudflare / Tailscale (privat, `tailscale serve`, https://<mac>.<tailnet>.ts.net hanya untuk perangkat di tailnet) / Tailscale Funnel (publik); alamat tailnet 100.x langsung ditampilkan; link persetujuan admin Tailscale ditampilkan bila Serve/Funnel belum aktif; nama *.ts.net diizinkan oleh penjaga Host | Implemented, belum dites di Mac | L (penjaga Host) | Butuh Tailscale versi dengan sintaks `tailscale serve <target>` (1.52+). T-331 |
+
+## 0.62.0
+
+| Fitur | Status | Bukti | Catatan |
+|---|---|---|---|
+| Web Controller baru (responsive HP/tablet/desktop) | Implemented, belum dites di HP pengguna | L (M62Tests, 4 tes) + tes Chromium pada server demo | Gambar Program/Preview dikirim lewat satu stream `/api/video` (hanya gambar terbaru), audio jitter buffer adaptif (AudioWorklet di https, fallback http), tab bawah di HP, 2/3 kolom di layar lebar, PTZ, data title, fullscreen, statistik CPU/FPS/Drop/Ping, pengaturan (tema, kualitas, fps, utamakan suara, layar tetap nyala) |
+| Tabel shortcut keyboard | Implemented, belum dites | L (kompilasi) + kompilasi CI | Default kosong; 63 aksi; preset Classic, Numpad, Function Keys, Laptop, Presenter; perekam tombol dan pencarian |
+| Layer edit: opsi klik 2x, nama tidak menimpa ikon | Implemented, belum dites | kompilasi CI | Properti, isi kanvas, tengah, depan/belakang, hapus crop, sembunyi, kunci, duplikat, hapus |
+| Properties: tab Animation | Implemented, belum dites | kompilasi CI + shader dikompilasi saat jalan (lihat log soak-check) | Motion 12 efek (pulse, breathe, float, shake, swing, spin, zoom, ripple, glitch, heartbeat, bounce, sway), Mask & Wave, LUT |
+| File › Open Recent, Save as Template, New from My Template | Implemented, belum dites | kompilasi CI | Template pengguna di Application Support/LiveCore Studio/Templates |
+| Settings › Appearance | Implemented, belum dites | kompilasi CI | 7 tema, warna aksen, tally aman buta warna, panel membulat, 6 susunan dock |

@@ -87,7 +87,7 @@
     Menutup app tetap mungkin walau stream terkunci (konfirmasi quit tetap muncul saat output aktif).
 44. **Virtual camera sendiri**: dihapus di 0.23.0 atas permintaan pemilik. macOS hanya menerima kamera virtual sebagai
     CoreMediaIO Camera Extension yang ditandatangani Apple Developer ID, jadi build unsigned tidak bisa memakainya.
-    Gunakan EXTERNAL › Syphon → OBS "Syphon Client" → Start Virtual Camera di OBS.
+    Gunakan EXTERNAL › NDI → NDI Virtual Camera (Syphon dihapus di 0.62.0).
 45. **Penampil source**: satu jendela untuk satu input sekaligus (membuka input lain mengganti isinya). Dirender pada
     resolusi output setiap frame selama terbuka (menambah beban GPU sedikit).
 46. **Transparansi**: tile input menampilkan bagian transparan sebagai papan catur; Preview/Program tetap di atas
@@ -247,7 +247,7 @@
 64. **Canvas portrait/custom (0.26.0)**: thumbnail input dan tile input di Multiview tetap 16:9. Posisi layer, overlay dan
     judul memakai koordinat relatif, jadi tata letak yang dibuat untuk 16:9 akan tertarik bila canvas diganti ke 9:16;
     atur ulang di Layer Designer. Platform stream harus mendukung video vertikal (YouTube Shorts, Facebook, TikTok Live).
-94. **Title vMix GT (0.39.0)**: hasil render bisa sedikit berbeda dari vMix (posisi teks, ukuran font, arah skew). Text3D
+94. **Title vMix GT (0.39.0, dihapus di 0.62.0)**: hasil render bisa sedikit berbeda dari vMix (posisi teks, ukuran font, arah skew). Text3D
     datar, Feather/crop gambar diabaikan, animasi keluar dan data source belum ada. File .gtzip harus tetap ada di tempatnya.
 95. **Font otomatis (0.40.0)**: hanya dari Google Fonts. Font berbayar atau "personal use" tidak tersedia dan harus dipasang
     manual; perhatikan lisensinya sebelum dipakai di siaran.
