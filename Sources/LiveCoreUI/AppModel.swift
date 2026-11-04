@@ -50,7 +50,11 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var layoutTemplates: [LayoutTemplate] = AppModel.loadLayoutTemplates()
     /// Outputs the top-bar FULLSCREEN button opens on their displays (Output 1 by default).
     @Published public internal(set) var fullscreenOutputs: Set<Int> = [1]
-    public internal(set) var thumbnailFeeds: [InputID: FrameFeed] = [:]
+    public internal(set) var thumbnailFeeds: [InputID: FrameFeed] = [:] {
+        didSet { sharedThumbnailFeeds.mutate { $0 = thumbnailFeeds } }
+    }
+    /// Copy of `thumbnailFeeds` the display queue can read (0.58.1).
+    let sharedThumbnailFeeds = Locked<[InputID: FrameFeed]>([:])
     var occlusionObserver: NSObjectProtocol?
     var demandUpdateScheduled = false
     /// The four extra outputs: one feed per output window / full-screen display.
@@ -227,9 +231,15 @@ public final class AppModel: ObservableObject {
         // Monitor pictures are put on screen from the display queue, not the main thread
         // (0.58.1), so opening windows or sheets no longer makes Preview/Program stutter.
         let program = programFeed, programOut = programOutputFeed, preview = previewFeed
+        let thumbFeeds = sharedThumbnailFeeds
         e.onDisplayFrames = { f in
             program.push(f.program); programOut.push(f.program)
             if let p = f.preview { preview.push(p) }
+            if !f.thumbs.isEmpty {
+                // Only feeds that exist: a tile creates its feed (main thread) when it appears.
+                let feeds = thumbFeeds.current
+                for (id, pb) in f.thumbs { feeds[id]?.push(pb) }
+            }
         }
         e.onThumbnails = { [weak self] thumbs in
             guard let self else { return }

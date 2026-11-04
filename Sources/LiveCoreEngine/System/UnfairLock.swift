@@ -54,12 +54,14 @@ public final class LatestOnQueue<Value>: @unchecked Sendable {
     private let queue: DispatchQueue
     private let slot = Locked<Value?>(nil)
     public init(label: String) { queue = DispatchQueue(label: label, qos: .userInteractive) }
-    public func post(_ value: Value, _ handler: @escaping (Value) -> Void) {
+    /// `merge` folds a new value into one still waiting (default: the new one replaces it).
+    public func post(_ value: Value, merge: ((inout Value, Value) -> Void)? = nil,
+                     _ handler: @escaping (Value) -> Void) {
         let schedule = slot.mutate { s -> Bool in
-            let idle: Bool
-            if case .none = s { idle = true } else { idle = false }
-            s = value
-            return idle
+            guard var waiting = s else { s = value; return true }
+            if let merge { merge(&waiting, value) } else { waiting = value }
+            s = waiting
+            return false
         }
         guard schedule else { return }
         queue.async { [slot] in
