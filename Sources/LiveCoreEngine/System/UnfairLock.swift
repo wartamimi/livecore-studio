@@ -41,3 +41,31 @@ public final class Locked<Value>: @unchecked Sendable {
     public var current: Value { lock.withLock { value } }
 }
 #endif
+
+#if os(macOS)
+import Dispatch
+
+/// Runs a handler with the newest posted value on a serial queue of its own (0.58.1). Values
+/// posted while the handler is still busy replace each other, so a slow consumer only ever
+/// sees the latest one. Used to put monitor and output-window frames on screen without the
+/// main thread: opening a window, a sheet or a menu no longer freezes Preview, Program or the
+/// picture on an external display.
+public final class LatestOnQueue<Value>: @unchecked Sendable {
+    private let queue: DispatchQueue
+    private let slot = Locked<Value?>(nil)
+    public init(label: String) { queue = DispatchQueue(label: label, qos: .userInteractive) }
+    public func post(_ value: Value, _ handler: @escaping (Value) -> Void) {
+        let schedule = slot.mutate { s -> Bool in
+            let idle: Bool
+            if case .none = s { idle = true } else { idle = false }
+            s = value
+            return idle
+        }
+        guard schedule else { return }
+        queue.async { [slot] in
+            guard let v = slot.mutate({ s -> Value? in let out = s; s = nil; return out }) else { return }
+            handler(v)
+        }
+    }
+}
+#endif
