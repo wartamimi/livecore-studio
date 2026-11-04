@@ -94,8 +94,6 @@ jobs:
       - run: scripts/ci_run.sh macos-plugin-build swift build --product LCTestGainVST3
       - run: scripts/ci_run.sh macos-plugin-check swift run livecore-plugin-check .build/debug/libLCTestGainVST3.dylib
         timeout-minutes: 5
-        # User decision 2026-11-04: a plug-in check failure must not hold back the DMG.
-        continue-on-error: true
       - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
       # SRT input decoded end to end. H.264 through srt-live-transmit on the CI VM still shows
       # decode errors (HEVC and file decoding pass; the user confirmed SRT works on a real Mac), so
