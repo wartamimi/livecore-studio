@@ -85,11 +85,17 @@ extension AppModel {
     }
 
     public func addImage() {
-        pickFile(types: ["public.image"]) { [weak self] url in self?.engine?.addImage(url: url) }
+        pickFile(types: ImageFormats.contentTypes.map(\.identifier)) { [weak self] url in self?.engine?.addImage(url: url) }
     }
 
     /// An image file (e.g. a PHOTO just taken) as a new input.
     public func addImageInput(_ url: URL) { engine?.addImage(url: url) }
+    /// A downloaded clip (Online Library by Pixabay, 0.61.0) as a video input that plays from the
+    /// start when it goes on Program, like Add Media.
+    public func addVideoInput(_ url: URL) {
+        engine?.addVideoFile(url: url, autoPlay: .restartPause)
+        reloadAudioChannels()
+    }
 
     /// Media files: video or audio. Several can be picked at once.
     func pickMedia(multiple: Bool = true) -> [URL] {
@@ -388,7 +394,7 @@ extension AppModel {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
-        panel.allowedContentTypes = [.image]
+        panel.allowedContentTypes = ImageFormats.contentTypes
         return panel.runModal() == .OK ? panel.urls : []
     }
     public func addTimer(_ config: TimerConfig) { engine?.addTimer(config) }

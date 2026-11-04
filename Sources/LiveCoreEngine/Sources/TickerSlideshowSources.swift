@@ -470,7 +470,7 @@ public final class SlideshowSource: VideoSource {
     private var shownIndex = 0
 
     /// Image file types offered when a folder is picked.
-    public static let imageExtensions: Set<String> = ["jpg", "jpeg", "png", "heic", "heif", "tif", "tiff", "gif", "bmp", "webp"]
+    public static var imageExtensions: Set<String> { ImageFormats.extensions }
 
     /// Image files directly inside `folder`, sorted by name the way Finder sorts them.
     public static func images(inFolder folder: URL) -> [URL] {
@@ -543,12 +543,8 @@ public final class SlideshowSource: VideoSource {
     private func image(_ i: Int) -> CGImage? {
         if let c = cache[i] { return c }
         guard !failed.contains(i), list.indices.contains(i),
-              let src = CGImageSourceCreateWithURL(list[i] as CFURL, nil) else { failed.insert(i); return nil }
-        let opts: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true,
-                                     kCGImageSourceCreateThumbnailWithTransform: true,
-                                     kCGImageSourceShouldCacheImmediately: true,
-                                     kCGImageSourceThumbnailMaxPixelSize: max(outputSize.width, outputSize.height)]
-        guard let img = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else { failed.insert(i); return nil }
+              let img = ImageFormats.decode(list[i], maxSide: max(outputSize.width, outputSize.height))
+        else { failed.insert(i); return nil }
         cache[i] = img
         return img
     }

@@ -76,6 +76,8 @@ public final class MusicInput {
     public func play() {
         guard !tracks.isEmpty else { return }
         tapContext?.active.value = true
+        // At the end of the track Play starts it again from the beginning (0.61.0).
+        if let d = duration, position >= d - 0.05 { player.seek(to: .zero) }
         player.play()
         isPlaying = true
         onChange?()

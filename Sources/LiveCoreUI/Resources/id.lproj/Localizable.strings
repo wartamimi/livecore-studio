@@ -1789,3 +1789,37 @@
 "plugins.folders" = "Lokasi folder plugin";
 "plugins.show_in_finder" = "Buka di Finder";
 "plugins.folders_note" = "Pasang plugin VST3 (.vst3) dan Audio Unit (.component) ke folder ini, lalu tekan Rescan. Plugin AUv3 (berbentuk aplikasi) otomatis terdeteksi setelah aplikasinya dibuka sekali.";
+
+/* 0.61.0 Tailscale */
+"remote.method" = "Metode";
+"remote.method_tailscale" = "Tailscale (privat)";
+"remote.method_funnel" = "Tailscale Funnel (publik)";
+"remote.tailscale_about" = "Tailscale Serve memberi alamat https://<mac>.<tailnet>.ts.net yang hanya bisa dibuka perangkat yang login ke jaringan Tailscale Anda (pasang Tailscale juga di HP/tablet). Tidak ada yang terbuka ke internet. PIN tetap diperlukan.";
+"remote.funnel_about" = "Tailscale Funnel membuat alamat https://<mac>.<tailnet>.ts.net bisa dibuka dari perangkat mana pun di internet, tanpa Tailscale di HP. PIN tetap diperlukan.";
+"remote.tailscale_install" = "Perlu Tailscale di Mac ini: pasang aplikasinya dari tailscale.com/download (atau brew install tailscale) lalu login.";
+"remote.tailscale_enable" = "Tailscale perlu persetujuan sekali untuk Mac ini. Buka link ini, setujui, lalu tunggu di sini (alamat muncul sendiri):";
+"remote.tailnet_direct" = "Alamat tailnet langsung:";
+
+/* 0.61.0 Pixabay */
+"pixabay.menu" = "Online Library by Pixabay…";
+"pixabay.title" = "Online Library by Pixabay";
+"pixabay.photo" = "Foto";
+"pixabay.illustration" = "Ilustrasi";
+"pixabay.vector" = "Vektor";
+"pixabay.video" = "Video";
+"pixabay.search_hint" = "Cari (mis. wedding, city night, abstract background)";
+"pixabay.search" = "Cari";
+"pixabay.more" = "Muat lagi";
+"pixabay.empty" = "Cari di library gratis Pixabay. Klik item untuk memilih, lalu Tambah: tiap item diunduh sekali dan menjadi input.";
+"pixabay.need_key" = "Masukkan API key Pixabay gratis Anda di atas (Dapatkan key → login di pixabay.com, key tampil di halaman API). Key disimpan di Keychain.";
+"pixabay.attribution" = "Gambar dan video dari Pixabay";
+"pixabay.add" = "Tambah";
+"pixabay.add_n" = "Tambah %@";
+"pixabay.key" = "API key Pixabay";
+"pixabay.save_key" = "Simpan key";
+"pixabay.get_key" = "Dapatkan key";
+"pixabay.key_saved" = "API key tersimpan di Keychain";
+"pixabay.change_key" = "Ganti";
+"pixabay.no_results" = "Tidak ditemukan. Coba kata lain atau tipe lain.";
+"pixabay.downloading" = "Mengunduh %@ dari %@…";
+"transport.loop" = "Loop: ulangi klip (atau playlist dari klip pertama)";

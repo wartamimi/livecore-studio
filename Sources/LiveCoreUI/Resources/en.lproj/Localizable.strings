@@ -1789,3 +1789,37 @@
 "plugins.folders" = "Plug-in folders";
 "plugins.show_in_finder" = "Show in Finder";
 "plugins.folders_note" = "Install VST3 plug-ins (.vst3) and Audio Units (.component) into these folders, then press Rescan. App-based AUv3 plug-ins are found automatically once their app has been opened once.";
+
+/* 0.61.0 Tailscale */
+"remote.method" = "Method";
+"remote.method_tailscale" = "Tailscale (private)";
+"remote.method_funnel" = "Tailscale Funnel (public)";
+"remote.tailscale_about" = "Tailscale Serve gives an https://<mac>.<tailnet>.ts.net address that only devices signed in to your Tailscale network can open (install Tailscale on the phone or tablet too). Nothing is exposed to the internet. The PIN is still required.";
+"remote.funnel_about" = "Tailscale Funnel makes the https://<mac>.<tailnet>.ts.net address reachable from any device on the internet, without Tailscale on the phone. The PIN is still required.";
+"remote.tailscale_install" = "Needs Tailscale on this Mac: install the app from tailscale.com/download (or brew install tailscale) and sign in.";
+"remote.tailscale_enable" = "Tailscale needs a one-time approval for this Mac. Open this link, approve, then wait here (the address appears by itself):";
+"remote.tailnet_direct" = "Direct tailnet address:";
+
+/* 0.61.0 Pixabay */
+"pixabay.menu" = "Online Library by Pixabay…";
+"pixabay.title" = "Online Library by Pixabay";
+"pixabay.photo" = "Photos";
+"pixabay.illustration" = "Illustrations";
+"pixabay.vector" = "Vectors";
+"pixabay.video" = "Videos";
+"pixabay.search_hint" = "Search (e.g. wedding, city night, abstract background)";
+"pixabay.search" = "Search";
+"pixabay.more" = "Load more";
+"pixabay.empty" = "Search the free Pixabay library. Click items to select them, then Add: each one is downloaded once and becomes an input.";
+"pixabay.need_key" = "Enter your free Pixabay API key above (Get a key → sign in on pixabay.com, the key is shown on the API page). It is stored in the Keychain.";
+"pixabay.attribution" = "Images and videos from Pixabay";
+"pixabay.add" = "Add";
+"pixabay.add_n" = "Add %@";
+"pixabay.key" = "Pixabay API key";
+"pixabay.save_key" = "Save key";
+"pixabay.get_key" = "Get a key";
+"pixabay.key_saved" = "API key saved in the Keychain";
+"pixabay.change_key" = "Change";
+"pixabay.no_results" = "Nothing found. Try other words or another type.";
+"pixabay.downloading" = "Downloading %@ of %@…";
+"transport.loop" = "Loop: repeat the clip (or the playlist from its first clip)";
