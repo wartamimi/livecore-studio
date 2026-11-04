@@ -1784,3 +1784,8 @@
 "plugins.none_found" = "Tidak ada";
 "plugins.generic" = "Plugin ini tidak punya jendela sendiri: parameternya ditampilkan di sini.";
 "plugins.no_params" = "Tidak ada parameter yang bisa diatur.";
+"plugins.tab" = "Audio Plugin";
+"plugins.master_menu" = "Audio Plugin…";
+"plugins.folders" = "Lokasi folder plugin";
+"plugins.show_in_finder" = "Buka di Finder";
+"plugins.folders_note" = "Pasang plugin VST3 (.vst3) dan Audio Unit (.component) ke folder ini, lalu tekan Rescan. Plugin AUv3 (berbentuk aplikasi) otomatis terdeteksi setelah aplikasinya dibuka sekali.";
