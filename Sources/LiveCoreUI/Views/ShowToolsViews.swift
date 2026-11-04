@@ -232,6 +232,22 @@ struct TemplatesSheet: View {
                     .buttonStyle(.plain)
                 }
             }
+            if !model.userTemplates.isEmpty {
+                Text(L10n.t("template.mine")).font(.system(size: 13, weight: .bold))
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(model.userTemplates, id: \.self) { u in
+                            Button { dismiss(); DispatchQueue.main.async { model.openProject(at: u, asTemplate: true) } } label: {
+                                Label(u.deletingPathExtension().lastPathComponent, systemImage: "square.stack.3d.up")
+                                    .lineLimit(1).padding(.horizontal, 10).padding(.vertical, 7)
+                                    .background(Theme.panelRaised).clipShape(RoundedRectangle(cornerRadius: 6))
+                            }
+                            .buttonStyle(.plain)
+                            .contextMenu { Button(L10n.t("template.delete"), role: .destructive) { model.deleteUserTemplate(u) } }
+                        }
+                    }
+                }
+            }
             Text(L10n.f("template.devices", model.videoDevices.filter(\.isConnected).count, model.audioDevices.filter(\.isConnected).count))
                 .font(.system(size: 11)).foregroundStyle(Theme.textDim)
             Divider()
@@ -244,7 +260,7 @@ struct TemplatesSheet: View {
         }
         .padding(20)
         .frame(width: 700)
-        .onAppear { model.refreshDevices() }
+        .onAppear { model.refreshDevices(); model.refreshUserTemplates() }
     }
 
     private func icon(_ t: ProjectTemplate) -> String {

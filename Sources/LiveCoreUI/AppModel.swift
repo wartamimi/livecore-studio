@@ -122,6 +122,10 @@ public final class AppModel: ObservableObject {
         didSet { live.objectWillChange.send() }
     }
     @Published public var shortcuts = ShortcutStore.load()
+    /// Settings › Appearance (0.62.0): theme, accent, tally colours and dock layout. Applied live.
+    @Published public var appearance = AppearanceSettings.load() {
+        didSet { guard appearance != oldValue else { return }; Theme.apply(appearance); appearance.save() }
+    }
     /// Key monitor for the shortcuts (0.62.0) and whether Settings is recording a key.
     var shortcutMonitor: Any?
     /// Input Properties requested from outside the input list (layer designer, 0.62.0).
@@ -463,6 +467,9 @@ public final class AppModel: ObservableObject {
     @Published public var highlightProgress: String?
     @Published public var showOutputsPanel = false
     @Published public var showTemplates = false
+    /// File › Open Recent and File › New from My Template (0.62.0).
+    @Published public var recentProjects: [URL] = AppModel.loadRecentProjects()
+    @Published public var userTemplates: [URL] = AppModel.listUserTemplates()
     /// True while the crash-recovery question is pending (the welcome screen waits for it).
     public internal(set) var recoveryPending = false
 }

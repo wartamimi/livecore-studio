@@ -18,7 +18,24 @@ public enum LiveCoreScenes {
             CommandGroup(replacing: .newItem) {
                 Button(L10n.t("project.new")) { model.newProject() }
                 Button(L10n.t("project.open")) { model.openProject() }.keyboardShortcut("o", modifiers: [.command])
+                Menu(L10n.t("project.open_recent")) {
+                    ForEach(model.recentProjects, id: \.self) { u in
+                        Button(u.deletingPathExtension().lastPathComponent) { model.openRecent(u) }
+                    }
+                    if !model.recentProjects.isEmpty { Divider() }
+                    Button(L10n.t("project.recent_clear")) { model.clearRecentProjects() }.disabled(model.recentProjects.isEmpty)
+                }
+                Divider()
                 Button(L10n.t("template.menu")) { model.showTemplates = true }.keyboardShortcut("n", modifiers: [.command, .shift])
+                Menu(L10n.t("template.my_menu")) {
+                    ForEach(model.userTemplates, id: \.self) { u in
+                        Button(u.deletingPathExtension().lastPathComponent) { model.newFromUserTemplate(u) }
+                    }
+                    if model.userTemplates.isEmpty { Text(L10n.t("template.my_none")) }
+                    Divider()
+                    Button(L10n.t("template.show_folder")) { model.revealUserTemplates() }
+                    Button(L10n.t("template.refresh")) { model.refreshUserTemplates() }
+                }
             }
             // Undo / Redo: text fields first, then an open editor, then the input list.
             CommandGroup(replacing: .undoRedo) {
@@ -28,6 +45,7 @@ public enum LiveCoreScenes {
             CommandGroup(replacing: .saveItem) {
                 Button(L10n.t("project.save")) { model.saveProject() }.keyboardShortcut("s", modifiers: [.command])
                 Button(L10n.t("project.save_as")) { model.saveProjectAs() }.keyboardShortcut("s", modifiers: [.command, .shift])
+                Button(L10n.t("template.save_menu")) { model.saveAsTemplate() }.keyboardShortcut("t", modifiers: [.command, .option])
             }
             CommandMenu("Production") {
                 WindowCommand(title: L10n.t("rundown.create_menu"), id: "rundown", key: "r", modifiers: [.command, .shift])

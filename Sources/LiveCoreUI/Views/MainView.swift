@@ -33,36 +33,8 @@ struct MainView: View {
                 VStack(spacing: 6) {
                     TopBarView(showSettings: $showSettings)
                     ErrorBanner()
-                    HStack(spacing: 6) {
-                        if inputsMin {
-                            DockBar(title: L10n.t("inputs.title"), axis: .vertical) { inputsMin = false }
-                        }
-                        HSplitView {
-                            if !inputsMin {
-                                InputPanelView()
-                                    .dockHandle { inputsMin = true }
-                                    .frame(minWidth: 180, idealWidth: 260, maxWidth: 360)
-                            }
-                            // Monitors + Transition and the Audio Mixer cannot be minimized (0.55.0).
-                            VSplitView {
-                                MonitorRow()
-                                    .frame(minHeight: 200)
-                                HStack(alignment: .top, spacing: 6) {
-                                    AudioMixerView()
-                                    if showPlaylist {
-                                        if playlistMin {
-                                            DockBar(title: L10n.t("playlist.dock"), axis: .vertical) { playlistMin = false }
-                                        } else {
-                                            PlaylistDockView()
-                                                .dockHandle { playlistMin = true }
-                                                .frame(minWidth: 200, idealWidth: 290, maxWidth: 320)
-                                        }
-                                    }
-                                }
-                                .frame(minHeight: 160, idealHeight: 280)
-                            }
-                        }
-                    }
+                    dockArea
+                        .id(model.appearance)
                     // Always shown: RECORD, STREAM, EXTERNAL and the four outputs.
                     OutputDockView { tab in settingsTab = tab; showSettings = true }
                 }
@@ -105,6 +77,98 @@ struct MainView: View {
             Button(L10n.t("settings.cancel"), role: .cancel) { model.pendingStop = nil }
         } message: { r in
             Text(r == .record ? L10n.t("record.stop_message") : r == .multicorder ? L10n.t("multicorder.stop_message") : L10n.t("stream.stop_message"))
+        }
+    }
+}
+
+extension MainView {
+    // MARK: Dock layouts (Settings › Appearance, 0.62.0)
+
+    @ViewBuilder var inputsPanel: some View {
+        InputPanelView()
+            .dockHandle { inputsMin = true }
+            .frame(minWidth: 180, idealWidth: model.appearance.layout == .compact ? 210 : 260,
+                   maxWidth: model.appearance.layout == .inputsBottom ? .infinity : 360)
+    }
+
+    @ViewBuilder var inputsBar: some View {
+        DockBar(title: L10n.t("inputs.title"), axis: model.appearance.layout == .inputsBottom ? .horizontal : .vertical) { inputsMin = false }
+    }
+
+    /// Monitors + Transition and the Audio Mixer cannot be minimized (0.55.0).
+    @ViewBuilder var monitors: some View {
+        MonitorRow().frame(minHeight: 200)
+    }
+
+    @ViewBuilder var mixerArea: some View {
+        HStack(alignment: .top, spacing: 6) {
+            AudioMixerView()
+            if showPlaylist {
+                if playlistMin {
+                    DockBar(title: L10n.t("playlist.dock"), axis: .vertical) { playlistMin = false }
+                } else {
+                    PlaylistDockView()
+                        .dockHandle { playlistMin = true }
+                        .frame(minWidth: 200, idealWidth: 290, maxWidth: 320)
+                }
+            }
+        }
+    }
+
+    @ViewBuilder var dockArea: some View {
+        switch model.appearance.layout {
+        case .classic, .compact, .stage:
+            // Inputs left, monitors on top, mixer below (stage: smaller mixer, compact: narrower inputs).
+            HStack(spacing: 6) {
+                if inputsMin { inputsBar }
+                HSplitView {
+                    if !inputsMin { inputsPanel }
+                    VSplitView {
+                        monitors
+                        mixerArea.frame(minHeight: model.appearance.layout == .stage ? 120 : 160,
+                                        idealHeight: model.appearance.layout == .stage ? 160 : (model.appearance.layout == .compact ? 220 : 280))
+                    }
+                }
+            }
+        case .inputsRight:
+            HStack(spacing: 6) {
+                HSplitView {
+                    VSplitView {
+                        monitors
+                        mixerArea.frame(minHeight: 160, idealHeight: 280)
+                    }
+                    if !inputsMin { inputsPanel }
+                }
+                if inputsMin { inputsBar }
+            }
+        case .inputsBottom:
+            // Monitors across the top; inputs and mixer side by side underneath.
+            VSplitView {
+                monitors.frame(minHeight: 240, idealHeight: 420)
+                if inputsMin {
+                    VStack(spacing: 6) {
+                        inputsBar
+                        mixerArea
+                    }
+                    .frame(minHeight: 160)
+                } else {
+                    HSplitView {
+                        inputsPanel.frame(minWidth: 320, idealWidth: 640)
+                        mixerArea.frame(minWidth: 320)
+                    }
+                    .frame(minHeight: 180, idealHeight: 300)
+                }
+            }
+        case .mixerRight:
+            // Inputs left, monitors centre, mixer as a column on the right.
+            HStack(spacing: 6) {
+                if inputsMin { inputsBar }
+                HSplitView {
+                    if !inputsMin { inputsPanel }
+                    monitors.frame(minWidth: 420)
+                    mixerArea.frame(minWidth: 240, idealWidth: 360, maxWidth: 620)
+                }
+            }
         }
     }
 }

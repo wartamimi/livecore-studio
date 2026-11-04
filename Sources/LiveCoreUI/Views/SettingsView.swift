@@ -37,6 +37,7 @@ struct SettingsView: View {
          (8, "MultiCorder", "square.grid.2x2"), (3, L10n.t("audio.title"), "speaker.wave.2"),
          (4, L10n.t("settings.shortcuts"), "keyboard"), (5, "MIDI", "pianokeys"), (7, "Remote", "iphone"),
          (9, L10n.t("preflight.button"), "checklist"), (10, L10n.t("settings.language"), "globe"),
+         (12, L10n.t("appearance.title"), "paintpalette"),
          (11, "Security", "lock")]
     }
 
@@ -65,6 +66,7 @@ struct SettingsView: View {
                     case 9: PreflightSheet(embedded: true)
                     case 10: languageTab
                     case 11: SecretStorageSettings()
+                    case 12: AppearanceSettingsView()
                     default: outputTab
                     }
                 }
