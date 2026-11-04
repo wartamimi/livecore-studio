@@ -22,9 +22,8 @@ public final class ImageSource: VideoSource {
 
     public func start() {
         guard frame == nil else { return }
-        guard let src = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let img = CGImageSourceCreateImageAtIndex(src, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
-        else { status = .error("Cannot decode image"); return }
+        // Any format macOS can open (0.61.0): ImageIO raster types plus PDF / EPS / SVG.
+        guard let img = ImageFormats.decode(url) else { status = .error("Cannot decode image"); return }
         // Cap at 4K to bound memory.
         let scale = min(1, 3840 / Double(max(img.width, img.height)))
         let w = max(2, Int(Double(img.width) * scale)), h = max(2, Int(Double(img.height) * scale))

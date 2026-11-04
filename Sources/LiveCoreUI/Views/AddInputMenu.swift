@@ -7,7 +7,7 @@ import LiveCoreEngine
 /// Sheet opened from an "add input" menu. Shown by the main window (`addInputSheets()`), so the
 /// add menu works the same from the Inputs panel and from ADD INPUT in the bottom bar (0.55.0).
 public enum AddInputSheet: Identifiable, Equatable {
-    case title, timer, frame, qr, virtualSet, flag, browser, capture, ndi, srt, decklink, captureCard, slideshow
+    case title, timer, frame, qr, virtualSet, flag, pixabay, browser, capture, ndi, srt, decklink, captureCard, slideshow
     case gt(InputID), subtitles(InputID), scene(InputID), liveCall(InputID)
 
     public var id: String {
@@ -39,6 +39,7 @@ struct AddInputMenuItems: View {
             Button { model.addMediaPlaylist() } label: { Label(L10n.t("media.add_playlist"), systemImage: "film.stack") }
             Button { model.addImage() } label: { Label(L10n.t("inputs.image"), systemImage: "photo") }
             Button { model.addInputSheet = .slideshow } label: { Label(L10n.t("slideshow.add"), systemImage: "photo.stack") }
+            Button { model.addInputSheet = .pixabay } label: { Label(L10n.t("pixabay.menu"), systemImage: "photo.on.rectangle.angled") }
             Button { model.addPresentation() } label: { Label(L10n.t("presentation.add"), systemImage: "rectangle.on.rectangle.angled") }
         }
         Section(L10n.t("inputs.graphics_group")) {
@@ -94,6 +95,7 @@ private struct AddInputSheetView: View {
         case .qr: QRCodeSheet(editing: nil)
         case .virtualSet: VirtualSetSheet(editing: nil)
         case .flag: FlagSheet()
+        case .pixabay: PixabaySheet()
         case .browser: BrowserSheet(editing: nil)
         case .capture: CaptureSheet(editing: nil)
         case .ndi: NDIInputSheet(editing: nil)
