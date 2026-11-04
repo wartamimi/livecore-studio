@@ -43,17 +43,20 @@ protocol PluginProcessor: AnyObject {
 
 // MARK: - Audio Unit
 
-/// AUv2 / AUv3 effect hosted through AUAudioUnit. Out of process by default: macOS runs the
-/// plug-in in its own service, so a crash there ends only that service.
+/// AUv2 / AUv3 effect. Out of process by default: macOS runs the plug-in in its own service,
+/// so a crash there ends only that service. Rendered through a small AVAudioEngine in
+/// real-time manual rendering mode (source node -> effect -> mixer), called from the mixer's
+/// render thread: the engine makes the bus connections every kind of Audio Unit expects.
 final class AUPluginProcessor: PluginProcessor {
     let au: AUAudioUnit
     let channels: Int
     let outOfProcess: Bool
-    private let renderBlock: AURenderBlock
-    private var pull: AURenderPullInputBlock!
-    private let inL, inR, outL, outR: UnsafeMutablePointer<Float>
-    private let outList: UnsafeMutableAudioBufferListPointer
-    private var sampleTime: Double = 0
+    private let unit: AVAudioUnit
+    private let engine = AVAudioEngine()
+    private var source: AVAudioSourceNode!
+    private var renderBlock: AVAudioEngineManualRenderingBlock!
+    private let inL, inR: UnsafeMutablePointer<Float>
+    private let outBuffer: AVAudioPCMBuffer
     private var viewController: NSViewController?
     private let lastStatus = AtomicFloat(0)
     var lastErrorCode: Int { Int(lastStatus.value) }
@@ -65,61 +68,65 @@ final class AUPluginProcessor: PluginProcessor {
         }
         let desc = AudioComponentDescription(componentType: ids.type, componentSubType: ids.subtype,
                                              componentManufacturer: ids.manufacturer, componentFlags: 0, componentFlagsMask: 0)
-        AUAudioUnit.instantiate(with: desc, options: outOfProcess ? [.loadOutOfProcess] : []) { au, error in
+        AVAudioUnit.instantiate(with: desc, options: outOfProcess ? [.loadOutOfProcess] : []) { unit, error in
             DispatchQueue.main.async {
-                guard let au else { completion(.failure(error ?? PluginError("The Audio Unit could not be created"))); return }
-                do { completion(.success(try AUPluginProcessor(au: au, outOfProcess: outOfProcess))) } catch { completion(.failure(error)) }
+                guard let unit else { completion(.failure(error ?? PluginError("The Audio Unit could not be created"))); return }
+                do { completion(.success(try AUPluginProcessor(unit: unit, outOfProcess: outOfProcess))) } catch { completion(.failure(error)) }
             }
         }
     }
 
-    private init(au: AUAudioUnit, outOfProcess: Bool) throws {
+    private init(unit: AVAudioUnit, outOfProcess: Bool) throws {
+        let au = unit.auAudioUnit
+        self.unit = unit
         self.au = au
         self.outOfProcess = outOfProcess
         guard au.outputBusses.count > 0 else { throw PluginError("The Audio Unit has no audio output") }
         guard au.inputBusses.count > 0 else { throw PluginError("The Audio Unit has no audio input (instrument or generator)") }
-        func setFormat(_ ch: AVAudioChannelCount) -> Bool {
-            guard let f = AVAudioFormat(standardFormatWithSampleRate: AudioMixerEngine.sampleRateHz, channels: ch) else { return false }
-            do { try au.inputBusses[0].setFormat(f); try au.outputBusses[0].setFormat(f); return true } catch { return false }
+        let rate = AudioMixerEngine.sampleRateHz
+        guard let stereo = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 2),
+              let mono = AVAudioFormat(standardFormatWithSampleRate: rate, channels: 1),
+              let out = AVAudioPCMBuffer(pcmFormat: stereo, frameCapacity: AVAudioFrameCount(AudioMixerEngine.maxFrames))
+        else { throw PluginError("Audio format error") }
+        // Stereo where the plug-in takes it, otherwise mono.
+        func accepts(_ f: AVAudioFormat) -> Bool {
+            (try? au.inputBusses[0].setFormat(f)) != nil && (try? au.outputBusses[0].setFormat(f)) != nil
         }
-        if setFormat(2) { channels = 2 } else if setFormat(1) { channels = 1 } else {
+        let fmt: AVAudioFormat
+        if accepts(stereo) { fmt = stereo; channels = 2 } else if accepts(mono) { fmt = mono; channels = 1 } else {
             throw PluginError("The Audio Unit accepts neither stereo nor mono 48 kHz audio")
         }
-        au.maximumFramesToRender = AUAudioFrameCount(AudioMixerEngine.maxFrames)
-        try au.allocateRenderResources()
-        renderBlock = au.renderBlock
+        out.frameLength = out.frameCapacity
+        outBuffer = out
         func alloc() -> UnsafeMutablePointer<Float> {
             let p = UnsafeMutablePointer<Float>.allocate(capacity: AudioMixerEngine.maxFrames)
             p.initialize(repeating: 0, count: AudioMixerEngine.maxFrames)
             return p
         }
-        inL = alloc(); inR = alloc(); outL = alloc(); outR = alloc()
-        outList = AudioBufferList.allocate(maximumBuffers: channels)
-        let ch = channels
-        let inL = inL, inR = inR, silence = outR
-        pull = { _, _, frameCount, bus, data in
+        inL = alloc(); inR = alloc()
+        let inL = inL, inR = inR
+        source = AVAudioSourceNode(format: fmt) { _, _, frameCount, data in
             let list = UnsafeMutableAudioBufferListPointer(data)
             let n = Int(frameCount)
             for i in 0..<list.count {
-                let src: UnsafeMutablePointer<Float> = i == 0 ? inL : inR
-                let bytes = UInt32(n * MemoryLayout<Float>.size)
-                if bus != 0 {
-                    // Side-chain inputs get silence.
-                    if let p = list[i].mData { memset(p, 0, Int(bytes)) } else { list[i].mData = UnsafeMutableRawPointer(silence) }
-                } else if let p = list[i].mData {
-                    memcpy(p, ch == 1 || i == 0 ? inL : src, Int(bytes))
-                } else {
-                    list[i].mData = UnsafeMutableRawPointer(src)
-                }
-                list[i].mDataByteSize = bytes
+                guard let p = list[i].mData else { continue }
+                memcpy(p, i == 0 ? inL : inR, n * MemoryLayout<Float>.size)
+                list[i].mDataByteSize = UInt32(n * MemoryLayout<Float>.size)
             }
             return noErr
         }
+        try engine.enableManualRenderingMode(.realtime, format: stereo, maximumFrameCount: AVAudioFrameCount(AudioMixerEngine.maxFrames))
+        engine.attach(source)
+        engine.attach(unit)
+        engine.connect(source, to: unit, format: fmt)
+        engine.connect(unit, to: engine.mainMixerNode, format: fmt)
+        engine.mainMixerNode.outputVolume = 1
+        try engine.start()
+        renderBlock = engine.manualRenderingBlock
     }
 
     deinit {
-        [inL, inR, outL, outR].forEach { $0.deallocate() }
-        free(outList.unsafeMutablePointer)
+        inL.deallocate(); inR.deallocate()
     }
 
     var latencySamples: Int { Int((au.latency * AudioMixerEngine.sampleRateHz).rounded()) }
@@ -131,25 +138,19 @@ final class AUPluginProcessor: PluginProcessor {
             inL.update(from: left, count: frames)
             inR.update(from: right, count: frames)
         }
-        let bytes = UInt32(frames * MemoryLayout<Float>.size)
-        outList[0] = AudioBuffer(mNumberChannels: 1, mDataByteSize: bytes, mData: UnsafeMutableRawPointer(outL))
-        if channels > 1 { outList[1] = AudioBuffer(mNumberChannels: 1, mDataByteSize: bytes, mData: UnsafeMutableRawPointer(outR)) }
-        var flags = AudioUnitRenderActionFlags()
-        var ts = AudioTimeStamp()
-        ts.mSampleTime = sampleTime
-        ts.mFlags = .sampleTimeValid
-        sampleTime += Double(frames)
-        let status = renderBlock(&flags, &ts, AUAudioFrameCount(frames), 0, outList.unsafeMutablePointer, pull)
-        guard status == noErr, let l = outList[0].mData?.assumingMemoryBound(to: Float.self) else {
-            lastStatus.value = Float(status == noErr ? -1 : status)
+        let list = UnsafeMutableAudioBufferListPointer(outBuffer.mutableAudioBufferList)
+        let capacity = UInt32(AudioMixerEngine.maxFrames * MemoryLayout<Float>.size)
+        for i in 0..<list.count { list[i].mDataByteSize = capacity }
+        var err: OSStatus = noErr
+        let status = renderBlock(AVAudioFrameCount(frames), outBuffer.mutableAudioBufferList, &err)
+        guard status == .success, list.count >= 2,
+              let l = list[0].mData?.assumingMemoryBound(to: Float.self),
+              let r = list[1].mData?.assumingMemoryBound(to: Float.self) else {
+            lastStatus.value = Float(err != noErr ? err : -Int32(status.rawValue) - 1)
             return false
         }
         left.update(from: l, count: frames)
-        if channels > 1, let r = outList[1].mData?.assumingMemoryBound(to: Float.self) {
-            right.update(from: r, count: frames)
-        } else {
-            right.update(from: l, count: frames)
-        }
+        right.update(from: r, count: frames)
         return true
     }
 
@@ -214,7 +215,7 @@ final class AUPluginProcessor: PluginProcessor {
 
     func close() {
         closeEditor()
-        au.deallocateRenderResources()
+        engine.stop()
     }
 }
 
