@@ -159,6 +159,5 @@ extension AppModel {
         return errs
     }
 
-    public func saveShortcuts(_ s: ShortcutSettings) { shortcuts = s; s.save() }
 }
 #endif

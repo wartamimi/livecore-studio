@@ -227,15 +227,20 @@ struct CaptureCardSheet: View {
     }
 }
 /// Colour correction and orientation of one input, applied live (vMix input colour correction).
+/// `embedded` (Properties › Colour): no title and OK button, and the width follows the window.
+/// LUT, mask and wave moved to Properties › Animation in 0.62.0.
 struct InputAdjustSheet: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     let input: InputID
+    var embedded = false
     @State private var a = InputAdjust()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("\(L10n.t("adjust.title")) — \(model.inputs.first { $0.id == input }?.name ?? "")").font(.headline)
+            if !embedded {
+                Text("\(L10n.t("adjust.title")) — \(model.inputs.first { $0.id == input }?.name ?? "")").font(.headline)
+            }
             Form {
                 row(L10n.t("adjust.brightness"), \.brightness, -0.5...0.5, "%+.2f")
                 row(L10n.t("adjust.contrast"), \.contrast, 0...2, "%.2f")
@@ -248,19 +253,27 @@ struct InputAdjustSheet: View {
                 }
                 .pickerStyle(.segmented)
                 Text(L10n.t("adjust.rotate_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
-                LUTSection(input: input, adjust: $a)
-                MaskWaveSection(adjust: Binding(get: { a }, set: { a = $0; model.setAdjust(input, $0) }))
+                if !embedded {
+                    MotionSection(adjust: Binding(get: { a }, set: { a = $0; model.setAdjust(input, $0) }))
+                    MaskWaveSection(adjust: Binding(get: { a }, set: { a = $0; model.setAdjust(input, $0) }))
+                    LUTSection(input: input, adjust: $a)
+                }
             }
             .formStyle(.grouped)
-            .frame(minHeight: 420)
+            .frame(minHeight: embedded ? 0 : 420)
             HStack {
-                Button(L10n.t("adjust.reset")) { a = a.resetKeepingSignalFixes; model.setAdjust(input, a) }
+                Button(L10n.t("adjust.reset")) {
+                    // Reset keeps the Animation page (LUT, mask, wave, motion) as it is.
+                    var r = a.resetKeepingSignalFixes
+                    r.lut = a.lut; r.lutStrength = a.lutStrength; r.mask = a.mask; r.wave = a.wave; r.motion = a.motion
+                    a = r; model.setAdjust(input, a)
+                }
                 Spacer()
-                Button(L10n.t("common.ok")) { dismiss() }.keyboardShortcut(.defaultAction)
+                if !embedded { Button(L10n.t("common.ok")) { dismiss() }.keyboardShortcut(.defaultAction) }
             }
         }
-        .padding(16)
-        .frame(width: 420)
+        .padding(embedded ? 12 : 16)
+        .frame(minWidth: embedded ? 360 : 420, idealWidth: embedded ? nil : 460, maxWidth: embedded ? .infinity : 520)
         .onAppear {
             a = model.adjust(of: input)
             model.preview(input)

@@ -121,7 +121,12 @@ public final class AppModel: ObservableObject {
     public var performance = PerformanceSnapshot.zero {
         didSet { live.objectWillChange.send() }
     }
-    @Published public var shortcuts = ShortcutSettings.load()
+    @Published public var shortcuts = ShortcutStore.load()
+    /// Key monitor for the shortcuts (0.62.0) and whether Settings is recording a key.
+    var shortcutMonitor: Any?
+    /// Input Properties requested from outside the input list (layer designer, 0.62.0).
+    @Published public var propertiesRequest: InputID?
+    public var recordingShortcut = false
 
     // Web Controller (remote control from a browser on the same network; off by default)
     @Published public internal(set) var remoteEnabled = false

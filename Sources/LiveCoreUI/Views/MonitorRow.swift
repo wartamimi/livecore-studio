@@ -339,10 +339,10 @@ struct TransitionControls: View {
             }
             Button(L10n.t("transition.cut")) { model.cut() }
                 .buttonStyle(StudioButtonStyle(color: Theme.program))
-                .help("Shortcut: \(model.shortcuts.cut)")
+                .help(model.shortcuts.combo(for: .cut).map { "Shortcut: \($0.display)" } ?? "CUT")
             Button(L10n.t("transition.auto")) { model.auto() }
                 .buttonStyle(StudioButtonStyle(color: Theme.accent, active: model.switcher.transition != nil))
-                .help("Shortcut: \(model.shortcuts.auto)")
+                .help(model.shortcuts.combo(for: .auto).map { "Shortcut: \($0.display)" } ?? "AUTO")
             // Manual T-bar
             TBarControl()
             Divider()
