@@ -86,6 +86,8 @@ public final class ProductionEngine {
     public internal(set) var settings: ProductionSettings
     public let compositor: MetalCompositor
     public let mixer = AudioMixerEngine()
+    /// Audio Unit / VST 3 plug-in hosting for mixer inserts (0.60.0).
+    public let plugins = AudioPluginHost()
     public let devices = DeviceManager()
     public internal(set) lazy var audioPump = ProgramAudioPump(mixer: mixer)
     /// One RTMP/RTMPS publisher per destination, all fed by the same encoders. Main thread.
@@ -322,6 +324,7 @@ public final class ProductionEngine {
         self.settings = settings
         compositor = try MetalCompositor(outputSize: settings.output.size)
         mixer.onError = { [weak self] msg in DispatchQueue.main.async { self?.onError?(msg) } }
+        plugins.onNotice = { [weak self] msg in self?.onError?(msg) }
         recorder.onStats = { [weak self] s in
             if case .recording = s.state {} else { self?.recordingEnded(s) }
             self?.onRecordStats?(s)
@@ -336,9 +339,12 @@ public final class ProductionEngine {
         }
         mixer.start()
         startRenderLoop()
+        // Crash-guard notices from the last launch, once the UI listens.
+        DispatchQueue.main.async { [weak self] in self?.plugins.deliverStartupNotices() }
     }
 
     public func shutdown() {
+        plugins.shutdown()
         stopStreaming()
         stopRecording()
         renderTimer?.cancel()

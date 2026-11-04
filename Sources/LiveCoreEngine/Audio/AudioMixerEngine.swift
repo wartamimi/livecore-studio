@@ -12,6 +12,8 @@ public final class MixerChannel: @unchecked Sendable {
     public let controls = ChannelControls()
     /// Protected against being closed from the mixer (main thread; saved in projects).
     public var locked = false
+    /// Plug-in inserts (0.60.0), processed inside the channel strip before the fader.
+    public let inserts = PluginInsertChain()
     let ringL: SPSCFloatRingBuffer
     let ringR: SPSCFloatRingBuffer
     /// Jitter buffer: frames buffered before playback starts, and the most that may queue up
@@ -45,6 +47,7 @@ public final class MixerChannel: @unchecked Sendable {
         ringR = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))
         drift = DriftCompensator(targetFill: primeFrames + primeFrames / 2, maxFrames: AudioMixerEngine.maxFrames)
         dsp = ChannelStripDSP(controls: controls, sampleRate: Float(sampleRate))
+        dsp.inserts = inserts
         minusL = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))
         minusR = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))
         selfL = .allocate(capacity: AudioMixerEngine.maxFrames); selfL.initialize(repeating: 0, count: AudioMixerEngine.maxFrames)
@@ -71,9 +74,12 @@ public final class MixerChannel: @unchecked Sendable {
 /// `withTryLock`), no Objective-C messaging, no logging.
 public final class AudioMixerEngine {
     public let sampleRate: Double = 48_000
+    public static let sampleRateHz: Double = 48_000
     public static let maxFrames = 4096
 
     public let master = ChannelControls()
+    /// Plug-in inserts on the program bus (0.60.0): after the master fader, before the limiter.
+    public let masterInserts = PluginInsertChain()
     public let monitorVolume = AtomicFloat(1)
     public let limiterEnabled = AtomicBool(true)
     /// Limiter ceiling (dBFS) and release (ms), Settings › Audio (0.45.0).
@@ -236,7 +242,13 @@ public final class AudioMixerEngine {
     }
 
     public func removeChannel(id: String) {
-        graphLock.withLock { channels.removeAll { $0.id == id } }
+        let removed = graphLock.withLock { () -> [MixerChannel] in
+            let gone = channels.filter { $0.id == id }
+            channels.removeAll { $0.id == id }
+            return gone
+        }
+        // The render thread no longer sees the channel: its plug-ins can close here (main thread).
+        removed.forEach { $0.inserts.removeAll() }
     }
 
     public var channelList: [MixerChannel] { graphLock.withLock { channels } }
@@ -290,6 +302,7 @@ public final class AudioMixerEngine {
             }
             return true
         }
+        if masterInserts.insertsActive { masterInserts.processInserts(left: progL, right: progR, frames: frames) }
         if limiterEnabled.value {
             limiter.ceilingDB = min(max(limiterCeilingDB.value, -12), 0)
             limiter.releaseSeconds = min(max(limiterReleaseMs.value, 10), 1000) / 1000

@@ -1,4 +1,5 @@
 #if os(macOS)
+import Combine
 import SwiftUI
 import LiveCoreCore
 import LiveCoreEngine
@@ -79,6 +80,7 @@ struct ChannelStripView: View {
     @EnvironmentObject var model: AppModel
     @ObservedObject var vm: ChannelVM
     @State private var showDSP = false
+    @State private var showFX = false
     @State private var hovering = false
     @State private var confirmClose = false
     @AppStorage("mixer.compact") private var compact = false
@@ -145,6 +147,7 @@ struct ChannelStripView: View {
                 if n > 3 { toggle("D", $vm.toBusD, Theme.preview).help(L10n.f("aux.send_n", "D")) }
                 afvButton
             }
+            PluginButton(chain: vm.channel.inserts, title: vm.name, show: $showFX)
             Button { showDSP = true } label: {
                 Label(dspLabel, systemImage: "slider.horizontal.3").labelStyle(.titleAndIcon)
             }
@@ -500,6 +503,7 @@ struct AuxStripView: View {
 
 struct MasterStripView: View {
     @EnvironmentObject var model: AppModel
+    @State private var showFX = false
 
     var body: some View {
         VStack(spacing: 4) {
@@ -512,6 +516,9 @@ struct MasterStripView: View {
             Toggle(L10n.t("audio.limiter"), isOn: $model.limiterEnabled)
                 .toggleStyle(.checkbox).font(.system(size: 10))
             StereoMeter(source: .masterGR)
+            if let engine = model.engine {
+                PluginButton(chain: engine.mixer.masterInserts, title: L10n.t("audio.master"), show: $showFX)
+            }
             LoudnessReadout()
             HStack(spacing: 2) {
                 Image(systemName: "headphones").font(.system(size: 10))
@@ -522,6 +529,35 @@ struct MasterStripView: View {
         }
         .padding(4)
         .frame(width: 110)
+    }
+}
+
+/// "FX n" button of a strip: opens the plug-in list (0.60.0). Shows a warning colour when a
+/// plug-in stopped or could not load.
+struct PluginButton: View {
+    @EnvironmentObject var model: AppModel
+    let chain: PluginInsertChain
+    let title: String
+    @Binding var show: Bool
+    @State private var tick = 0
+
+    var body: some View {
+        let _ = tick
+        let n = chain.slots.count
+        let trouble = chain.slots.contains { !$0.statusText.isEmpty }
+        Button { show = true } label: {
+            Label(n == 0 ? L10n.t("plugins.fx") : "\(L10n.t("plugins.fx")) \(n)", systemImage: "puzzlepiece.extension")
+                .labelStyle(.titleAndIcon)
+                .foregroundStyle(trouble ? Theme.program : (n > 0 && chain.slots.allSatisfy { $0.bypassed.value } ? Theme.textDim : (n > 0 ? Theme.accent : Theme.text)))
+        }
+        .buttonStyle(.borderless).font(.system(size: 10))
+        .help(L10n.t("plugins.help"))
+        .onReceive(NotificationCenter.default.publisher(for: PluginInsertChain.didChange)) { _ in tick += 1 }
+        .sheet(isPresented: $show) {
+            if let engine = model.engine {
+                PluginChainSheet(chain: chain, host: engine.plugins, title: title)
+            }
+        }
     }
 }
 

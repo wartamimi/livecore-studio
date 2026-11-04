@@ -508,6 +508,8 @@ public struct ProjectAudio: Codable, Equatable, Sendable {
     public var ducking: DuckingSettings?
     /// Online radio inputs (since 0.38.0). Their mixer settings are in `channel`.
     public var radios: [ProjectRadio]?
+    /// Plug-in inserts on the master bus (since 0.60.0).
+    public var masterPlugins: [ProjectPluginSlot]?
     public init() {}
 }
 
@@ -548,6 +550,8 @@ public struct ProjectAudioChannel: Codable, Equatable, Sendable {
     public var duckTarget: Bool?
     /// Advanced audio settings (since 0.50.0); absent = defaults.
     public var advanced: ProjectAudioAdvanced?
+    /// Plug-in inserts in order (since 0.60.0); absent = none.
+    public var plugins: [ProjectPluginSlot]?
     public init(deviceUniqueID: String? = nil, inputID: InputID? = nil, name: String) {
         self.deviceUniqueID = deviceUniqueID; self.inputID = inputID; self.name = name
     }

@@ -1758,3 +1758,29 @@
 "motion3d.spin" = "Putar";
 "motion3d.tumble" = "Jungkir";
 "motion3d.cube" = "Putar kubus";
+
+/* Audio plug-ins (0.60.0) */
+"plugins.title" = "Plugin";
+"plugins.fx" = "FX";
+"plugins.help" = "Plugin efek Audio Unit dan VST3 di channel ini (sebelum fader)";
+"plugins.latency" = "Latensi plugin %.1f ms";
+"plugins.latency_help" = "Plugin ini menunda channel ini; LiveCore tidak mengompensasinya. Pakai Properti Audio › Delay di channel lain bila lip-sync penting.";
+"plugins.safe_mode" = "Mode aman: LiveCore Studio tidak tertutup normal terakhir kali saat plugin berjalan di dalamnya. Plugin yang dipulihkan mulai dalam keadaan bypass.";
+"plugins.empty" = "Belum ada plugin. Tambahkan efek di bawah.";
+"plugins.scanning" = "Memindai plugin…";
+"plugins.found" = "%d Audio Unit, %d VST3";
+"plugins.failed" = "%d gagal";
+"plugins.rescan" = "Pindai ulang";
+"plugins.au_out_of_process" = "Jalankan Audio Unit di proses terpisah (perlindungan crash)";
+"plugins.au_out_of_process_help" = "Plugin yang crash hanya menghentikan dirinya sendiri. Matikan hanya untuk plugin yang gagal dimuat dengan cara ini. Plugin VST3 selalu berjalan di dalam aplikasi.";
+"plugins.bypass_help" = "Nyala / bypass";
+"plugins.isolated" = "TERPISAH";
+"plugins.in_app" = "DI APLIKASI";
+"plugins.edit" = "Edit";
+"plugins.reload" = "Muat ulang";
+"plugins.remove" = "Hapus plugin";
+"plugins.audio_units" = "Audio Unit";
+"plugins.add" = "Tambah Plugin";
+"plugins.none_found" = "Tidak ada";
+"plugins.generic" = "Plugin ini tidak punya jendela sendiri: parameternya ditampilkan di sini.";
+"plugins.no_params" = "Tidak ada parameter yang bisa diatur.";
