@@ -10,6 +10,7 @@ struct MainView: View {
     // Docked panels that are minimized to a slim bar (remembered between launches).
     @AppStorage("dock.inputs.minimized") private var inputsMin = false
     @AppStorage("dock.playlist.minimized") private var playlistMin = false
+    @AppStorage("mixer.inputsFolded") private var mixerInputsMin = false
     @AppStorage("welcome.showAtLaunch") private var welcomeAtLaunch = true
 
     /// The Playlist dock appears once a music playlist or a video (playlist) input exists.
@@ -33,8 +34,11 @@ struct MainView: View {
                 VStack(spacing: 6) {
                     TopBarView(showSettings: $showSettings)
                     ErrorBanner()
+                    // Rebuilt when a dock is minimized or restored (0.63.0): split views keep their old
+                        // divider positions otherwise and the remaining panels did not fill the space.
                     dockArea
-                        .id(model.appearance)
+                        .id(DockKey(appearance: model.appearance, inputsMin: inputsMin, playlistMin: playlistMin,
+                                    mixerInputsMin: mixerInputsMin))
                     // Always shown: RECORD, STREAM, EXTERNAL and the four outputs.
                     OutputDockView { tab in settingsTab = tab; showSettings = true }
                 }
@@ -92,13 +96,16 @@ extension MainView {
     }
 
     @ViewBuilder var inputsBar: some View {
-        DockBar(title: L10n.t("inputs.title"), axis: model.appearance.layout == .inputsBottom ? .horizontal : .vertical) { inputsMin = false }
+        DockBar(title: L10n.t("inputs.title"), axis: .vertical) { inputsMin = false }
     }
 
     /// Monitors + Transition and the Audio Mixer cannot be minimized (0.55.0).
     @ViewBuilder var monitors: some View {
         MonitorRow().frame(minHeight: 200)
     }
+
+    /// Height the mixer needs so its strips (fader, M / S / PGM, sends) are never cut off.
+    var mixerMin: CGFloat { model.appearance.layout == .stage ? 210 : 250 }
 
     @ViewBuilder var mixerArea: some View {
         HStack(alignment: .top, spacing: 6) {
@@ -116,7 +123,8 @@ extension MainView {
     }
 
     @ViewBuilder var dockArea: some View {
-        switch model.appearance.layout {
+        let l = model.appearance.layout
+        switch l {
         case .classic, .compact, .stage:
             // Inputs left, monitors on top, mixer below (stage: smaller mixer, compact: narrower inputs).
             HStack(spacing: 6) {
@@ -125,9 +133,9 @@ extension MainView {
                     if !inputsMin { inputsPanel }
                     VSplitView {
                         monitors
-                        mixerArea.frame(minHeight: model.appearance.layout == .stage ? 120 : 160,
-                                        idealHeight: model.appearance.layout == .stage ? 160 : (model.appearance.layout == .compact ? 220 : 280))
+                        mixerArea.frame(minHeight: mixerMin, idealHeight: l == .stage ? 230 : (l == .compact ? 260 : 300), alignment: .top)
                     }
+                    .frame(minWidth: 480)
                 }
             }
         case .inputsRight:
@@ -135,8 +143,9 @@ extension MainView {
                 HSplitView {
                     VSplitView {
                         monitors
-                        mixerArea.frame(minHeight: 160, idealHeight: 280)
+                        mixerArea.frame(minHeight: mixerMin, idealHeight: 300, alignment: .top)
                     }
+                    .frame(minWidth: 480)
                     if !inputsMin { inputsPanel }
                 }
                 if inputsMin { inputsBar }
@@ -144,20 +153,19 @@ extension MainView {
         case .inputsBottom:
             // Monitors across the top; inputs and mixer side by side underneath.
             VSplitView {
-                monitors.frame(minHeight: 240, idealHeight: 420)
-                if inputsMin {
-                    VStack(spacing: 6) {
+                monitors.frame(minHeight: 220, idealHeight: 420)
+                HStack(spacing: 6) {
+                    if inputsMin {
                         inputsBar
                         mixerArea
+                    } else {
+                        HSplitView {
+                            inputsPanel.frame(minWidth: 300, idealWidth: 560)
+                            mixerArea.frame(minWidth: 320)
+                        }
                     }
-                    .frame(minHeight: 160)
-                } else {
-                    HSplitView {
-                        inputsPanel.frame(minWidth: 320, idealWidth: 640)
-                        mixerArea.frame(minWidth: 320)
-                    }
-                    .frame(minHeight: 180, idealHeight: 300)
                 }
+                .frame(minHeight: mixerMin, idealHeight: 320, alignment: .top)
             }
         case .mixerRight:
             // Inputs left, monitors centre, mixer as a column on the right.
@@ -171,6 +179,14 @@ extension MainView {
             }
         }
     }
+}
+
+/// Identity of the dock area: a new layout or a minimized / restored dock rebuilds it.
+private struct DockKey: Hashable {
+    let appearance: AppearanceSettings
+    let inputsMin: Bool
+    let playlistMin: Bool
+    let mixerInputsMin: Bool
 }
 
 /// Slim bar shown in place of a minimized panel; click to restore it (like vMix's collapsed docks).

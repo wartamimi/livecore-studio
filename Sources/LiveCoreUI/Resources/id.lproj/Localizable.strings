@@ -1916,3 +1916,24 @@
 "appearance.layout.stage.help" = "Monitor terbesar dengan mixer pendek.";
 "appearance.layout.compact" = "Ringkas";
 "appearance.layout.compact.help" = "Panel lebih sempit untuk layar kecil.";
+
+/* 0.63.0 */
+"program.fullscreen" = "Layar Penuh";
+"program.fullscreen_main" = "%@ (layar ini)";
+"program.fullscreen_close" = "Tutup Layar Penuh";
+"program.fullscreen_none" = "Tidak ada layar";
+"preview.same_as_program" = "Input sama dengan Program";
+"preview.cued" = "Berikutnya: %@ (mulai saat CUT / AUTO)";
+"mixer.fold_inputs" = "Lipat strip input ke samping";
+"mixer.unfold_inputs" = "Tampilkan strip input";
+"mixer.inputs_folded" = "Input (%ld)";
+"project.recent_none" = "Belum ada proyek terakhir";
+"top.file" = "File";
+"top.file_help" = "Proyek baru, buka, simpan proyek dan template";
+"multiview.layout" = "Tata letak Multiview";
+"multiview.layout.standard" = "Standar (Preview + Program, input di bawah)";
+"multiview.layout.programBig" = "Program besar, input di kanan";
+"multiview.layout.programTop" = "Program di atas, input satu baris";
+"multiview.layout.inputsLeft" = "Input di kiri, Program + Preview di kanan";
+"multiview.layout.grid" = "Grid sama besar";
+"multiview.layout.pvwPgm" = "Hanya Preview + Program";

@@ -26,6 +26,11 @@ public enum LiveCoreScenes {
                     Button(L10n.t("project.recent_clear")) { model.clearRecentProjects() }.disabled(model.recentProjects.isEmpty)
                 }
                 Divider()
+                // 0.63.0: Save lives here (the system Save group did not show in every macOS version).
+                Button(L10n.t("project.save")) { model.saveProject() }.keyboardShortcut("s", modifiers: [.command])
+                Button(L10n.t("project.save_as")) { model.saveProjectAs() }.keyboardShortcut("s", modifiers: [.command, .shift])
+                Button(L10n.t("template.save_menu")) { model.saveAsTemplate() }.keyboardShortcut("t", modifiers: [.command, .option])
+                Divider()
                 Button(L10n.t("template.menu")) { model.showTemplates = true }.keyboardShortcut("n", modifiers: [.command, .shift])
                 Menu(L10n.t("template.my_menu")) {
                     ForEach(model.userTemplates, id: \.self) { u in
@@ -42,11 +47,7 @@ public enum LiveCoreScenes {
                 Button(L10n.t("undo.undo")) { model.performUndo() }.keyboardShortcut("z", modifiers: [.command])
                 Button(L10n.t("undo.redo")) { model.performRedo() }.keyboardShortcut("z", modifiers: [.command, .shift])
             }
-            CommandGroup(replacing: .saveItem) {
-                Button(L10n.t("project.save")) { model.saveProject() }.keyboardShortcut("s", modifiers: [.command])
-                Button(L10n.t("project.save_as")) { model.saveProjectAs() }.keyboardShortcut("s", modifiers: [.command, .shift])
-                Button(L10n.t("template.save_menu")) { model.saveAsTemplate() }.keyboardShortcut("t", modifiers: [.command, .option])
-            }
+            CommandGroup(replacing: .saveItem) {}
             CommandMenu("Production") {
                 WindowCommand(title: L10n.t("rundown.create_menu"), id: "rundown", key: "r", modifiers: [.command, .shift])
                 Divider()

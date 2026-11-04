@@ -18,9 +18,10 @@ struct AppearanceSettingsView: View {
                     }
                 }
                 section(L10n.t("appearance.accent")) {
-                    HStack(spacing: 10) {
+                    HStack(spacing: 12) {
                         ForEach(AppearanceSettings.AccentChoice.allCases, id: \.self) { c in accentDot(c) }
                     }
+                    .padding(.horizontal, 5).padding(.vertical, 5)
                 }
                 section(L10n.t("appearance.layout")) {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
@@ -39,6 +40,7 @@ struct AppearanceSettingsView: View {
                         .disabled(model.appearance == AppearanceSettings())
                 }
             }
+            .padding(.top, 2)
             .padding(.trailing, 6)
         }
     }
@@ -91,7 +93,9 @@ struct AppearanceSettingsView: View {
         let on = model.appearance.accent == c
         return Button { a.wrappedValue.accent = c } label: {
             Circle().fill(col).frame(width: 24, height: 24)
-                .overlay(Circle().stroke(Color.white.opacity(on ? 0.95 : 0), lineWidth: 2).padding(-3))
+                .padding(3)
+                .overlay(Circle().stroke(Color.white.opacity(on ? 0.95 : 0), lineWidth: 2))
+                .contentShape(Circle())
                 .overlay { if c == .theme { Image(systemName: "wand.and.stars").font(.system(size: 10, weight: .bold)).foregroundStyle(.white) } }
         }
         .buttonStyle(.plain)

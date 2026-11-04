@@ -427,7 +427,7 @@ struct InputTile: View {
                     .font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.warning)
             }
             OverlayNumbers(input: info.id)
-            if info.kind == .videoFile, let v = model.videoFile(info.id) { MediaClock(video: v) }
+            // 0.63.0: no media controls on the tile (Program / Preview controllers and the Playlist dock have them).
             if info.kind == .presentation, let p = model.presentationSource(info.id) { SlideControls(info: info, source: p) }
             if !info.status.isHealthy, info.status != .starting {
                 Text(info.status.label).font(.system(size: 9)).foregroundStyle(Theme.warning).lineLimit(2)
