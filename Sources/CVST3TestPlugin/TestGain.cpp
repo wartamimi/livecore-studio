@@ -11,7 +11,7 @@
 #include "pluginterfaces/vst/ivsteditcontroller.h"
 #include "pluginterfaces/vst/ivstparameterchanges.h"
 #include "pluginterfaces/vst/vstspeaker.h"
-#include <atomic>
+
 #include <cstring>
 
 using namespace Steinberg;
@@ -35,8 +35,8 @@ void str16(const char *s, String128 d) { int i = 0; for (; s[i] && i < 127; ++i)
 
 class Gain : public IComponent, public IAudioProcessor, public IEditController {
 public:
-    std::atomic<int32> refs{1};
-    std::atomic<double> gainNorm{0.5};   // processor value
+    int32 refs = 1;
+    double gainNorm = 0.5;   // processor value
     double ctrlNorm = 0.5;               // controller value
     IComponentHandler *handler = nullptr;
 
