@@ -48,7 +48,8 @@ let package = Package(
         .target(name: "CVST3", exclude: ["README.md", "sdk/pluginterfaces/LICENSE.txt", "sdk/pluginterfaces/README.md"],
                 cxxSettings: [.headerSearchPath("sdk")],
                 linkerSettings: [.linkedFramework("CoreFoundation", .when(platforms: [.macOS]))]),
-        .target(name: "CVST3TestPlugin", cxxSettings: [.headerSearchPath("../CVST3/sdk")]),
+        .target(name: "CVST3TestPlugin", cxxSettings: [.headerSearchPath("../CVST3/sdk")],
+                linkerSettings: [.linkedFramework("CoreFoundation", .when(platforms: [.macOS]))]),
         .target(name: "CDeckLink", exclude: ["README.md", "decklink"]),   // DeckLink API via Desktop Video (Apple only)
         .target(name: "CSyphon", exclude: ["README.md", "License.txt"],
                 linkerSettings: [.linkedFramework("Metal", .when(platforms: [.macOS])),
