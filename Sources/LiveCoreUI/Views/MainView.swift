@@ -89,6 +89,7 @@ struct MainView: View {
         .addInputSheets(model)
         .sheet(isPresented: $model.showOutputsPanel) { OutputsPanelSheet().environmentObject(model) }
         .sheet(isPresented: $model.showTemplates) { TemplatesSheet().environmentObject(model) }
+        .sheet(item: $model.propertiesRequest) { id in InputPropertiesSheet(input: id).environmentObject(model) }
         .onAppear {
             // Welcome screen with the templates on an empty start (not over the recovery question).
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
@@ -170,25 +171,14 @@ extension View {
     }
 }
 
-/// Invisible buttons that carry the configurable shortcuts.
+/// Keyboard shortcuts (0.62.0): one key monitor runs the table from Settings › Keyboard.
 struct KeyboardShortcuts: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
-        ZStack {
-            Button("") { model.cut() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.cut), modifiers: [])
-            Button("") { model.auto() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.auto), modifiers: [])
-            Button("") { model.requestToggleStream() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.stream), modifiers: [.command])
-            Button("") { model.requestToggleRecord() }.keyboardShortcut(ShortcutSettings.key(model.shortcuts.record), modifiers: [.command])
-            // Presentation clickers send Page Down / Page Up.
-            Button("") { model.presentationStep(forward: true) }.keyboardShortcut(.pageDown, modifiers: [])
-            Button("") { model.presentationStep(forward: false) }.keyboardShortcut(.pageUp, modifiers: [])
-            ForEach(1..<10) { n in
-                Button("") { model.previewNumber(n) }.keyboardShortcut(KeyEquivalent(Character("\(n)")), modifiers: [])
-            }
-        }
-        .opacity(0)
-        .frame(width: 0, height: 0)
-        .accessibilityHidden(true)
+        Color.clear
+            .frame(width: 0, height: 0)
+            .accessibilityHidden(true)
+            .onAppear { model.installShortcutMonitor() }
     }
 }
 

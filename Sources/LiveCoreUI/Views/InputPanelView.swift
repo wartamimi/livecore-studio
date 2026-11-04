@@ -1095,7 +1095,7 @@ struct ChromaKeySheet: View {
             }
         }
         .padding(16)
-        .frame(width: 420)
+        .frame(minWidth: 380, idealWidth: 420, maxWidth: 600)
         .onAppear { key = model.chromaKey(input); loaded = true }
         .onChange(of: key) { k in if loaded { model.setChromaKey(k, for: input) } }
     }
@@ -1143,7 +1143,7 @@ struct InputAISheet: View {
             HStack { Spacer(); Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.defaultAction) }
         }
         .padding(20)
-        .frame(width: 380)
+        .frame(minWidth: 360, idealWidth: 380, maxWidth: 560)
         .onAppear { ai = model.inputAI(input); loaded = true }
         .onChange(of: ai) { v in if loaded { model.setInputAI(input, v) } }
     }

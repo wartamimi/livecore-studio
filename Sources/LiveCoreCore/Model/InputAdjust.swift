@@ -28,6 +28,8 @@ public struct InputAdjust: Codable, Equatable, Sendable {
     public var mask = InputMask()
     /// Waving-flag warp (0.51.0), animated in the compositor.
     public var wave = InputWave()
+    /// Looping motion of the picture (0.62.0): pulse, float, shake, swing, spin... animated in the compositor.
+    public var motion = InputMotion()
 
     /// The LUT in use (a path is set and the strength is above zero).
     public var activeLUT: String? {
@@ -56,7 +58,7 @@ public struct InputAdjust: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
         case brightness, contrast, saturation, gamma, flipHorizontal, flipVertical, rotation, range, deinterlace, rangeChecked
-        case lut, lutStrength, mask, wave
+        case lut, lutStrength, mask, wave, motion
     }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -74,6 +76,7 @@ public struct InputAdjust: Codable, Equatable, Sendable {
         lutStrength = try c.decodeIfPresent(Double.self, forKey: .lutStrength) ?? 1
         mask = try c.decodeIfPresent(InputMask.self, forKey: .mask) ?? InputMask()
         wave = try c.decodeIfPresent(InputWave.self, forKey: .wave) ?? InputWave()
+        motion = try c.decodeIfPresent(InputMotion.self, forKey: .motion) ?? InputMotion()
     }
 
     /// Rotation snapped to 0 / 90 / 180 / 270.
@@ -111,6 +114,7 @@ public struct InputAdjust: Codable, Equatable, Sendable {
         a.lutStrength = min(max(lutStrength, 0), 1)
         a.mask = mask.clamped
         a.wave = wave.clamped
+        a.motion = motion.clamped
         return a
     }
 
@@ -119,7 +123,7 @@ public struct InputAdjust: Codable, Equatable, Sendable {
         let a = clamped
         return abs(a.brightness) < 1e-4 && abs(a.contrast - 1) < 1e-4 && abs(a.saturation - 1) < 1e-4
             && abs(a.gamma - 1) < 1e-4 && !flipHorizontal && !flipVertical && a.rotation == 0
-            && range == .none && !deinterlace && a.activeLUT == nil && !mask.isActive && !wave.enabled
+            && range == .none && !deinterlace && a.activeLUT == nil && !mask.isActive && !wave.enabled && !motion.isActive
     }
 
     /// Nothing worth keeping: no picture change and no remembered levels decision.
@@ -127,7 +131,7 @@ public struct InputAdjust: Codable, Equatable, Sendable {
 
     public var hasColorChange: Bool {
         var a = self; a.flipHorizontal = false; a.flipVertical = false; a.rotation = 0
-        a.mask = InputMask(); a.wave = InputWave()
+        a.mask = InputMask(); a.wave = InputWave(); a.motion = InputMotion()
         return !a.isIdentity
     }
 
@@ -251,6 +255,84 @@ public struct InputWave: Codable, Equatable, Sendable {
         w.amplitude = min(max(amplitude, 0), 0.15); w.frequency = min(max(frequency, 0.5), 4)
         w.speed = min(max(speed, 0.05), 3); w.shading = min(max(shading, 0), 1)
         return w
+    }
+}
+
+/// Looping picture animation of an input (0.62.0), next to the waving flag: the picture moves
+/// inside its own frame (parts that move out are transparent), on every use of the input.
+public struct InputMotion: Codable, Equatable, Sendable {
+    public enum Kind: Int, Codable, CaseIterable, Sendable {
+        case none = 0
+        /// Grows and shrinks a little (breathing zoom).
+        case pulse = 1
+        /// Fades in and out.
+        case breathe = 2
+        /// Drifts up and down.
+        case float = 3
+        /// Small fast random shake (impact, earthquake).
+        case shake = 4
+        /// Swings like a hanging sign.
+        case swing = 5
+        /// Turns round and round.
+        case spin = 6
+        /// Slow zoom in and out (Ken Burns).
+        case zoom = 7
+        /// Water ripples from the centre.
+        case ripple = 8
+        /// Digital glitch: bands jump sideways now and then.
+        case glitch = 9
+        /// Double beat, like a heart.
+        case heartbeat = 10
+        /// Bounces on the floor.
+        case bounce = 11
+        /// Slides left and right.
+        case sway = 12
+
+        public var title: String {
+            switch self {
+            case .none: return "None"
+            case .pulse: return "Pulse"
+            case .breathe: return "Breathe (fade)"
+            case .float: return "Float"
+            case .shake: return "Shake"
+            case .swing: return "Swing"
+            case .spin: return "Spin"
+            case .zoom: return "Slow zoom (Ken Burns)"
+            case .ripple: return "Ripple"
+            case .glitch: return "Glitch"
+            case .heartbeat: return "Heartbeat"
+            case .bounce: return "Bounce"
+            case .sway: return "Sway"
+            }
+        }
+    }
+
+    public var kind: Kind = .none
+    /// How strong, 0...1.
+    public var amount: Double = 0.5
+    /// Cycles per second, 0.05...4.
+    public var speed: Double = 0.6
+
+    public init(kind: Kind = .none, amount: Double = 0.5, speed: Double = 0.6) {
+        self.kind = kind; self.amount = amount; self.speed = speed
+    }
+
+    public var isActive: Bool { kind != .none && amount > 0.001 }
+
+    public var clamped: InputMotion {
+        InputMotion(kind: kind, amount: min(max(amount, 0), 1), speed: min(max(speed, 0.05), 4))
+    }
+
+    /// Speed the picker starts with for each kind (what looks natural).
+    public static func defaultSpeed(_ k: Kind) -> Double {
+        switch k {
+        case .shake: return 3
+        case .glitch: return 1.5
+        case .spin: return 0.15
+        case .zoom: return 0.08
+        case .heartbeat: return 1.1
+        default: return 0.6
+        }
     }
 }
 

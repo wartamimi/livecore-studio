@@ -10,7 +10,7 @@ struct SettingsView: View {
     @State private var draft = ProductionSettings()
     @State private var keyField = ""
     @State private var destKeys: [String: String] = [:]   // additional destination id → newly typed key
-    @State private var shortcuts = ShortcutSettings()
+    @State private var shortcuts = ShortcutMap()
     @State private var errors: [String] = []
     @State private var tab = 0
     @State private var canvasMode: OutputFormat.Orientation = .horizontal
@@ -414,20 +414,7 @@ struct SettingsView: View {
     }
 
     private var shortcutTab: some View {
-        Form {
-            shortcutPicker(L10n.t("shortcut.cut"), $shortcuts.cut)
-            shortcutPicker(L10n.t("shortcut.auto"), $shortcuts.auto)
-            shortcutPicker(L10n.t("shortcut.stream"), $shortcuts.stream)
-            shortcutPicker(L10n.t("shortcut.record"), $shortcuts.record)
-            Text(L10n.t("shortcut.inputs")).font(.caption).foregroundStyle(Theme.textDim)
-        }
-        .formStyle(.grouped)
-    }
-
-    private func shortcutPicker(_ label: String, _ binding: Binding<String>) -> some View {
-        Picker(label, selection: binding) {
-            ForEach(ShortcutSettings.choices, id: \.self) { Text($0).tag($0) }
-        }
+        ShortcutSettingsView(map: $shortcuts)
     }
 
     private func apply() {

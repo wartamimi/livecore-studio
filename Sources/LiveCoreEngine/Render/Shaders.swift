@@ -40,7 +40,8 @@ enum ShaderSource {
     struct AdjustParams { float brightness; float contrast; float saturation; float invGamma; int straight; int range; int deinterlace; float lutMix;
                           float4 maskRect; float2 targetSize; float maskRadius; float maskFeather;
                           int maskShape; int maskInvert; int waveOn; float waveAmp;
-                          float waveFreq; float wavePhase; float waveShade; float pad; };
+                          float waveFreq; float wavePhase; float waveShade; float pad;
+                          int motionKind; float motionT; float motionAmount; float pad2; };
     fragment float4 adjust_fragment(VOut in [[stage_in]], texture2d<float> tex [[texture(0)]],
                                     texture3d<float> lut [[texture(1)]],
                                     texture2d<float> maskTex [[texture(2)]],
@@ -48,8 +49,10 @@ enum ShaderSource {
         constexpr sampler s(address::clamp_to_edge, filter::linear);
         float2 o = in.position.xy / max(p.targetSize, float2(1.0));
         float2 uv = in.uv;
+        float2 duvx = dfdx(in.uv), duvy = dfdy(in.uv);
         float edge = 1.0;
         float fold = 0.0;
+        float mAlpha = 1.0;
         if (p.waveOn != 0) {
             // Waving flag (0.51.0): pole on the left stays still, waves grow to the right.
             float ph = 6.2831853 * p.waveFreq * o.x - p.wavePhase;
@@ -59,6 +62,49 @@ enum ShaderSource {
             uv.x = uv.x + p.waveAmp * 0.25 * cos(ph) * grow;
             edge = step(0.0, uv.y) * step(uv.y, 1.0) * step(0.0, uv.x) * step(uv.x, 1.0);
             fold = cos(ph) * grow;
+        }
+        if (p.motionKind != 0) {
+            // Looping motion (0.62.0): find where this output pixel comes from in the moved picture.
+            float t = p.motionT, A = p.motionAmount, ph = 6.2831853 * t;
+            float2 asp = float2(p.targetSize.x / max(p.targetSize.y, 1.0), 1.0);
+            float2 q = (o - 0.5) * asp;
+            float sc = 1.0, ang = 0.0;
+            float2 off = float2(0.0), pivot = float2(0.0);
+            if (p.motionKind == 1) { sc = 1.0 + 0.08 * A * sin(ph); }
+            else if (p.motionKind == 2) { mAlpha = 1.0 - A * (0.5 - 0.5 * cos(ph)); }
+            else if (p.motionKind == 3) { off.y = 0.04 * A * sin(ph); }
+            else if (p.motionKind == 4) {
+                float k = floor(t * 12.0);
+                off = 0.04 * A * (float2(fract(sin(k * 12.9898) * 43758.5453), fract(sin(k * 78.233) * 43758.5453)) - 0.5);
+            }
+            else if (p.motionKind == 5) { ang = 0.25 * A * sin(ph); pivot = float2(0.0, -0.5); }
+            else if (p.motionKind == 6) { ang = ph; }
+            else if (p.motionKind == 7) { sc = 1.0 + 0.25 * A * (0.5 - 0.5 * cos(ph)); }
+            else if (p.motionKind == 8) {
+                float d = length(q);
+                float w = sin(d * 40.0 - ph) * 0.008 * A;
+                if (d > 0.0001) { q += q / d * w; }
+            }
+            else if (p.motionKind == 9) {
+                float band = floor(o.y * 18.0), k = floor(t * 8.0);
+                float r = fract(sin(band * 12.9898 + k * 78.233) * 43758.5453);
+                off.x = r > 0.85 ? (r - 0.85) * 0.6 * A : 0.0;
+            }
+            else if (p.motionKind == 10) {
+                float f = fract(t);
+                float x1 = (f - 0.1) * 18.0, x2 = (f - 0.32) * 18.0;
+                float b = exp(-x1 * x1) + 0.6 * exp(-x2 * x2);
+                sc = 1.0 + 0.1 * A * b;
+            }
+            else if (p.motionKind == 11) { off.y = -0.08 * A * abs(sin(ph * 0.5)); }
+            else if (p.motionKind == 12) { off.x = 0.05 * A * sin(ph); }
+            float2 v = q - off * asp - pivot;
+            float cr = cos(-ang), sr = sin(-ang);
+            v = float2(cr * v.x - sr * v.y, sr * v.x + cr * v.y) / sc + pivot;
+            float2 o2 = v / asp + 0.5;
+            float2 dp = (o2 - o) * p.targetSize;
+            uv = uv + duvx * dp.x + duvy * dp.y;
+            edge *= step(0.0, o2.x) * step(o2.x, 1.0) * step(0.0, o2.y) * step(o2.y, 1.0);
         }
         float4 c = tex.sample(s, uv) * edge;
         if (p.deinterlace != 0) {
@@ -104,7 +150,7 @@ enum ShaderSource {
             cov = p.maskShape == 3 ? dot(m.rgb, float3(0.2126, 0.7152, 0.0722)) : m.a;
         }
         if (p.maskInvert != 0 && p.maskShape != 0) { cov = 1.0 - cov; }
-        return float4(rgb * a, a) * cov;
+        return float4(rgb * a, a) * cov * mAlpha;
     }
 
     // Layer: textures are premultiplied BGRA; opacity scales all channels (premultiplied blend).
