@@ -406,7 +406,7 @@ public final class ProductionEngine {
             let plan = FramePlanner.plan(snapshot: st.switcher.state, overlays: st.overlays, now: now,
                                          layersFor: { layers[$0] }, keyFor: { keys[$0] },
                                          thumbnailsFor: thumbTick ? (demand.thumbnails.map { v in st.order.filter { v.contains($0) } } ?? st.order) : [],
-                                         composedThumbnails: thumbTick ? Set(st.sources.filter { $0.value is SceneSource }.keys) : [],
+                                         composedThumbnails: thumbTick ? Set(st.sources.filter { $0.value is SceneSource || $0.value is VirtualSetSource }.keys) : [],
                                          detailInput: st.detail,
                                          extraInputs: st.extraInputs + st.isoInputs.filter { !st.extraInputs.contains($0) },
                                          fullPreview: st.fullPreview,

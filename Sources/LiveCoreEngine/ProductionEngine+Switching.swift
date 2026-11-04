@@ -101,10 +101,23 @@ extension ProductionEngine {
         }
         // Titles with a letter-by-letter animation play it each time they go on air.
         for (id, src) in sources {
-            guard let t = src as? TextSource, let d = t.style.design, d.textAnimation != .off else { continue }
+            guard let t = src as? TextSource, t.hasOnAirAnimation else { continue }
             let was = autoPlayOnAir.contains(id), now = visible.contains(id)
             if now && !was { t.playTextAnimation() }
-            if !now && was { t.finishTextAnimation() }
+            if !now && was {
+                let leavingOverlay = overlays.contains { !$0.isOn && $0.source == id && $0.isVisible(at: HostClock.now()) }
+                leavingOverlay && t.motionOutDuration != nil ? t.playMotionOut() : t.finishTextAnimation()
+            }
+        }
+        // 3D running text: flips in on air and out when its overlay is taken off (0.59.0).
+        for (id, src) in sources {
+            guard let k = src as? TickerSource, k.config.hasMotion3D else { continue }
+            let was = autoPlayOnAir.contains(id), now = visible.contains(id)
+            if now && !was { k.playMotion(in: true) }
+            if !now && was {
+                let leavingOverlay = overlays.contains { !$0.isOn && $0.source == id && $0.isVisible(at: HostClock.now()) }
+                if leavingOverlay { k.playMotion(in: false) } else { k.playMotion(in: nil) }
+            }
         }
         // GT titles: "in" on air; "out" when their overlay is taken off (it stays up meanwhile).
         let clock = HostClock.now()
@@ -252,7 +265,12 @@ extension ProductionEngine {
 
     /// The in / out motion a template title or running text asks for (nil = the channel's own).
     static func sourceAnimation(_ src: VideoSource?) -> (OverlayAnimation, Double)? {
-        if let t = src as? TextSource, let d = t.style.design, !d.useOverlayAnimation { return (d.animation, d.animationDuration) }
+        // A 3D title moves itself; the overlay stays up until its out motion has finished.
+        if let t = src as? TextSource, let out = t.motionOutDuration { return (.hold, out + 0.05) }
+        if let t = src as? TextSource, let d = t.style.design, !d.useOverlayAnimation {
+            return (d.animation == .hold ? .fade : d.animation, d.animationDuration)
+        }
+        if let k = src as? TickerSource, k.config.hasMotion3D { return (.hold, (k.config.clamped.animationDuration ?? 0.5) + 0.05) }
         if let k = src as? TickerSource, let a = k.config.animation { return (a, k.config.animationDuration ?? 0.5) }
         if let q = src as? QRCodeSource { return (q.design.style.animation, min(max(q.design.style.animationDuration, 0.1), 5)) }
         // A GT title plays its own in / out; the overlay just stays up until its out has finished.

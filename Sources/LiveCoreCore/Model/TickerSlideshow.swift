@@ -38,6 +38,13 @@ public struct TickerConfig: Codable, Equatable, Sendable {
     /// In / out motion when shown with an overlay number; nil = the overlay's own setting.
     public var animation: OverlayAnimation?
     public var animationDuration: Double?
+    /// 3D band (0.59.0): bevelled, thick band with extruded text; nil / false = flat.
+    public var look3D: Bool?
+    /// 3D in / out motion of the band (0.59.0); nil / .off = the 2D animation above.
+    public var motion3D: Motion3D?
+
+    public var is3D: Bool { look3D == true }
+    public var hasMotion3D: Bool { (motion3D ?? .off) != .off }
 
     public var labelText: String { Self.trim(label ?? "") }
     public var separatorText: String { separator ?? "•" }
@@ -93,6 +100,8 @@ public enum TickerTemplate: String, Codable, Sendable, CaseIterable {
     case newsRed, breakingYellow, darkLabel, blueInfo, minimal, topBand
     // 0.46.0: wedding greetings / couple names
     case weddingGold, weddingBlush
+    // 0.59.0: 3D bands
+    case chrome3D, gold3D, neon3D, newsCube3D
 
     public func config(text: String) -> TickerConfig {
         func rgb(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1) -> ProjectColor { ProjectColor(r: r, g: g, b: b, a: a) }
@@ -168,6 +177,57 @@ public enum TickerTemplate: String, Codable, Sendable, CaseIterable {
             c.speed = 90
             c.animation = .riseFade
             c.animationDuration = 0.8
+        case .chrome3D:
+            c.look3D = true
+            c.motion3D = .cube
+            c.animationDuration = 0.8
+            c.barColor = rgb(0.16, 0.18, 0.22, 0.97)
+            c.label = "UPDATE"
+            c.labelColor = rgb(0.75, 0.78, 0.82)
+            c.labelTextColor = rgb(0.08, 0.09, 0.12)
+            c.weight = .bold
+            c.bandHeight = 0.09
+            c.separatorColor = rgb(0.6, 0.7, 0.85)
+        case .gold3D:
+            c.look3D = true
+            c.motion3D = .flipUp
+            c.animationDuration = 0.9
+            c.barColor = rgb(0.12, 0.08, 0.04, 0.95)
+            c.textColor = rgb(0.98, 0.86, 0.55)
+            c.label = "♥"
+            c.labelColor = rgb(0.85, 0.66, 0.3)
+            c.labelTextColor = rgb(0.25, 0.15, 0.05)
+            c.fontFamily = "Didot"
+            c.weight = .bold
+            c.separator = "❦"
+            c.separatorColor = rgb(0.85, 0.66, 0.3)
+            c.bandHeight = 0.09
+            c.speed = 90
+        case .neon3D:
+            c.look3D = true
+            c.motion3D = .flipDown
+            c.animationDuration = 0.8
+            c.barColor = rgb(0.05, 0.02, 0.15, 0.95)
+            c.textColor = rgb(0.4, 1, 0.95)
+            c.label = "LIVE"
+            c.labelColor = rgb(1, 0.15, 0.6)
+            c.labelTextColor = rgb(1, 1, 1)
+            c.weight = .heavy
+            c.uppercase = true
+            c.separatorColor = rgb(1, 0.15, 0.6)
+            c.bandHeight = 0.085
+        case .newsCube3D:
+            c.look3D = true
+            c.motion3D = .cube
+            c.animationDuration = 0.7
+            c.barColor = rgb(0.03, 0.12, 0.35, 0.97)
+            c.label = "BREAKING"
+            c.labelColor = rgb(0.85, 0.08, 0.1)
+            c.labelTextColor = rgb(1, 1, 1)
+            c.weight = .bold
+            c.uppercase = true
+            c.separatorColor = rgb(0.95, 0.75, 0.1)
+            c.bandHeight = 0.09
         }
         return c
     }

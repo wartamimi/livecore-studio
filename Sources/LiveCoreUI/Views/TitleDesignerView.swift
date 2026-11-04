@@ -208,6 +208,7 @@ struct TitleSheet: View {
                 Text(L10n.t("titled.tab.position")).tag(2)
                 Text(L10n.t("titled.tab.effects")).tag(3)
                 Text(L10n.t("titled.tab.animation")).tag(4)
+                Text("3D").tag(5)
             }
             .pickerStyle(.segmented).labelsHidden()
             ScrollView {
@@ -217,7 +218,8 @@ struct TitleSheet: View {
                     case 1: boxTab
                     case 2: positionTab
                     case 3: effectsTab
-                    default: animationTab
+                    case 4: animationTab
+                    default: tab3D
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -235,11 +237,13 @@ struct TitleSheet: View {
         return HStack {
             Spacer(minLength: 0)
             TimelineView(.animation(minimumInterval: 1 / 30, paused: !isTicker && animStart == nil)) { ctx in
+                let motion = motionProgress(at: ctx.date)
                 let img = isTicker ? TickerRenderer.preview(ticker, width: iw, height: ih,
                                                            elapsed: ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600))
-                                   : (letterElapsed(at: ctx.date).map {
-                                       TitleRenderer.image(design, title: title, subtitle: subtitle, width: iw, height: ih, elapsed: $0)
-                                   } ?? still)
+                                   : (letterElapsed(at: ctx.date) != nil || motion != nil
+                                      ? TitleRenderer.image(design, title: title, subtitle: subtitle, width: iw, height: ih,
+                                                            elapsed: letterElapsed(at: ctx.date), motion: motion)
+                                      : still)
                 let placed = animationPlacement(at: ctx.date)
                 let r = placed.0, a = placed.1
                 ZStack {
@@ -274,9 +278,21 @@ struct TitleSheet: View {
         return max(1, TextReveal(animation: design.textAnimation, delay: design.letterDelay).totalDuration(letters: letters) + 0.5)
     }
 
+    /// 3D motion progress while "Try animation" plays a title with a 3D motion: in, hold, out.
+    private func motionProgress(at now: Date) -> Double? {
+        guard !isTicker, let start = animStart, let t3 = design.active3D, t3.hasMotion else { return nil }
+        let t = now.timeIntervalSince(start), dur = t3.duration, hold = holdSeconds
+        if t < dur { return t / dur }
+        if t < dur + hold { return 1 }
+        if t < 2 * dur + hold { return 1 - (t - dur - hold) / dur }
+        DispatchQueue.main.async { if animStart == start { animStart = nil } }
+        return nil
+    }
+
     /// The chosen in / out animation played once in the preview: in, hold, out.
     private func animationPlacement(at now: Date) -> (NormRect, Double) {
         guard let start = animStart else { return (.full, 1) }
+        if !isTicker, design.active3D?.hasMotion == true { return (.full, 1) }
         let (anim, dur): (OverlayAnimation, Double) = isTicker
             ? (ticker.animation ?? .fade, ticker.animationDuration ?? 0.5)
             : (design.animation, design.animationDuration)
@@ -314,6 +330,48 @@ struct TitleSheet: View {
                        10...300, step: 5)
             }
             Text(L10n.t("titled.animation_help")).font(.caption).foregroundStyle(Theme.textDim).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// 3D look and motion (0.59.0).
+    private var tab3D: some View {
+        let on = design.active3D != nil
+        let t3 = Binding<Title3D>(get: { design.look3D ?? Title3D() }, set: { design.look3D = $0 })
+        return VStack(alignment: .leading, spacing: 6) {
+            row("") {
+                Toggle(L10n.t("titled3d.enable"), isOn: Binding(get: { on }, set: { v in
+                    let def = design.template.defaultDesign.look3D
+                    design.look3D = v ? (def?.isActive == true ? def : Title3D()) : Title3D.flat
+                }))
+            }
+            Group {
+                slider(L10n.t("titled3d.depth"), t3.depth, 0...60)
+                slider(L10n.t("titled3d.direction"), t3.direction, 0...360, step: 5)
+                row("") {
+                    Toggle(L10n.t("titled3d.auto_side"), isOn: Binding(get: { t3.wrappedValue.sideColor == nil },
+                                                                     set: { t3.wrappedValue.sideColor = $0 ? nil : ProjectColor(r: 0.2, g: 0.2, b: 0.25) }))
+                    if t3.wrappedValue.sideColor != nil {
+                        ColorPicker(L10n.t("titled3d.side"), selection: Binding(
+                            get: { Color(nsColor: (t3.wrappedValue.sideColor ?? ProjectColor(r: 0, g: 0, b: 0)).nsColor) },
+                            set: { t3.wrappedValue.sideColor = ProjectColor(NSColor($0)) }), supportsOpacity: false)
+                    }
+                }
+                row("") { Toggle(L10n.t("titled3d.bevel"), isOn: t3.bevel) }
+                slider(L10n.t("titled3d.tilt_x"), t3.tiltX, -35...35)
+                slider(L10n.t("titled3d.tilt_y"), t3.tiltY, -35...35)
+                Divider()
+                row(L10n.t("titled3d.motion")) {
+                    Picker("", selection: t3.motion) {
+                        ForEach(Motion3D.allCases, id: \.self) { Text(L10n.t("motion3d." + $0.rawValue)).tag($0) }
+                    }
+                    .labelsHidden().frame(width: 200)
+                }
+                if t3.wrappedValue.motion != .off {
+                    slider(L10n.t("titled.animation_duration"), t3.duration, 0.2...3, step: 0.1)
+                }
+            }
+            .disabled(!on)
+            Text(L10n.t("titled3d.help")).font(.caption).foregroundStyle(Theme.textDim).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -661,6 +719,18 @@ struct TickerEditorPanel: View {
                 row(L10n.t("titled.animation")) {
                     AnimationPicker(selection: Binding(get: { config.animation ?? .fade }, set: { config.animation = $0 }))
                 }
+                slider(L10n.t("titled.animation_duration"), Binding(get: { config.animationDuration ?? 0.5 }, set: { config.animationDuration = $0 }),
+                       0.1...5, step: 0.1)
+            }
+            Divider()
+            row("") { Toggle(L10n.t("tickered.look3d"), isOn: flag(\.look3D)) }
+            row(L10n.t("titled3d.motion")) {
+                Picker("", selection: Binding(get: { config.motion3D ?? .off }, set: { config.motion3D = $0 == .off ? nil : $0 })) {
+                    ForEach(Motion3D.allCases, id: \.self) { Text(L10n.t("motion3d." + $0.rawValue)).tag($0) }
+                }
+                .labelsHidden().frame(width: 200)
+            }
+            if config.hasMotion3D {
                 slider(L10n.t("titled.animation_duration"), Binding(get: { config.animationDuration ?? 0.5 }, set: { config.animationDuration = $0 }),
                        0.1...5, step: 0.1)
             }

@@ -298,6 +298,10 @@ extension AppModel {
     public func frameSource(_ id: InputID) -> FrameSource? { engine?.source(id) as? FrameSource }
     // QR code inputs (0.58.0)
     public func qrSource(_ id: InputID) -> QRCodeSource? { engine?.source(id) as? QRCodeSource }
+    public func virtualSetSource(_ id: InputID) -> VirtualSetSource? { engine?.source(id) as? VirtualSetSource }
+    @discardableResult
+    public func addVirtualSet(_ d: VirtualSetDesign) -> InputID? { engine?.addVirtualSet(d) }
+    public func updateVirtualSet(_ id: InputID, _ d: VirtualSetDesign) { engine?.updateVirtualSet(id, d); objectWillChange.send() }
     @discardableResult
     public func addQRCode(_ d: QRDesign) -> InputID? { engine?.addQRCode(d) }
     public func updateQRCode(_ id: InputID, _ d: QRDesign) { engine?.updateQRCode(id, d); objectWillChange.send() }

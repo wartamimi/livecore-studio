@@ -192,6 +192,8 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case decklink(ProjectDeckLink)
     /// QR code card for donations, angpao, links, Wi-Fi… (0.58.0).
     case qrCode(QRDesign)
+    /// Virtual studio with keyed talents (0.59.0); talents and screen are its layers.
+    case virtualSet(VirtualSetDesign)
 }
 
 /// A presentation input: the file and the slide on air.
