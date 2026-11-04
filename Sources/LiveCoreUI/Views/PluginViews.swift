@@ -15,10 +15,7 @@ final class PluginChainModel: ObservableObject {
     let chain: PluginInsertChain
     let host: AudioPluginHost
     @Published private(set) var tick = 0
-    /// Highest load per slot over the last second (1 = 100 % of real time).
-    @Published private(set) var loads: [UUID: Float] = [:]
     private var observers: [NSObjectProtocol] = []
-    private var timer: Timer?
 
     init(chain: PluginInsertChain, host: AudioPluginHost) {
         self.chain = chain
@@ -28,19 +25,10 @@ final class PluginChainModel: ObservableObject {
                 self?.tick += 1
             })
         }
-        let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            var l: [UUID: Float] = [:]
-            for s in self.chain.slots { l[s.id] = s.takeLoad() }
-            self.loads = l
-        }
-        RunLoop.main.add(t, forMode: .common)
-        timer = t
         if !host.catalog.hasScanned && !host.catalog.isScanning { host.catalog.scan() }
     }
 
     deinit {
-        timer?.invalidate()
         observers.forEach { NotificationCenter.default.removeObserver($0) }
     }
 
@@ -139,9 +127,7 @@ struct PluginChainSheet: View {
                 if !status.isEmpty {
                     Text(status).font(.system(size: 10)).foregroundStyle(Theme.program).lineLimit(2)
                 } else {
-                    let load = m.loads[slot.id] ?? 0
-                    Text("\(slot.descriptor.vendor) · CPU \(Int((load * 100).rounded())) %")
-                        .font(.system(size: 10)).foregroundStyle(load > 0.7 ? Theme.warning : Theme.textDim)
+                    PluginLoadText(slot: slot)
                 }
             }
             Spacer(minLength: 4)
@@ -199,6 +185,23 @@ struct PluginChainSheet: View {
                 }
             }
         }
+    }
+}
+
+/// Vendor and CPU load of one slot. Only this text refreshes every second, so the rest of the
+/// plug-in list (and an open Add Plug-in menu) is not redrawn and does not flicker.
+struct PluginLoadText: View {
+    let slot: PluginSlot
+    @State private var load: Float = 0
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        Text("\(slot.descriptor.vendor) · CPU \(Int((load * 100).rounded())) %")
+            .font(.system(size: 10)).foregroundStyle(load > 0.7 ? Theme.warning : Theme.textDim)
+            .onReceive(timer) { _ in
+                let v = slot.takeLoad()
+                if abs(v - load) > 0.005 { load = v }
+            }
     }
 }
 
