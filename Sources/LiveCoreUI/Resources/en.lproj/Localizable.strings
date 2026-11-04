@@ -1784,3 +1784,8 @@
 "plugins.none_found" = "None found";
 "plugins.generic" = "This plug-in has no window of its own: its parameters are listed here.";
 "plugins.no_params" = "No adjustable parameters.";
+"plugins.tab" = "Audio Plugin";
+"plugins.master_menu" = "Audio Plugin…";
+"plugins.folders" = "Plug-in folders";
+"plugins.show_in_finder" = "Show in Finder";
+"plugins.folders_note" = "Install VST3 plug-ins (.vst3) and Audio Units (.component) into these folders, then press Rescan. App-based AUv3 plug-ins are found automatically once their app has been opened once.";

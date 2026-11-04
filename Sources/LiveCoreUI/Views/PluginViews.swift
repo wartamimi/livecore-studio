@@ -39,12 +39,16 @@ final class PluginChainModel: ObservableObject {
 struct PluginChainSheet: View {
     @StateObject private var m: PluginChainModel
     let title: String
+    /// Shown inside the Audio Properties tab (no Close button, no fixed width).
+    let embedded: Bool
     @Environment(\.dismiss) private var dismiss
     @State private var showFailures = false
+    @State private var showFolders = false
 
-    init(chain: PluginInsertChain, host: AudioPluginHost, title: String) {
+    init(chain: PluginInsertChain, host: AudioPluginHost, title: String, embedded: Bool = false) {
         _m = StateObject(wrappedValue: PluginChainModel(chain: chain, host: host))
         self.title = title
+        self.embedded = embedded
     }
 
     var body: some View {
@@ -101,13 +105,59 @@ struct PluginChainSheet: View {
             Toggle(L10n.t("plugins.au_out_of_process"), isOn: Binding(get: { m.host.auOutOfProcess }, set: { m.host.auOutOfProcess = $0; m.objectWillChange.send() }))
                 .toggleStyle(.checkbox).font(.system(size: 11))
                 .help(L10n.t("plugins.au_out_of_process_help"))
-            HStack {
-                Spacer()
-                Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.defaultAction)
+            folderNote
+            if !embedded {
+                HStack {
+                    Spacer()
+                    Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.defaultAction)
+                }
             }
         }
-        .padding(16)
-        .frame(width: 560)
+        .padding(embedded ? 10 : 16)
+        .frame(width: embedded ? nil : 560)
+    }
+
+    /// Where macOS looks for plug-ins, with buttons that open each folder in Finder.
+    private var folderNote: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Button { showFolders.toggle() } label: {
+                Label(L10n.t("plugins.folders"), systemImage: showFolders ? "chevron.down" : "chevron.right")
+            }
+            .buttonStyle(.borderless).font(.system(size: 11))
+            if showFolders {
+                ForEach(PluginFolders.all, id: \.path) { f in
+                    HStack(spacing: 6) {
+                        Text(f.kind).font(.system(size: 10, weight: .semibold)).frame(width: 34, alignment: .leading)
+                        Text(f.path).font(.system(size: 10, design: .monospaced)).textSelection(.enabled)
+                            .lineLimit(1).truncationMode(.middle)
+                        Spacer()
+                        Button(L10n.t("plugins.show_in_finder")) { PluginFolders.reveal(f.path) }
+                            .buttonStyle(.link).font(.system(size: 10))
+                    }
+                }
+                Text(L10n.t("plugins.folders_note")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+/// The standard macOS plug-in folders the scan reads.
+enum PluginFolders {
+    struct Folder { let kind: String; let path: String }
+    static var all: [Folder] {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        return [
+            Folder(kind: "VST3", path: "/Library/Audio/Plug-Ins/VST3"),
+            Folder(kind: "VST3", path: home + "/Library/Audio/Plug-Ins/VST3"),
+            Folder(kind: "AU", path: "/Library/Audio/Plug-Ins/Components"),
+            Folder(kind: "AU", path: home + "/Library/Audio/Plug-Ins/Components"),
+        ]
+    }
+    static func reveal(_ path: String) {
+        let url = URL(fileURLWithPath: path, isDirectory: true)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(url)
     }
 
     @ViewBuilder private func row(_ i: Int, _ slot: PluginSlot) -> some View {
@@ -219,26 +269,45 @@ final class PluginEditorWindows: NSObject, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         window.contentView = container
         window.delegate = self
+        // Above the main window and its sheets, so the editor never opens hidden behind them.
+        window.level = .floating
+        window.collectionBehavior.insert(.fullScreenAuxiliary)
         window.center()
         windows[slot.id] = (window, slot)
+        NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
-        slot.openEditor(in: container, resize: { [weak window] size in
-            DispatchQueue.main.async { window?.setContentSize(size) }
-        }, completion: { [weak self, weak window] size in
+        var answered = false
+        let showGeneric = { [weak self, weak window] in
             guard let self, let window else { return }
-            if let size {
+            // No editor of its own (or it never answered): generic parameter sliders.
+            slot.closeEditor()
+            let host = NSHostingView(rootView: GenericPluginEditor(slot: slot))
+            host.frame = NSRect(x: 0, y: 0, width: 460, height: 420)
+            window.contentView = host
+            window.setContentSize(host.frame.size)
+            window.styleMask.insert(.resizable)
+            window.makeKeyAndOrderFront(nil)
+            self.windows[slot.id] = (window, slot)
+        }
+        slot.openEditor(in: container, resize: { [weak window] size in
+            if Thread.isMainThread { window?.setContentSize(size) } else { DispatchQueue.main.async { window?.setContentSize(size) } }
+        }, completion: { [weak window] size in
+            guard !answered, let window else { return }
+            answered = true
+            if let size, size.width > 1, size.height > 1, !container.subviews.isEmpty {
                 window.setContentSize(size)
                 if slot.editorResizable { window.styleMask.insert(.resizable) }
+                window.makeKeyAndOrderFront(nil)
             } else {
-                // No editor of its own: generic parameter sliders.
-                let host = NSHostingView(rootView: GenericPluginEditor(slot: slot))
-                host.frame = NSRect(x: 0, y: 0, width: 460, height: 420)
-                window.contentView = host
-                window.setContentSize(host.frame.size)
-                window.styleMask.insert(.resizable)
-                self.windows[slot.id] = (window, slot)
+                showGeneric()
             }
         })
+        // Some Audio Units (often out-of-process AUv2) never return their view: fall back after 4 s.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            guard !answered else { return }
+            answered = true
+            showGeneric()
+        }
     }
 
     func close(_ slot: PluginSlot) {

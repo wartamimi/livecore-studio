@@ -823,8 +823,11 @@ bool lc_vst3_editor_open(lc_vst3_plugin *p, void *parent, int32_t *width, int32_
     p->frame.resize = resize;
     p->frame.ctx = ctx;
     v->setFrame(&p->frame);
-    if (v->attached(parent, kPlatformTypeNSView) != kResultOk) { v->setFrame(nullptr); v->release(); return false; }
+    // Size the parent view first: many editors (JUCE, VSTGUI) lay out against the parent's
+    // size during attached() and show nothing in a zero-size parent.
     ViewRect r{};
+    if (v->getSize(&r) == kResultOk && r.getWidth() > 0 && r.getHeight() > 0 && resize) resize(ctx, r.getWidth(), r.getHeight());
+    if (v->attached(parent, kPlatformTypeNSView) != kResultOk) { v->setFrame(nullptr); v->release(); return false; }
     if (v->getSize(&r) == kResultOk) {
         if (width) *width = r.getWidth();
         if (height) *height = r.getHeight();
