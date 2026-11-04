@@ -25,6 +25,11 @@ public final class TickerSource: VideoSource {
     /// The text drawn in tiles of at most `tileWidth` pixels (very long text exceeds CoreGraphics / IOSurface limits).
     private var tiles: [CGImage] = []
     private var stripWidth = 0
+    /// Extra pixels each tile carries for its 3D extrusion (not part of the advance).
+    private var tilePad = 0
+    /// 3D motion (0.59.0): start time and direction (true = in, false = out, nil = settled).
+    private var motionStart = 0.0
+    private var motionIn: Bool?
     private var labelImage: CGImage?
     private static let tileWidth = 4096
     private var canvas = PixelSize(width: 2, height: 2)
@@ -163,6 +168,15 @@ public final class TickerSource: VideoSource {
             if !paused, let p = self.pausedAt { self.startTime += now - p; self.pausedAt = nil }
         }
     }
+    /// Plays the 3D motion in (true) or out (false); nil shows the band settled.
+    public func playMotion(in on: Bool?) {
+        queue.async { [weak self] in
+            guard let self else { return }
+            self.motionStart = HostClock.now()
+            self.motionIn = on
+        }
+    }
+
     /// Starts the text again from the right edge.
     public func restart() {
         lock.withLock { paused = false }
@@ -194,6 +208,12 @@ public final class TickerSource: VideoSource {
             if let img = ctx.makeImage() { made.append(img) }
             x0 += tw
         }
+        tilePad = 0
+        if config.is3D {
+            let depth = TickerRenderer.depth3D
+            made = made.compactMap { Title3DRenderer.extrudedImage($0, depth: depth, unit: scale) }
+            tilePad = Int((depth * scale).rounded(.up)) + 2
+        }
         tiles = made
         stripWidth = w
         labelImage = TickerRenderer.labelImage(config, scale: scale, bandHeight: h)
@@ -216,8 +236,25 @@ public final class TickerSource: VideoSource {
                                bytesPerRow: CVPixelBufferGetBytesPerRow(pb), space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue) {
             ctx.clear(CGRect(x: 0, y: 0, width: w, height: h))
-            TickerRenderer.drawBand(ctx, cfg, width: w, height: h, scale: scale, tiles: tiles, stripWidth: stripWidth,
-                                    label: labelImage, elapsed: elapsed)
+            var shade = 0.0
+            if let on = motionIn, cfg.hasMotion3D {
+                let dur = cfg.animationDuration ?? 0.5
+                let since = HostClock.now() - motionStart
+                let t = min(since / max(dur, 0.05), 1)
+                let pose = (cfg.motion3D ?? .off).pose(progress: on ? t : 1 - t)
+                // Settled after "in"; after "out", hidden until the overlay is gone, then shown again.
+                if (t >= 1 && on) || (!on && since > dur + 0.5) { motionIn = nil }
+                shade = TickerRenderer.applyPose(pose, ctx, width: w, height: h)
+            }
+            if shade >= 0 {
+                TickerRenderer.drawBand(ctx, cfg, width: w, height: h, scale: scale, tiles: tiles, stripWidth: stripWidth,
+                                        label: labelImage, elapsed: elapsed, tilePad: tilePad)
+                if shade > 0.01 {
+                    ctx.setBlendMode(.sourceAtop)
+                    ctx.setFillColor(CGColor(gray: 0, alpha: shade))
+                    ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
+                }
+            }
         }
         CVPixelBufferUnlockBaseAddress(pb, [])
         lock.withLock { frame = pb }
@@ -278,9 +315,42 @@ public enum TickerRenderer {
 
     /// One frame of the band (`width` × `height` pixels, CoreGraphics y-up): bar, scrolling text
     /// in the area right of the label, then the label.
+    /// Extrusion of 3D running text (points at 1080p).
+    static let depth3D = 5.0
+
+    /// Turns the band for a 3D motion pose (orthographic: the band is squeezed around its pivot
+    /// and faded). Returns how much to darken it, or −1 when nothing is to be drawn.
+    static func applyPose(_ pose: Pose3D, _ ctx: CGContext, width w: Int, height h: Int) -> Double {
+        guard pose.opacity > 0.001 else { return -1 }
+        let r = Double.pi / 180
+        let sy = cos(pose.rotX * r), sx = cos(pose.rotY * r)
+        guard abs(sy) > 0.01, abs(sx) > 0.01 else { return -1 }
+        let px = Double(w) * pose.pivotX, py = Double(h) * (1 - pose.pivotY)
+        let far = 1 / (1 + pose.depth * 0.5)
+        ctx.translateBy(x: px, y: py)
+        ctx.scaleBy(x: sx * far, y: sy * far)
+        ctx.translateBy(x: -px, y: -py)
+        ctx.setAlpha(pose.opacity)
+        return pose.turn * 0.55
+    }
+
     public static func drawBand(_ ctx: CGContext, _ c: TickerConfig, width w: Int, height h: Int, scale: Double,
-                                tiles: [CGImage], stripWidth: Int, label: CGImage?, elapsed: Double) {
-        if c.showBar {
+                                tiles: [CGImage], stripWidth: Int, label: CGImage?, elapsed: Double, tilePad: Int = 0) {
+        if c.showBar && c.is3D {
+            // Thick bevelled bar: lit top edge, shaded body, dark lower lip.
+            let base = c.barColor.nsColor
+            let top = base.blended(withFraction: 0.35, of: .white) ?? base, low = base.blended(withFraction: 0.45, of: .black) ?? base
+            if let g = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB),
+                                  colors: [low.cgColor, base.cgColor, top.cgColor] as CFArray, locations: [0, 0.55, 1]) {
+                ctx.saveGState()
+                ctx.clip(to: CGRect(x: 0, y: 0, width: w, height: h))
+                ctx.drawLinearGradient(g, start: .zero, end: CGPoint(x: 0, y: h), options: [])
+                ctx.restoreGState()
+            }
+            let lip = max(2, Double(h) * 0.1)
+            ctx.setFillColor(CGColor(gray: 0, alpha: 0.35)); ctx.fill(CGRect(x: 0, y: 0, width: Double(w), height: lip))
+            ctx.setFillColor(CGColor(gray: 1, alpha: 0.45)); ctx.fill(CGRect(x: 0, y: Double(h) - max(1, Double(h) * 0.04), width: Double(w), height: max(1, Double(h) * 0.04)))
+        } else if c.showBar {
             ctx.setFillColor(c.barColor.nsColor.cgColor)
             ctx.fill(CGRect(x: 0, y: 0, width: w, height: h))
         }
@@ -292,17 +362,31 @@ public enum TickerRenderer {
             var x = lw + TickerMath.offset(elapsed: elapsed, speed: c.speed * scale, stripWidth: Double(stripWidth),
                                            viewWidth: view, direction: c.scrollDirection)
             ctx.interpolationQuality = .medium
+            let pad = Double(tilePad)
             for tile in tiles {
                 let tw = Double(tile.width)
                 if x < Double(w), x + tw > lw {
-                    let y = (Double(h) - Double(tile.height)) / 2
+                    // The face (without the extrusion pad) is centred in the band.
+                    let y = (Double(h) - (Double(tile.height) - pad)) / 2 - pad
                     ctx.draw(tile, in: CGRect(x: x, y: y, width: tw, height: Double(tile.height)))
                 }
-                x += tw
+                x += tw - pad
             }
             ctx.restoreGState()
         }
-        if let label { ctx.draw(label, in: CGRect(x: 0, y: 0, width: label.width, height: h)) }
+        if let label {
+            ctx.draw(label, in: CGRect(x: 0, y: 0, width: label.width, height: h))
+            if c.is3D, let g = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB),
+                                          colors: [CGColor(gray: 0, alpha: 0.25), CGColor(gray: 1, alpha: 0), CGColor(gray: 1, alpha: 0.4)] as CFArray,
+                                          locations: [0, 0.5, 1]) {
+                ctx.saveGState()
+                ctx.clip(to: CGRect(x: 0, y: 0, width: label.width, height: h))
+                ctx.drawLinearGradient(g, start: .zero, end: CGPoint(x: 0, y: h), options: [])
+                ctx.restoreGState()
+                ctx.setFillColor(CGColor(gray: 0, alpha: 0.4))
+                ctx.fill(CGRect(x: Double(label.width), y: 0, width: max(2, 4 * scale), height: Double(h)))
+            }
+        }
     }
 
     /// Whole-picture preview (transparent, band at its position) for the Title Designer.
@@ -326,7 +410,12 @@ public enum TickerRenderer {
         NSGraphicsContext.current = NSGraphicsContext(cgContext: tctx, flipped: false)
         s.draw(at: NSPoint(x: 1, y: 1))
         NSGraphicsContext.restoreGraphicsState()
-        let tiles = tctx.makeImage().map { [$0] } ?? []
+        var tiles = tctx.makeImage().map { [$0] } ?? []
+        var pad = 0
+        if c.is3D {
+            tiles = tiles.compactMap { Title3DRenderer.extrudedImage($0, depth: depth3D, unit: scale) }
+            pad = Int((depth3D * scale).rounded(.up)) + 2
+        }
         let label = labelImage(c, scale: scale, bandHeight: bandH)
         // Default: the text has just come in from the edge, so the start of it is readable.
         let lw = Double(label?.width ?? 0)
@@ -334,7 +423,7 @@ public enum TickerRenderer {
         let rect = c.layerRect
         ctx.saveGState()
         ctx.translateBy(x: 0, y: Double(H) * (1 - rect.y - rect.height))
-        drawBand(ctx, c, width: W, height: bandH, scale: scale, tiles: tiles, stripWidth: sw, label: label, elapsed: t)
+        drawBand(ctx, c, width: W, height: bandH, scale: scale, tiles: tiles, stripWidth: sw, label: label, elapsed: t, tilePad: pad)
         ctx.restoreGState()
         return ctx.makeImage()
     }

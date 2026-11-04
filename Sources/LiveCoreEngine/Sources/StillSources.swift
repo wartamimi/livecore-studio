@@ -201,23 +201,60 @@ public final class TextSource: VideoSource {
     private var animTimer: DispatchSourceTimer?
     private static let animQueue = DispatchQueue(label: "livecore.title-animation", qos: .userInteractive)
 
-    /// Plays the title's text animation from the first letter (when it goes on air). Main thread.
+    /// True when going on air plays something (letters or a 3D motion).
+    public var hasOnAirAnimation: Bool {
+        guard let d = style.design else { return false }
+        return d.textAnimation != .off || (d.active3D?.hasMotion ?? false)
+    }
+
+    /// Seconds of the 3D out motion (nil = none): the overlay stays up meanwhile.
+    public var motionOutDuration: Double? {
+        guard let t = style.design?.active3D, t.hasMotion else { return nil }
+        return t.duration
+    }
+
+    /// Plays the title's text animation from the first letter and its 3D motion in (when it goes
+    /// on air). Main thread.
     public func playTextAnimation() {
-        guard let d = style.design, d.textAnimation != .off else { return }
+        guard let d = style.design, hasOnAirAnimation else { return }
         let title = style.title, subtitle = style.subtitle, size = outputSize
-        let total = TextReveal(animation: d.textAnimation, delay: d.letterDelay)
+        let letters = d.textAnimation == .off ? 0 : TextReveal(animation: d.textAnimation, delay: d.letterDelay)
             .totalDuration(letters: TitleRenderer.letterCount(title: title, subtitle: subtitle, design: d))
+        let motion = d.active3D.flatMap { $0.hasMotion ? $0.duration : nil }
+        let total = max(letters, motion ?? 0)
+        runAnimation(total: total) { e in
+            PixelBufferFactory.draw(width: size.width, height: size.height) { ctx in
+                TitleRenderer.draw(d, title: title, subtitle: subtitle, in: ctx, width: Double(size.width), height: Double(size.height),
+                                   elapsed: d.textAnimation == .off || e >= letters ? nil : e,
+                                   motion: motion.map { min(e / $0, 1) })
+            }
+        }
+    }
+
+    /// Plays the 3D motion out (when the title's overlay is taken off). Main thread.
+    public func playMotionOut() {
+        guard let d = style.design, let dur = motionOutDuration else { return }
+        let title = style.title, subtitle = style.subtitle, size = outputSize
+        runAnimation(total: dur + 0.6) { e in
+            PixelBufferFactory.draw(width: size.width, height: size.height) { ctx in
+                // Hidden after the motion until the overlay is gone, then the finished title again.
+                let m = e >= dur + 0.5 ? 1 : max(0, 1 - e / dur)
+                TitleRenderer.draw(d, title: title, subtitle: subtitle, in: ctx, width: Double(size.width), height: Double(size.height),
+                                   motion: m)
+            }
+        }
+    }
+
+    /// Redraws 30 times a second on the animation queue for `total` seconds.
+    private func runAnimation(total: Double, frame make: @escaping (Double) -> CVPixelBuffer?) {
         if let old = animTimer { lock.withLock { old.cancel() } }
         let start = HostClock.now()
         let t = DispatchSource.makeTimerSource(queue: Self.animQueue)
         t.schedule(deadline: .now(), repeating: 1.0 / 30, leeway: .milliseconds(2))
         t.setEventHandler { [weak self, weak t] in
             guard let self, let t, !t.isCancelled else { return }
-            let e = HostClock.now() - start
-            let pb = PixelBufferFactory.draw(width: size.width, height: size.height) { ctx in
-                TitleRenderer.draw(d, title: title, subtitle: subtitle, in: ctx,
-                                   width: Double(size.width), height: Double(size.height), elapsed: e >= total ? nil : e)
-            }
+            let e = min(HostClock.now() - start, total)
+            let pb = make(e)
             // A newer render (finish, text change) may have cancelled this animation meanwhile.
             self.lock.withLock { if !t.isCancelled { self.frame = pb } }
             if e >= total { t.cancel() }
@@ -289,8 +326,22 @@ public enum TitleRenderer {
     /// Draws into a bitmap context of `width` × `height` pixels (CoreGraphics y-up).
     /// `elapsed`: seconds since the title went on air, for the letter-by-letter animation (nil =
     /// every letter in place).
+    /// `motion`: progress of the 3D in / out motion (0 = hidden, 1 = in place; nil = in place).
     public static func draw(_ design: TitleDesign, title: String, subtitle: String, in ctx: CGContext,
-                            width W: Double, height H: Double, elapsed: Double? = nil) {
+                            width W: Double, height H: Double, elapsed: Double? = nil, motion: Double? = nil) {
+        if let t3 = design.active3D {
+            Title3DRenderer.draw(t3, in: ctx, width: W, height: H, progress: motion ?? 1) { c in
+                drawFlat(design, title: title, subtitle: subtitle, in: c, width: W, height: H, elapsed: elapsed)
+            }
+            return
+        }
+        drawFlat(design, title: title, subtitle: subtitle, in: ctx, width: W, height: H, elapsed: elapsed)
+    }
+
+    /// The 2D title; returns the area it covers (boxes and text, CoreGraphics y-up).
+    @discardableResult
+    static func drawFlat(_ design: TitleDesign, title: String, subtitle: String, in ctx: CGContext,
+                         width W: Double, height H: Double, elapsed: Double? = nil) -> CGRect {
         let d = design.clamped()
         let u = TitleLayout.unit(d, canvasWidth: W, canvasHeight: H)
         let t = attributed(d.uppercase ? title.uppercased() : title, size: d.titleSize * u, weight: d.titleWeight, color: d.titleColor, d, u)
@@ -305,6 +356,9 @@ public enum TitleRenderer {
         let result = TitleLayout.layout(d, canvasWidth: W, canvasHeight: H,
                                         title: size(t, !title.isEmpty), subtitle: size(s, !subtitle.isEmpty), tag: size(g, showTag))
         func flip(_ r: TitleRect) -> CGRect { CGRect(x: r.x, y: H - r.y - r.height, width: r.width, height: r.height) }
+        var covered = CGRect.null
+        for b in result.boxes { covered = covered.union(flip(b.rect)) }
+        for t in result.texts { covered = covered.union(flip(t.rect)) }
         for b in result.boxes {
             let c: ProjectColor
             switch b.fill {
@@ -343,6 +397,7 @@ public enum TitleRenderer {
             }
         }
         NSGraphicsContext.restoreGraphicsState()
+        return covered
     }
 
     /// Letters of the three texts together (the animation's length).
@@ -382,13 +437,13 @@ public enum TitleRenderer {
 
     /// Picture of a design (gallery thumbnails and the editor preview).
     public static func image(_ design: TitleDesign, title: String, subtitle: String, width: Int, height: Int,
-                             elapsed: Double? = nil) -> CGImage? {
+                             elapsed: Double? = nil, motion: Double? = nil) -> CGImage? {
         guard let ctx = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
                                   space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                   bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
         else { return nil }
         ctx.clear(CGRect(x: 0, y: 0, width: width, height: height))
-        draw(design, title: title, subtitle: subtitle, in: ctx, width: Double(width), height: Double(height), elapsed: elapsed)
+        draw(design, title: title, subtitle: subtitle, in: ctx, width: Double(width), height: Double(height), elapsed: elapsed, motion: motion)
         return ctx.makeImage()
     }
 
