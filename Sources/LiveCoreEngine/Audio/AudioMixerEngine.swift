@@ -190,7 +190,8 @@ public final class AudioMixerEngine {
         }
     }
 
-    public func stop() { engine.stop(); isRunning = false }
+    /// Stops the monitor output and every aux output (0.61.0: aux outputs too, on quit).
+    public func stop() { engine.stop(); auxOutputs.forEach { $0?.stop() }; isRunning = false }
 
     private func restart() {
         engine.stop()

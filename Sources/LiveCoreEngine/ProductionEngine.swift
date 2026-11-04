@@ -343,7 +343,18 @@ public final class ProductionEngine {
         DispatchQueue.main.async { [weak self] in self?.plugins.deliverStartupNotices() }
     }
 
+    /// First step of quitting (0.61.0): pauses every player and stops the audio outputs at once,
+    /// so nothing is heard while the rest is torn down.
+    public func silenceForQuit() {
+        mixer.stop()
+        control.read { st in st.sources.values.forEach { ($0 as? VideoFileSource)?.pause() } }
+        musicPlayers.forEach { $0.pause() }
+    }
+
     public func shutdown() {
+        renderTimer?.cancel()
+        renderTimer = nil
+        replay.stop()
         plugins.shutdown()
         stopStreaming()
         stopRecording()

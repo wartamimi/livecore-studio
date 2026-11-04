@@ -17,6 +17,10 @@ struct MainView: View {
     private var showPlaylist: Bool { model.hasPlaylists }
 
     var body: some View {
+        mainContent.background(MainWindowQuitHook())
+    }
+
+    @ViewBuilder private var mainContent: some View {
         Group {
             if let err = model.startupError {
                 VStack(spacing: 12) {

@@ -51,6 +51,13 @@ final class LiveCallService: ObservableObject {
         return nil
     }
 
+    /// Quit: ends the LCS Live server and its tunnel whatever the room count (0.61.0).
+    func shutdown() {
+        rooms = 0
+        tunnel.stop()
+        server?.stop(); server = nil; port = nil
+    }
+
     private func stopServerIfIdle() {
         guard rooms <= 0 else { return }
         rooms = 0
