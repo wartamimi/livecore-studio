@@ -30,15 +30,6 @@ public enum FontInstaller {
         return NSFontManager.shared.availableFontFamilies.contains { $0.lowercased() == f } || NSFont(name: family, size: 12) != nil
     }
 
-    /// Font families a template uses that this Mac does not have.
-    public static func missing(in t: GTTemplate) -> [String] {
-        var seen: [String] = []
-        for e in t.elements where e.kind == .text && !seen.contains(e.fontFamily) && !isInstalled(e.fontFamily) {
-            seen.append(e.fontFamily)
-        }
-        return seen
-    }
-
     /// Installs the fonts in the picked files and folders (folders are searched, sub-folders too).
     /// Fonts this Mac already has are skipped. Returns the font names installed and skipped.
     public static func installFiles(_ picked: [URL]) -> (installed: [String], skipped: [String]) {
@@ -94,7 +85,7 @@ public enum FontInstaller {
 }
 
 extension AppModel {
-    /// Asks whether to download the fonts a GT title needs; nothing happens without a yes.
+    /// Asks whether to download the fonts a title needs; nothing happens without a yes.
     func offerFontDownload(_ families: [String]) {
         guard !families.isEmpty else { return }
         let a = NSAlert()
@@ -140,7 +131,6 @@ extension AppModel {
     }
 
     func refreshGTTitles() {
-        for i in inputs where i.kind == .gtTitle { gtTitleSource(i.id)?.refresh() }
         objectWillChange.send()
     }
 }

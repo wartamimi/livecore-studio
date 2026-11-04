@@ -54,9 +54,6 @@ extension ProductionEngine {
             case let dl as DeckLinkSource: ps = .decklink(dl.config)
             case let q as QRCodeSource: ps = .qrCode(q.design)
             case let v as VirtualSetSource: ps = .virtualSet(v.design)
-            case let g as GTTitleSource:
-                ps = .gtTitle(ProjectGTTitle(file: ProjectMediaRef(path: g.url.path, relativePath: rel(g.url)), fields: g.fields,
-                                              overrides: g.overrides.isEmpty ? nil : g.overrides, speed: g.speed == 1 ? nil : g.speed))
             case let p as PresentationSource:
                 ps = .presentation(ProjectPresentation(file: ProjectMediaRef(path: p.url.path, relativePath: rel(p.url)),
                                                        slide: p.slide, background: p.background, live: p.prefersLive ? true : nil))
@@ -319,11 +316,9 @@ extension ProductionEngine {
             addQRCode(d, id: pi.id)
         case let .virtualSet(d):
             addVirtualSet(d, id: pi.id)
-        case let .gtTitle(g):
-            // A missing or broken .gtzip keeps its place as an empty title.
-            let url = mediaURL(g.file.path, g.file.relativePath)
-            addGTTitle(url: url, template: (try? GTReader.template(at: url)) ?? GTTemplate(width: 1920, height: 1080),
-                       fields: g.fields, overrides: g.overrides ?? [:], speed: g.speed ?? 1, id: pi.id)
+        case .gtTitle:
+            found.append("vMix GT title inputs are no longer supported; input \"\(pi.name)\" was skipped.")
+            return false
         case let .presentation(p):
             addPresentation(url: mediaURL(p.file.path, p.file.relativePath), slide: p.slide, background: p.background,
                             live: p.live ?? false, id: pi.id)

@@ -18,7 +18,6 @@ struct InputPanelView: View {
     @State private var editingFrame: InputID?
     @State private var editingQR: InputID?
     @State private var editingVirtualSet: InputID?
-    @State private var editingGT: InputID?
     @State private var editingSubtitles: InputID?
     @Environment(\.openWindow) private var openWindow
     @State private var editingLiveCall: InputID?
@@ -108,7 +107,6 @@ struct InputPanelView: View {
         .sheet(item: $editingFrame) { id in FrameSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingQR) { id in QRCodeSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingVirtualSet) { id in VirtualSetSheet(editing: id).environmentObject(model) }
-        .sheet(item: $editingGT) { id in GTTitleSheet(input: id).environmentObject(model) }
         .sheet(item: $editingSubtitles) { id in SubtitleSheet(input: id).environmentObject(model) }
         .sheet(item: $editingLiveCall) { id in LiveCallSheet(input: id).environmentObject(model) }
         .sheet(item: $editingNDI) { id in NDIInputSheet(editing: id).environmentObject(model) }
@@ -265,7 +263,6 @@ struct InputPanelView: View {
                 }
             }
         }
-        if info.kind == .gtTitle { Button(L10n.t("gt.edit")) { editingGT = info.id } }
         if info.kind == .subtitles {
             Button(L10n.t("subtitles.edit")) { editingSubtitles = info.id }
             Button(L10n.t("transcript.open")) { model.transcriptInput = info.id; openWindow(id: "transcript") }
@@ -492,7 +489,6 @@ extension InputKind {
         case .ndi: return "antenna.radiowaves.left.and.right"
         case .presentation: return "rectangle.on.rectangle.angled"
         case .frame: return "person.crop.rectangle"
-        case .gtTitle: return "rectangle.bottomthird.inset.filled"
         case .subtitles: return "captions.bubble"
         case .liveCall: return "person.wave.2"
         case .srt: return "dot.radiowaves.up.forward"

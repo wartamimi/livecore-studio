@@ -13,30 +13,21 @@ final class NDIRoutingTests: XCTestCase {
     }
 
     func testDefaultSending() {
-        let fresh = OutputRouting()
-        let both = fresh.withDefaultSending(ndi: true)
-        XCTAssertEqual(both.slots.filter(\.syphon).map(\.index), [1])
+        let both = OutputRouting().withDefaultSending(ndi: true)
         XCTAssertEqual(both.slots.filter(\.ndi).map(\.index), [1])
-
         var ndiOnly = OutputRouting()
         ndiOnly.setNDI(2, true)
-        XCTAssertEqual(ndiOnly.withDefaultSending(ndi: true), ndiOnly, "NDI already on: Syphon is not forced, NDI stays where it is")
-
-        var syphonOnly = OutputRouting()
-        syphonOnly.setSyphon(4, true)
-        let added = syphonOnly.withDefaultSending(ndi: true)
-        XCTAssertEqual(added.slots.filter(\.syphon).map(\.index), [4])
-        XCTAssertEqual(added.slots.filter(\.ndi).map(\.index), [1])
-        XCTAssertEqual(syphonOnly.withDefaultSending(ndi: false), syphonOnly)
+        XCTAssertEqual(ndiOnly.withDefaultSending(ndi: true), ndiOnly, "NDI already on: stays where it is")
     }
 
-    func testOlderRoutingWithoutNDIKeyDecodes() throws {
+    /// 0.62.0: Syphon was removed; an output that sent over Syphon now sends over NDI.
+    func testOlderSyphonRoutingBecomesNDI() throws {
         let json = #"{"slots":[{"index":1,"source":{"program":{}},"syphon":true},{"index":2,"source":{"preview":{}},"syphon":false}]}"#
         let r = try JSONDecoder().decode(OutputRouting.self, from: Data(json.utf8)).normalized(existing: nil)
         XCTAssertEqual(r.slots.count, 4)
-        XCTAssertTrue(r.slot(1).syphon)
-        XCTAssertFalse(r.slots.contains(where: \.ndi))
+        XCTAssertEqual(r.slots.filter(\.ndi).map(\.index), [1])
         XCTAssertEqual(r.slot(2).source, .preview)
+        XCTAssertFalse(String(decoding: try JSONEncoder().encode(r), as: UTF8.self).contains("syphon"))
     }
 
     func testNDIRoundTrip() throws {
