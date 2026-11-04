@@ -22,7 +22,8 @@ extension AppModel {
 
     func startOutputs(_ e: ProductionEngine) {
         let router = OutputRouter(engine: e)
-        router.onWindowFrame = { [weak self] i, pb in self?.outputFeeds[i]?.push(pb) }
+        let feeds = outputFeeds   // immutable: safe to read from the display queue (0.58.1)
+        router.onWindowFrame = { i, pb in feeds[i]?.push(pb) }
         router.onError = { [weak self] msg in self?.report(msg) }
         outputRouter = router
         ndiAvailable = NDIRuntime.isAvailable

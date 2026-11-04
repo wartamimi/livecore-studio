@@ -222,11 +222,15 @@ public final class AppModel: ObservableObject {
     func wire(_ e: ProductionEngine) {
         DispatchQueue.main.async { [weak self] in self?.applyLimiterSettings() }
         wireLiveCall(e)
-        e.onProgramFrame = { [weak self] pb in
-            self?.lastProgramFrame = pb
-            self?.programFeed.push(pb); self?.programOutputFeed.push(pb)
+        e.onProgramFrame = { [weak self] pb in self?.lastProgramFrame = pb }
+        e.onPreviewFrame = { [weak self] pb in self?.lastPreviewFrame = pb }
+        // Monitor pictures are put on screen from the display queue, not the main thread
+        // (0.58.1), so opening windows or sheets no longer makes Preview/Program stutter.
+        let program = programFeed, programOut = programOutputFeed, preview = previewFeed
+        e.onDisplayFrames = { f in
+            program.push(f.program); programOut.push(f.program)
+            if let p = f.preview { preview.push(p) }
         }
-        e.onPreviewFrame = { [weak self] pb in self?.lastPreviewFrame = pb; self?.previewFeed.push(pb) }
         e.onThumbnails = { [weak self] thumbs in
             guard let self else { return }
             for (id, pb) in thumbs { self.feed(for: id).push(pb) }
