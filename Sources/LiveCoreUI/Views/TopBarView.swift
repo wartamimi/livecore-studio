@@ -23,6 +23,7 @@ struct TopBarView: View {
                 Text(L10n.t("app.name")).font(.system(size: 15, weight: .heavy))
                 Text("\(model.settings.output.label)").font(.system(size: 11)).foregroundStyle(Theme.textDim)
             }
+            fileMenu(compact: compact)
             Spacer(minLength: 0)
             // Rundown lives in Production › Create Rundown… (0.55.1). Multiview and Settings are
             // real buttons with a hover, like the padlock in the bottom dock.
@@ -39,6 +40,39 @@ struct TopBarView: View {
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
         .panel()
+    }
+
+    /// Project / template menu in the window itself (0.63.0), same items as the menu bar's File.
+    private func fileMenu(compact: Bool) -> some View {
+        Menu {
+            Button(L10n.t("project.new")) { model.newProject() }
+            Button(L10n.t("project.open")) { model.openProject() }
+            Menu(L10n.t("project.open_recent")) {
+                ForEach(model.recentProjects, id: \.self) { u in
+                    Button(u.deletingPathExtension().lastPathComponent) { model.openRecent(u) }
+                }
+                if model.recentProjects.isEmpty { Text(L10n.t("project.recent_none")) }
+            }
+            Divider()
+            Button(L10n.t("project.save")) { model.saveProject() }
+            Button(L10n.t("project.save_as")) { model.saveProjectAs() }
+            Button(L10n.t("template.save_menu")) { model.saveAsTemplate() }
+            Divider()
+            Button(L10n.t("template.menu")) { model.showTemplates = true }
+            Menu(L10n.t("template.my_menu")) {
+                ForEach(model.userTemplates, id: \.self) { u in
+                    Button(u.deletingPathExtension().lastPathComponent) { model.newFromUserTemplate(u) }
+                }
+                if model.userTemplates.isEmpty { Text(L10n.t("template.my_none")) }
+            }
+        } label: {
+            Label(L10n.t("top.file"), systemImage: "folder")
+                .labelStyle(.titleAndIcon)
+                .font(.system(size: 12, weight: .semibold))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help(L10n.t("top.file_help"))
     }
 }
 

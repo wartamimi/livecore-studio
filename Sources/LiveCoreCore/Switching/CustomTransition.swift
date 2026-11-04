@@ -205,5 +205,105 @@ public struct BuiltInTransition: Equatable, Sendable {
             return progress < 0.5 ? FROM(p) : TO(p);
         }
         """),
+        // 0.63.0: more examples.
+        BuiltInTransition(key: "circle", code: """
+        // name: Circle Reveal
+        float4 transition(float2 uv, float progress, float ratio,
+                          texture2d<float> from, texture2d<float> to, sampler s) {
+            float2 c = float2((uv.x - 0.5) * ratio, uv.y - 0.5);
+            float r = progress * length(float2(0.5 * ratio, 0.5)) * 1.05;
+            float m = 1.0 - smoothstep(r - 0.01, r, length(c));
+            return mix(FROM(uv), TO(uv), m);
+        }
+        """),
+        BuiltInTransition(key: "heart", code: """
+        // name: Heart
+        float4 transition(float2 uv, float progress, float ratio,
+                          texture2d<float> from, texture2d<float> to, sampler s) {
+            float2 p = float2((uv.x - 0.5) * ratio, 0.55 - uv.y) / max(progress * 1.6, 0.0001);
+            p.y -= 0.15;
+            float a = p.x * p.x + p.y * p.y - 0.09;
+            float inside = a * a * a - p.x * p.x * p.y * p.y * p.y;
+            return inside <= 0.0 ? TO(uv) : FROM(uv);
+        }
+        """),
+        BuiltInTransition(key: "slidePush", code: """
+        // name: Push Left
+        float4 transition(float2 uv, float progress, float ratio,
+                          texture2d<float> from, texture2d<float> to, sampler s) {
+            float t = progress * progress * (3.0 - 2.0 * progress);
+            float x = uv.x + t;
+            return x < 1.0 ? FROM(float2(x, uv.y)) : TO(float2(x - 1.0, uv.y));
+        }
+        """),
+        BuiltInTransition(key: "crossZoom", code: """
+        // name: Cross Zoom Blur
+        float4 transition(float2 uv, float progress, float ratio,
+                          texture2d<float> from, texture2d<float> to, sampler s) {
+            float k = 1.0 - abs(progress * 2.0 - 1.0);
+            float2 d = (float2(0.5) - uv) * 0.04 * k;
+            float4 a = float4(0.0), b = float4(0.0);
+            for (int i = 0; i < 12; i++) {
+                float2 q = uv + d * float(i);
+                a += FROM(q); b += TO(q);
+            }
+            return mix(a / 12.0, b / 12.0, smoothstep(0.35, 0.65, progress));
+        }
+        """),
+        BuiltInTransition(key: "ripple", code: """
+        // name: Water Ripple
+        float4 transition(float2 uv, float progress, float ratio,
+                          texture2d<float> from, texture2d<float> to, sampler s) {
+            float2 c = float2((uv.x - 0.5) * ratio, uv.y - 0.5);
+            float d = length(c);
+            float k = 1.0 - abs(progress * 2.0 - 1.0);
+            float2 off = (d > 0.0001 ? c / d : float2(0.0)) * sin(d * 40.0 - progress * 30.0) * 0.02 * k;
+            float2 q = uv + float2(off.x / ratio, off.y);
+            return mix(FROM(q), TO(q), smoothstep(0.2, 0.8, progress));
+        }
+        """),
+        BuiltInTransition(key: "glitch", code: """
+        // name: Glitch
+        float4 transition(float2 uv, float progress, float ratio,
+                          texture2d<float> from, texture2d<float> to, sampler s) {
+            float k = 1.0 - abs(progress * 2.0 - 1.0);
+            float band = floor(uv.y * 24.0);
+            float n = fract(sin(band * 12.9898 + floor(progress * 20.0) * 78.233) * 43758.5453);
+            float shift = (n - 0.5) * 0.15 * k * step(0.55, n);
+            float2 q = float2(uv.x + shift, uv.y);
+            float4 c = progress < 0.5 ? FROM(q) : TO(q);
+            float r = (progress < 0.5 ? FROM(q + float2(0.01 * k, 0.0)) : TO(q + float2(0.01 * k, 0.0))).r;
+            return float4(r, c.g, c.b, c.a);
+        }
+        """),
+        BuiltInTransition(key: "squares", code: """
+        // name: Random Squares
+        float4 transition(float2 uv, float progress, float ratio,
+                          texture2d<float> from, texture2d<float> to, sampler s) {
+            float2 cell = floor(float2(uv.x * 16.0, uv.y * 16.0 / ratio));
+            float n = fract(sin(dot(cell, float2(12.9898, 78.233))) * 43758.5453);
+            float m = smoothstep(n - 0.1, n, progress * 1.1);
+            return mix(FROM(uv), TO(uv), m);
+        }
+        """),
+        BuiltInTransition(key: "fadeBlack", code: """
+        // name: Dip to Black
+        float4 transition(float2 uv, float progress, float ratio,
+                          texture2d<float> from, texture2d<float> to, sampler s) {
+            float4 c = progress < 0.5 ? FROM(uv) : TO(uv);
+            float k = abs(progress * 2.0 - 1.0);
+            return float4(c.rgb * k, c.a);
+        }
+        """),
+        BuiltInTransition(key: "cube", code: """
+        // name: Page Slide Up
+        float4 transition(float2 uv, float progress, float ratio,
+                          texture2d<float> from, texture2d<float> to, sampler s) {
+            float t = progress * progress * (3.0 - 2.0 * progress);
+            float y = uv.y - t;
+            if (y >= 0.0) { return FROM(float2(uv.x, y)) * (1.0 - 0.4 * t); }
+            return TO(float2(uv.x, y + 1.0));
+        }
+        """),
     ]
 }

@@ -1916,3 +1916,24 @@
 "appearance.layout.stage.help" = "Largest monitors with a short mixer.";
 "appearance.layout.compact" = "Compact";
 "appearance.layout.compact.help" = "Narrower panels for small screens.";
+
+/* 0.63.0 */
+"program.fullscreen" = "Fullscreen";
+"program.fullscreen_main" = "%@ (this screen)";
+"program.fullscreen_close" = "Close Fullscreen";
+"program.fullscreen_none" = "No display found";
+"preview.same_as_program" = "Same input as Program";
+"preview.cued" = "Next: %@ (starts on CUT / AUTO)";
+"mixer.fold_inputs" = "Fold the input strips to the side";
+"mixer.unfold_inputs" = "Show the input strips";
+"mixer.inputs_folded" = "Inputs (%ld)";
+"project.recent_none" = "No recent projects";
+"top.file" = "File";
+"top.file_help" = "New, open, save projects and templates";
+"multiview.layout" = "Multiview layout";
+"multiview.layout.standard" = "Standard (Preview + Program, inputs below)";
+"multiview.layout.programBig" = "Big Program, inputs right";
+"multiview.layout.programTop" = "Program top, inputs in a row";
+"multiview.layout.inputsLeft" = "Inputs left, Program + Preview right";
+"multiview.layout.grid" = "Equal grid";
+"multiview.layout.pvwPgm" = "Preview + Program only";

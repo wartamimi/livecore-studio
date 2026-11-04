@@ -32,12 +32,12 @@ struct SettingsView: View {
     init(initialTab: Int = 0) { self.initialTab = initialTab }
 
     static var sections: [(tag: Int, title: String, icon: String)] {
-        [(6, L10n.t("canvas.title"), "rectangle.dashed"), (0, L10n.t("settings.output"), "display"),
+        [(12, L10n.t("appearance.title"), "paintpalette"),
+         (6, L10n.t("canvas.title"), "rectangle.dashed"), (0, L10n.t("settings.output"), "display"),
          (1, L10n.t("stream.title"), "dot.radiowaves.left.and.right"), (2, L10n.t("record.title"), "record.circle"),
          (8, "MultiCorder", "square.grid.2x2"), (3, L10n.t("audio.title"), "speaker.wave.2"),
          (4, L10n.t("settings.shortcuts"), "keyboard"), (5, "MIDI", "pianokeys"), (7, "Remote", "iphone"),
          (9, L10n.t("preflight.button"), "checklist"), (10, L10n.t("settings.language"), "globe"),
-         (12, L10n.t("appearance.title"), "paintpalette"),
          (11, "Security", "lock")]
     }
 

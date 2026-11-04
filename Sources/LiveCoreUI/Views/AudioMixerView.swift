@@ -13,12 +13,19 @@ struct AudioMixerView: View {
     @AppStorage("mixer.hideAux") private var hideAux = false
     /// How many aux buses the mixer shows (0.48.0: AUX A–D, "+ AUX / BUS" adds one).
     @AppStorage("mixer.auxCount") private var auxCount = 2
+    /// Input strips folded to a slim bar at the side (0.63.0); Aux and Master stay visible.
+    @AppStorage("mixer.inputsFolded") private var inputsFolded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 SectionHeader(title: L10n.t("audio.title"))
                 Spacer()
+                Button { inputsFolded.toggle() } label: {
+                    Image(systemName: inputsFolded ? "sidebar.left" : "sidebar.squares.left")
+                }
+                .buttonStyle(.borderless)
+                .help(inputsFolded ? L10n.t("mixer.unfold_inputs") : L10n.t("mixer.fold_inputs"))
                 Button { compact.toggle() } label: {
                     Image(systemName: compact ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
                 }
@@ -48,7 +55,10 @@ struct AudioMixerView: View {
                 .help(L10n.t("audio.add"))
             }
             HStack(alignment: .top, spacing: 6) {
-                if model.audioChannels.isEmpty {
+                if inputsFolded {
+                    DockBar(title: L10n.f("mixer.inputs_folded", model.audioChannels.count), axis: .vertical) { inputsFolded = false }
+                    Spacer(minLength: 0)
+                } else if model.audioChannels.isEmpty {
                     Text(L10n.t("audio.none")).font(.system(size: 12)).foregroundStyle(Theme.textDim)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
