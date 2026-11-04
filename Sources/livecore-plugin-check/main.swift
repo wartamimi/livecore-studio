@@ -93,7 +93,7 @@ if let lp = host.catalog.audioUnits.first(where: { $0.identifier == "aufx lpas a
         print("AULowpass loaded, isolated: \(slot.outOfProcess)")
         let high = run(chain, blocks: 40) { fillSine(15_000, 0.5) }
         let low = run(chain, blocks: 40) { fillSine(100, 0.5) }
-        check(high < 0.1, "AULowpass attenuates 15 kHz (rms \(high))")
+        check(high < 0.1, "AULowpass attenuates 15 kHz (rms \(high)) status: '\(slot.statusText)' error \(slot.lastErrorCode)")
         check(low > 0.25, "AULowpass passes 100 Hz (rms \(low))")
         let saved = chain.projectSlots()
         check(saved?.first?.state != nil, "AULowpass state saved (\(saved?.first?.state?.count ?? 0) bytes)")
