@@ -535,6 +535,10 @@ extension ProductionEngine {
             return st.sources.removeValue(forKey: id)
         }
         removed?.stop()
+        if let cam = removed as? CameraSource, let audio = cameraAudioDevice(of: cam) {
+            removeAudioInput(uniqueID: audio)
+            onAudioChannelsChange?()
+        }
         (removed as? SubtitleSource)?.onRemove?()
         aiProcessors.mutate { $0[id] = nil }
         ptzConfigs[id] = nil
@@ -580,7 +584,25 @@ extension ProductionEngine {
 
     /// New format / options for a camera or capture-card input (applied without removing it).
     public func updateCamera(_ id: InputID, config: CaptureConfig) {
-        (source(id) as? CameraSource)?.apply(config)
+        guard let cam = source(id) as? CameraSource else { return }
+        var c = config
+        if c.audioDevice == nil { c.audioDevice = cam.config.audioDevice }
+        cam.apply(c)
+    }
+
+    /// Audio device capture that belongs to a removed camera: the one linked when it was added,
+    /// else (inputs from before 0.63.1) the capture device's own audio found by name. Kept when
+    /// another camera input still uses it.
+    func cameraAudioDevice(of cam: CameraSource) -> String? {
+        let others = control.read { st in st.sources.values.compactMap { $0 as? CameraSource } }
+        if let linked = cam.config.audioDevice {
+            return others.contains { $0.config.audioDevice == linked } ? nil : linked
+        }
+        let videoName = DeviceManager.device(uniqueID: cam.deviceUniqueID)?.localizedName ?? cam.name
+        let candidates = mixer.channelList.filter { audioInputs[$0.id] != nil }
+        guard let i = CaptureAudioMatch.partner(videoName: videoName, audioNames: candidates.map(\.name)) else { return nil }
+        let uid = candidates[i].id
+        return others.contains { $0.config.audioDevice == uid } ? nil : uid
     }
 
     public func setInputLocked(_ id: InputID, _ locked: Bool) {
