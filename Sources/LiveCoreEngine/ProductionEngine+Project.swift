@@ -85,6 +85,7 @@ extension ProductionEngine {
         doc.audio.masterFaderDB = mixer.master.faderDB.value
         doc.audio.limiterEnabled = mixer.limiterEnabled.value
         doc.audio.monitorVolume = mixer.monitorVolume.value
+        doc.audio.masterPlugins = mixer.masterInserts.projectSlots()
         doc.audio.syncOffsetMs = Double(audioPump.syncOffsetSeconds.value) * 1000
         let ducking = mixer.ducking.settings
         doc.audio.ducking = ducking == DuckingSettings() ? nil : ducking
@@ -173,6 +174,7 @@ extension ProductionEngine {
         mixer.master.faderDB.value = doc.audio.masterFaderDB
         mixer.limiterEnabled.value = doc.audio.limiterEnabled
         mixer.monitorVolume.value = doc.audio.monitorVolume
+        plugins.restore(doc.audio.masterPlugins, into: mixer.masterInserts)
         audioPump.syncOffsetSeconds.value = Float(doc.audio.syncOffsetMs / 1000)
         mixer.ducking.settings = doc.audio.ducking ?? DuckingSettings()
         ptzConfigs = [:]
@@ -334,6 +336,7 @@ extension ProductionEngine {
         Self.apply(p, to: ch.controls)
         ch.locked = p.locked ?? false
         if !p.name.isEmpty { ch.name = p.name }
+        plugins.restore(p.plugins, into: ch.inserts)
         afvLinks[ch.id] = p.afvInput.flatMap { source($0) != nil ? $0 : nil }
         applyAFV()
     }
@@ -344,6 +347,7 @@ extension ProductionEngine {
         let c = ch.controls
         p.faderDB = c.faderDB.value; p.gainDB = c.gainDB.value; p.pan = c.pan.value
         p.muted = c.muted.value; p.toProgram = c.toProgram.value
+        p.plugins = ch.inserts.projectSlots()
         p.toBusA = c.toBusA.value; p.toBusB = c.toBusB.value
         p.toBusC = c.toBusC.value ? true : nil; p.toBusD = c.toBusD.value ? true : nil
         p.compressorEnabled = c.compressorEnabled.value; p.compThresholdDB = c.compThresholdDB.value; p.compRatio = c.compRatio.value

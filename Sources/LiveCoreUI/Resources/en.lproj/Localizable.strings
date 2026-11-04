@@ -1758,3 +1758,29 @@
 "motion3d.spin" = "Spin";
 "motion3d.tumble" = "Tumble";
 "motion3d.cube" = "Cube turn";
+
+/* Audio plug-ins (0.60.0) */
+"plugins.title" = "Plug-ins";
+"plugins.fx" = "FX";
+"plugins.help" = "Audio Unit and VST3 effect plug-ins on this channel (before the fader)";
+"plugins.latency" = "Plug-in latency %.1f ms";
+"plugins.latency_help" = "These plug-ins delay this channel; LiveCore does not compensate it. Use Audio Properties › Delay on other channels if lip-sync matters.";
+"plugins.safe_mode" = "Safe mode: LiveCore Studio did not close normally last time while plug-ins ran inside it. Restored plug-ins start bypassed.";
+"plugins.empty" = "No plug-ins. Add an effect below.";
+"plugins.scanning" = "Scanning plug-ins…";
+"plugins.found" = "%d Audio Units, %d VST3";
+"plugins.failed" = "%d failed";
+"plugins.rescan" = "Rescan";
+"plugins.au_out_of_process" = "Run Audio Units in a separate process (crash protection)";
+"plugins.au_out_of_process_help" = "A plug-in that crashes then stops only itself. Turn off only for a plug-in that fails to load this way. VST3 plug-ins always run inside the app.";
+"plugins.bypass_help" = "On / bypass";
+"plugins.isolated" = "ISOLATED";
+"plugins.in_app" = "IN APP";
+"plugins.edit" = "Edit";
+"plugins.reload" = "Reload";
+"plugins.remove" = "Remove plug-in";
+"plugins.audio_units" = "Audio Units";
+"plugins.add" = "Add Plug-in";
+"plugins.none_found" = "None found";
+"plugins.generic" = "This plug-in has no window of its own: its parameters are listed here.";
+"plugins.no_params" = "No adjustable parameters.";

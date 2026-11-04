@@ -189,6 +189,9 @@ public struct ChannelStripDSP: Sendable {
     private var afvPrimed = false
     private let sampleRate: Float
     public static let maxDelayMs: Float = 1000
+    /// Plug-in inserts (0.60.0): after the compressor, before the channel limiter and fader.
+    /// Set once when the channel is created.
+    public var inserts: AudioInsertProcessing?
 
     public init(controls: ChannelControls, sampleRate: Float) {
         self.controls = controls
@@ -225,7 +228,8 @@ public struct ChannelStripDSP: Sendable {
         eqp.lowPassHz = Double(min(max(controls.lowPassHz.value, 1_000), 20_000))
         eq.update(eqp)
         let limOn = controls.limiterEnabled.value
-        if gateOn || compOn || limOn || eqp.highPassEnabled || eqp.lowPassEnabled || eqp.eqEnabled {
+        let fx = inserts?.insertsActive ?? false
+        if gateOn || compOn || limOn || fx || eqp.highPassEnabled || eqp.lowPassEnabled || eqp.eqEnabled {
             // Processing sees the trimmed signal, so thresholds are independent of the fader.
             if trim != 1 { for i in 0..<frames { left[i] *= trim; right[i] *= trim } }
             eq.processHighPass(left: left, right: right, frames: frames)
@@ -253,6 +257,7 @@ public struct ChannelStripDSP: Sendable {
             } else {
                 controls.gainReductionDB.value = 0
             }
+            if fx, let inserts { inserts.processInserts(left: left, right: right, frames: frames) }
             // Brick-wall safety per channel, before the fader (0.50.0).
             if limOn {
                 limiter.ceilingDB = min(max(controls.limiterCeilingDB.value, -30), 0)
