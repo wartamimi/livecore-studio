@@ -23,6 +23,8 @@ protocol PluginProcessor: AnyObject {
     var latencySamples: Int { get }
     /// Runs out of process (a crash there cannot take LiveCore down).
     var outOfProcess: Bool { get }
+    /// Last error the plug-in returned while processing (0 = none). Diagnostics only.
+    var lastErrorCode: Int { get }
     func process(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>, frames: Int) -> Bool
     func state() -> Data?
     func restore(_ data: Data) -> Bool
@@ -53,6 +55,8 @@ final class AUPluginProcessor: PluginProcessor {
     private let outList: UnsafeMutableAudioBufferListPointer
     private var sampleTime: Double = 0
     private var viewController: NSViewController?
+    private let lastStatus = AtomicFloat(0)
+    var lastErrorCode: Int { Int(lastStatus.value) }
 
     static func instantiate(_ d: AudioPluginDescriptor, outOfProcess: Bool,
                             completion: @escaping (Result<AUPluginProcessor, Error>) -> Void) {
@@ -136,7 +140,10 @@ final class AUPluginProcessor: PluginProcessor {
         ts.mFlags = .sampleTimeValid
         sampleTime += Double(frames)
         let status = renderBlock(&flags, &ts, AUAudioFrameCount(frames), 0, outList.unsafeMutablePointer, pull)
-        guard status == noErr, let l = outList[0].mData?.assumingMemoryBound(to: Float.self) else { return false }
+        guard status == noErr, let l = outList[0].mData?.assumingMemoryBound(to: Float.self) else {
+            lastStatus.value = Float(status == noErr ? -1 : status)
+            return false
+        }
         left.update(from: l, count: frames)
         if channels > 1, let r = outList[1].mData?.assumingMemoryBound(to: Float.self) {
             right.update(from: r, count: frames)
@@ -219,6 +226,8 @@ final class VST3PluginProcessor: PluginProcessor {
     let channels: Int
     var outOfProcess: Bool { false }
     private var editorOpen = false
+    private let lastStatus = AtomicFloat(0)
+    var lastErrorCode: Int { Int(lastStatus.value) }
     private final class ResizeBox { var handler: ((NSSize) -> Void)? }
     private let resizeBox = ResizeBox()
 
@@ -234,7 +243,9 @@ final class VST3PluginProcessor: PluginProcessor {
     var latencySamples: Int { Int(lc_vst3_latency(handle)) }
 
     func process(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>, frames: Int) -> Bool {
-        lc_vst3_process(handle, left, right, Int32(frames)) == 0
+        let r = lc_vst3_process(handle, left, right, Int32(frames))
+        if r != 0 { lastStatus.value = Float(r) }
+        return r == 0
     }
 
     func state() -> Data? {

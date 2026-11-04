@@ -39,6 +39,7 @@ public final class PluginSlot: Identifiable, @unchecked Sendable {
     public var isLoaded: Bool { processor != nil }
     public var outOfProcess: Bool { processor?.outOfProcess ?? false }
     public var latencySamples: Int { processor?.latencySamples ?? 0 }
+    public var lastErrorCode: Int { processor?.lastErrorCode ?? 0 }
     public var fault: PluginFault { PluginFault(rawValue: Int(faultCode.value.rounded())) ?? .none }
 
     /// Operator-facing status line ("" when everything is fine).
@@ -46,7 +47,7 @@ public final class PluginSlot: Identifiable, @unchecked Sendable {
         if let loadError { return loadError }
         switch fault {
         case .none: return ""
-        case .renderErrors: return "Stopped: the plug-in kept failing (crashed or not responding). Bypassed."
+        case .renderErrors: return "Stopped: the plug-in kept failing (crashed or not responding; error \(lastErrorCode)). Bypassed."
         case .tooSlow: return "Stopped: too slow for real time (CPU). Bypassed."
         case .invalidOutput: return "Stopped: the plug-in produced invalid audio. Bypassed."
         case .crashed: return "Stopped: the plug-in crashed (its process ended). Bypassed."
