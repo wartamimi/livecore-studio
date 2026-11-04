@@ -83,7 +83,6 @@ jobs:
       - uses: actions/checkout@v4
       - run: brew install ffmpeg srt
       - run: scripts/ci_run.sh macos-checks-build swift build
-      - run: scripts/ci_run.sh macos-syphon-check swift run livecore-syphon-check
       - run: scripts/ci_run.sh macos-ndi-runtime scripts/install_ndi_runtime.sh
       - run: scripts/ci_run.sh macos-ndi-check swift run livecore-ndi-check
       - run: scripts/ci_run.sh macos-iso-check swift run livecore-iso-check

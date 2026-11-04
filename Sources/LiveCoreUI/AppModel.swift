@@ -61,10 +61,8 @@ public final class AppModel: ObservableObject {
     public let outputFeeds: [Int: FrameFeed] = Dictionary(uniqueKeysWithValues: (1...OutputRouting.count).map { ($0, FrameFeed()) })
     public internal(set) lazy var outputFullscreens: [Int: FullscreenOutput] = makeOutputFullscreens()
     @Published public internal(set) var outputRouting = OutputRouting()
-    /// EXTERNAL button: the Syphon and NDI outputs are sending.
+    /// EXTERNAL button: the NDI outputs are sending.
     @Published public internal(set) var externalActive = false
-    /// Output index → an app is connected to its Syphon server (only outputs that send).
-    @Published public internal(set) var syphonStatus: [Int: Bool] = [:]
     /// Output index → receivers connected to its NDI source (only outputs that send).
     @Published public internal(set) var ndiStatus: [Int: Int] = [:]
     /// The NDI runtime (NDI Tools / NDI Runtime) was found when the outputs started.

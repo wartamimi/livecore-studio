@@ -119,17 +119,6 @@ extension ProductionEngine {
                 if leavingOverlay { k.playMotion(in: false) } else { k.playMotion(in: nil) }
             }
         }
-        // GT titles: "in" on air; "out" when their overlay is taken off (it stays up meanwhile).
-        let clock = HostClock.now()
-        for (id, src) in sources {
-            guard let g = src as? GTTitleSource else { continue }
-            let was = autoPlayOnAir.contains(id), now = visible.contains(id)
-            if now && !was { g.playIn() }
-            if !now && was {
-                let leavingOverlay = overlays.contains { !$0.isOn && $0.source == id && $0.isVisible(at: clock) }
-                leavingOverlay ? g.playOut() : g.finishIn()
-            }
-        }
         for (id, src) in sources {
             guard let v = src as? VideoFileSource, v.autoPlay != .off, id != stingerID else { continue }
             let was = autoPlayOnAir.contains(id), now = visible.contains(id)
@@ -273,8 +262,6 @@ extension ProductionEngine {
         if let k = src as? TickerSource, k.config.hasMotion3D { return (.hold, (k.config.clamped.animationDuration ?? 0.5) + 0.05) }
         if let k = src as? TickerSource, let a = k.config.animation { return (a, k.config.animationDuration ?? 0.5) }
         if let q = src as? QRCodeSource { return (q.design.style.animation, min(max(q.design.style.animationDuration, 0.1), 5)) }
-        // A GT title plays its own in / out; the overlay just stays up until its out has finished.
-        if let g = src as? GTTitleSource { return (.hold, max(0.1, g.template.outDuration + 0.05)) }
         return nil
     }
 

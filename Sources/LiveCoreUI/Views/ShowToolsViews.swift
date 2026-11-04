@@ -142,7 +142,7 @@ struct PreflightSheet: View {
 
 // MARK: Outputs panel
 
-/// FULLSCREEN and EXTERNAL (Syphon / NDI) outputs with their settings (0.48.0: RECORD, STREAM and
+/// FULLSCREEN and EXTERNAL (NDI) outputs with their settings (0.48.0: RECORD, STREAM and
 /// MULTICORDER live only in the bottom dock).
 struct OutputsPanelSheet: View {
     @EnvironmentObject var model: AppModel

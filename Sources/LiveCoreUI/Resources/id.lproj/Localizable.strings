@@ -448,14 +448,13 @@
 "dock.external" = "EXTERNAL";
 "dock.record_settings" = "Setelan rekaman";
 "dock.stream_settings" = "Setelan streaming";
-"dock.external_settings" = "Output, Syphon dan NDI";
+"dock.external_settings" = "Output dan NDI";
 "dock.more_settings" = "Setelan lainnya…";
 "dock.record_off" = "Tidak merekam";
 "dock.stream_ready" = "Mati · %d tujuan siap";
 "dock.external_off" = "Mati";
-"dock.external_syphon" = "Syphon: %d output";
 "dock.external_nothing" = "Nyala · belum ada yang dipilih (lihat ⚙)";
-"dock.external_help" = "Kirim output ke aplikasi lain: Syphon (OBS \"Syphon Client\", Resolume…) dan NDI (NDI Virtual Camera untuk Zoom / Meet, OBS, vMix…)";
+"dock.external_help" = "Kirim output ke aplikasi lain lewat NDI (NDI Virtual Camera untuk Zoom / Meet, OBS, vMix…)";
 "record.not_recording" = "NOT RECORDING";
 "record.reminder" = "Pengingat NOT RECORDING";
 "record.reminder.off" = "Mati";
@@ -469,17 +468,12 @@
 "output.window" = "Buka jendela";
 "output.fullscreen" = "Layar penuh di monitor";
 "output.fullscreen_close" = "Tutup layar penuh";
-"output.syphon" = "Syphon";
-"output.syphon_help" = "Saat EXTERNAL nyala, aplikasi lain menerima output ini sebagai sumber Syphon \"LiveCore Studio – %@\"";
-"output.obs_hint" = "OBS: tambahkan source \"Syphon Client\" (LiveCore Studio – Output N) atau \"NDI Source\" (perlu plugin DistroAV).";
+"output.obs_hint" = "OBS: tambahkan \"NDI Source\" (perlu plugin DistroAV) lalu pilih LiveCore Output N.";
 
 /* 0.23.0 */
 "lock.dock_help" = "Kunci RECORD dan STREAM: selama terkunci keduanya tidak bisa dimulai atau dihentikan";
 "dock.external_clients" = "%d aplikasi menerima";
-"output.external_off_hint" = "EXTERNAL mati: tekan EXTERNAL di dock bawah untuk mulai mengirim output Syphon dan NDI.";
-"output.syphon_connected" = "Syphon: aplikasi tersambung";
-"output.syphon_waiting" = "Syphon: mengirim, belum ada aplikasi";
-"output.syphon_off_external" = "Syphon mulai saat EXTERNAL nyala";
+"output.external_off_hint" = "EXTERNAL mati: tekan EXTERNAL di dock bawah untuk mulai mengirim output NDI.";
 "overlay.tile_help" = "Overlay %d dengan input ini (fade, layar penuh). Klik: Preview · Klik kanan / dua jari: Program";
 "snapshot.button" = "Foto Program";
 
@@ -1448,7 +1442,7 @@
 "lut.save_apply" = "Simpan & Terapkan";
 "about.menu" = "Tentang LiveCore Studio";
 "about.version" = "Versi %@";
-"about.text" = "LiveCore Studio adalah studio produksi live native untuk macOS: pindah antar kamera, capture card, video, title dan halaman web, mixing audio, lalu rekam, streaming ke beberapa platform sekaligus dan kirim program ke layar, NDI atau Syphon. Dibuat untuk acara, pernikahan, gereja, kelas dan talk show yang butuh studio cepat, stabil dan sederhana di Mac.";
+"about.text" = "LiveCore Studio adalah studio produksi live native untuk macOS: pindah antar kamera, capture card, video, title dan halaman web, mixing audio, lalu rekam, streaming ke beberapa platform sekaligus dan kirim program ke layar atau NDI. Dibuat untuk acara, pernikahan, gereja, kelas dan talk show yang butuh studio cepat, stabil dan sederhana di Mac.";
 "about.made_by" = "Dibuat oleh Munawar Tamimi";
 "help.menu" = "Bantuan LiveCore Studio";
 "help.title" = "Bantuan";
@@ -1469,7 +1463,7 @@
 "help.stream.title" = "Streaming";
 "help.stream.body" = "• STREAM mengirim Program ke satu atau beberapa tujuan sekaligus: YouTube, Facebook, Twitch, atau server RTMP / RTMPS mana pun.\n• Stream key hanya disimpan di Keychain macOS.\n• Setiap tujuan menampilkan status, bitrate dan reconnect; LiveCore menyambung ulang otomatis setelah jaringan putus.\n• 9:16 (bar atas) membuat versi vertikal acara untuk Reels, Shorts dan TikTok, dengan stream sendiri.\n• Gembok di bar bawah mengunci RECORD dan STREAM agar tidak terhenti tanpa sengaja.";
 "help.outputs.title" = "Output";
-"help.outputs.body" = "Buka panel OUTPUTS dari bar atas (⇧⌘O).\n## FULLSCREEN\n• Menampilkan Program (atau sumber lain) layar penuh di layar kedua atau proyektor. ⇧⌘F menyalakan/mematikannya.\n## EXTERNAL\n• Syphon: bagikan Program ke OBS, Resolume atau MadMapper di Mac ini.\n• NDI: kirim Program lewat jaringan; dengan NDI Virtual Camera menjadi webcam untuk Zoom, Teams atau Meet.";
+"help.outputs.body" = "Buka panel OUTPUTS dari bar atas (⇧⌘O).\n## FULLSCREEN\n• Menampilkan Program (atau sumber lain) layar penuh di layar kedua atau proyektor. ⇧⌘F menyalakan/mematikannya.\n## EXTERNAL\n• NDI: kirim Program lewat jaringan; dengan NDI Virtual Camera menjadi webcam untuk Zoom, Teams atau Meet.";
 "help.color.title" = "Warna dan LUT";
 "help.color.body" = "Buka properti input › Warna.\n• Brightness, kontras, saturasi dan gamma; flip dan rotasi.\n• Level video: capture card yang tampak abu-abu atau pudar dikoreksi otomatis; range juga bisa diatur manual.\n## LUT\n• Muat .cube: gunakan LUT 3D apa pun (Resolve, Premiere, LUT kamera). Salinannya disimpan di pustaka LUT LiveCore.\n• Kekuatan mencampur LUT dengan gambar asli.\n• Generator LUT: mulai dari preset (Warm Wedding, Teal & Orange, Cinematic Film, B&W…) lalu atur eksposur, white balance, kontras film, lift / gamma / gain, vibrance, split toning, fade dan roll-off highlight. Input langsung menampilkan hasilnya. Simpan & Terapkan menyimpannya di pustaka; Ekspor membuat .cube untuk aplikasi lain.";
 "help.show.title" = "Alat acara";

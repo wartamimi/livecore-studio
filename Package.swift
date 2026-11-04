@@ -4,7 +4,6 @@
 // Targets:
 //   CAtomics          C11 atomics shim (lock-free primitives for real-time threads). Portable.
 //   CObjCSupport      Objective-C @try/@catch shim so a misbehaving capture driver cannot crash the app.
-//   CSyphon           Vendored Syphon server (BSD) for sending outputs to other apps (OBS, Resolume...).
 //   CDeckLink         Blackmagic DeckLink capture: DeckLink API loaded from the installed Desktop Video
 //                     driver at run time; vendored SDK 12.0 interface headers (Blackmagic permissive licence).
 //   CVST3             VST 3 effect host (C++) on Steinberg's MIT-licensed VST 3 pluginterfaces (vendored).
@@ -18,7 +17,6 @@
 //                     VideoToolbox/AAC encoders, RTMP transport (Network.framework), AVAssetWriter.
 //   LiveCoreUI        SwiftUI operator interface (macOS) + localisation resources (en, id).
 //   LiveCoreStudio    App entry point (App/). On other platforms it prints a notice and exits.
-//   livecore-syphon-check  CI check: another process discovers a LiveCore Syphon server and reads a frame.
 //   livecore-ndi-check     CI check: an NDI receiver finds a LiveCore-style NDI source and reads a frame.
 //   livecore-iso-check     CI check: Program + MultiCorder ISO recorders write two playable files.
 //   livecore-replay-check  CI check: the instant-replay buffer records, cuts a clip and the Replay input plays it.
@@ -51,15 +49,11 @@ let package = Package(
         .target(name: "CVST3TestPlugin", cxxSettings: [.headerSearchPath("../CVST3/sdk")],
                 linkerSettings: [.linkedFramework("CoreFoundation", .when(platforms: [.macOS]))]),
         .target(name: "CDeckLink", exclude: ["README.md", "decklink"]),   // DeckLink API via Desktop Video (Apple only)
-        .target(name: "CSyphon", exclude: ["README.md", "License.txt"],
-                linkerSettings: [.linkedFramework("Metal", .when(platforms: [.macOS])),
-                                 .linkedFramework("IOSurface", .when(platforms: [.macOS])),
-                                 .linkedFramework("AppKit", .when(platforms: [.macOS]))]),
         .target(name: "LiveCoreCore", dependencies: ["CAtomics"]),
         .target(name: "LiveCoreRemote", dependencies: ["LiveCoreCore"]),
         .target(name: "LiveCoreServices", dependencies: ["LiveCoreCore"]),
         .target(name: "LiveCoreEngine", dependencies: [
-            "LiveCoreCore", "LiveCoreServices", "CAtomics", "CObjCSupport", "CSyphon", "CNDI", "CDeckLink", "CVST3",
+            "LiveCoreCore", "LiveCoreServices", "CAtomics", "CObjCSupport", "CNDI", "CDeckLink", "CVST3",
         ]),
         .target(
             name: "LiveCoreUI",
@@ -69,7 +63,6 @@ let package = Package(
         .executableTarget(name: "LiveCoreStudio", dependencies: ["LiveCoreUI"], path: "App"),
         .executableTarget(name: "livecore-rtmp-push", dependencies: ["LiveCoreCore"]),
         .executableTarget(name: "livecore-transition-dump", dependencies: ["LiveCoreCore"]),
-        .executableTarget(name: "livecore-syphon-check", dependencies: ["CSyphon"]),
         .executableTarget(name: "livecore-ndi-check", dependencies: ["CNDI", "LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-iso-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-replay-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),

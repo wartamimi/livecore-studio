@@ -83,7 +83,7 @@ public enum OverlayAnimation: String, Codable, Sendable, CaseIterable {
     case fade
     case slideFromLeft, slideFromRight, slideFromBottom, slideFromTop
     case zoom
-    /// Fully shown for the whole duration: the source animates itself (vMix GT titles, 0.41.0).
+    /// Fully shown for the whole duration: the source animates itself (3D running text).
     case hold
     // 0.45.0
     /// Rises a short way while fading in (the common broadcast lower-third move).

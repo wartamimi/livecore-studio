@@ -180,7 +180,7 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case presentation(ProjectPresentation)
     /// Camera frame (since 0.36.0); the camera is its second layer, saved with the layers.
     case frame(FrameDesign)
-    /// Imported vMix GT title (.gtzip, since 0.39.0).
+    /// Imported vMix GT title (0.39.0–0.61.x; removed in 0.62.0, skipped on load).
     case gtTitle(ProjectGTTitle)
     /// Live subtitles from speech (0.43.0).
     case subtitles(SubtitleStyle)

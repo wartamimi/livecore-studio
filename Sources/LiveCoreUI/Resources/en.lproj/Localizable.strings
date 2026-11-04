@@ -448,14 +448,13 @@
 "dock.external" = "EXTERNAL";
 "dock.record_settings" = "Recording settings";
 "dock.stream_settings" = "Streaming settings";
-"dock.external_settings" = "Outputs, Syphon and NDI";
+"dock.external_settings" = "Outputs and NDI";
 "dock.more_settings" = "More settings…";
 "dock.record_off" = "Not recording";
 "dock.stream_ready" = "Off · %d destination(s) ready";
 "dock.external_off" = "Off";
-"dock.external_syphon" = "Syphon: %d output(s)";
 "dock.external_nothing" = "On · nothing selected (see ⚙)";
-"dock.external_help" = "Send the outputs to other apps: Syphon (OBS \"Syphon Client\", Resolume…) and NDI (NDI Virtual Camera for Zoom / Meet, OBS, vMix…)";
+"dock.external_help" = "Send the outputs to other apps over NDI (NDI Virtual Camera for Zoom / Meet, OBS, vMix…)";
 "record.not_recording" = "NOT RECORDING";
 "record.reminder" = "NOT RECORDING reminder";
 "record.reminder.off" = "Off";
@@ -469,17 +468,12 @@
 "output.window" = "Open window";
 "output.fullscreen" = "Full screen on a display";
 "output.fullscreen_close" = "Close full screen";
-"output.syphon" = "Syphon";
-"output.syphon_help" = "While EXTERNAL is on, other apps receive this output as the Syphon source \"LiveCore Studio – %@\"";
-"output.obs_hint" = "OBS: add a \"Syphon Client\" source (LiveCore Studio – Output N) or an \"NDI Source\" (needs the DistroAV plugin).";
+"output.obs_hint" = "OBS: add an \"NDI Source\" (needs the DistroAV plugin) and pick LiveCore Output N.";
 
 /* 0.23.0 */
 "lock.dock_help" = "Lock RECORD and STREAM: while locked they cannot start or stop";
 "dock.external_clients" = "%d app(s) receiving";
-"output.external_off_hint" = "EXTERNAL is off: press EXTERNAL in the bottom dock to start sending the Syphon and NDI outputs.";
-"output.syphon_connected" = "Syphon: app connected";
-"output.syphon_waiting" = "Syphon: sending, no app yet";
-"output.syphon_off_external" = "Syphon starts with EXTERNAL";
+"output.external_off_hint" = "EXTERNAL is off: press EXTERNAL in the bottom dock to start sending the NDI outputs.";
 "overlay.tile_help" = "Overlay %d with this input (fade, full screen). Click: Preview · Right / two-finger click: Program";
 "snapshot.button" = "Program photo";
 
@@ -1448,7 +1442,7 @@
 "lut.save_apply" = "Save & Apply";
 "about.menu" = "About LiveCore Studio";
 "about.version" = "Version %@";
-"about.text" = "LiveCore Studio is a native macOS live production studio: switch cameras, capture cards, videos, titles and web pages, mix audio, then record, stream to several platforms at once and send the program to screens, NDI or Syphon. Built for events, weddings, churches, classrooms and talk shows that need a fast, stable and simple studio on a Mac.";
+"about.text" = "LiveCore Studio is a native macOS live production studio: switch cameras, capture cards, videos, titles and web pages, mix audio, then record, stream to several platforms at once and send the program to screens or NDI. Built for events, weddings, churches, classrooms and talk shows that need a fast, stable and simple studio on a Mac.";
 "about.made_by" = "Made by Munawar Tamimi";
 "help.menu" = "LiveCore Studio Help";
 "help.title" = "Help";
@@ -1469,7 +1463,7 @@
 "help.stream.title" = "Streaming";
 "help.stream.body" = "• STREAM sends Program to one or more destinations at once: YouTube, Facebook, Twitch, or any RTMP / RTMPS server.\n• Stream keys are stored only in the macOS Keychain.\n• Each destination shows its status, bitrate and reconnects; LiveCore reconnects automatically after a network drop.\n• 9:16 (top bar) makes a vertical version of the show for Reels, Shorts and TikTok, with its own stream.\n• The padlock in the bottom bar locks RECORD and STREAM so they cannot be stopped by accident.";
 "help.outputs.title" = "Outputs";
-"help.outputs.body" = "Open the OUTPUTS panel from the top bar (⇧⌘O).\n## FULLSCREEN\n• Shows Program (or another source) full screen on a second display or projector. ⇧⌘F toggles it.\n## EXTERNAL\n• Syphon: share Program with OBS, Resolume or MadMapper on this Mac.\n• NDI: send Program over the network; with NDI Virtual Camera it becomes a webcam for Zoom, Teams or Meet.";
+"help.outputs.body" = "Open the OUTPUTS panel from the top bar (⇧⌘O).\n## FULLSCREEN\n• Shows Program (or another source) full screen on a second display or projector. ⇧⌘F toggles it.\n## EXTERNAL\n• NDI: send Program over the network; with NDI Virtual Camera it becomes a webcam for Zoom, Teams or Meet.";
 "help.color.title" = "Colour and LUTs";
 "help.color.body" = "Open an input's properties › Colour.\n• Brightness, contrast, saturation and gamma; flip and rotate.\n• Video levels: capture cards that look grey or washed out are corrected automatically; you can also set the range by hand.\n## LUT\n• Load .cube: use any 3D LUT (Resolve, Premiere, camera LUTs). A copy is kept in the LiveCore LUT library.\n• Strength mixes the LUT with the original picture.\n• LUT Generator: start from a preset (Warm Wedding, Teal & Orange, Cinematic Film, B&W…) and adjust exposure, white balance, film contrast, lift / gamma / gain, vibrance, split toning, fade and highlight roll-off. The input shows the look live. Save & Apply stores it in the library; Export writes a .cube for other apps.";
 "help.show.title" = "Show tools";

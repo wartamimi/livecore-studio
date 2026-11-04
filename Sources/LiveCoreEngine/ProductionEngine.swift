@@ -58,7 +58,7 @@ public final class ProductionEngine {
     /// Full-size picture of `detailInput` (per-input viewer). Main thread.
     public var onDetailFrame: ((InputID, CVPixelBuffer) -> Void)?
     /// Every rendered frame for the extra outputs, called on the GPU completion thread (not the
-    /// main thread) so Syphon and the virtual camera get frames without a main-thread hop.
+    /// main thread) so NDI and the output windows get frames without a main-thread hop.
     /// Set it before `start()`.
     public var outputFrameHandler: ((OutputFrames) -> Void)?
     public struct OutputFrames {

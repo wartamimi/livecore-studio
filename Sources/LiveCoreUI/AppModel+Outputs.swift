@@ -51,12 +51,6 @@ extension AppModel {
         setOutputRouting(r)
     }
 
-    public func setOutputSyphon(_ index: Int, _ on: Bool) {
-        var r = outputRouting
-        r.setSyphon(index, on)
-        setOutputRouting(r)
-    }
-
     public func setOutputNDI(_ index: Int, _ on: Bool) {
         var r = outputRouting
         r.setNDI(index, on)
@@ -137,10 +131,8 @@ extension AppModel {
 
     private static let ndiOfferedKey = "outputs.ndi.offered"
 
-    /// Re-reads which Syphon and NDI outputs run and who receives them (shown under EXTERNAL ⚙).
+    /// Re-reads which NDI outputs run and who receives them (shown under EXTERNAL ⚙).
     public func refreshExternalStatus() {
-        let s = outputRouter?.syphonStatus() ?? [:]
-        if s != syphonStatus { syphonStatus = s }
         let n = outputRouter?.ndiStatus() ?? [:]
         if n != ndiStatus { ndiStatus = n }
     }

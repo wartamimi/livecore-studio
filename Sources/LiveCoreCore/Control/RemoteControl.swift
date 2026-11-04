@@ -215,6 +215,8 @@ public enum RemoteCommand: Equatable, Sendable {
     case qrItem(input: Int, delta: Int)
     case qrItemSet(input: Int, item: Int)
     case qrShow(input: Int)
+    /// Full-screen output on the Mac on / off (0.62.0).
+    case fullscreen
 }
 
 public enum RemoteRoute: Equatable, Sendable {
@@ -228,6 +230,9 @@ public enum RemoteRoute: Equatable, Sendable {
     case listen(bus: String, since: UInt32)
     /// Audio Monitor push (0.53.0): one long response that streams length-prefixed PCM blocks.
     case listenStream(bus: String)
+    /// Picture push (0.62.0): one long response that streams every new Program / Preview JPEG
+    /// as [UInt32 LE length][UInt8 bus][UInt32 LE seq][JPEG]; `quality` is low, normal or high.
+    case videoStream(buses: [String], quality: String)
     case command(RemoteCommand)
     case notFound
     case methodNotAllowed
@@ -235,7 +240,7 @@ public enum RemoteRoute: Equatable, Sendable {
 
     public var needsPIN: Bool {
         switch self {
-        case .state, .ping, .frame, .listen, .listenStream, .command: return true
+        case .state, .ping, .frame, .listen, .listenStream, .videoStream, .command: return true
         default: return false
         }
     }
@@ -263,6 +268,13 @@ public enum RemoteRouter {
             guard RemoteAudioRing.buses.contains(bus) else { return .badRequest("bus") }
             if r.query["stream"] == "1" { return .listenStream(bus: bus) }
             return .listen(bus: bus, since: UInt32(r.query["since"] ?? "0") ?? 0)
+        case "/api/video":
+            guard r.method == "GET" else { return .methodNotAllowed }
+            let buses = (r.query["bus"] ?? "program,preview").split(separator: ",").map(String.init)
+            guard !buses.isEmpty, buses.count <= 2, buses.allSatisfy({ $0 == "program" || $0 == "preview" }) else { return .badRequest("bus") }
+            let q = r.query["q"] ?? "normal"
+            guard ["low", "normal", "high"].contains(q) else { return .badRequest("q") }
+            return .videoStream(buses: buses, quality: q)
         default:
             break
         }
@@ -318,6 +330,7 @@ public enum RemoteRouter {
             guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
             cmd = .dataRow(input: n, delta: r.path == "/api/data/next" ? 1 : -1)
         case "/api/highlight": cmd = .action(.highlight)
+        case "/api/fullscreen": cmd = .fullscreen
         case "/api/qr/next", "/api/qr/previous":
             guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
             cmd = .qrItem(input: n, delta: r.path == "/api/qr/next" ? 1 : -1)
@@ -453,7 +466,13 @@ public struct RemoteState: Equatable, Sendable {
         public var number: Int
         public var name: String
         public var kind: String
-        public init(number: Int, name: String, kind: String) { self.number = number; self.name = name; self.kind = kind }
+        /// A PTZ camera is set up for this input (presets on the remote, 0.62.0).
+        public var ptz: Bool
+        /// A title with a data source (next / previous row on the remote, 0.62.0).
+        public var data: Bool
+        public init(number: Int, name: String, kind: String, ptz: Bool = false, data: Bool = false) {
+            self.number = number; self.name = name; self.kind = kind; self.ptz = ptz; self.data = data
+        }
     }
     public struct Overlay: Equatable, Sendable {
         public var index: Int
@@ -522,6 +541,12 @@ public struct RemoteState: Equatable, Sendable {
     /// ★ marks so far (0.58.0).
     public var highlights = 0
     public var qrs: [QR] = []
+    /// Mac load shown on the remote (0.62.0): CPU % of the machine, render frames per second,
+    /// frames dropped by the renderer, and whether full-screen output is on.
+    public var cpu: Double = 0
+    public var fps: Double = 0
+    public var dropped: Int = 0
+    public var fullscreen = false
 
     public init() {}
 
@@ -552,6 +577,8 @@ public struct RemoteState: Equatable, Sendable {
         o["inputs"] = JSON.array(inputs.map { i in
             var e = JSON.Object()
             e["n"] = "\(i.number)"; e["name"] = JSON.string(i.name); e["kind"] = JSON.string(i.kind)
+            if i.ptz { e["ptz"] = "true" }
+            if i.data { e["data"] = "true" }
             return e.rendered
         })
         o["overlays"] = JSON.array(overlays.map { ov in
@@ -577,6 +604,10 @@ public struct RemoteState: Equatable, Sendable {
             e["items"] = JSON.array(q.items.map(JSON.string))
             return e.rendered
         })
+        o["cpu"] = JSON.number(cpu)
+        o["fps"] = JSON.number(fps)
+        o["dropped"] = "\(dropped)"
+        o["fullscreen"] = JSON.bool(fullscreen)
         return o.rendered
     }
 }

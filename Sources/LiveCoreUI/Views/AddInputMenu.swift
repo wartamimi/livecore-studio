@@ -8,11 +8,10 @@ import LiveCoreEngine
 /// add menu works the same from the Inputs panel and from ADD INPUT in the bottom bar (0.55.0).
 public enum AddInputSheet: Identifiable, Equatable {
     case title, timer, frame, qr, virtualSet, flag, pixabay, browser, capture, ndi, srt, decklink, captureCard, slideshow
-    case gt(InputID), subtitles(InputID), scene(InputID), liveCall(InputID)
+    case subtitles(InputID), scene(InputID), liveCall(InputID)
 
     public var id: String {
         switch self {
-        case let .gt(i): return "gt:" + i.raw
         case let .subtitles(i): return "sub:" + i.raw
         case let .scene(i): return "scene:" + i.raw
         case let .liveCall(i): return "live:" + i.raw
@@ -50,7 +49,6 @@ struct AddInputMenuItems: View {
             Button { model.addInputSheet = .virtualSet } label: { Label(L10n.t("vset.add"), systemImage: "person.and.background.dotted") }
             Button { model.addInputSheet = .qr } label: { Label(L10n.t("qr.add"), systemImage: "qrcode") }
             Button { model.addInputSheet = .flag } label: { Label(L10n.t("flag.add"), systemImage: "flag") }
-            Button { if let id = model.addGTTitle() { model.addInputSheet = .gt(id) } } label: { Label(L10n.t("gt.add"), systemImage: "rectangle.bottomthird.inset.filled") }
             Button { if let id = model.addTranscription() { model.addInputSheet = .subtitles(id) } } label: { Label(L10n.t("transcription.add"), systemImage: "captions.bubble") }
             Button { if let id = model.addScene() { model.addInputSheet = .scene(id) } } label: { Label(L10n.t("scene.new"), systemImage: "square.on.square") }
         }
@@ -103,7 +101,6 @@ private struct AddInputSheetView: View {
         case .decklink: DeckLinkInputSheet(editing: nil)
         case .captureCard: CaptureCardSheet(editing: nil)
         case .slideshow: SlideshowSheet(editing: nil)
-        case let .gt(id): GTTitleSheet(input: id)
         case let .subtitles(id): SubtitleSheet(input: id)
         case let .scene(id): SceneEditorSheet(input: id)
         case let .liveCall(id): LiveCallSheet(input: id)
