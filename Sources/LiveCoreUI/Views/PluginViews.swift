@@ -140,25 +140,6 @@ struct PluginChainSheet: View {
             }
         }
     }
-}
-
-/// The standard macOS plug-in folders the scan reads.
-enum PluginFolders {
-    struct Folder { let kind: String; let path: String }
-    static var all: [Folder] {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        return [
-            Folder(kind: "VST3", path: "/Library/Audio/Plug-Ins/VST3"),
-            Folder(kind: "VST3", path: home + "/Library/Audio/Plug-Ins/VST3"),
-            Folder(kind: "AU", path: "/Library/Audio/Plug-Ins/Components"),
-            Folder(kind: "AU", path: home + "/Library/Audio/Plug-Ins/Components"),
-        ]
-    }
-    static func reveal(_ path: String) {
-        let url = URL(fileURLWithPath: path, isDirectory: true)
-        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        NSWorkspace.shared.open(url)
-    }
 
     @ViewBuilder private func row(_ i: Int, _ slot: PluginSlot) -> some View {
         let status = slot.statusText
@@ -362,6 +343,25 @@ struct GenericPluginEditor: View {
         .padding(12)
         .frame(minWidth: 420, minHeight: 300)
         .onAppear { params = slot.parameters() }
+    }
+}
+
+/// The standard macOS plug-in folders the scan reads.
+enum PluginFolders {
+    struct Folder { let kind: String; let path: String }
+    static var all: [Folder] {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        return [
+            Folder(kind: "VST3", path: "/Library/Audio/Plug-Ins/VST3"),
+            Folder(kind: "VST3", path: home + "/Library/Audio/Plug-Ins/VST3"),
+            Folder(kind: "AU", path: "/Library/Audio/Plug-Ins/Components"),
+            Folder(kind: "AU", path: home + "/Library/Audio/Plug-Ins/Components"),
+        ]
+    }
+    static func reveal(_ path: String) {
+        let url = URL(fileURLWithPath: path, isDirectory: true)
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        NSWorkspace.shared.open(url)
     }
 }
 #endif
