@@ -13,8 +13,7 @@ struct MonitorRow: View {
     var body: some View {
         HStack(spacing: 6) {
             MonitorView(title: L10n.t("monitor.preview"), color: Theme.preview, feed: model.previewFeed,
-                        inputName: name(model.switcher.preview), live: false, designer: designer,
-                        blackout: model.previewMatchesProgram && !designer.active)
+                        inputName: name(model.switcher.preview), live: false, designer: designer)
                 .onChange(of: model.switcher.preview) { id in if designer.active { designer.load(model, input: id) } }
                 .onChange(of: designer.active) { on in if on { designer.load(model, input: model.switcher.preview) } else { model.editorUndo = nil } }
             TransitionControls().frame(width: 170)
@@ -45,9 +44,6 @@ struct MonitorView: View {
     var snapshot: (() -> Void)? = nil
     /// Preview only: the Layer Designer (button in the header, tools under the picture).
     var designer: LayerDesignerState? = nil
-    /// Preview shows black (0.63.0): the same input is already on Program, so the picture would
-    /// only repeat Program (e.g. the next clip of a playlist is cued and starts on CUT / AUTO).
-    var blackout = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -66,7 +62,6 @@ struct MonitorView: View {
             PixelBufferView(feed: feed)
                 .aspectRatio(model.canvasAspect, contentMode: .fit)   // follows Settings › Canvas
                 .overlay(Rectangle().stroke(color, lineWidth: 2))
-                .overlay { if blackout { PreviewBlackout() } }
                 .overlay { MonitorGuides() }
                 .overlay(alignment: .top) { if notRecording { NotRecordingBadge().padding(.top, 8) } }
                 .overlay { if let designer { DesignerCanvasIfActive(state: designer) } }
@@ -85,28 +80,10 @@ struct MonitorView: View {
     }
 }
 
-/// Black Preview with a short note while Preview and Program show the same input (0.63.0).
-private struct PreviewBlackout: View {
-    @EnvironmentObject var model: AppModel
-    var body: some View {
-        ZStack {
-            Color.black
-            VStack(spacing: 4) {
-                Image(systemName: "rectangle.on.rectangle.slash").font(.system(size: 22))
-                Text(L10n.t("preview.same_as_program")).font(.system(size: 11, weight: .semibold))
-                if let cue = model.playlistCueName { Text(L10n.f("preview.cued", cue)).font(.system(size: 11)).foregroundStyle(Theme.preview) }
-            }
-            .foregroundStyle(Theme.textDim)
-        }
-        .allowsHitTesting(false)
-    }
-}
-
 /// Preview media controller, hidden while the Layer Designer is open.
 private struct PreviewTransportIfIdle: View {
     @ObservedObject var state: LayerDesignerState
-    @EnvironmentObject var model: AppModel
-    var body: some View { if !state.active && !model.previewMatchesProgram { ProgramTransportBar(preview: true) } }
+    var body: some View { if !state.active { ProgramTransportBar(preview: true) } }
 }
 
 /// Program monitor right-click (two-finger click on a trackpad), 0.49.0: Screenshot saves a PNG

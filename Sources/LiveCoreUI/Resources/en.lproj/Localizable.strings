@@ -1922,8 +1922,6 @@
 "program.fullscreen_main" = "%@ (this screen)";
 "program.fullscreen_close" = "Close Fullscreen";
 "program.fullscreen_none" = "No display found";
-"preview.same_as_program" = "Same input as Program";
-"preview.cued" = "Next: %@ (starts on CUT / AUTO)";
 "mixer.fold_inputs" = "Fold the input strips to the side";
 "mixer.unfold_inputs" = "Show the input strips";
 "mixer.inputs_folded" = "Inputs (%ld)";
