@@ -148,7 +148,7 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-335 | Animation (0.62.0) | Properties input › Animation; coba tiap Motion, Mask/Wave, LUT | Gerak terlihat di Preview/Program, tidak ada layar hitam |
 | T-336 | Template & Recent (0.62.0) | File › Save as Template…; File › New from My Template; File › Open Recent | Template tersimpan dan terbuka sebagai proyek tanpa judul; daftar recent benar |
 | T-337 | Appearance (0.62.0) | Settings › Appearance: ganti tema, aksen, tally aman, tiap susunan dock | Warna dan susunan berubah langsung dan tetap setelah aplikasi dibuka ulang |
-| T-338 | Playlist ke Preview/Program (0.63.0) | Playlist video di Program; klik 1x klip lain lalu AUTO; klik 2x klip lain | Klik 1x: Preview hitam + "Berikutnya: …", AUTO memutar klip itu; klik 2x: klip langsung di Program dan berputar |
+| T-338 | Playlist (0.63.1) | Klik 1x lalu klik 2x satu klip di dock Playlist | Seperti 0.62.0: klik 1x memilih baris, klik 2x memutar klip; Preview tidak dibuat hitam |
 | T-339 | Dock minimize (0.63.0) | Tiap susunan dock: minimize Inputs, Playlist, lipat strip input mixer, lalu kembalikan | Panel lain mengisi ruang, mixer tidak terpotong |
 | T-340 | Fullscreen dari Program (0.63.0) | Klik kanan Program › Layar Penuh › pilih layar | Program tampil penuh di layar itu; Tutup Layar Penuh menutupnya |
 | T-341 | Transisi .metal & Multiview (0.63.0) | Pilih 9 transisi baru; buka Multiview dan coba 6 tata letak | Semua transisi jalan; tata letak berganti dan tersimpan |

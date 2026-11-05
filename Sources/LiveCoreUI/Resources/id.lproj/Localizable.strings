@@ -1922,8 +1922,6 @@
 "program.fullscreen_main" = "%@ (layar ini)";
 "program.fullscreen_close" = "Tutup Layar Penuh";
 "program.fullscreen_none" = "Tidak ada layar";
-"preview.same_as_program" = "Input sama dengan Program";
-"preview.cued" = "Berikutnya: %@ (mulai saat CUT / AUTO)";
 "mixer.fold_inputs" = "Lipat strip input ke samping";
 "mixer.unfold_inputs" = "Tampilkan strip input";
 "mixer.inputs_folded" = "Input (%ld)";
