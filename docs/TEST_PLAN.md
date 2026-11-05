@@ -152,3 +152,4 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-339 | Dock minimize (0.63.0) | Tiap susunan dock: minimize Inputs, Playlist, lipat strip input mixer, lalu kembalikan | Panel lain mengisi ruang, mixer tidak terpotong |
 | T-340 | Fullscreen dari Program (0.63.0) | Klik kanan Program › Layar Penuh › pilih layar | Program tampil penuh di layar itu; Tutup Layar Penuh menutupnya |
 | T-341 | Transisi .metal & Multiview (0.63.0) | Pilih 9 transisi baru; buka Multiview dan coba 6 tata letak | Semua transisi jalan; tata letak berganti dan tersimpan |
+| T-342 | Drop frame saat merekam (0.63.3) | Rekam HEVC 1080p25 ke SSD eksternal ≥ 5 menit, lalu Help › Export Logs | Log tidak menunjukkan "render drops … failed" berulang tiap 30 s; penghitung drop Program tetap 0 |
