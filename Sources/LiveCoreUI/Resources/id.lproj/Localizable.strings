@@ -1935,3 +1935,19 @@
 "multiview.layout.inputsLeft" = "Input di kiri, Program + Preview di kanan";
 "multiview.layout.grid" = "Grid sama besar";
 "multiview.layout.pvwPgm" = "Hanya Preview + Program";
+
+/* 0.64.0 title template files (.lctitle) */
+"titlecat.mine" = "Milikku";
+"mytpl.menu" = "Template";
+"mytpl.help" = "Simpan tampilan ini ke Template Saya, atau ekspor / impor sebagai file .lctitle untuk dipakai di proyek dan Mac lain.";
+"mytpl.save" = "Simpan ke Template Saya…";
+"mytpl.save_button" = "Simpan";
+"mytpl.name" = "Nama template";
+"mytpl.export" = "Ekspor sebagai file .lctitle…";
+"mytpl.import" = "Impor file .lctitle…";
+"mytpl.show_folder" = "Buka folder Template Saya";
+"mytpl.show_in_finder" = "Tampilkan di Finder";
+"mytpl.delete" = "Hapus";
+"mytpl.empty" = "Belum ada template. Pakai Template › Simpan ke Template Saya… atau Impor file .lctitle…";
+"mytpl.wrong_kind" = "Template ini jenisnya berbeda (title vs teks berjalan) dengan input yang sedang diedit.";
+"mytpl.save_failed" = "Template tidak tersimpan: %@";
