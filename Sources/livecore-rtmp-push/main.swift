@@ -9,6 +9,7 @@
 // Usage:
 //   livecore-rtmp-push --h264 in.h264 --aac in.aac --fps 30 --url rtmp://127.0.0.1:1935/live --key test [--realtime]
 //   livecore-rtmp-push --h264 in.h264 --aac in.aac --fps 30 --flv out.flv
+//   livecore-rtmp-push --h264 in.h264 --aac in.aac --fps 30 --srt "srt://127.0.0.1:9000?streamid=test"
 #if canImport(Darwin)
 import Darwin
 #elseif canImport(Glibc)
@@ -146,6 +147,72 @@ if let flvPath = args["flv"] {
     _ = w.bytes.withUnsafeBytes { fwrite($0.baseAddress, 1, $0.count, f) }
     fclose(f)
     print("wrote \(flvPath) (\(w.bytes.count) bytes)")
+    exit(0)
+}
+
+// MARK: SRT publish mode (MPEG-TS over SRT, caller)
+if let srtString = args["srt"] {
+    let surl: SRTURL
+    do { surl = try SRTURL.parse(srtString, key: args["key"] ?? "") } catch { die("\(error)") }
+    let sock: UDPSocket
+    do { sock = try UDPSocket(host: surl.host, port: surl.port) } catch { die("\(error)") }
+    let caller = SRTCaller(url: surl, socketID: UInt32.random(in: 1...0x3FFF_FFFF), initialSeq: UInt32.random(in: 0...0x3FFF_FFFF))
+    func now() -> Double { monotonicMs() / 1000 }
+    print("SRT connecting to \(surl.redacted), latency \(surl.latencyMs) ms")
+    for d in caller.connect(now: now()) { sock.send(d) }
+    while caller.state != .connected {
+        if case let .closed(reason) = caller.state { die("SRT connect failed: \(reason)") }
+        let d = sock.receive(timeoutMs: 20)
+        if !d.isEmpty { for r in caller.receive(d, now: now()) { sock.send(r) } }
+        for r in caller.tick(now: now()) { sock.send(r) }
+    }
+    print("SRT connected (latency \(caller.latencyMs) ms)")
+    // Media in timestamp order, muxed to TS exactly like the app.
+    struct Item { var ms: Double; var video: Int?; var audio: Int? }
+    var items: [Item] = units.indices.map { Item(ms: Double($0) * 1000 / fps, video: $0, audio: nil) }
+    if let a = aacFrames.first {
+        items += aacFrames.indices.map { Item(ms: Double($0) * 1024 * 1000 / Double(a.sampleRate), video: nil, audio: $0) }
+    }
+    items.sort { $0.ms < $1.ms }
+    let asc = aacFrames.first.map { AAC.audioSpecificConfig(sampleRate: $0.sampleRate, channels: $0.channels) } ?? []
+    var mux = MPEGTSMuxer(hasAudio: !aacFrames.isEmpty)
+    var packer = SRTPayloadPacker()
+    let start = now()
+    var sent = 0
+    let lossEvery = Int(args["srt-loss"] ?? "") ?? 0
+    func service(until t: Double) {
+        repeat {
+            let d = sock.receive(timeoutMs: Int32(max(0, min(10, (t - now()) * 1000))))
+            if !d.isEmpty { for r in caller.receive(d, now: now()) { sock.send(r) } }
+            for r in caller.tick(now: now()) { sock.send(r) }
+            if case let .closed(reason) = caller.state { die("SRT connection lost: \(reason)") }
+        } while now() < t
+    }
+    for it in items {
+        service(until: start + it.ms / 1000)
+        let pts = UInt64(it.ms * 90)
+        let ts: [UInt8]
+        if let v = it.video {
+            let u = units[v]
+            ts = mux.video(avcc: AVC.avcc(from: u.nals), sps: sps, pps: pps, keyframe: u.keyframe, pts90k: pts)
+        } else if let a = it.audio {
+            ts = mux.audio(aac: Array(aacFrames[a].payload), audioSpecificConfig: asc, pts90k: pts)
+        } else { continue }
+        var payloads = packer.add(ts)
+        if let rest = packer.flush() { payloads.append(rest) }
+        for p in payloads {
+            guard let d = caller.send(p, now: now()) else { continue }
+            sent += 1
+            // --srt-loss N: drop every Nth first transmission to exercise NAK / retransmission.
+            if lossEvery > 0, sent % lossEvery == 0 { continue }
+            sock.send(d)
+        }
+    }
+    // Let retransmissions finish, then close.
+    service(until: now() + Double(caller.latencyMs) / 1000 + 1)
+    if let bye = caller.close(now: now()) { sock.send(bye) }
+    let s = caller.stats
+    print("SRT sent \(sent) packets, \(s.retransmitted) retransmitted, \(s.dropped) dropped, rtt \(s.rttMs) ms")
     exit(0)
 }
 
