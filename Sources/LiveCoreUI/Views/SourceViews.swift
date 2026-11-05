@@ -191,6 +191,8 @@ struct CaptureCardSheet: View {
         let list = formats.filter { chosen == nil || ($0.width == chosen!.0 && $0.height == chosen!.1) }
         var out: [Double] = []
         for f in list { for r in f.offeredFrameRates where !out.contains(where: { abs($0 - r) < 0.05 }) { out.append(r) } }
+        // 24 / 25 fps always available (0.63.4); devices without them drop frames from a faster rate.
+        for r in CaptureFormatPicker.alwaysOfferedRates where !out.contains(where: { abs($0 - r) < 0.05 }) { out.append(r) }
         return out.sorted()
     }
 
