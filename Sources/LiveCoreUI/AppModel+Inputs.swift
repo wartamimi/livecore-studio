@@ -45,8 +45,11 @@ extension AppModel {
     @discardableResult
     public func addCamera(uniqueID: String, config: CaptureConfig, audioUID: String?) -> InputID? {
         guard !rejectDuplicateCamera(uniqueID) else { return nil }
+        let audio = audioUID.flatMap { uid in audioDevices.first { $0.id == uid } }
+        var config = config
+        config.audioDevice = audio?.id
         let id = engine?.addCamera(uniqueID: uniqueID, config: config)
-        if let audioUID, let d = audioDevices.first(where: { $0.id == audioUID }) { addAudioInput(d) }
+        if let audio { addAudioInput(audio) }
         return id
     }
 

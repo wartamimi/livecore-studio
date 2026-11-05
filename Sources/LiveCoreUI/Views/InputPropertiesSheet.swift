@@ -105,7 +105,9 @@ struct InputPropertiesSheet: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
-        .frame(minWidth: 520, idealWidth: s.width, maxWidth: .infinity, minHeight: 420, idealHeight: s.height, maxHeight: .infinity)
+        // The sheet opened at its minimum width while the sidebar (168) + a 500-wide source page
+        // need more, so both sides were cut off (0.63.1): open at the computed size.
+        .frame(minWidth: s.width, idealWidth: s.width, maxWidth: .infinity, minHeight: s.height, idealHeight: s.height, maxHeight: .infinity)
     }
 
     @ViewBuilder
@@ -180,3 +182,4 @@ struct MotionSection: View {
     }
 }
 #endif
+
