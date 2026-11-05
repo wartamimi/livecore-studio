@@ -206,5 +206,7 @@ extension AppModel {
 
     /// Project files are JSON with their own extension (declared dynamically, no Info.plist UTI needed).
     static let projectType: UTType = UTType(filenameExtension: ProjectDocument.fileExtension, conformingTo: .json) ?? .json
+    /// Title template file (.lctitle, 0.64.0).
+    static let titleTemplateType: UTType = UTType(filenameExtension: TitlePackage.fileExtension, conformingTo: .zip) ?? .zip
 }
 #endif
