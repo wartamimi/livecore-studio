@@ -91,15 +91,8 @@ struct PlaylistDockView: View {
                 }
                 .padding(.vertical, 1)
                 .contentShape(Rectangle())
-                // 0.63.0: video playlists: double-click = straight to Program and play,
-                // click = to Preview (cued while the playlist is already on Program).
-                .onTapGesture(count: 2) {
-                    if case let .video(id, _) = s { picked = nil; model.playlistToProgram(id, clip: i) } else { play(s, i) }
-                }
-                .onTapGesture {
-                    picked = key(s) + "#\(i)"
-                    if case let .video(id, _) = s { model.playlistToPreview(id, clip: i) }
-                }
+                .onTapGesture(count: 2) { play(s, i) }
+                .onTapGesture { picked = key(s) + "#\(i)" }
                 .listRowBackground(RoundedRectangle(cornerRadius: 4)
                     .fill(picked == key(s) + "#\(i)" ? Theme.accent.opacity(0.35) : Color.clear))
                 .help(u.lastPathComponent)

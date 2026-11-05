@@ -12,7 +12,7 @@ public struct CaptureConfig: Codable, Equatable, Sendable {
     /// Advanced (0.28.0): keep late frames in a short queue (smoother) instead of dropping them
     /// for the lowest latency. nil / false = lowest latency (the behaviour before 0.28.0).
     public var bufferFrames: Bool?
-    /// Audio device added together with this camera (its own audio, 0.63.1): removing the input
+    /// Audio device added together with this camera (its own audio, 0.63.2): removing the input
     /// also removes that mixer channel and stops its capture.
     public var audioDevice: String?
     public init(width: Int? = nil, height: Int? = nil, frameRate: Double? = nil, mirror: Bool = false,

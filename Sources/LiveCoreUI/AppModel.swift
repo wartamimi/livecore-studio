@@ -122,8 +122,6 @@ public final class AppModel: ObservableObject {
         didSet { live.objectWillChange.send() }
     }
     @Published public var shortcuts = ShortcutStore.load()
-    /// Playlist clip waiting for the next CUT / AUTO while its input is on Program (0.63.0).
-    public var playlistCue: (input: InputID, index: Int)?
     /// Settings › Appearance (0.62.0): theme, accent, tally colours and dock layout. Applied live.
     @Published public var appearance = AppearanceSettings.load() {
         didSet { guard appearance != oldValue else { return }; Theme.apply(appearance); appearance.save() }
