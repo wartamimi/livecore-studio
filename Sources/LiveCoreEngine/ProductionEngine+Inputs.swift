@@ -591,7 +591,7 @@ extension ProductionEngine {
     }
 
     /// Audio device capture that belongs to a removed camera: the one linked when it was added,
-    /// else (inputs from before 0.63.1) the capture device's own audio found by name. Kept when
+    /// else (inputs from before 0.63.2) the capture device's own audio found by name. Kept when
     /// another camera input still uses it.
     func cameraAudioDevice(of cam: CameraSource) -> String? {
         let others = control.read { st in st.sources.values.compactMap { $0 as? CameraSource } }

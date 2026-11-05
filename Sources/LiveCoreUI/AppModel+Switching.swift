@@ -14,63 +14,11 @@ import UniformTypeIdentifiers
 extension AppModel {
     // MARK: Switching
 
-    public func preview(_ id: InputID) {
-        if playlistCue?.input != id { playlistCue = nil }
-        engine?.setPreview(id)
-    }
-    public func cut() { startCuedClip(); engine?.cut() }
+    public func preview(_ id: InputID) { engine?.setPreview(id) }
+    public func cut() { engine?.cut() }
     public func auto() {
-        startCuedClip()
         engine?.setTransition(transitionKind, duration: transitionDuration)
         engine?.auto()
-    }
-
-    // MARK: Playlist cue (0.63.0)
-
-    /// Preview and Program show the same input (and no transition runs): Preview is drawn black.
-    public var previewMatchesProgram: Bool {
-        guard let p = switcher.preview, switcher.transition == nil else { return false }
-        return p == switcher.program
-    }
-
-    /// Name of the clip waiting on Preview for the next CUT / AUTO.
-    public var playlistCueName: String? {
-        guard let c = playlistCue, let v = videoFile(c.input), v.urls.indices.contains(c.index) else { return nil }
-        return v.urls[c.index].deletingPathExtension().lastPathComponent
-    }
-
-    /// Playlist row clicked once: the clip goes to Preview. When the playlist input is already on
-    /// Program, the clip is cued instead (Preview turns black) and starts on the next CUT / AUTO.
-    public func playlistToPreview(_ id: InputID, clip: Int) {
-        guard let v = videoFile(id) else { return }
-        if switcher.program == id || switcher.transition?.to == id {
-            engine?.setPreview(id)
-            playlistCue = (id, clip)
-        } else {
-            playlistCue = nil
-            v.selectClip(clip)
-            v.pause()
-            v.seek(to: 0)
-            engine?.setPreview(id)
-        }
-        objectWillChange.send()
-    }
-
-    /// Playlist row double-clicked: the clip plays on Program at once.
-    public func playlistToProgram(_ id: InputID, clip: Int) {
-        guard let v = videoFile(id) else { return }
-        playlistCue = nil
-        v.selectClip(clip)
-        v.play()
-        if switcher.program != id { engine?.cutDirect(id) }
-        objectWillChange.send()
-    }
-
-    private func startCuedClip() {
-        guard let c = playlistCue, switcher.preview == c.input, let v = videoFile(c.input) else { return }
-        playlistCue = nil
-        v.selectClip(c.index)
-        v.play()
     }
     public func setTBar(_ v: Double) {
         engine?.setTransition(transitionKind, duration: transitionDuration)
