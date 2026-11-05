@@ -38,6 +38,13 @@ public final class RecordingEngine {
     public var onStats: ((Stats) -> Void)?   // main thread
 
     private let queue = DispatchQueue(label: "livecore.record", qos: .userInitiated)
+    /// Disk checks run here, so a slow file-system call never holds back frames (0.63.3).
+    private let monitorQueue = DispatchQueue(label: "livecore.record.monitor", qos: .utility)
+    /// Video frames handed to `queue` and not appended yet. Each one holds a Program buffer from
+    /// the compositor's pool; past the cap the recording drops the frame instead, so a stalled
+    /// writer can never stop Program, stream and monitors (0.63.3).
+    private let pendingVideo = Locked(0)
+    static let maxPendingVideo = 4
     private var writer: AVAssetWriter?
     private var videoInput: AVAssetWriterInput?
     private var audioInput: AVAssetWriterInput?
@@ -47,6 +54,7 @@ public final class RecordingEngine {
     private var lastVideoPTS: CMTime = .invalid
     private var stats = Stats()
     private var monitorTimer: DispatchSourceTimer?
+    private var lastFileBytes: Int64 = 0
     private var settings = RecordingSettings()
     private var url: URL?
     private let fileLock = UnfairLock()
@@ -65,9 +73,17 @@ public final class RecordingEngine {
     /// Free space on the folder's volume. The "important usage" figure (which counts purgeable
     /// space) is 0 or missing on many external and disk-image volumes (HFS+, exFAT), so fall back
     /// to the plain available capacity there.
-    public static func freeBytes(at folder: URL) -> Int64 {
-        let values = try? folder.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey])
-        if let important = values?.volumeAvailableCapacityForImportantUsage, important > 0 { return important }
+    ///
+    /// 0.63.3: `important` is off by default. The "important usage" figure asks the system how
+    /// much purgeable space it could free, which on some Macs takes over a second about every
+    /// 30 s. Checked every second on the recording queue, that held back every frame and starved
+    /// the Program buffer pool (dropped render frames in bursts of ~40 every 30 s while
+    /// recording). The plain figure (statfs) is instant and only more cautious.
+    public static func freeBytes(at folder: URL, important: Bool = false) -> Int64 {
+        if important,
+           let v = (try? folder.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey]))?.volumeAvailableCapacityForImportantUsage,
+           v > 0 { return v }
+        let values = try? folder.resourceValues(forKeys: [.volumeAvailableCapacityKey])
         return Int64(values?.volumeAvailableCapacity ?? 0)
     }
 
@@ -101,7 +117,7 @@ public final class RecordingEngine {
         } catch {
             return report(.failed("Cannot create folder \(folder.path): \(error.localizedDescription)"))
         }
-        let free = Self.freeBytes(at: folder)
+        let free = Self.freeBytes(at: folder, important: true)
         guard free > settings.minimumFreeBytes else {
             return report(.failed("Not enough disk space (\(ByteCountFormatter.string(fromByteCount: free, countStyle: .file)) free)."))
         }
@@ -200,7 +216,12 @@ public final class RecordingEngine {
     // MARK: Media (called from render completion / audio pump threads)
 
     public func append(video pb: CVPixelBuffer, pts: CMTime) {
+        guard pendingVideo.mutate({ n -> Bool in if n >= Self.maxPendingVideo { return false }; n += 1; return true }) else {
+            queue.async { if self.writer != nil { self.stats.droppedVideoFrames += 1 } }
+            return
+        }
         queue.async {
+            defer { self.pendingVideo.mutate { $0 -= 1 } }
             guard let w = self.writer, w.status == .writing, let input = self.videoInput, let adaptor = self.adaptor else { return }
             if self.sessionStart == nil {
                 w.startSession(atSourceTime: pts)
@@ -275,27 +296,37 @@ public final class RecordingEngine {
     }
 
     private func startMonitor(folder: URL) {
-        let t = DispatchSource.makeTimerSource(queue: queue)
+        guard let fileURL = url else { return }
+        // The timer and the disk calls run on `monitorQueue`; only the result hops to `queue`.
+        let t = DispatchSource.makeTimerSource(queue: monitorQueue)
         t.schedule(deadline: .now() + 1, repeating: 1)
-        var lastFileBytes: Int64 = 0
+        lastFileBytes = 0
+        let minimumFree = settings.minimumFreeBytes
         t.setEventHandler { [weak self] in
-            guard let self, let w = self.writer, let url = self.url else { return }
-            if let start = self.sessionStart, self.lastVideoPTS.isValid {
-                self.stats.duration = CMTimeGetSeconds(CMTimeSubtract(self.lastVideoPTS, start))
-            }
             // Checked every second: at high bitrates (ProRes, or a small drive) a slower check can
             // let the disk fill up between two looks. Keep room for a few seconds of writing plus
             // what the writer still has buffered, so the file is closed before the disk is full.
-            self.stats.freeBytes = Self.freeBytes(at: folder)
-            self.stats.fileBytes = (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? NSNumber)?.int64Value ?? 0
-            let perSecond = max(0, self.stats.fileBytes - lastFileBytes)
-            lastFileBytes = self.stats.fileBytes
-            if self.stats.freeBytes < Self.stopThreshold(minimumFree: self.settings.minimumFreeBytes, bytesPerSecond: perSecond) {
-                self.finish(reason: "Disk space is running out.")
-                return
+            // Plain figure first (instant); the slower purgeable-aware one only when space looks
+            // low, so a boot disk full of purgeable files does not stop the recording early.
+            var free = Self.freeBytes(at: folder)
+            if free < minimumFree { free = max(free, Self.freeBytes(at: folder, important: true)) }
+            let fileBytes = (try? FileManager.default.attributesOfItem(atPath: fileURL.path)[.size] as? NSNumber)?.int64Value ?? 0
+            self?.queue.async { [weak self] in
+                guard let self, let w = self.writer, self.url == fileURL else { return }
+                if let start = self.sessionStart, self.lastVideoPTS.isValid {
+                    self.stats.duration = CMTimeGetSeconds(CMTimeSubtract(self.lastVideoPTS, start))
+                }
+                self.stats.freeBytes = free
+                self.stats.fileBytes = fileBytes
+                let perSecond = max(0, fileBytes - self.lastFileBytes)
+                self.lastFileBytes = fileBytes
+                if free < Self.stopThreshold(minimumFree: self.settings.minimumFreeBytes, bytesPerSecond: perSecond) {
+                    self.finish(reason: "Disk space is running out.")
+                    return
+                }
+                if w.status == .failed { self.checkWriterFailure(); return }
+                self.publish()
             }
-            if w.status == .failed { self.checkWriterFailure(); return }
-            self.publish()
         }
         t.resume()
         monitorTimer = t
