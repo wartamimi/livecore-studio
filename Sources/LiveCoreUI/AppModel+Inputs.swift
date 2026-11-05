@@ -45,8 +45,11 @@ extension AppModel {
     @discardableResult
     public func addCamera(uniqueID: String, config: CaptureConfig, audioUID: String?) -> InputID? {
         guard !rejectDuplicateCamera(uniqueID) else { return nil }
+        let audio = audioUID.flatMap { uid in audioDevices.first { $0.id == uid } }
+        var config = config
+        config.audioDevice = audio?.id
         let id = engine?.addCamera(uniqueID: uniqueID, config: config)
-        if let audioUID, let d = audioDevices.first(where: { $0.id == audioUID }) { addAudioInput(d) }
+        if let audio { addAudioInput(audio) }
         return id
     }
 
@@ -85,11 +88,17 @@ extension AppModel {
     }
 
     public func addImage() {
-        pickFile(types: ["public.image"]) { [weak self] url in self?.engine?.addImage(url: url) }
+        pickFile(types: ImageFormats.contentTypes.map(\.identifier)) { [weak self] url in self?.engine?.addImage(url: url) }
     }
 
     /// An image file (e.g. a PHOTO just taken) as a new input.
     public func addImageInput(_ url: URL) { engine?.addImage(url: url) }
+    /// A downloaded clip (Online Library by Pixabay, 0.61.0) as a video input that plays from the
+    /// start when it goes on Program, like Add Media.
+    public func addVideoInput(_ url: URL) {
+        engine?.addVideoFile(url: url, autoPlay: .restartPause)
+        reloadAudioChannels()
+    }
 
     /// Media files: video or audio. Several can be picked at once.
     func pickMedia(multiple: Bool = true) -> [URL] {
@@ -298,6 +307,10 @@ extension AppModel {
     public func frameSource(_ id: InputID) -> FrameSource? { engine?.source(id) as? FrameSource }
     // QR code inputs (0.58.0)
     public func qrSource(_ id: InputID) -> QRCodeSource? { engine?.source(id) as? QRCodeSource }
+    public func virtualSetSource(_ id: InputID) -> VirtualSetSource? { engine?.source(id) as? VirtualSetSource }
+    @discardableResult
+    public func addVirtualSet(_ d: VirtualSetDesign) -> InputID? { engine?.addVirtualSet(d) }
+    public func updateVirtualSet(_ id: InputID, _ d: VirtualSetDesign) { engine?.updateVirtualSet(id, d); objectWillChange.send() }
     @discardableResult
     public func addQRCode(_ d: QRDesign) -> InputID? { engine?.addQRCode(d) }
     public func updateQRCode(_ id: InputID, _ d: QRDesign) { engine?.updateQRCode(id, d); objectWillChange.send() }
@@ -316,29 +329,6 @@ extension AppModel {
     public func addFrame(_ d: FrameDesign, camera: InputID?) { engine?.addFrame(d, camera: camera) }
     public func updateFrame(_ id: InputID, _ d: FrameDesign, camera: InputID?) { engine?.updateFrame(id, d, camera: camera) }
 
-    public func gtTitleSource(_ id: InputID) -> GTTitleSource? { engine?.source(id) as? GTTitleSource }
-    /// Imports a vMix GT title (.gtzip); returns the new input to edit its texts.
-    public func addGTTitle() -> InputID? {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.allowedContentTypes = [UTType(filenameExtension: "gtzip") ?? .zip]
-        guard panel.runModal() == .OK, let url = panel.url, let e = engine else { return nil }
-        do {
-            let t = try GTReader.template(at: url)
-            guard !t.elements.isEmpty else { report(L10n.t("gt.empty")); return nil }
-            let id = e.addGTTitle(url: url, template: t)
-            offerFontDownload(FontInstaller.missing(in: t))
-            return id
-        } catch {
-            report(L10n.f("gt.failed", "\(error)"))
-            return nil
-        }
-    }
-    public func updateGTTitle(_ id: InputID, fields: [String: String], overrides: [String: GTElementOverride], speed: Double) {
-        engine?.updateGTTitle(id, fields: fields, overrides: overrides, speed: speed)
-        objectWillChange.send()
-    }
 
     /// PowerPoint, Keynote, OpenDocument or PDF slides; one input per file.
     public func addPresentation() {
@@ -384,7 +374,7 @@ extension AppModel {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
-        panel.allowedContentTypes = [.image]
+        panel.allowedContentTypes = ImageFormats.contentTypes
         return panel.runModal() == .OK ? panel.urls : []
     }
     public func addTimer(_ config: TimerConfig) { engine?.addTimer(config) }

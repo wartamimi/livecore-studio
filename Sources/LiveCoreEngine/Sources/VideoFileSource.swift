@@ -215,7 +215,18 @@ public final class VideoFileSource: NSObject, VideoSource {
         slot.clear()
         started = false
     }
-    public func play() { wantsPlay = true; tapContext?.active.value = true; player.play() }
+    /// Play at the end of a clip (paused on its last frame) starts it again from the beginning
+    /// (0.61.0; before, Play did nothing until the operator moved the seek bar).
+    public func play() {
+        wantsPlay = true; tapContext?.active.value = true
+        if isAtEnd { player.seek(to: .zero, toleranceBefore: .zero, toleranceAfter: .zero) }
+        player.play()
+    }
+    /// The current clip sits at (or within a frame of) its end.
+    public var isAtEnd: Bool {
+        guard let d = duration ?? item.map({ $0.duration.seconds }), d.isFinite, d > 0 else { return false }
+        return position >= d - 0.05
+    }
     public func pause() { wantsPlay = false; player.pause() }
     /// From the beginning: first clip of a playlist, or the start of a single clip.
     public func restart() {

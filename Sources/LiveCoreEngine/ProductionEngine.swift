@@ -58,7 +58,7 @@ public final class ProductionEngine {
     /// Full-size picture of `detailInput` (per-input viewer). Main thread.
     public var onDetailFrame: ((InputID, CVPixelBuffer) -> Void)?
     /// Every rendered frame for the extra outputs, called on the GPU completion thread (not the
-    /// main thread) so Syphon and the virtual camera get frames without a main-thread hop.
+    /// main thread) so NDI and the output windows get frames without a main-thread hop.
     /// Set it before `start()`.
     public var outputFrameHandler: ((OutputFrames) -> Void)?
     public struct OutputFrames {
@@ -86,6 +86,8 @@ public final class ProductionEngine {
     public internal(set) var settings: ProductionSettings
     public let compositor: MetalCompositor
     public let mixer = AudioMixerEngine()
+    /// Audio Unit / VST 3 plug-in hosting for mixer inserts (0.60.0).
+    public let plugins = AudioPluginHost()
     public let devices = DeviceManager()
     public internal(set) lazy var audioPump = ProgramAudioPump(mixer: mixer)
     /// One RTMP/RTMPS publisher per destination, all fed by the same encoders. Main thread.
@@ -322,6 +324,7 @@ public final class ProductionEngine {
         self.settings = settings
         compositor = try MetalCompositor(outputSize: settings.output.size)
         mixer.onError = { [weak self] msg in DispatchQueue.main.async { self?.onError?(msg) } }
+        plugins.onNotice = { [weak self] msg in self?.onError?(msg) }
         recorder.onStats = { [weak self] s in
             if case .recording = s.state {} else { self?.recordingEnded(s) }
             self?.onRecordStats?(s)
@@ -336,9 +339,23 @@ public final class ProductionEngine {
         }
         mixer.start()
         startRenderLoop()
+        // Crash-guard notices from the last launch, once the UI listens.
+        DispatchQueue.main.async { [weak self] in self?.plugins.deliverStartupNotices() }
+    }
+
+    /// First step of quitting (0.61.0): pauses every player and stops the audio outputs at once,
+    /// so nothing is heard while the rest is torn down.
+    public func silenceForQuit() {
+        mixer.stop()
+        control.read { st in st.sources.values.forEach { ($0 as? VideoFileSource)?.pause() } }
+        musicPlayers.forEach { $0.pause() }
     }
 
     public func shutdown() {
+        renderTimer?.cancel()
+        renderTimer = nil
+        replay.stop()
+        plugins.shutdown()
         stopStreaming()
         stopRecording()
         renderTimer?.cancel()
@@ -406,7 +423,7 @@ public final class ProductionEngine {
             let plan = FramePlanner.plan(snapshot: st.switcher.state, overlays: st.overlays, now: now,
                                          layersFor: { layers[$0] }, keyFor: { keys[$0] },
                                          thumbnailsFor: thumbTick ? (demand.thumbnails.map { v in st.order.filter { v.contains($0) } } ?? st.order) : [],
-                                         composedThumbnails: thumbTick ? Set(st.sources.filter { $0.value is SceneSource }.keys) : [],
+                                         composedThumbnails: thumbTick ? Set(st.sources.filter { $0.value is SceneSource || $0.value is VirtualSetSource }.keys) : [],
                                          detailInput: st.detail,
                                          extraInputs: st.extraInputs + st.isoInputs.filter { !st.extraInputs.contains($0) },
                                          fullPreview: st.fullPreview,

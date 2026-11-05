@@ -17,7 +17,7 @@ struct InputPanelView: View {
     @State private var editingNDI: InputID?
     @State private var editingFrame: InputID?
     @State private var editingQR: InputID?
-    @State private var editingGT: InputID?
+    @State private var editingVirtualSet: InputID?
     @State private var editingSubtitles: InputID?
     @Environment(\.openWindow) private var openWindow
     @State private var editingLiveCall: InputID?
@@ -106,7 +106,7 @@ struct InputPanelView: View {
         .sheet(item: $editingCapture) { id in CaptureSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingFrame) { id in FrameSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingQR) { id in QRCodeSheet(editing: id).environmentObject(model) }
-        .sheet(item: $editingGT) { id in GTTitleSheet(input: id).environmentObject(model) }
+        .sheet(item: $editingVirtualSet) { id in VirtualSetSheet(editing: id).environmentObject(model) }
         .sheet(item: $editingSubtitles) { id in SubtitleSheet(input: id).environmentObject(model) }
         .sheet(item: $editingLiveCall) { id in LiveCallSheet(input: id).environmentObject(model) }
         .sheet(item: $editingNDI) { id in NDIInputSheet(editing: id).environmentObject(model) }
@@ -251,6 +251,7 @@ struct InputPanelView: View {
             Button(L10n.t("capture.retry")) { model.captureSource(info.id)?.start() }
         }
         if info.kind == .frame { Button(L10n.t("frame.edit")) { editingFrame = info.id } }
+        if info.kind == .virtualSet { Button(L10n.t("vset.edit")) { editingVirtualSet = info.id } }
         if info.kind == .qrCode, let q = model.qrSource(info.id) {
             Button(L10n.t("qr.edit")) { editingQR = info.id }
             Button(L10n.t("qr.on_air")) { model.toggleQROnAir(info.id) }
@@ -262,7 +263,6 @@ struct InputPanelView: View {
                 }
             }
         }
-        if info.kind == .gtTitle { Button(L10n.t("gt.edit")) { editingGT = info.id } }
         if info.kind == .subtitles {
             Button(L10n.t("subtitles.edit")) { editingSubtitles = info.id }
             Button(L10n.t("transcript.open")) { model.transcriptInput = info.id; openWindow(id: "transcript") }
@@ -427,7 +427,7 @@ struct InputTile: View {
                     .font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.warning)
             }
             OverlayNumbers(input: info.id)
-            if info.kind == .videoFile, let v = model.videoFile(info.id) { MediaClock(video: v) }
+            // 0.63.0: no media controls on the tile (Program / Preview controllers and the Playlist dock have them).
             if info.kind == .presentation, let p = model.presentationSource(info.id) { SlideControls(info: info, source: p) }
             if !info.status.isHealthy, info.status != .starting {
                 Text(info.status.label).font(.system(size: 9)).foregroundStyle(Theme.warning).lineLimit(2)
@@ -489,12 +489,12 @@ extension InputKind {
         case .ndi: return "antenna.radiowaves.left.and.right"
         case .presentation: return "rectangle.on.rectangle.angled"
         case .frame: return "person.crop.rectangle"
-        case .gtTitle: return "rectangle.bottomthird.inset.filled"
         case .subtitles: return "captions.bubble"
         case .liveCall: return "person.wave.2"
         case .srt: return "dot.radiowaves.up.forward"
         case .decklink: return "rectangle.connected.to.line.below"
         case .qrCode: return "qrcode"
+        case .virtualSet: return "person.and.background.dotted"
         }
     }
 }
@@ -1095,7 +1095,7 @@ struct ChromaKeySheet: View {
             }
         }
         .padding(16)
-        .frame(width: 420)
+        .frame(minWidth: 380, idealWidth: 420, maxWidth: 600)
         .onAppear { key = model.chromaKey(input); loaded = true }
         .onChange(of: key) { k in if loaded { model.setChromaKey(k, for: input) } }
     }
@@ -1143,7 +1143,7 @@ struct InputAISheet: View {
             HStack { Spacer(); Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.defaultAction) }
         }
         .padding(20)
-        .frame(width: 380)
+        .frame(minWidth: 360, idealWidth: 380, maxWidth: 560)
         .onAppear { ai = model.inputAI(input); loaded = true }
         .onChange(of: ai) { v in if loaded { model.setInputAI(input, v) } }
     }

@@ -42,6 +42,11 @@ public final class RemoteServer: @unchecked Sendable {
     private var frameSeq: [String: Int] = [:]          // bumps with every new JPEG (0.54.1)
     private var lastFrameRequest: Double = -.infinity
     private var lastLowFrameRequest: Double = -.infinity
+    private var lastHighFrameRequest: Double = -.infinity
+    /// Open picture streams (0.62.0), at most `maxVideoStreams`.
+    private var videoStreams = 0
+    public static let maxVideoStreams = 6
+    static let videoMarker = "X-LCS-Video-Stream"
     /// Recent command ids (X-LCS-Req, 0.54.2): a page that re-sends a command after a lost reply
     /// (weak network) never makes it run twice.
     private var recentCommands: [String] = []
@@ -111,6 +116,12 @@ public final class RemoteServer: @unchecked Sendable {
         return lock.sync { now - lastLowFrameRequest < window }
     }
 
+    /// A page asked for the large pictures (`<bus>-high`, ≈1280 px, 0.62.0).
+    public func wantsHighFrames(window: Double = 3) -> Bool {
+        let now = Self.now()
+        return lock.sync { now - lastHighFrameRequest < window }
+    }
+
     public func wantsFrames(window: Double = 3) -> Bool {
         let now = Self.now()
         return lock.sync { now - lastFrameRequest < window }
@@ -168,6 +179,7 @@ public final class RemoteServer: @unchecked Sendable {
             running = false
             seen = [:]
             frames = [:]
+            frameSeq = [:]
             return f
         }
         if fd >= 0 { close(fd) }   // the accept loop sees running == false within its poll timeout
@@ -238,6 +250,10 @@ public final class RemoteServer: @unchecked Sendable {
                 }
                 break parsing
             }
+            if let mark = response.headers.first(where: { $0.0 == Self.videoMarker })?.1 {
+                streamVideo(c, spec: mark)
+                return
+            }
             if let mark = response.headers.first(where: { $0.0 == Self.streamMarker })?.1 {
                 let low = mark.hasSuffix("|low")
                 streamAudio(c, bus: low ? String(mark.dropLast(4)) : mark, low: low)
@@ -287,8 +303,70 @@ public final class RemoteServer: @unchecked Sendable {
                 guard Self.writeAll(c, frame) else { return }
                 lastWrite = now
             }
-            usleep(40_000)
+            // 0.62.0: every 20 ms (was 40) so a block never waits long behind the poll.
+            usleep(20_000)
         }
+    }
+
+    /// Picture push (0.62.0): instead of one request per picture (a round trip each, so a slow
+    /// or far link capped the frame rate and made the picture lag), one long response carries
+    /// every new JPEG as [UInt32 LE length][UInt8 bus 0 = Program, 1 = Preview][UInt32 LE seq][JPEG].
+    /// Only the newest picture is ever sent: a slow link skips pictures instead of falling behind.
+    /// A small send buffer keeps the queue in the network short. An empty record (bus 255) every
+    /// second is the keep-alive.
+    private func streamVideo(_ c: Int32, spec: String) {
+        defer { lock.sync { videoStreams -= 1 } }
+        // spec: "program,preview|quality|fpsProgram,fpsPreview"
+        let parts = spec.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+        let buses = parts[0].split(separator: ",").map(String.init)
+        let quality = parts.count > 1 ? parts[1] : "normal"
+        let fpsList = (parts.count > 2 ? parts[2] : "").split(separator: ",").compactMap { Double($0) }
+        var sndbuf: Int32 = quality == "high" ? 256 * 1024 : 96 * 1024
+        setsockopt(c, SOL_SOCKET, SO_SNDBUF, &sndbuf, socklen_t(MemoryLayout<Int32>.size))
+        let head = "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nCache-Control: no-store\r\n"
+            + "X-Content-Type-Options: nosniff\r\nX-Accel-Buffering: no\r\nConnection: close\r\n\r\n"
+        guard Self.writeAll(c, Array(head.utf8)) else { return }
+        var sent: [String: Int] = [:]
+        var lastSent: [String: Double] = [:]
+        var lastWrite = Self.now()
+        let end = Self.now() + 4 * 3600
+        while isRunning && Self.now() < end {
+            let now = Self.now()
+            var out: [UInt8] = []
+            for (i, bus) in buses.enumerated() {
+                let fps = i < fpsList.count ? min(max(fpsList[i], 0.5), 30) : 15
+                if now - (lastSent[bus] ?? -1) < 1 / fps - 0.004 { continue }
+                let pic: (jpeg: [UInt8], seq: Int)? = lock.sync {
+                    lastFrameRequest = now
+                    if quality == "low" { lastLowFrameRequest = now }
+                    if quality == "high" { lastHighFrameRequest = now }
+                    let key = quality == "normal" ? bus : bus + "-" + quality
+                    // Until the first small / large picture exists, the normal one is sent.
+                    let k = frames[key] != nil ? key : bus
+                    guard let j = frames[k], let q = frameSeq[k], q != sent[bus] else { return nil }
+                    return (j, q)
+                }
+                guard let pic else { continue }
+                sent[bus] = pic.seq
+                lastSent[bus] = now
+                out += Self.videoRecord(bus: bus == "program" ? 0 : 1, seq: UInt32(truncatingIfNeeded: pic.seq), jpeg: pic.jpeg)
+            }
+            if out.isEmpty && now - lastWrite > 1 { out = Self.videoRecord(bus: 255, seq: 0, jpeg: []) }
+            if !out.isEmpty {
+                guard Self.writeAll(c, out) else { return }
+                lastWrite = Self.now()
+            }
+            usleep(8_000)
+        }
+    }
+
+    static func videoRecord(bus: UInt8, seq: UInt32, jpeg: [UInt8]) -> [UInt8] {
+        let n = UInt32(5 + jpeg.count)
+        var r: [UInt8] = [UInt8(n & 0xff), UInt8((n >> 8) & 0xff), UInt8((n >> 16) & 0xff), UInt8(n >> 24), bus,
+                          UInt8(seq & 0xff), UInt8((seq >> 8) & 0xff), UInt8((seq >> 16) & 0xff), UInt8(seq >> 24)]
+        r.reserveCapacity(9 + jpeg.count)
+        r += jpeg
+        return r
     }
 
     /// Interleaved stereo → mono at half the rate (pairs of frames averaged).
@@ -347,7 +425,7 @@ public final class RemoteServer: @unchecked Sendable {
         case .page:
             return HTTPResponse(status: 200, contentType: "text/html; charset=utf-8", body: Array(RemotePage.html.utf8),
                                 headers: [("X-Frame-Options", "DENY"), ("Referrer-Policy", "no-referrer"),
-                                          ("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; frame-ancestors 'none'")])
+                                          ("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data: blob:; frame-ancestors 'none'")])
         case .state:
             return .json(lock.sync { stateJSON })
         case .ping:
@@ -399,6 +477,17 @@ public final class RemoteServer: @unchecked Sendable {
             }
             guard ok else { return .error(503, "too many listeners") }
             return HTTPResponse(status: 200, contentType: "application/octet-stream", headers: [(Self.streamMarker, bus)])
+        case let .videoStream(buses, quality):
+            let ok: Bool = lock.sync {
+                guard videoStreams < Self.maxVideoStreams else { return false }
+                videoStreams += 1
+                lastFrameRequest = Self.now()
+                return true
+            }
+            guard ok else { return .error(503, "too many viewers") }
+            let fps = (req.query["fps"] ?? "").filter { $0.isNumber || $0 == "," || $0 == "." }
+            return HTTPResponse(status: 200, contentType: "application/octet-stream",
+                                headers: [(Self.videoMarker, buses.joined(separator: ",") + "|" + quality + "|" + String(fps.prefix(24)))])
         case let .command(cmd):
             if let rid = req.headers["x-lcs-req"], !rid.isEmpty {
                 let dup: Bool = lock.sync {

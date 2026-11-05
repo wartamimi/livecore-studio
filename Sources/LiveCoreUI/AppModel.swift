@@ -61,10 +61,8 @@ public final class AppModel: ObservableObject {
     public let outputFeeds: [Int: FrameFeed] = Dictionary(uniqueKeysWithValues: (1...OutputRouting.count).map { ($0, FrameFeed()) })
     public internal(set) lazy var outputFullscreens: [Int: FullscreenOutput] = makeOutputFullscreens()
     @Published public internal(set) var outputRouting = OutputRouting()
-    /// EXTERNAL button: the Syphon and NDI outputs are sending.
+    /// EXTERNAL button: the NDI outputs are sending.
     @Published public internal(set) var externalActive = false
-    /// Output index → an app is connected to its Syphon server (only outputs that send).
-    @Published public internal(set) var syphonStatus: [Int: Bool] = [:]
     /// Output index → receivers connected to its NDI source (only outputs that send).
     @Published public internal(set) var ndiStatus: [Int: Int] = [:]
     /// The NDI runtime (NDI Tools / NDI Runtime) was found when the outputs started.
@@ -123,7 +121,16 @@ public final class AppModel: ObservableObject {
     public var performance = PerformanceSnapshot.zero {
         didSet { live.objectWillChange.send() }
     }
-    @Published public var shortcuts = ShortcutSettings.load()
+    @Published public var shortcuts = ShortcutStore.load()
+    /// Settings › Appearance (0.62.0): theme, accent, tally colours and dock layout. Applied live.
+    @Published public var appearance = AppearanceSettings.load() {
+        didSet { guard appearance != oldValue else { return }; Theme.apply(appearance); appearance.save() }
+    }
+    /// Key monitor for the shortcuts (0.62.0) and whether Settings is recording a key.
+    var shortcutMonitor: Any?
+    /// Input Properties requested from outside the input list (layer designer, 0.62.0).
+    @Published public var propertiesRequest: InputID?
+    public var recordingShortcut = false
 
     // Web Controller (remote control from a browser on the same network; off by default)
     @Published public internal(set) var remoteEnabled = false
@@ -134,7 +141,7 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var remoteClients = 0
     @Published public internal(set) var remoteAddresses: [String] = []
     /// Online access through a Cloudflare quick tunnel (0.45.0).
-    let remoteTunnel = RemoteTunnel()
+    let remoteTunnel = RemoteTunnel(persistKey: "remote.tunnelMethod")
     var remoteServer: RemoteServer?
 
     // Errors
@@ -142,6 +149,7 @@ public final class AppModel: ObservableObject {
     public struct ErrorItem: Identifiable, Equatable { public let id = UUID(); public let message: String }
 
     var statsTimer: Timer?
+    var isShuttingDown = false
 
     public init() {}
 
@@ -202,9 +210,23 @@ public final class AppModel: ObservableObject {
         DispatchQueue.main.async { [weak self] in self?.updateUIDemand() }
     }
 
+    /// Full teardown on quit (0.61.0: audio is silenced first, tunnels and the LCS Live server
+    /// stop, output windows close, and a guard ends the process if anything hangs).
     public func shutdown() {
+        guard !isShuttingDown else { return }
+        isShuttingDown = true
+        // If some teardown step blocks (a stuck device or plug-in), still end the process so
+        // nothing keeps playing in the background.
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 5) {
+            Log.app.error("Shutdown took longer than 5 s; ending the process")
+            exit(0)
+        }
+        engine?.silenceForQuit()
         statsTimer?.invalidate()
         watchdog.stop()
+        remoteTunnel.stop()
+        LiveCallService.shared.shutdown()
+        outputFullscreens.values.forEach { $0.close() }
         endAutosaveSession()
         outputRouter?.stopAll()
         midi.stop()
@@ -445,6 +467,9 @@ public final class AppModel: ObservableObject {
     @Published public var highlightProgress: String?
     @Published public var showOutputsPanel = false
     @Published public var showTemplates = false
+    /// File › Open Recent and File › New from My Template (0.62.0).
+    @Published public var recentProjects: [URL] = AppModel.loadRecentProjects()
+    @Published public var userTemplates: [URL] = AppModel.listUserTemplates()
     /// True while the crash-recovery question is pending (the welcome screen waits for it).
     public internal(set) var recoveryPending = false
 }

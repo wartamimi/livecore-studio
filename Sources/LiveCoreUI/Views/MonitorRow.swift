@@ -70,11 +70,20 @@ struct MonitorView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             if let designer { DesignerBarIfActive(state: designer) }
             if snapshot != nil { ProgramTransportBar() }
+            // Media controller under Preview too (0.61.0), so a clip can be cued / checked before
+            // it goes on air. Hidden while the Layer Designer uses that space.
+            if let designer { PreviewTransportIfIdle(state: designer) }
             // Screenshot / Grab as Still: right-click (two-finger click) on Program (0.49.0).
         }
         .padding(4)
         .panel()
     }
+}
+
+/// Preview media controller, hidden while the Layer Designer is open.
+private struct PreviewTransportIfIdle: View {
+    @ObservedObject var state: LayerDesignerState
+    var body: some View { if !state.active { ProgramTransportBar(preview: true) } }
 }
 
 /// Program monitor right-click (two-finger click on a trackpad), 0.49.0: Screenshot saves a PNG
@@ -88,6 +97,19 @@ private struct ProgramContextMenu: ViewModifier {
             content.contextMenu {
                 Button { model.saveSnapshot() } label: { Label(L10n.t("program.screenshot"), systemImage: "camera") }
                 Button { model.grabStill() } label: { Label(L10n.t("program.grab_still"), systemImage: "photo.badge.plus") }
+                Divider()
+                // Fullscreen on a chosen display (0.63.0).
+                Menu {
+                    let displays = model.fullscreenDisplays
+                    if displays.isEmpty { Text(L10n.t("program.fullscreen_none")) }
+                    ForEach(displays, id: \.id) { d in
+                        Button(d.isMain ? L10n.f("program.fullscreen_main", d.name) : d.name) { model.fullscreenProgram(on: d) }
+                    }
+                    if model.isFullscreenActive {
+                        Divider()
+                        Button(L10n.t("program.fullscreen_close")) { model.toggleFullscreen() }
+                    }
+                } label: { Label(L10n.t("program.fullscreen"), systemImage: "arrow.up.left.and.arrow.down.right") }
             }
         } else {
             content
@@ -184,8 +206,10 @@ private struct DesignerBarIfActive: View {
 struct ProgramTransportBar: View {
     @EnvironmentObject var model: AppModel
     @State private var scrub: Double?
+    /// Controls the input on Preview instead of Program (0.61.0).
+    var preview = false
 
-    private var programID: InputID? { model.switcher.transition?.to ?? model.switcher.program }
+    private var programID: InputID? { preview ? model.switcher.preview : (model.switcher.transition?.to ?? model.switcher.program) }
 
     /// Hidden while the input on Program has nothing to control (camera, title, colour...).
     var body: some View {
@@ -225,6 +249,10 @@ struct ProgramTransportBar: View {
                 }
                 if v.isPlaylist { Text("\(v.index + 1)/\(v.urls.count)") }
                 if !compact {
+                    // Loop (0.61.0): repeat the clip / playlist.
+                    toggle("LOOP", on: v.loop, help: L10n.t("transport.loop")) {
+                        v.loop.toggle(); model.objectWillChange.send()
+                    }
                     toggle("AUTO", on: v.autoPlayEnabled, help: L10n.t("media.auto_help")) {
                         model.setAutoPlayEnabled(!v.autoPlayEnabled, for: v.id)
                     }
@@ -324,10 +352,10 @@ struct TransitionControls: View {
             }
             Button(L10n.t("transition.cut")) { model.cut() }
                 .buttonStyle(StudioButtonStyle(color: Theme.program))
-                .help("Shortcut: \(model.shortcuts.cut)")
+                .help(model.shortcuts.combo(for: .cut).map { "Shortcut: \($0.display)" } ?? "CUT")
             Button(L10n.t("transition.auto")) { model.auto() }
                 .buttonStyle(StudioButtonStyle(color: Theme.accent, active: model.switcher.transition != nil))
-                .help("Shortcut: \(model.shortcuts.auto)")
+                .help(model.shortcuts.combo(for: .auto).map { "Shortcut: \($0.display)" } ?? "AUTO")
             // Manual T-bar
             TBarControl()
             Divider()

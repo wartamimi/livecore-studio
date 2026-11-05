@@ -237,6 +237,11 @@ public final class MetalCompositor {
                 params.waveShade = Float(w.shading)
                 params.wavePhase = Float((CACurrentMediaTime() * w.speed).truncatingRemainder(dividingBy: 1000) * 2 * .pi)
             }
+            if a.motion.isActive {
+                let m = a.motion.clamped
+                params.motionKind = Int32(m.kind.rawValue); params.motionAmount = Float(m.amount)
+                params.motionT = Float((CACurrentMediaTime() * m.speed).truncatingRemainder(dividingBy: 1000))
+            }
             enc.setFragmentBytes(&params, length: MemoryLayout<AdjustParamsGPU>.stride, index: 0)
             enc.setFragmentTexture(src, index: 0)
             enc.setFragmentTexture(lutTex ?? identityLUT, index: 1)
@@ -374,7 +379,7 @@ public final class MetalCompositor {
         return mode != (kCVImageBufferAlphaChannelMode_PremultipliedAlpha as String)
     }
 
-    /// Matches `AdjustParams` in the shader (96 bytes: 8 scalars, float4, float2 + 2, 4 + 4 scalars).
+    /// Matches `AdjustParams` in the shader (112 bytes: 8 scalars, float4, float2 + 2, 4 + 4 + 4 scalars).
     private struct AdjustParamsGPU {
         var brightness: Float, contrast: Float, saturation: Float, invGamma: Float
         var straight: Int32, range: Int32 = 0, deinterlace: Int32 = 0, lutMix: Float = 0
@@ -383,6 +388,7 @@ public final class MetalCompositor {
         var maskRadius: Float = 0, maskFeather: Float = 0
         var maskShape: Int32 = 0, maskInvert: Int32 = 0, waveOn: Int32 = 0, waveAmp: Float = 0
         var waveFreq: Float = 0, wavePhase: Float = 0, waveShade: Float = 0, pad: Float = 0
+        var motionKind: Int32 = 0, motionT: Float = 0, motionAmount: Float = 0, pad2: Float = 0
     }
 
     /// Mask images by file path (render queue only), like the LUT cache.

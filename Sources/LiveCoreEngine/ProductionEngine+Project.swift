@@ -53,9 +53,7 @@ extension ProductionEngine {
             case let sr as SRTSource: ps = .srt(sr.config)
             case let dl as DeckLinkSource: ps = .decklink(dl.config)
             case let q as QRCodeSource: ps = .qrCode(q.design)
-            case let g as GTTitleSource:
-                ps = .gtTitle(ProjectGTTitle(file: ProjectMediaRef(path: g.url.path, relativePath: rel(g.url)), fields: g.fields,
-                                              overrides: g.overrides.isEmpty ? nil : g.overrides, speed: g.speed == 1 ? nil : g.speed))
+            case let v as VirtualSetSource: ps = .virtualSet(v.design)
             case let p as PresentationSource:
                 ps = .presentation(ProjectPresentation(file: ProjectMediaRef(path: p.url.path, relativePath: rel(p.url)),
                                                        slide: p.slide, background: p.background, live: p.prefersLive ? true : nil))
@@ -84,6 +82,7 @@ extension ProductionEngine {
         doc.audio.masterFaderDB = mixer.master.faderDB.value
         doc.audio.limiterEnabled = mixer.limiterEnabled.value
         doc.audio.monitorVolume = mixer.monitorVolume.value
+        doc.audio.masterPlugins = mixer.masterInserts.projectSlots()
         doc.audio.syncOffsetMs = Double(audioPump.syncOffsetSeconds.value) * 1000
         let ducking = mixer.ducking.settings
         doc.audio.ducking = ducking == DuckingSettings() ? nil : ducking
@@ -172,6 +171,7 @@ extension ProductionEngine {
         mixer.master.faderDB.value = doc.audio.masterFaderDB
         mixer.limiterEnabled.value = doc.audio.limiterEnabled
         mixer.monitorVolume.value = doc.audio.monitorVolume
+        plugins.restore(doc.audio.masterPlugins, into: mixer.masterInserts)
         audioPump.syncOffsetSeconds.value = Float(doc.audio.syncOffsetMs / 1000)
         mixer.ducking.settings = doc.audio.ducking ?? DuckingSettings()
         ptzConfigs = [:]
@@ -314,11 +314,11 @@ extension ProductionEngine {
             addDeckLink(c, id: pi.id)
         case let .qrCode(d):
             addQRCode(d, id: pi.id)
-        case let .gtTitle(g):
-            // A missing or broken .gtzip keeps its place as an empty title.
-            let url = mediaURL(g.file.path, g.file.relativePath)
-            addGTTitle(url: url, template: (try? GTReader.template(at: url)) ?? GTTemplate(width: 1920, height: 1080),
-                       fields: g.fields, overrides: g.overrides ?? [:], speed: g.speed ?? 1, id: pi.id)
+        case let .virtualSet(d):
+            addVirtualSet(d, id: pi.id)
+        case .gtTitle:
+            found.append("vMix GT title inputs are no longer supported; input \"\(pi.name)\" was skipped.")
+            return false
         case let .presentation(p):
             addPresentation(url: mediaURL(p.file.path, p.file.relativePath), slide: p.slide, background: p.background,
                             live: p.live ?? false, id: pi.id)
@@ -331,6 +331,7 @@ extension ProductionEngine {
         Self.apply(p, to: ch.controls)
         ch.locked = p.locked ?? false
         if !p.name.isEmpty { ch.name = p.name }
+        plugins.restore(p.plugins, into: ch.inserts)
         afvLinks[ch.id] = p.afvInput.flatMap { source($0) != nil ? $0 : nil }
         applyAFV()
     }
@@ -341,6 +342,7 @@ extension ProductionEngine {
         let c = ch.controls
         p.faderDB = c.faderDB.value; p.gainDB = c.gainDB.value; p.pan = c.pan.value
         p.muted = c.muted.value; p.toProgram = c.toProgram.value
+        p.plugins = ch.inserts.projectSlots()
         p.toBusA = c.toBusA.value; p.toBusB = c.toBusB.value
         p.toBusC = c.toBusC.value ? true : nil; p.toBusD = c.toBusD.value ? true : nil
         p.compressorEnabled = c.compressorEnabled.value; p.compThresholdDB = c.compThresholdDB.value; p.compRatio = c.compRatio.value

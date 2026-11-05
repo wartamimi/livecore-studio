@@ -1,13 +1,25 @@
 #if os(macOS)
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 import LiveCoreCore
 import LiveCoreEngine
+import LiveCoreServices
 
 /// Gallery sections: the three title categories and running text.
 enum TitleGalleryTab: Hashable {
     case title(TitleCategory)
     case ticker
+    /// Templates saved by the operator or imported from .lctitle files (0.64.0).
+    case mine
+}
+
+/// One template in My Templates, with its gallery picture.
+struct MyTitleTemplate: Identifiable {
+    let url: URL
+    let package: TitlePackage
+    let thumb: CGImage?
+    var id: String { url.path }
 }
 
 /// Title Designer (vMix-style): template gallery on the left, live preview and advanced settings
@@ -25,6 +37,8 @@ struct TitleSheet: View {
     @State private var tab = 0
     @State private var thumbs: [TitleTemplate: CGImage] = [:]
     @State private var tickerThumbs: [TickerTemplate: CGImage] = [:]
+    @State private var myTemplates: [MyTitleTemplate] = []
+    @State private var savingName: String?
     @State private var families: [String] = []
     /// Running text instead of a title.
     @State private var isTicker = false
@@ -69,6 +83,18 @@ struct TitleSheet: View {
                 Button { animStart = Date() } label: { Label(L10n.t("titled.try_animation"), systemImage: "play.circle") }
                     .help(L10n.t("titled.try_animation_help"))
                 UndoRedoButtons(history: undo)
+                Menu {
+                    Button(L10n.t("mytpl.save")) { savingName = isTicker ? (ticker.labelText.isEmpty ? L10n.t("titlecat.ticker") : ticker.labelText) : title }
+                    Button(L10n.t("mytpl.export")) { exportTemplate() }
+                    Divider()
+                    Button(L10n.t("mytpl.import")) { importTemplate() }
+                    Button(L10n.t("mytpl.show_folder")) {
+                        try? FileManager.default.createDirectory(at: TitleTemplateLibrary.folder, withIntermediateDirectories: true)
+                        NSWorkspace.shared.open(TitleTemplateLibrary.folder)
+                    }
+                } label: { Label(L10n.t("mytpl.menu"), systemImage: "square.and.arrow.down.on.square") }
+                .fixedSize()
+                .help(L10n.t("mytpl.help"))
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
                 Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
@@ -96,6 +122,104 @@ struct TitleSheet: View {
         }
         .onDisappear { undo.stop(model: model) }
         .onChange(of: draft) { undo.record($0) }
+        .alert(L10n.t("mytpl.save"), isPresented: Binding(get: { savingName != nil }, set: { if !$0 { savingName = nil } })) {
+            TextField(L10n.t("mytpl.name"), text: Binding(get: { savingName ?? "" }, set: { savingName = $0 }))
+            Button(L10n.t("settings.cancel"), role: .cancel) { savingName = nil }
+            Button(L10n.t("mytpl.save_button")) {
+                let name = (savingName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                savingName = nil
+                do {
+                    try TitleTemplateLibrary.save(currentPackage(name: name.isEmpty ? "Template" : name))
+                    reloadMine()
+                    galleryTab = .mine
+                } catch { model.report(L10n.f("mytpl.save_failed", "\(error)")) }
+            }
+        }
+    }
+
+    // MARK: My Templates (.lctitle, 0.64.0)
+
+    /// What is in the editor now, as a template file.
+    private func currentPackage(name: String) -> TitlePackage {
+        isTicker ? TitlePackage(name: name, ticker: ticker) : TitlePackage(name: name, title: title, subtitle: subtitle, design: design)
+    }
+
+    /// Kinds this sheet can take (an existing input keeps its kind).
+    private func accepts(_ p: TitlePackage) -> Bool {
+        guard let id = editing else { return true }
+        return (p.kind == .ticker) == (model.tickerSource(id) != nil)
+    }
+
+    private func reloadMine() {
+        myTemplates = TitleTemplateLibrary.list().map { item in
+            let p = item.package
+            let img: CGImage?
+            if p.kind == .ticker, let c = p.ticker {
+                img = TickerRenderer.preview(c, width: 320, height: 180)
+            } else if let d = p.design {
+                img = TitleRenderer.image(d, title: p.title ?? d.template.sample.title, subtitle: p.subtitle ?? "", width: 320, height: 180)
+            } else { img = nil }
+            return MyTitleTemplate(url: item.url, package: p, thumb: img)
+        }
+    }
+
+    /// Puts a template in the editor. Text the operator typed is kept; sample text is replaced.
+    private func apply(_ p: TitlePackage) {
+        guard accepts(p) else { model.report(L10n.t("mytpl.wrong_kind")); return }
+        if p.kind == .ticker, let c = p.ticker {
+            isTicker = true
+            let keep = ticker.text != L10n.t("titled.ticker_sample") || ticker.textFilePath != nil || !(ticker.feedURL ?? "").isEmpty
+            ticker = keep ? c.keepingSource(of: ticker) : c
+        } else if let d = p.design {
+            isTicker = false
+            let old = design.template.sample
+            if title == old.title || title.isEmpty { title = p.title ?? d.template.sample.title }
+            if subtitle == old.subtitle || subtitle.isEmpty { subtitle = p.subtitle ?? "" }
+            design = d
+        }
+    }
+
+    private func exportTemplate() {
+        let panel = NSSavePanel()
+        let name = isTicker ? (ticker.labelText.isEmpty ? "Running text" : ticker.labelText) : (title.isEmpty ? "Title" : title)
+        panel.nameFieldStringValue = TitlePackage.fileName(for: name)
+        panel.allowedContentTypes = [AppModel.titleTemplateType]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do { try TitleTemplateLibrary.write(currentPackage(name: url.deletingPathExtension().lastPathComponent), to: url) }
+        catch { model.report(L10n.f("mytpl.save_failed", "\(error)")) }
+    }
+
+    private func importTemplate() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [AppModel.titleTemplateType]
+        panel.allowsMultipleSelection = true
+        guard panel.runModal() == .OK else { return }
+        var last: TitlePackage?
+        for url in panel.urls {
+            do {
+                let p = try TitleTemplateLibrary.read(url) { _ = FontInstaller.installFiles($0) }
+                try TitleTemplateLibrary.save(p)
+                last = p
+            } catch { model.report("\(url.lastPathComponent): \(error)") }
+        }
+        reloadMine()
+        families = TitleRenderer.fontFamilies
+        if let last {
+            galleryTab = .mine
+            if accepts(last) { apply(last) }
+        }
+    }
+
+    private func myTile(_ m: MyTitleTemplate) -> some View {
+        tile(image: m.thumb, name: m.package.name, on: false) { apply(m.package) }
+            .opacity(accepts(m.package) ? 1 : 0.4)
+            .contextMenu {
+                Button(L10n.t("mytpl.show_in_finder")) { NSWorkspace.shared.activateFileViewerSelecting([m.url]) }
+                Button(L10n.t("mytpl.delete"), role: .destructive) {
+                    try? FileManager.default.trashItem(at: m.url, resultingItemURL: nil)
+                    reloadMine()
+                }
+            }
     }
 
     // MARK: Gallery
@@ -108,6 +232,7 @@ struct TitleSheet: View {
                     ForEach(TitleCategory.allCases, id: \.self) { Text(L10n.t("titlecat." + $0.rawValue)).tag(TitleGalleryTab.title($0)) }
                 }
                 if editing == nil || editingTicker { Text(L10n.t("titlecat.ticker")).tag(TitleGalleryTab.ticker) }
+                Text(L10n.t("titlecat.mine")).tag(TitleGalleryTab.mine)
             }
             .pickerStyle(.segmented).labelsHidden()
             ScrollView {
@@ -119,6 +244,12 @@ struct TitleSheet: View {
                         }
                     case .ticker:
                         ForEach(TickerTemplate.allCases, id: \.self) { t in tickerTile(t) }
+                    case .mine:
+                        if myTemplates.isEmpty {
+                            Text(L10n.t("mytpl.empty")).font(.caption).foregroundStyle(Theme.textDim)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        ForEach(myTemplates) { m in myTile(m) }
                     }
                 }
             }
@@ -208,6 +339,7 @@ struct TitleSheet: View {
                 Text(L10n.t("titled.tab.position")).tag(2)
                 Text(L10n.t("titled.tab.effects")).tag(3)
                 Text(L10n.t("titled.tab.animation")).tag(4)
+                Text("3D").tag(5)
             }
             .pickerStyle(.segmented).labelsHidden()
             ScrollView {
@@ -217,7 +349,8 @@ struct TitleSheet: View {
                     case 1: boxTab
                     case 2: positionTab
                     case 3: effectsTab
-                    default: animationTab
+                    case 4: animationTab
+                    default: tab3D
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -235,11 +368,13 @@ struct TitleSheet: View {
         return HStack {
             Spacer(minLength: 0)
             TimelineView(.animation(minimumInterval: 1 / 30, paused: !isTicker && animStart == nil)) { ctx in
+                let motion = motionProgress(at: ctx.date)
                 let img = isTicker ? TickerRenderer.preview(ticker, width: iw, height: ih,
                                                            elapsed: ctx.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600))
-                                   : (letterElapsed(at: ctx.date).map {
-                                       TitleRenderer.image(design, title: title, subtitle: subtitle, width: iw, height: ih, elapsed: $0)
-                                   } ?? still)
+                                   : (letterElapsed(at: ctx.date) != nil || motion != nil
+                                      ? TitleRenderer.image(design, title: title, subtitle: subtitle, width: iw, height: ih,
+                                                            elapsed: letterElapsed(at: ctx.date), motion: motion)
+                                      : still)
                 let placed = animationPlacement(at: ctx.date)
                 let r = placed.0, a = placed.1
                 ZStack {
@@ -274,9 +409,21 @@ struct TitleSheet: View {
         return max(1, TextReveal(animation: design.textAnimation, delay: design.letterDelay).totalDuration(letters: letters) + 0.5)
     }
 
+    /// 3D motion progress while "Try animation" plays a title with a 3D motion: in, hold, out.
+    private func motionProgress(at now: Date) -> Double? {
+        guard !isTicker, let start = animStart, let t3 = design.active3D, t3.hasMotion else { return nil }
+        let t = now.timeIntervalSince(start), dur = t3.duration, hold = holdSeconds
+        if t < dur { return t / dur }
+        if t < dur + hold { return 1 }
+        if t < 2 * dur + hold { return 1 - (t - dur - hold) / dur }
+        DispatchQueue.main.async { if animStart == start { animStart = nil } }
+        return nil
+    }
+
     /// The chosen in / out animation played once in the preview: in, hold, out.
     private func animationPlacement(at now: Date) -> (NormRect, Double) {
         guard let start = animStart else { return (.full, 1) }
+        if !isTicker, design.active3D?.hasMotion == true { return (.full, 1) }
         let (anim, dur): (OverlayAnimation, Double) = isTicker
             ? (ticker.animation ?? .fade, ticker.animationDuration ?? 0.5)
             : (design.animation, design.animationDuration)
@@ -314,6 +461,48 @@ struct TitleSheet: View {
                        10...300, step: 5)
             }
             Text(L10n.t("titled.animation_help")).font(.caption).foregroundStyle(Theme.textDim).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// 3D look and motion (0.59.0).
+    private var tab3D: some View {
+        let on = design.active3D != nil
+        let t3 = Binding<Title3D>(get: { design.look3D ?? Title3D() }, set: { design.look3D = $0 })
+        return VStack(alignment: .leading, spacing: 6) {
+            row("") {
+                Toggle(L10n.t("titled3d.enable"), isOn: Binding(get: { on }, set: { v in
+                    let def = design.template.defaultDesign.look3D
+                    design.look3D = v ? (def?.isActive == true ? def : Title3D()) : Title3D.flat
+                }))
+            }
+            Group {
+                slider(L10n.t("titled3d.depth"), t3.depth, 0...60)
+                slider(L10n.t("titled3d.direction"), t3.direction, 0...360, step: 5)
+                row("") {
+                    Toggle(L10n.t("titled3d.auto_side"), isOn: Binding(get: { t3.wrappedValue.sideColor == nil },
+                                                                     set: { t3.wrappedValue.sideColor = $0 ? nil : ProjectColor(r: 0.2, g: 0.2, b: 0.25) }))
+                    if t3.wrappedValue.sideColor != nil {
+                        ColorPicker(L10n.t("titled3d.side"), selection: Binding(
+                            get: { Color(nsColor: (t3.wrappedValue.sideColor ?? ProjectColor(r: 0, g: 0, b: 0)).nsColor) },
+                            set: { t3.wrappedValue.sideColor = ProjectColor(NSColor($0)) }), supportsOpacity: false)
+                    }
+                }
+                row("") { Toggle(L10n.t("titled3d.bevel"), isOn: t3.bevel) }
+                slider(L10n.t("titled3d.tilt_x"), t3.tiltX, -35...35)
+                slider(L10n.t("titled3d.tilt_y"), t3.tiltY, -35...35)
+                Divider()
+                row(L10n.t("titled3d.motion")) {
+                    Picker("", selection: t3.motion) {
+                        ForEach(Motion3D.allCases, id: \.self) { Text(L10n.t("motion3d." + $0.rawValue)).tag($0) }
+                    }
+                    .labelsHidden().frame(width: 200)
+                }
+                if t3.wrappedValue.motion != .off {
+                    slider(L10n.t("titled.animation_duration"), t3.duration, 0.2...3, step: 0.1)
+                }
+            }
+            .disabled(!on)
+            Text(L10n.t("titled3d.help")).font(.caption).foregroundStyle(Theme.textDim).fixedSize(horizontal: false, vertical: true)
         }
     }
 
@@ -479,6 +668,7 @@ struct TitleSheet: View {
             th[t] = TitleRenderer.image(t.defaultDesign, title: s.title, subtitle: s.subtitle, width: 320, height: 180)
         }
         thumbs = th
+        reloadMine()
     }
 }
 
@@ -661,6 +851,18 @@ struct TickerEditorPanel: View {
                 row(L10n.t("titled.animation")) {
                     AnimationPicker(selection: Binding(get: { config.animation ?? .fade }, set: { config.animation = $0 }))
                 }
+                slider(L10n.t("titled.animation_duration"), Binding(get: { config.animationDuration ?? 0.5 }, set: { config.animationDuration = $0 }),
+                       0.1...5, step: 0.1)
+            }
+            Divider()
+            row("") { Toggle(L10n.t("tickered.look3d"), isOn: flag(\.look3D)) }
+            row(L10n.t("titled3d.motion")) {
+                Picker("", selection: Binding(get: { config.motion3D ?? .off }, set: { config.motion3D = $0 == .off ? nil : $0 })) {
+                    ForEach(Motion3D.allCases, id: \.self) { Text(L10n.t("motion3d." + $0.rawValue)).tag($0) }
+                }
+                .labelsHidden().frame(width: 200)
+            }
+            if config.hasMotion3D {
                 slider(L10n.t("titled.animation_duration"), Binding(get: { config.animationDuration ?? 0.5 }, set: { config.animationDuration = $0 }),
                        0.1...5, step: 0.1)
             }
