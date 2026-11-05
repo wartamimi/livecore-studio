@@ -91,6 +91,9 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
     public var signalStats: SignalStats { statsLock.withLock { _stats } }
     private var _stats = SignalStats()
     private let statsLock = UnfairLock()
+    /// Frame rate kept from a faster device (0 = every frame); guarded by statsLock.
+    private var keepFPS: Double = 0
+    private var lastKept: Double = 0
     private var windowStart: Double = 0
     private var windowFrames = 0
 
@@ -199,12 +202,18 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
             activeFormatDescription = "default"
             return
         }
-        let best = (format: formats[index], range: Self.matchingRange(formats[index].videoSupportedFrameRateRanges, fps: fps))
+        // 24 / 25 fps on a device that does not offer them: run it at a native rate (double,
+        // else its default) and keep only the frames needed (0.63.4).
+        let ranges = formats[index].videoSupportedFrameRateRanges
+        let native = Self.matchingRange(ranges, fps: fps) != nil
+        let runFPS = native ? fps : (Self.matchingRange(ranges, fps: fps * 2) != nil ? fps * 2 : fps)
+        statsLock.withLock { keepFPS = (config.frameRate != nil && !native) ? fps : 0; lastKept = 0 }
+        let best = (format: formats[index], range: Self.matchingRange(ranges, fps: runFPS))
         do {
             if let err = lc_catch_objc_exception({ device.activeFormat = best.format }) {
                 Log.devices.error("camera \(self.name, privacy: .public): activeFormat rejected: \(err, privacy: .public)")
             } else if let range = best.range {
-                let duration = Self.frameDuration(in: range, fps: fps)
+                let duration = Self.frameDuration(in: range, fps: runFPS)
                 if let err = lc_catch_objc_exception({
                     device.activeVideoMinFrameDuration = duration
                     device.activeVideoMaxFrameDuration = duration
@@ -273,6 +282,16 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
 
     public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let pb = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let t = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
+        let keep: Bool = statsLock.withLock {
+            guard keepFPS > 0, t.isFinite else { return true }
+            let iv = 1 / keepFPS
+            if lastKept > 0 && t - lastKept < iv * 0.75 { return false }
+            // Stay on the ideal grid so 60 → 24 averages out instead of drifting.
+            lastKept = (lastKept > 0 && t - lastKept < iv * 1.5) ? lastKept + iv : t
+            return true
+        }
+        guard keep else { return }
         slot.put(pb)
         if !liveReported.value { liveReported.value = true; setStatus(.live) }
         probeLevels(pb)
