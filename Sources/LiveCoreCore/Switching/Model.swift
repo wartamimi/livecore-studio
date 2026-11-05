@@ -41,9 +41,24 @@ public struct Layer: Equatable, Codable, Sendable {
     public var rect: NormRect
     public var scaleMode: ScaleMode
     public var opacity: Double
-    public init(source: InputID, rect: NormRect = .full, scaleMode: ScaleMode = .fit, opacity: Double = 1) {
-        self.source = source; self.rect = rect; self.scaleMode = scaleMode; self.opacity = opacity
+    /// Crop, rounded corners / ellipse and border (absent before 0.13.0 = plain).
+    public var style: LayerStyle?
+    /// Layer Designer (0.25.0; absent in older projects = false): not drawn while hidden.
+    public var hidden: Bool?
+    /// Position and size cannot be changed in the Layer Designer while locked.
+    public var locked: Bool?
+    /// Only on layer 0 (the input itself): wherever this input appears as one picture (a layer of
+    /// another input, an overlay, a thumbnail, an output), all its layers are drawn into one image
+    /// first, so the crop, position, border and overlay animation of that picture apply to all of them.
+    public var flatten: Bool?
+    public init(source: InputID, rect: NormRect = .full, scaleMode: ScaleMode = .fit, opacity: Double = 1,
+                style: LayerStyle? = nil, hidden: Bool? = nil, locked: Bool? = nil, flatten: Bool? = nil) {
+        self.source = source; self.rect = rect; self.scaleMode = scaleMode; self.opacity = opacity; self.style = style
+        self.hidden = hidden; self.locked = locked; self.flatten = flatten
     }
+
+    public var isHidden: Bool { hidden == true }
+    public var isLocked: Bool { locked == true }
 }
 
 /// Layout presets used by overlay channels and scene layers (PiP, lower third...).
