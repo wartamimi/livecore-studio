@@ -23,6 +23,8 @@ public final class MixerChannel: @unchecked Sendable {
     // Render-thread-only state:
     var dsp: ChannelStripDSP
     var primed = false
+    /// Auto mixer level detector (render thread only, 0.65.0).
+    var autoMixEnv: Float = 0
     let drift: DriftCompensator
     let underruns = AtomicCounter()
     /// Measured clock offset of this input relative to the output clock (parts per million).
@@ -278,6 +280,7 @@ public final class AudioMixerEngine {
         triggerPeak = 0
         _ = graphLock.withTryLock { () -> Bool in
             for ch in channels { mixChannel(ch, frames: frames) }
+            updateAutoMix(frames: frames)
             return true
         }
         let soloActive = soloFlag
@@ -359,6 +362,30 @@ public final class AudioMixerEngine {
     }
 
     private var soloFlag = false
+
+    /// Auto mixer (0.65.0): gain sharing between the channels marked Auto Mix, from this
+    /// block's levels; each channel ramps to its new gain over the next block.
+    @inline(__always)
+    private func updateAutoMix(frames: Int) {
+        let seconds = Float(frames) / Float(sampleRate)
+        var total: Float = 0
+        var count = 0
+        for ch in channels where ch.controls.autoMix.value {
+            ch.autoMixEnv = AutoMixer.smooth(ch.autoMixEnv, power: ch.dsp.autoMixPower, seconds: seconds)
+            total += AutoMixer.weighted(ch.autoMixEnv, weightDB: ch.controls.autoMixWeightDB.value)
+            count += 1
+        }
+        for ch in channels {
+            if count >= 2, ch.controls.autoMix.value {
+                let g = AutoMixer.gain(weighted: AutoMixer.weighted(ch.autoMixEnv, weightDB: ch.controls.autoMixWeightDB.value), total: total)
+                ch.dsp.autoMixTarget = g
+                ch.controls.autoMixGainDB.value = AudioMath.linearToDB(g)
+            } else if ch.dsp.autoMixTarget != 1 {
+                ch.dsp.autoMixTarget = 1
+                ch.controls.autoMixGainDB.value = 0
+            }
+        }
+    }
 
     @inline(__always)
     private func mixChannel(_ ch: MixerChannel, frames: Int) {

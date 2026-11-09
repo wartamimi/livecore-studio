@@ -12,6 +12,7 @@ extension RecordReminderMode {
 /// beside it, and the four outputs. It is always shown (cannot be minimized).
 struct OutputDockView: View {
     @EnvironmentObject var model: AppModel
+    @Environment(\.openWindow) private var openMacroWindow
     /// Opens the Settings window on a tab (1 = Stream, 2 = Record, 8 = ISOCorder).
     let openSettings: (Int) -> Void
     @State private var showRecord = false
@@ -111,6 +112,10 @@ struct OutputDockView: View {
             // Screenshot / Grab as Still are on the Program monitor's right-click menu.
             mainButton(L10n.t("outputs.button"), icon: "square.stack.3d.up", status: L10n.t("outputs.help"),
                        color: Theme.accent, active: false) { model.showOutputsPanel = true }
+                .padding(.leading, 4)
+            // Macros (0.65.0): opens the Macros window; lit while a macro runs.
+            mainButton(L10n.t("macro.button"), icon: "list.bullet.rectangle.portrait", status: L10n.t("macro.title"),
+                       color: Theme.preview, active: !model.runningMacros.isEmpty) { openMacroWindow(id: "macros") }
                 .padding(.leading, 4)
             Spacer(minLength: 0)
             // Machine readings and stream / record status, bottom right (0.50.0).

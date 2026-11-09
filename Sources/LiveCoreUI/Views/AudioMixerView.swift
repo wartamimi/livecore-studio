@@ -172,6 +172,7 @@ struct ChannelStripView: View {
                     Divider()
                     Toggle(L10n.t("duck.trigger"), isOn: $vm.duckTrigger)
                     Toggle(L10n.t("duck.target"), isOn: $vm.duckTarget)
+                    Toggle(L10n.t("automix.enable"), isOn: $vm.autoMix)
                     if let m = model.musicPlayer(vm.id) {
                         Divider()
                         Button(L10n.t("music.add_tracks")) { model.addTracks(toMusic: vm.id) }
@@ -231,7 +232,7 @@ struct ChannelStripView: View {
     /// "DSP", with a marker for each active processor (G = gate, C = compressor).
     private var dspLabel: String {
         let active = [vm.highPass || vm.eq ? "EQ" : nil, vm.gate ? "G" : nil, vm.compressor ? "C" : nil,
-                      vm.duckTrigger ? "D↑" : nil, vm.duckTarget ? "D↓" : nil].compactMap { $0 }
+                      vm.duckTrigger ? "D↑" : nil, vm.duckTarget ? "D↓" : nil, vm.autoMix ? "AM" : nil].compactMap { $0 }
         return active.isEmpty ? L10n.t("audio.dsp") : "\(L10n.t("audio.dsp")) " + active.joined(separator: "·")
     }
 
@@ -313,6 +314,7 @@ struct AudioPropertiesSheet: View {
                 compTab(level).tabItem { Text(L10n.t("audio.compressor")) }
                 limiterTab(level).tabItem { Text(L10n.t("audio.limiter")) }
                 routing.tabItem { Text(L10n.t("audio.tab.routing")) }
+                autoMixTab.tabItem { Text(L10n.t("automix.tab")) }
                 pluginsTab.tabItem { Text(L10n.t("plugins.tab")) }
             }
             .frame(height: 400)
@@ -323,7 +325,26 @@ struct AudioPropertiesSheet: View {
             }
         }
         .padding(16)
-        .frame(width: 560)
+        .frame(width: 640)
+    }
+
+    /// Auto mixer (0.65.0): gain sharing between all channels with Auto Mix on.
+    private var autoMixTab: some View {
+        Form {
+            Toggle(L10n.t("automix.enable"), isOn: $vm.autoMix)
+            row(L10n.t("automix.weight"), $vm.autoMixWeight, Double(AutoMixer.weightRange.lowerBound)...Double(AutoMixer.weightRange.upperBound), "%+.0f dB")
+            LabeledContent(L10n.t("automix.gain")) {
+                TimelineView(.periodic(from: .now, by: 0.2)) { _ in
+                    let db = vm.channel.controls.autoMixGainDB.value
+                    Text(vm.autoMix ? String(format: "%.1f dB", db) : "—").monospacedDigit()
+                }
+            }
+            LabeledContent(L10n.t("automix.group")) {
+                Text(model.audioChannels.filter(\.autoMix).map(\.name).joined(separator: ", ")).foregroundStyle(Theme.textDim)
+            }
+            Text(L10n.t("automix.help")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     private var general: some View {

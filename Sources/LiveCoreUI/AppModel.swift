@@ -176,6 +176,7 @@ public final class AppModel: ObservableObject {
             overlays = e.overlays
             syncAuxFromEngine()
             startMIDI()
+            installMacroObservers()
             startRemoteIfEnabled()
             startAutosave()
         } catch {
@@ -361,7 +362,12 @@ public final class AppModel: ObservableObject {
     private func publishSwitcher(_ s: SwitcherSnapshot) {
         pendingSwitcher = nil
         lastSwitcherPublish = CACurrentMediaTime()
-        if s != switcher { switcher = s }
+        if s != switcher {
+            let old = switcher
+            switcher = s
+            fireMacroEvents(MacroEvent.switching(oldProgram: old.program, newProgram: s.program,
+                                                 oldPreview: old.preview, newPreview: s.preview))
+        }
         if s.transition == nil, tbar != s.tbarRest { tbar = s.tbarRest }
     }
     let watchdog = MainThreadWatchdog()
@@ -372,6 +378,7 @@ public final class AppModel: ObservableObject {
         meters.update(channels: e.audioChannels, master: e.mixer.master, aux: e.mixer.aux)
         tickCount += 1
         if tickCount % 15 == 0 { updateUIDemand() }
+        if tickCount % 6 == 0 { checkMacroOutputEvents() }
         if tickCount % 3 == 0 { meters.updateLoudness(e.mixer) }
         if tickCount % 30 == 0 { performance = e.samplePerformance(); refreshExternalStatus(); logRenderDrops(e) }
         if remoteServer != nil, tickCount % 3 == 0 { pushRemoteState(clients: tickCount % 30 == 0) }
@@ -451,6 +458,21 @@ public final class AppModel: ObservableObject {
     @Published public var openSettingsRequest = false
     /// Sheet asked for by an add-input menu (Inputs panel or ADD INPUT in the bottom bar).
     @Published public var addInputSheet: AddInputSheet?
+    // Macros and triggers (0.65.0), saved in the project.
+    @Published public var macroBook = MacroBook()
+    @Published public internal(set) var runningMacros: Set<String> = []
+    /// Triggers paused after a loop was detected (re-armed from the Macros window).
+    @Published public internal(set) var macroTriggersTripped = false
+    @Published public var macroTriggersEnabled = true
+    var macroRunTokens: [String: Int] = [:]
+    var macroTokenCounter = 0
+    var macroGuard = MacroTriggerGuard()
+    /// Triggers are ignored until this time (a project being loaded switches inputs by itself).
+    var macroTriggersQuietUntil: Double = 0
+    var macroLastStreaming = false
+    var macroLastRecording = false
+    var macroVideoEndObserver: Any?
+
     // Event rundown (0.42.0).
     @Published public var rundown = Rundown()
     @Published public var rundownIndex: Int?

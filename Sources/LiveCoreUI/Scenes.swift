@@ -50,6 +50,7 @@ public enum LiveCoreScenes {
             CommandGroup(replacing: .saveItem) {}
             CommandMenu("Production") {
                 WindowCommand(title: L10n.t("rundown.create_menu"), id: "rundown", key: "r", modifiers: [.command, .shift])
+                WindowCommand(title: L10n.t("macro.menu"), id: "macros", key: "k", modifiers: [.command, .option])
                 Divider()
                 Button(L10n.t("transition.cut")) { model.cut() }
                 Button(L10n.t("transition.auto")) { model.auto() }
@@ -90,6 +91,14 @@ public enum LiveCoreScenes {
             AboutView().preferredColorScheme(.dark)
         }
         .windowResizability(.contentSize)
+
+        Window(L10n.t("macro.title"), id: "macros") {
+            MacrosWindow()
+                .environmentObject(model)
+                .frame(minWidth: 820, minHeight: 460)
+                .preferredColorScheme(.dark)
+        }
+        .defaultSize(width: 960, height: 600)
 
         Window(L10n.t("multiview.title"), id: "multiview") {
             MultiviewView()

@@ -132,6 +132,7 @@ extension AppModel {
         case let .overlay(i): toggleOverlay(i)
         case let .overlayPreview(i): toggleOverlayPreview(i)
         case .highlight: markHighlight()
+        case let .macro(n): runMacro(number: n)
         }
     }
 
@@ -150,6 +151,7 @@ extension AppModel {
         case let .overlay(i): return "Overlay \(i)"
         case let .overlayPreview(i): return "Overlay \(i) → Preview"
         case .highlight: return L10n.t("highlights.midi")
+        case let .macro(n): return macroTitle(n)
         }
     }
 

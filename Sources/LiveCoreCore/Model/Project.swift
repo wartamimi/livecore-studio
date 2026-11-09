@@ -25,6 +25,8 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
     public var groupNames: [String: String]?
     /// Event rundown (added in 0.42.0).
     public var rundown: Rundown?
+    /// Macros and their triggers (added in 0.65.0).
+    public var macros: MacroBook?
 
     public init(version: Int = ProjectDocument.currentVersion, settings: ProductionSettings = ProductionSettings(),
                 inputs: [ProjectInput] = [], overlays: [ProjectOverlay] = [], audio: ProjectAudio = ProjectAudio(),
@@ -84,6 +86,7 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
         doc.multiCorder = multiCorder?.keeping(existing: seen)
         // A project file only ever makes the app open HTTPS MP3/AAC radio streams.
         doc.audio.radios = audio.radios?.filter { RadioBrowser.isPlayable($0.station) }
+        doc.macros = macros?.pruned(inputs: seen)
         return doc
     }
 }
@@ -548,6 +551,9 @@ public struct ProjectAudioChannel: Codable, Equatable, Sendable {
     /// Ducking (since 0.37.0): this channel's level turns the ducked channels down / it is turned down.
     public var duckTrigger: Bool?
     public var duckTarget: Bool?
+    /// Auto mixer group and weight (since 0.65.0).
+    public var autoMix: Bool?
+    public var autoMixWeightDB: Float?
     /// Advanced audio settings (since 0.50.0); absent = defaults.
     public var advanced: ProjectAudioAdvanced?
     /// Plug-in inserts in order (since 0.60.0); absent = none.
