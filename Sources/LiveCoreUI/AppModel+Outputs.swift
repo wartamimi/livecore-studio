@@ -51,12 +51,6 @@ extension AppModel {
         setOutputRouting(r)
     }
 
-    public func setOutputSyphon(_ index: Int, _ on: Bool) {
-        var r = outputRouting
-        r.setSyphon(index, on)
-        setOutputRouting(r)
-    }
-
     public func setOutputNDI(_ index: Int, _ on: Bool) {
         var r = outputRouting
         r.setNDI(index, on)
@@ -115,6 +109,19 @@ extension AppModel {
         }
     }
 
+    /// Program right-click › Fullscreen (0.63.0): Program full screen on `display`. Uses the first
+    /// output that already shows Program, else Output 1 switched to Program.
+    public func fullscreenProgram(on display: DisplayInfo) {
+        let index = (1...OutputRouting.count).first { outputRouting.slot($0).source == .program } ?? 1
+        if outputRouting.slot(index).source != .program { setOutputSource(index, .program) }
+        guard let f = outputFullscreens[index] else { return }
+        f.select(display)
+        if !f.isActive { f.open() }
+    }
+
+    /// Displays that can show a full-screen output.
+    public var fullscreenDisplays: [DisplayInfo] { outputFullscreens[1]?.displays ?? [] }
+
     // MARK: EXTERNAL
 
     public func toggleExternal() {
@@ -137,10 +144,8 @@ extension AppModel {
 
     private static let ndiOfferedKey = "outputs.ndi.offered"
 
-    /// Re-reads which Syphon and NDI outputs run and who receives them (shown under EXTERNAL ⚙).
+    /// Re-reads which NDI outputs run and who receives them (shown under EXTERNAL ⚙).
     public func refreshExternalStatus() {
-        let s = outputRouter?.syphonStatus() ?? [:]
-        if s != syphonStatus { syphonStatus = s }
         let n = outputRouter?.ndiStatus() ?? [:]
         if n != ndiStatus { ndiStatus = n }
     }

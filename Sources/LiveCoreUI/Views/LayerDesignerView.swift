@@ -22,6 +22,8 @@ final class LayerDesignerState: ObservableObject {
     /// Snap lines shown while dragging (normalized).
     @Published var guidesX: [Double] = []
     @Published var guidesY: [Double] = []
+    /// Layer whose options popover is open (double-click in the designer, 0.62.0).
+    @Published var optionsFor: Int?
     var dragStart: (rect: NormRect, crop: LayerStyle.Crop)? {
         didSet { if dragStart != nil && oldValue == nil { history?.breakCoalescing() } }
     }
@@ -133,18 +135,30 @@ struct LayerDesignerCanvas: View {
                 .background(Color.white.opacity(sel ? 0.04 : 0.001))
                 .frame(width: max(f.width, 4), height: max(f.height, 4))
                 .overlay(alignment: .topLeading) {
+                    // 0.62.0: the icons come first and never shrink; the name is cut to the box
+                    // width, and the label moves clear of the corner handle while selected.
                     HStack(spacing: 3) {
-                        Text("\(i + 1) \(name(l.source))").lineLimit(1)
-                        if l.isLocked { Image(systemName: "lock.fill") }
-                        if l.isHidden { Image(systemName: "eye.slash") }
+                        if l.isLocked { Image(systemName: "lock.fill").fixedSize() }
+                        if l.isHidden { Image(systemName: "eye.slash").fixedSize() }
+                        Text("\(i + 1) \(name(l.source))").lineLimit(1).truncationMode(.tail)
                     }
                     .font(.system(size: 9, weight: .bold))
                     .padding(.horizontal, 3).padding(.vertical, 1)
                     .background(Color.black.opacity(0.65))
+                    .frame(maxWidth: max(f.width - (sel ? 22 : 4), 18), alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .clipped()
+                    .padding(.leading, sel ? 11 : 0).padding(.top, sel ? 11 : 0)
+                    .allowsHitTesting(false)
                 }
                 .contentShape(Rectangle())
+                .onTapGesture(count: 2) { state.selected = i; state.optionsFor = i }
                 .onTapGesture { state.selected = i }
                 .gesture(moveGesture(i, canvas))
+                .popover(isPresented: Binding(get: { state.optionsFor == i }, set: { if !$0 { state.optionsFor = nil } }),
+                         arrowEdge: .trailing) {
+                    LayerOptionsPopover(state: state, index: i).environmentObject(model).padding(10).frame(width: 240)
+                }
             if sel && !l.isLocked && !l.isHidden {
                 ForEach(LayerEditing.Handle.allCases, id: \.self) { h in handle(h, i, f, canvas) }
             }
@@ -311,11 +325,13 @@ struct LayerDesignerBar: View {
             }
         } label: {
             Text(state.selectedLayer.map { "\(state.selected + 1) \(name($0.source))" } ?? L10n.t("designer.no_layer"))
-                .lineLimit(1)
+                .lineLimit(1).truncationMode(.tail)
         }
         .menuStyle(.borderlessButton)
-        .fixedSize()
-        .frame(maxWidth: 140, alignment: .leading)
+        // 0.62.0: no fixedSize, so a long layer name is cut instead of running over the icons next to it.
+        .frame(minWidth: 50, maxWidth: 140, alignment: .leading)
+        .clipped()
+        .layoutPriority(-1)
         .help(L10n.t("designer.layers_help"))
     }
 
@@ -447,6 +463,76 @@ private struct LayerStylePopover: View {
             s.crop = .none
             l.style = s
         }
+    }
+}
+
+/// Double-click on a layer in the designer (0.62.0): the things done most to one layer.
+private struct LayerOptionsPopover: View {
+    @EnvironmentObject var model: AppModel
+    @ObservedObject var state: LayerDesignerState
+    let index: Int
+
+    var body: some View {
+        let l = state.layers.indices.contains(index) ? state.layers[index] : nil
+        VStack(alignment: .leading, spacing: 2) {
+            if let l {
+                Text("\(index + 1)  \(model.inputs.first { $0.id == l.source }?.name ?? "?")")
+                    .font(.headline).lineLimit(1).truncationMode(.tail).padding(.bottom, 4)
+                item(L10n.t("designer.opt_properties"), "slider.horizontal.3") { model.propertiesRequest = l.source }
+                Divider()
+                item(L10n.t("designer.opt_fill"), "arrow.up.left.and.arrow.down.right") { state.update(model, index) { $0.rect = .full } }
+                item(L10n.t("designer.opt_center"), "plus.viewfinder") {
+                    state.update(model, index) { $0.rect = LayerEditing.align(LayerEditing.align($0.rect, .centerX), .centerY) }
+                }
+                item(L10n.t("designer.opt_front"), "square.3.layers.3d.top.filled") { move(to: state.layers.count - 1) }
+                item(L10n.t("designer.opt_back"), "square.3.layers.3d.bottom.filled") { move(to: 1) }
+                if let c = l.style?.crop, c != .none {
+                    item(L10n.t("designer.opt_reset_crop"), "crop.rotate") {
+                        let fullW = l.rect.width / max(1 - c.left - c.right, 0.1), fullH = l.rect.height / max(1 - c.top - c.bottom, 0.1)
+                        state.update(model, index) { x in
+                            x.rect = NormRect(x: x.rect.x - c.left * fullW, y: x.rect.y - c.top * fullH, width: fullW, height: fullH)
+                            var st = x.style ?? LayerStyle(); st.crop = .none; x.style = st
+                        }
+                    }
+                }
+                Divider()
+                item(l.isHidden ? L10n.t("designer.opt_show") : L10n.t("designer.opt_hide"), l.isHidden ? "eye" : "eye.slash") {
+                    state.update(model, index) { $0.hidden = $0.isHidden ? nil : true }
+                }
+                item(l.isLocked ? L10n.t("designer.opt_unlock") : L10n.t("designer.opt_lock"), l.isLocked ? "lock.open" : "lock") {
+                    state.update(model, index) { $0.locked = $0.isLocked ? nil : true }
+                }
+                item(L10n.t("designer.opt_duplicate"), "plus.square.on.square") {
+                    var all = state.layers
+                    all.append(LayerEditing.duplicate(l))
+                    state.replaceAll(model, all)
+                    state.selected = state.layers.count - 1
+                }
+                if index > 0 {
+                    item(L10n.t("designer.remove_layer"), "trash", role: .destructive) {
+                        var all = state.layers
+                        all.remove(at: index)
+                        state.selected = max(all.count - 1, 0)
+                        state.replaceAll(model, all)
+                    }
+                }
+            }
+        }
+    }
+
+    private func move(to: Int) {
+        guard index > 0 else { return }
+        let new = LayerEditing.reorder(state.layers, from: index, to: to)
+        state.replaceAll(model, new)
+        state.selected = min(to, state.layers.count - 1)
+    }
+
+    private func item(_ title: String, _ icon: String, role: ButtonRole? = nil, _ action: @escaping () -> Void) -> some View {
+        Button(role: role) { state.optionsFor = nil; action() } label: {
+            Label(title, systemImage: icon).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .padding(.vertical, 3)
     }
 }
 #endif

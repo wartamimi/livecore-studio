@@ -124,7 +124,10 @@ extension AppModel {
             : "\(transitionKind.displayName) \(String(format: "%.1f", transitionDuration)) s"
         s.tbar = tbar
         s.tbarRest = switcher.tbarRest
-        s.inputs = inputs.map { .init(number: $0.number, name: $0.name, kind: "\($0.kind)") }
+        s.inputs = inputs.map { i in
+            .init(number: i.number, name: i.name, kind: "\(i.kind)", ptz: ptzConfig(i.id) != nil,
+                  data: i.kind == .text && dataSource(i.id) != nil)
+        }
         s.overlays = overlays.map { .init(index: $0.index, on: $0.isOn, onPreview: $0.onPreview, input: number($0.source)) }
         s.streaming = isStreamingActive
         s.streamLocked = streamLocked
@@ -150,6 +153,10 @@ extension AppModel {
             return .init(number: i.number, name: i.name, on: overlays.contains { $0.source == i.id && $0.isOn },
                          item: q.design.selected + 1, items: q.design.items.map(\.name))
         }
+        s.cpu = performance.cpuPercentOfMachine
+        s.fps = performance.renderFPS
+        s.dropped = Int(clamping: performance.droppedRenderFrames)
+        s.fullscreen = isFullscreenActive
         server.update(state: s.json)
         if clients {
             let n = server.activeClients()
@@ -183,11 +190,14 @@ extension AppModel {
         }) else { return }
         let frames = [("program", lastProgramFrame), ("preview", lastPreviewFrame)]
         let low = server.wantsLowFrames()
+        let high = server.wantsHighFrames()
         Self.remoteEncodeQueue.async {
             for case let (bus, pb?) in frames {
                 if let jpeg = Self.remoteJPEG(pb) { server.setFrame(jpeg, bus: bus) }
                 // Weak connection (0.54.2): a small, lighter picture as well (≈1/4 of the bytes).
                 if low, let jpeg = Self.remoteJPEG(pb, width: 320, quality: 0.45) { server.setFrame(jpeg, bus: bus + "-low") }
+                // HD picture for big screens (0.62.0), only while a page asks for it.
+                if high, let jpeg = Self.remoteJPEG(pb, width: 1280, quality: 0.7) { server.setFrame(jpeg, bus: bus + "-high") }
             }
             Self.remoteEncoding.mutate { $0 = false }
         }
@@ -254,6 +264,8 @@ extension AppModel {
             if let id = inputID(number: n) { selectQRItem(id, item - 1) }
         case let .qrShow(n):
             if let id = inputID(number: n), qrSource(id) != nil { toggleQROnAir(id) }
+        case .fullscreen:
+            toggleFullscreen()
         }
         pushRemoteState(clients: false)
     }

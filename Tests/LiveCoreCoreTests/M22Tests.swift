@@ -9,10 +9,10 @@ final class OutputRoutingTests: XCTestCase {
         XCTAssertEqual(r.slot(1).source, .program)
         XCTAssertEqual(r.slot(2).source, .preview)
         let a = InputID("a"), b = InputID("b")
-        var odd = OutputRouting(slots: [OutputSlot(index: 3, source: .input(a), syphon: true), OutputSlot(index: 9)])
+        var odd = OutputRouting(slots: [OutputSlot(index: 3, source: .input(a), ndi: true), OutputSlot(index: 9)])
         XCTAssertEqual(odd.slots.map(\.index), [1, 2, 3, 4], "always four slots in order")
         XCTAssertEqual(odd.slot(3).source, .input(a))
-        XCTAssertTrue(odd.slot(3).syphon)
+        XCTAssertTrue(odd.slot(3).ndi)
         odd = odd.normalized(existing: [b])
         XCTAssertEqual(odd.slot(3).source, .program, "a removed input falls back to Program")
     }
@@ -28,11 +28,11 @@ final class OutputRoutingTests: XCTestCase {
         XCTAssertFalse(r.needsFullPreview(active: [1, 3]))
         XCTAssertTrue(r.needsFullPreview(active: [2]))
         XCTAssertEqual(r.renderedInputs(active: [1, 3, 4]), [b, a], "each input rendered once")
-        r.setSyphon(4, true)
+        r.setNDI(4, true)
         XCTAssertEqual(r.activeOutputs(windows: [2]), [2, 4])
         XCTAssertEqual(r.activeOutputs(windows: []), [4])
         XCTAssertEqual(r.withDefaultSending(ndi: false), r, "an output already sends: nothing changes")
-        XCTAssertEqual(OutputRouting().withDefaultSending(ndi: false).slots.filter(\.syphon).map(\.index), [1])
+        XCTAssertEqual(OutputRouting().withDefaultSending(ndi: false), OutputRouting(), "no NDI runtime: nothing is forced on")
     }
 
     func testCodableRoundTripInProject() throws {
@@ -40,7 +40,7 @@ final class OutputRoutingTests: XCTestCase {
         var doc = ProjectDocument(inputs: [ProjectInput(id: a, name: "Cam", source: .colorBars)])
         var r = OutputRouting()
         r.setSource(2, .input(a))
-        r.setSyphon(2, true)
+        r.setNDI(2, true)
         doc.outputs = r
         let back = try JSONDecoder().decode(ProjectDocument.self, from: JSONEncoder().encode(doc))
         XCTAssertEqual(back.outputs, r)

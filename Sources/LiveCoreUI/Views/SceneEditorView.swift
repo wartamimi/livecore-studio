@@ -93,7 +93,12 @@ struct SceneEditorSheet: View {
                 .overlay(Rectangle().stroke(isSel ? Theme.accent : Color.white.opacity(0.35), lineWidth: isSel ? 2 : 1))
                 .overlay(alignment: .topLeading) {
                     Text("\(i + 1) \(name(layer.source))").font(.system(size: 9, weight: .bold))
+                        .lineLimit(1).truncationMode(.tail)
                         .padding(2).background(Color.black.opacity(0.6))
+                        .frame(maxWidth: max(frame.width - 4, 18), alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .clipped()
+                        .allowsHitTesting(false)
                 }
                 .contentShape(Rectangle())
                 .onTapGesture { selected = i }

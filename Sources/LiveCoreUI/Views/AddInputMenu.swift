@@ -7,12 +7,11 @@ import LiveCoreEngine
 /// Sheet opened from an "add input" menu. Shown by the main window (`addInputSheets()`), so the
 /// add menu works the same from the Inputs panel and from ADD INPUT in the bottom bar (0.55.0).
 public enum AddInputSheet: Identifiable, Equatable {
-    case title, timer, frame, qr, flag, browser, capture, ndi, srt, decklink, captureCard, slideshow
-    case gt(InputID), subtitles(InputID), scene(InputID), liveCall(InputID)
+    case title, timer, frame, qr, virtualSet, flag, pixabay, browser, capture, ndi, srt, decklink, captureCard, slideshow
+    case subtitles(InputID), scene(InputID), liveCall(InputID)
 
     public var id: String {
         switch self {
-        case let .gt(i): return "gt:" + i.raw
         case let .subtitles(i): return "sub:" + i.raw
         case let .scene(i): return "scene:" + i.raw
         case let .liveCall(i): return "live:" + i.raw
@@ -39,6 +38,7 @@ struct AddInputMenuItems: View {
             Button { model.addMediaPlaylist() } label: { Label(L10n.t("media.add_playlist"), systemImage: "film.stack") }
             Button { model.addImage() } label: { Label(L10n.t("inputs.image"), systemImage: "photo") }
             Button { model.addInputSheet = .slideshow } label: { Label(L10n.t("slideshow.add"), systemImage: "photo.stack") }
+            Button { model.addInputSheet = .pixabay } label: { Label(L10n.t("pixabay.menu"), systemImage: "photo.on.rectangle.angled") }
             Button { model.addPresentation() } label: { Label(L10n.t("presentation.add"), systemImage: "rectangle.on.rectangle.angled") }
         }
         Section(L10n.t("inputs.graphics_group")) {
@@ -46,9 +46,9 @@ struct AddInputMenuItems: View {
             Button { model.addInputSheet = .title } label: { Label(L10n.t("inputs.title_menu"), systemImage: "textformat") }
             Button { model.addInputSheet = .timer } label: { Label(L10n.t("timer.add"), systemImage: "timer") }
             Button { model.addInputSheet = .frame } label: { Label(L10n.t("frame.add"), systemImage: "person.crop.rectangle") }
+            Button { model.addInputSheet = .virtualSet } label: { Label(L10n.t("vset.add"), systemImage: "person.and.background.dotted") }
             Button { model.addInputSheet = .qr } label: { Label(L10n.t("qr.add"), systemImage: "qrcode") }
             Button { model.addInputSheet = .flag } label: { Label(L10n.t("flag.add"), systemImage: "flag") }
-            Button { if let id = model.addGTTitle() { model.addInputSheet = .gt(id) } } label: { Label(L10n.t("gt.add"), systemImage: "rectangle.bottomthird.inset.filled") }
             Button { if let id = model.addTranscription() { model.addInputSheet = .subtitles(id) } } label: { Label(L10n.t("transcription.add"), systemImage: "captions.bubble") }
             Button { if let id = model.addScene() { model.addInputSheet = .scene(id) } } label: { Label(L10n.t("scene.new"), systemImage: "square.on.square") }
         }
@@ -91,7 +91,9 @@ private struct AddInputSheetView: View {
         case .timer: TimerSheet(editing: nil)
         case .frame: FrameSheet(editing: nil)
         case .qr: QRCodeSheet(editing: nil)
+        case .virtualSet: VirtualSetSheet(editing: nil)
         case .flag: FlagSheet()
+        case .pixabay: PixabaySheet()
         case .browser: BrowserSheet(editing: nil)
         case .capture: CaptureSheet(editing: nil)
         case .ndi: NDIInputSheet(editing: nil)
@@ -99,7 +101,6 @@ private struct AddInputSheetView: View {
         case .decklink: DeckLinkInputSheet(editing: nil)
         case .captureCard: CaptureCardSheet(editing: nil)
         case .slideshow: SlideshowSheet(editing: nil)
-        case let .gt(id): GTTitleSheet(input: id)
         case let .subtitles(id): SubtitleSheet(input: id)
         case let .scene(id): SceneEditorSheet(input: id)
         case let .liveCall(id): LiveCallSheet(input: id)

@@ -180,7 +180,7 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case presentation(ProjectPresentation)
     /// Camera frame (since 0.36.0); the camera is its second layer, saved with the layers.
     case frame(FrameDesign)
-    /// Imported vMix GT title (.gtzip, since 0.39.0).
+    /// Imported vMix GT title (0.39.0–0.61.x; removed in 0.62.0, skipped on load).
     case gtTitle(ProjectGTTitle)
     /// Live subtitles from speech (0.43.0).
     case subtitles(SubtitleStyle)
@@ -192,6 +192,8 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case decklink(ProjectDeckLink)
     /// QR code card for donations, angpao, links, Wi-Fi… (0.58.0).
     case qrCode(QRDesign)
+    /// Virtual studio with keyed talents (0.59.0); talents and screen are its layers.
+    case virtualSet(VirtualSetDesign)
 }
 
 /// A presentation input: the file and the slide on air.
@@ -506,6 +508,8 @@ public struct ProjectAudio: Codable, Equatable, Sendable {
     public var ducking: DuckingSettings?
     /// Online radio inputs (since 0.38.0). Their mixer settings are in `channel`.
     public var radios: [ProjectRadio]?
+    /// Plug-in inserts on the master bus (since 0.60.0).
+    public var masterPlugins: [ProjectPluginSlot]?
     public init() {}
 }
 
@@ -546,6 +550,8 @@ public struct ProjectAudioChannel: Codable, Equatable, Sendable {
     public var duckTarget: Bool?
     /// Advanced audio settings (since 0.50.0); absent = defaults.
     public var advanced: ProjectAudioAdvanced?
+    /// Plug-in inserts in order (since 0.60.0); absent = none.
+    public var plugins: [ProjectPluginSlot]?
     public init(deviceUniqueID: String? = nil, inputID: InputID? = nil, name: String) {
         self.deviceUniqueID = deviceUniqueID; self.inputID = inputID; self.name = name
     }

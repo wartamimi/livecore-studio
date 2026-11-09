@@ -1,4 +1,5 @@
 #if os(macOS)
+import Combine
 import SwiftUI
 import LiveCoreCore
 import LiveCoreEngine
@@ -12,12 +13,19 @@ struct AudioMixerView: View {
     @AppStorage("mixer.hideAux") private var hideAux = false
     /// How many aux buses the mixer shows (0.48.0: AUX A–D, "+ AUX / BUS" adds one).
     @AppStorage("mixer.auxCount") private var auxCount = 2
+    /// Input strips folded to a slim bar at the side (0.63.0); Aux and Master stay visible.
+    @AppStorage("mixer.inputsFolded") private var inputsFolded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
                 SectionHeader(title: L10n.t("audio.title"))
                 Spacer()
+                Button { inputsFolded.toggle() } label: {
+                    Image(systemName: inputsFolded ? "sidebar.left" : "sidebar.squares.left")
+                }
+                .buttonStyle(.borderless)
+                .help(inputsFolded ? L10n.t("mixer.unfold_inputs") : L10n.t("mixer.fold_inputs"))
                 Button { compact.toggle() } label: {
                     Image(systemName: compact ? "rectangle.expand.vertical" : "rectangle.compress.vertical")
                 }
@@ -47,7 +55,10 @@ struct AudioMixerView: View {
                 .help(L10n.t("audio.add"))
             }
             HStack(alignment: .top, spacing: 6) {
-                if model.audioChannels.isEmpty {
+                if inputsFolded {
+                    DockBar(title: L10n.f("mixer.inputs_folded", model.audioChannels.count), axis: .vertical) { inputsFolded = false }
+                    Spacer(minLength: 0)
+                } else if model.audioChannels.isEmpty {
                     Text(L10n.t("audio.none")).font(.system(size: 12)).foregroundStyle(Theme.textDim)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -275,6 +286,13 @@ struct AudioPropertiesSheet: View {
     @ObservedObject var meter: ChannelMeter
     @Environment(\.dismiss) private var dismiss
 
+    /// Audio Unit / VST3 inserts of this channel (0.60.0), after the compressor, before the fader.
+    @ViewBuilder private var pluginsTab: some View {
+        if let engine = model.engine {
+            ScrollView { PluginChainSheet(chain: vm.channel.inserts, host: engine.plugins, title: vm.name, embedded: true) }
+        }
+    }
+
     var body: some View {
         let level: MeterModel.Level? = meter.level
         VStack(alignment: .leading, spacing: 8) {
@@ -295,6 +313,7 @@ struct AudioPropertiesSheet: View {
                 compTab(level).tabItem { Text(L10n.t("audio.compressor")) }
                 limiterTab(level).tabItem { Text(L10n.t("audio.limiter")) }
                 routing.tabItem { Text(L10n.t("audio.tab.routing")) }
+                pluginsTab.tabItem { Text(L10n.t("plugins.tab")) }
             }
             .frame(height: 400)
             HStack {
@@ -500,6 +519,7 @@ struct AuxStripView: View {
 
 struct MasterStripView: View {
     @EnvironmentObject var model: AppModel
+    @State private var showFX = false
 
     var body: some View {
         VStack(spacing: 4) {
@@ -522,6 +542,13 @@ struct MasterStripView: View {
         }
         .padding(4)
         .frame(width: 110)
+        // Master inserts: right-click the master strip (the per-channel ones live in Audio Properties).
+        .contextMenu { Button(L10n.t("plugins.master_menu")) { showFX = true } }
+        .sheet(isPresented: $showFX) {
+            if let engine = model.engine {
+                PluginChainSheet(chain: engine.mixer.masterInserts, host: engine.plugins, title: L10n.t("audio.master"))
+            }
+        }
     }
 }
 

@@ -1,19 +1,18 @@
 #if os(macOS)
 import CoreMedia
 import CoreVideo
-import CSyphon
 import Foundation
 import LiveCoreCore
 import Metal
 
 /// The four extra outputs: picks each output's picture from the rendered frames and sends it
-/// to its Syphon server, its NDI source and (on the main thread) its window.
+/// to its NDI source and (on the main thread) its window.
 /// Configuration on the main thread; `handle` runs on the GPU completion thread.
 public final class OutputRouter {
     public private(set) var routing = OutputRouting()
     /// Outputs shown in a window or on a full-screen display (set by the UI).
     public private(set) var windows: Set<Int> = []
-    /// EXTERNAL on: Syphon servers and NDI sources run for the outputs that have them on.
+    /// EXTERNAL on: NDI sources run for the outputs that have them on.
     /// Off: nothing leaves the app.
     public private(set) var external = false
     /// A frame for output N's window. Called on a display queue of its own, not the main thread
@@ -21,13 +20,12 @@ public final class OutputRouter {
     /// on the TV or projector. Only touch thread-safe state here.
     public var onWindowFrame: ((Int, CVPixelBuffer) -> Void)?
     private let windowMailbox = LatestOnQueue<[(Int, CVPixelBuffer)]>(label: "livecore.output-windows")
-    /// A Syphon server or NDI source could not be started. Main thread.
+    /// An NDI source could not be started. Main thread.
     public var onError: ((String) -> Void)?
 
     private struct Live {
         var routing = OutputRouting()
         var windows: Set<Int> = []
-        var syphon: [Int: LCSyphonServer] = [:]
         var ndi: [Int: NDISender] = [:]
     }
     private let live = Locked(Live())
@@ -55,11 +53,6 @@ public final class OutputRouter {
         apply()
     }
 
-    /// Outputs whose Syphon server runs, and whether an app (OBS...) is connected to it.
-    public func syphonStatus() -> [Int: Bool] {
-        live.current.syphon.mapValues { $0.hasClients }
-    }
-
     /// Outputs whose NDI source runs, and how many receivers are connected to it.
     public func ndiStatus() -> [Int: Int] {
         live.current.ndi.mapValues(\.connections)
@@ -67,8 +60,6 @@ public final class OutputRouter {
 
     public func stopAll() {
         live.mutate { l in
-            l.syphon.values.forEach { $0.stop() }
-            l.syphon = [:]
             l.ndi = [:]
         }
         setNDIAudio(false)
@@ -83,21 +74,7 @@ public final class OutputRouter {
 
     private func apply() {
         var r = routing
-        if !external { for i in r.slots.indices { r.slots[i].syphon = false; r.slots[i].ndi = false } }
-        // Syphon servers: one per output with Syphon on, named after the output.
-        var servers = live.current.syphon
-        for s in r.slots {
-            if s.syphon, servers[s.index] == nil {
-                if let srv = LCSyphonServer(name: OutputRouting.syphonName(s.index), device: device) {
-                    servers[s.index] = srv
-                } else {
-                    onError?("Syphon output \(s.index) could not be started.")
-                }
-            } else if !s.syphon, let srv = servers[s.index] {
-                srv.stop()
-                servers[s.index] = nil
-            }
-        }
+        if !external { for i in r.slots.indices { r.slots[i].ndi = false } }
         // NDI sources: one per output with NDI on (only when the NDI runtime is installed).
         var senders = live.current.ndi
         let fps = engine?.settings.output.frameRate ?? 30
@@ -116,7 +93,6 @@ public final class OutputRouter {
         live.mutate { l in
             l.routing = r
             l.windows = w
-            l.syphon = servers
             l.ndi = senders
         }
         setNDIAudio(!senders.isEmpty)
@@ -142,9 +118,8 @@ public final class OutputRouter {
         var toWindows: [(Int, CVPixelBuffer)] = []
         for s in l.routing.slots {
             let wantsWindow = l.windows.contains(s.index)
-            let syphon = l.syphon[s.index]
             let ndi = l.ndi[s.index]
-            guard wantsWindow || syphon != nil || ndi != nil else { continue }
+            guard wantsWindow || ndi != nil else { continue }
             let pb: CVPixelBuffer?
             switch s.source {
             case .program: pb = frames.program
@@ -152,7 +127,6 @@ public final class OutputRouter {
             case let .input(id): pb = frames.inputs[id]
             }
             guard let pb else { continue }
-            syphon?.publishPixelBuffer(pb)
             ndi?.send(pb)
             if wantsWindow { toWindows.append((s.index, pb)) }
         }

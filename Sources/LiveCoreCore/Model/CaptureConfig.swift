@@ -12,10 +12,13 @@ public struct CaptureConfig: Codable, Equatable, Sendable {
     /// Advanced (0.28.0): keep late frames in a short queue (smoother) instead of dropping them
     /// for the lowest latency. nil / false = lowest latency (the behaviour before 0.28.0).
     public var bufferFrames: Bool?
+    /// Audio device added together with this camera (its own audio, 0.63.2): removing the input
+    /// also removes that mixer channel and stops its capture.
+    public var audioDevice: String?
     public init(width: Int? = nil, height: Int? = nil, frameRate: Double? = nil, mirror: Bool = false,
-                codec: String? = nil, bufferFrames: Bool? = nil) {
+                codec: String? = nil, bufferFrames: Bool? = nil, audioDevice: String? = nil) {
         self.width = width; self.height = height; self.frameRate = frameRate; self.mirror = mirror
-        self.codec = codec; self.bufferFrames = bufferFrames
+        self.codec = codec; self.bufferFrames = bufferFrames; self.audioDevice = audioDevice
     }
     public var isAutomatic: Bool { width == nil || height == nil }
 }
@@ -90,6 +93,9 @@ public struct CaptureFormatCandidate: Equatable, Sendable {
     public func supports(_ fps: Double) -> Bool {
         frameRateRanges.contains { $0.lowerBound - 0.1 <= fps && $0.upperBound + 0.1 >= fps }
     }
+    /// Delivers `fps` natively, or (0.63.4) at twice that rate so every other frame can be
+    /// dropped (24 / 25 fps from a 48 / 50 fps-only capture card).
+    public func supportsByHalving(_ fps: Double) -> Bool { supports(fps) || supports(fps * 2) }
     /// Distinct frame rates worth offering in a menu (range ends and common rates inside ranges).
     public var offeredFrameRates: [Double] {
         var out: [Double] = []
@@ -104,6 +110,10 @@ public struct CaptureFormatCandidate: Equatable, Sendable {
 }
 
 public enum CaptureFormatPicker {
+    /// Frame rates always offered for cameras (0.63.4): a device without them natively runs at
+    /// a higher rate and the input keeps only the frames needed.
+    public static let alwaysOfferedRates: [Double] = [24, 25]
+
     /// Index of the format to use. An explicit size in `config` is matched exactly (preferring a
     /// format that supports the wanted frame rate); otherwise the format closest to the output size
     /// that supports the frame rate, preferring downscale over upscale.
@@ -128,7 +138,7 @@ public enum CaptureFormatPicker {
         }
         if let w = config.width, let h = config.height {
             let same = preferUncompressed(preferCodec(formats.indices.filter { formats[$0].width == w && formats[$0].height == h }))
-            if let i = same.first(where: { formats[$0].supports(fps) }) ?? same.first { return i }
+            if let i = same.first(where: { formats[$0].supports(fps) }) ?? same.first(where: { formats[$0].supportsByHalving(fps) }) ?? same.first { return i }
         }
         let pool = preferCodec(Array(formats.indices))
         let want = Double(outputWidth * outputHeight)
@@ -139,7 +149,7 @@ public enum CaptureFormatPicker {
             guard f.width > 0 && f.height > 0 else { continue }
             let px = Double(f.width * f.height)
             var score = px >= want ? px - want : (want - px) * 4
-            if !f.supports(fps) { score += 1e12 }
+            if !f.supports(fps) { score += f.supportsByHalving(fps) ? 1e11 : 1e12 }
             if config.codec?.isEmpty ?? true {
                 score += CaptureCodec.isCompressed(f.codec) ? 0.5 : CaptureCodec.uncompressedCost(f.codec)
             }

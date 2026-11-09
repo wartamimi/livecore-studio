@@ -129,7 +129,16 @@ public struct TitleDesign: Codable, Equatable, Sendable {
     /// Seconds between one letter and the next (0.01…0.3).
     public var letterDelay: Double = 0.04
 
+    /// 3D look and motion (0.59.0); nil = flat (older titles).
+    public var look3D: Title3D?
+
     public init(template: TitleTemplate) { self.template = template }
+
+    /// The 3D settings in use, nil when the title is flat.
+    public var active3D: Title3D? {
+        guard let t = look3D?.clamped, t.isActive else { return nil }
+        return t
+    }
 
     /// Values kept inside what the renderer and the editor allow.
     public func clamped() -> TitleDesign {
@@ -153,6 +162,7 @@ public struct TitleDesign: Codable, Equatable, Sendable {
         d.shadowOffset = c(shadowOffset, -30, 30)
         d.animationDuration = c(animationDuration, 0.1, 5)
         d.letterDelay = c(letterDelay, 0.01, 0.3)
+        d.look3D = look3D?.clamped
         if d.tag.count > 40 { d.tag = String(d.tag.prefix(40)) }
         return d
     }
@@ -204,6 +214,7 @@ public struct TitleDesign: Codable, Equatable, Sendable {
         d.useOverlayAnimation = v(.useOverlayAnimation, d.useOverlayAnimation)
         d.textAnimation = v(.textAnimation, d.textAnimation)
         d.letterDelay = v(.letterDelay, d.letterDelay)
+        if c.contains(.look3D) { d.look3D = (try? c.decodeIfPresent(Title3D.self, forKey: .look3D)) ?? d.look3D }
         self = d.clamped()
     }
 }
@@ -223,18 +234,21 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
     case hashtagTag, sponsorBug
     // 0.46.0: bride & groom names
     case weddingFloral, weddingElegant, weddingCenter, weddingSaveDate, weddingHashtag
+    // 0.59.0: 3D
+    case chrome3D, gold3D, neonCube3D, newsFlip3D, headline3D, cinematic3D, wedding3D, badge3D
 
     public var category: TitleCategory {
         switch self {
         case .classicStrap, .roundedStrap, .twoTone, .boxedName, .accentLine, .modernGlass,
              .newsLive, .minimalUnderline, .pill, .socialHandle, .fullWidthBar, .rightStrap,
              .weddingScript, .corporateSplit, .cleanWhite, .neonDark, .outlineBold, .goldBar, .sportsBar,
-             .weddingFloral, .weddingElegant:
+             .weddingFloral, .weddingElegant, .chrome3D, .gold3D, .neonCube3D, .newsFlip3D:
             return .lowerThird
         case .headline, .fullScreenTitle, .chapterCard, .quote, .endCard, .breakingBanner,
-             .weddingCard, .seminarTitle, .sponsorCard, .weddingCenter, .weddingSaveDate:
+             .weddingCard, .seminarTitle, .sponsorCard, .weddingCenter, .weddingSaveDate,
+             .headline3D, .cinematic3D, .wedding3D:
             return .title
-        case .cornerBug, .locationTag, .liveBadge, .hashtagTag, .sponsorBug, .weddingHashtag:
+        case .cornerBug, .locationTag, .liveBadge, .hashtagTag, .sponsorBug, .weddingHashtag, .badge3D:
             return .corner
         }
     }
@@ -243,8 +257,11 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
         switch self {
         case .classicStrap, .roundedStrap, .modernGlass, .pill, .socialHandle, .rightStrap,
              .cornerBug, .locationTag, .liveBadge, .cleanWhite, .neonDark, .hashtagTag, .sponsorBug,
-             .weddingElegant, .weddingHashtag:
+             .weddingElegant, .weddingHashtag, .chrome3D, .neonCube3D, .badge3D:
             return .strap
+        case .gold3D: return .twoTone
+        case .newsFlip3D: return .news
+        case .headline3D, .cinematic3D, .wedding3D: return .underline
         case .twoTone, .boxedName, .corporateSplit, .sportsBar: return .twoTone
         case .accentLine, .weddingScript, .outlineBold, .goldBar, .weddingFloral: return .accentLine
         case .newsLive, .breakingBanner: return .news
@@ -285,6 +302,11 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
         case .hashtagTag: return ("#YourEvent2026", "", "")
         case .sponsorBug: return ("Presented by Sponsor", "", "")
         case .sportsBar: return ("HOME 2 - 1 AWAY", "2nd half · 67′", "")
+        case .newsFlip3D: return ("Speaker Name", "Title / Organisation", "LIVE")
+        case .headline3D: return ("BIG NEWS", "Supporting line", "")
+        case .cinematic3D: return ("THE EVENT", "Live from Jakarta", "")
+        case .wedding3D: return ("Rina & Dimas", "The Wedding · 12.12.2026", "")
+        case .badge3D: return ("LIVE", "", "")
         default: return ("Speaker Name", "Title / Organisation", "")
         }
     }
@@ -322,6 +344,8 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
             return .zoomOut
         case .weddingHashtag:
             return .pop
+        case .chrome3D, .gold3D, .neonCube3D, .newsFlip3D, .headline3D, .cinematic3D, .wedding3D, .badge3D:
+            return .fade   // the 3D motion moves the title itself (see ProductionEngine.sourceAnimation)
         }
     }
 
@@ -679,6 +703,87 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
             d.titleWeight = .semibold
             d.marginY = 0.06
             d.marginX = 0.04
+        case .chrome3D:
+            d.boxColor = Self.rgb(0.62, 0.66, 0.72, 1)
+            d.titleColor = Self.rgb(0.06, 0.07, 0.1)
+            d.subtitleColor = Self.rgb(0.12, 0.13, 0.18)
+            d.titleWeight = .heavy
+            d.uppercase = true
+            d.cornerRadius = 6
+            d.minWidth = 0.3
+            d.look3D = Title3D(depth: 14, direction: 300, sideColor: Self.rgb(0.25, 0.28, 0.33), tiltY: -12, motion: .swingLeft, duration: 0.9)
+        case .gold3D:
+            d.boxColor = Self.rgb(0.83, 0.64, 0.25, 1)
+            d.titleColor = Self.rgb(0.2, 0.12, 0.02)
+            d.box2Color = Self.rgb(0.12, 0.09, 0.05, 0.96)
+            d.subtitleColor = Self.rgb(0.98, 0.88, 0.62)
+            d.titleWeight = .bold
+            d.fontFamily = "Didot"
+            d.paddingY = 10
+            d.look3D = Title3D(depth: 12, direction: 290, sideColor: Self.rgb(0.42, 0.29, 0.08), motion: .flipUp, duration: 0.9)
+        case .neonCube3D:
+            d.boxColor = Self.rgb(0.07, 0.03, 0.18, 0.96)
+            d.titleColor = Self.rgb(0.45, 1, 0.95)
+            d.subtitleColor = Self.rgb(1, 0.5, 0.85)
+            d.titleWeight = .heavy
+            d.uppercase = true
+            d.cornerRadius = 4
+            d.look3D = Title3D(depth: 16, direction: 315, sideColor: Self.rgb(0.9, 0.1, 0.55), motion: .cube, duration: 0.8)
+        case .newsFlip3D:
+            d.boxColor = Self.rgb(0.04, 0.12, 0.34, 0.98)
+            d.box2Color = Self.rgb(0.95, 0.96, 0.98, 0.98)
+            d.subtitleColor = Self.rgb(0.04, 0.12, 0.34)
+            d.accentColor = Self.rgb(0.85, 0.08, 0.1)
+            d.titleWeight = .heavy
+            d.paddingY = 8
+            d.look3D = Title3D(depth: 10, direction: 300, motion: .flipUp, duration: 0.7)
+        case .headline3D:
+            d.showBox = false
+            d.anchor = .center
+            d.align = .center
+            d.titleSize = 130
+            d.subtitleSize = 44
+            d.titleWeight = .heavy
+            d.titleColor = Self.rgb(1, 0.85, 0.2)
+            d.accentColor = Self.rgb(1, 0.85, 0.2)
+            d.lineGap = 18
+            d.look3D = Title3D(depth: 22, direction: 290, sideColor: Self.rgb(0.55, 0.25, 0.02), motion: .tumble, duration: 1.1)
+        case .cinematic3D:
+            d.showBox = false
+            d.anchor = .center
+            d.align = .center
+            d.titleSize = 140
+            d.subtitleSize = 40
+            d.titleWeight = .heavy
+            d.tracking = 12
+            d.titleColor = Self.rgb(0.92, 0.94, 0.98)
+            d.accentColor = Self.rgb(0.35, 0.6, 1)
+            d.lineGap = 20
+            d.look3D = Title3D(depth: 18, direction: 270, sideColor: Self.rgb(0.18, 0.25, 0.4), tiltX: 18, motion: .spin, duration: 1.4)
+        case .wedding3D:
+            d.showBox = false
+            d.anchor = .center
+            d.align = .center
+            d.fontFamily = "Didot"
+            d.titleSize = 120
+            d.subtitleSize = 38
+            d.titleWeight = .regular
+            d.titleColor = Self.rgb(0.98, 0.86, 0.55)
+            d.subtitleColor = Self.rgb(1, 0.97, 0.9)
+            d.accentColor = Self.rgb(0.85, 0.68, 0.35)
+            d.lineGap = 18
+            d.look3D = Title3D(depth: 10, direction: 300, sideColor: Self.rgb(0.45, 0.3, 0.08), motion: .flipDown, duration: 1.2)
+        case .badge3D:
+            d.anchor = .topRight
+            d.titleSize = 34
+            d.paddingX = 22
+            d.paddingY = 8
+            d.boxColor = Self.rgb(0.85, 0.08, 0.1, 1)
+            d.titleWeight = .heavy
+            d.cornerRadius = 6
+            d.marginY = 0.06
+            d.marginX = 0.04
+            d.look3D = Title3D(depth: 8, direction: 300, motion: .spin, duration: 0.9)
         }
         return d
     }

@@ -176,12 +176,11 @@ struct OutputDockView: View {
 
     private var externalStatus: String {
         guard model.externalActive else { return L10n.t("dock.external_off") }
-        let syphon = model.syphonStatus.count, ndi = model.ndiStatus.count
-        guard syphon + ndi > 0 else { return L10n.t("dock.external_nothing") }
+        let ndi = model.ndiStatus.count
+        guard ndi > 0 else { return L10n.t("dock.external_nothing") }
         var parts: [String] = []
-        if syphon > 0 { parts.append(L10n.f("dock.external_syphon", syphon)) }
-        if ndi > 0 { parts.append(L10n.f("dock.external_ndi", ndi)) }
-        let connected = model.syphonStatus.values.filter { $0 }.count + model.ndiStatus.values.reduce(0, +)
+        parts.append(L10n.f("dock.external_ndi", ndi))
+        let connected = model.ndiStatus.values.reduce(0, +)
         if connected > 0 { parts.append(L10n.f("dock.external_clients", connected)) }
         return parts.joined(separator: " · ")
     }
@@ -219,7 +218,7 @@ struct OutputChips: View {
                 .menuStyle(.borderlessButton)
                 .fixedSize()
                 .padding(.horizontal, 4).padding(.vertical, 2)
-                .background((slot.syphon || slot.ndi) && model.externalActive ? Theme.accent.opacity(0.35) : Theme.panelRaised)
+                .background((slot.ndi) && model.externalActive ? Theme.accent.opacity(0.35) : Theme.panelRaised)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
                 .help(L10n.f("output.help", i) + " · " + model.outputSourceName(slot.source))
             }
@@ -245,7 +244,7 @@ struct OutputSourcePicker: View {
     }
 }
 
-/// EXTERNAL ⚙: the four outputs (picture, window, full screen, Syphon, NDI).
+/// EXTERNAL ⚙: the four outputs (picture, window, full screen, NDI).
 struct ExternalSettingsView: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.openWindow) private var openWindow
@@ -270,17 +269,12 @@ struct ExternalSettingsView: View {
                             .buttonStyle(.borderless)
                             .help(L10n.t("output.window"))
                         if let fs = model.outputFullscreens[i] { FullscreenButton(output: fs, compact: true) }
-                        Toggle(L10n.t("output.syphon"), isOn: Binding(get: { model.outputRouting.slot(i).syphon },
-                                                                      set: { model.setOutputSyphon(i, $0) }))
-                            .toggleStyle(.checkbox).font(.system(size: 11))
-                            .help(L10n.f("output.syphon_help", OutputRouting.syphonName(i)))
                         Toggle(L10n.t("output.ndi"), isOn: Binding(get: { model.outputRouting.slot(i).ndi },
                                                                    set: { model.setOutputNDI(i, $0) }))
                             .toggleStyle(.checkbox).font(.system(size: 11))
                             .disabled(!model.ndiAvailable && !model.outputRouting.slot(i).ndi)
                             .help(L10n.f("output.ndi_help", OutputRouting.ndiName(i)))
                         VStack(alignment: .leading, spacing: 1) {
-                            syphonState(i)
                             ndiState(i)
                         }
                     }
@@ -329,16 +323,6 @@ struct ExternalSettingsView: View {
         }
     }
 
-    /// Whether this output's Syphon source is offered, and whether an app receives it.
-    @ViewBuilder private func syphonState(_ i: Int) -> some View {
-        if let connected = model.syphonStatus[i] {
-            Text(connected ? L10n.t("output.syphon_connected") : L10n.t("output.syphon_waiting"))
-                .font(.system(size: 10)).foregroundStyle(connected ? Theme.preview : Theme.textDim)
-        } else {
-            Text(model.outputRouting.slot(i).syphon ? L10n.t("output.syphon_off_external") : "")
-                .font(.system(size: 10)).foregroundStyle(Theme.textDim)
-        }
-    }
 }
 
 /// Window showing one output; drag it to another display or use full screen.

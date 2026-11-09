@@ -8,6 +8,7 @@ import Foundation
 import ImageIO
 import LiveCoreCore
 import LiveCoreEngine
+import LiveCoreServices
 import UniformTypeIdentifiers
 
 func fail(_ msg: String) -> Never {
@@ -67,6 +68,24 @@ for t in all {
           coverage(img) > 0.001 else { fail("\(t.rawValue) draws nothing on a portrait canvas") }
 }
 
+// 3D titles (0.59.0): halfway through the motion they still draw (perspective path).
+for t in all where t.defaultDesign.active3D?.hasMotion == true {
+    let s = t.sample
+    guard let img = TitleRenderer.image(t.defaultDesign, title: s.title, subtitle: s.subtitle, width: 1280, height: 720, motion: 0.6),
+          coverage(img) > 0.0005 else { fail("\(t.rawValue) draws nothing mid-motion") }
+}
+// Virtual sets (0.59.0): every studio fills the canvas.
+for t in VirtualSetTemplate.allCases {
+    for shot in VirtualSetShot.allCases {
+        var d = t.defaultDesign
+        d.shot = shot
+        guard let img = VirtualSetRenderer.image(d, width: 640, height: 360, placeholder: false) else { fail("\(t.rawValue): no set image") }
+        let cov = coverage(img)
+        guard cov > 0.97 else { fail("virtual set \(t.rawValue) \(shot.rawValue) leaves holes (\(cov))") }
+    }
+    print("title-check: virtual set \(t.rawValue) OK")
+}
+
 try? FileManager.default.createDirectory(atPath: "build", withIntermediateDirectories: true)
 let url = URL(fileURLWithPath: "build/title-templates.png")
 guard let out = sheet.makeImage(),
@@ -74,6 +93,26 @@ guard let out = sheet.makeImage(),
 CGImageDestinationAddImage(dest, out, nil)
 guard CGImageDestinationFinalize(dest) else { fail("PNG not written") }
 print("title-check: \(all.count) templates, sheet \(url.path)")
+// .lctitle files (0.64.0): write and read back a 3D title and a running text with /usr/bin/zip + unzip.
+do {
+    let dir = FileManager.default.temporaryDirectory.appendingPathComponent("lctitle-check-" + UUID().uuidString)
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: dir) }
+    let t = TitlePackage(name: "Chrome 3D", title: "Speaker", subtitle: "Role", design: TitleTemplate.chrome3D.defaultDesign)
+    let k = TitlePackage(name: "Gold band", ticker: TickerTemplate.gold3D.config(text: "Hello • World"))
+    for p in [t, k] {
+        let url = dir.appendingPathComponent(TitlePackage.fileName(for: p.name))
+        try TitleTemplateLibrary.write(p, to: url)
+        var back = try TitleTemplateLibrary.read(url) { _ in }
+        back.app = nil; back.fonts = []
+        guard back == p else { fail("\(p.name): .lctitle round trip changed the template") }
+    }
+    // A file that is not a template is refused.
+    let junk = dir.appendingPathComponent("junk.lctitle")
+    try Data("not a zip".utf8).write(to: junk)
+    if (try? TitleTemplateLibrary.read(junk)) != nil { fail("junk .lctitle accepted") }
+    print("title-check: .lctitle write/read OK")
+} catch { fail(".lctitle: \(error)") }
 print("title-check: PASS")
 #else
 print("title-check: macOS only")
