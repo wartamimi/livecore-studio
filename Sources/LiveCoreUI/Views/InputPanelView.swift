@@ -487,8 +487,14 @@ struct InputTileMeter: View {
     @EnvironmentObject var meters: MeterModel
     let channelID: String
 
+    var body: some View { InputTileMeterBars(meter: meters.meter(channelID)) }
+}
+
+private struct InputTileMeterBars: View {
+    @ObservedObject var meter: ChannelMeter
+
     var body: some View {
-        let lv = meters.levels[channelID]
+        let lv: MeterModel.Level? = meter.level
         VStack(spacing: 1) {
             bar(lv?.l ?? -120)
             bar(lv?.r ?? -120)

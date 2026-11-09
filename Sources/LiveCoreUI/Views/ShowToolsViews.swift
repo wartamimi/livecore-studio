@@ -265,14 +265,7 @@ struct LoudnessReadout: View {
 
     var body: some View {
         Button { showPanel.toggle() } label: {
-            VStack(spacing: 0) {
-                Text("LUFS").font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.textDim)
-                Text(Self.format(meters.loudness.shortTerm)).font(.system(size: 12, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(Self.color(meters.loudness.shortTerm))
-                if meters.loudness.duckDB < -0.5 {
-                    Text(String(format: "DUCK %.0f", meters.loudness.duckDB)).font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.preview)
-                }
-            }
+            LoudnessReadoutLabel(lufs: meters.lufs)
             .frame(width: 70)
             .padding(.vertical, 2)
             .background(Theme.panel)
@@ -282,6 +275,20 @@ struct LoudnessReadout: View {
         .help(L10n.t("lufs.help"))
         .popover(isPresented: $showPanel, arrowEdge: .leading) {
             LoudnessPanel().environmentObject(model).environmentObject(meters).padding(14).frame(width: 340)
+        }
+    }
+
+    private struct LoudnessReadoutLabel: View {
+        @ObservedObject var lufs: LoudnessMeter
+        var body: some View {
+            VStack(spacing: 0) {
+                Text("LUFS").font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.textDim)
+                Text(LoudnessReadout.format(lufs.loudness.shortTerm)).font(.system(size: 12, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(LoudnessReadout.color(lufs.loudness.shortTerm))
+                if lufs.loudness.duckDB < -0.5 {
+                    Text(String(format: "DUCK %.0f", lufs.loudness.duckDB)).font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.preview)
+                }
+            }
         }
     }
 
@@ -296,6 +303,27 @@ struct LoudnessReadout: View {
     }
 }
 
+/// Live LUFS values; only this grid redraws with the loudness meter (0.56.0).
+private struct LoudnessGrid: View {
+    @ObservedObject var lufs: LoudnessMeter
+
+    var body: some View {
+        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
+            row(L10n.t("lufs.momentary"), lufs.loudness.momentary)
+            row(L10n.t("lufs.short"), lufs.loudness.shortTerm)
+            row(L10n.t("lufs.integrated"), lufs.loudness.integrated)
+        }
+    }
+
+    private func row(_ label: String, _ v: Float) -> some View {
+        GridRow {
+            Text(label).font(.system(size: 11))
+            Text(LoudnessReadout.format(v) + " LUFS").font(.system(size: 13, weight: .semibold).monospacedDigit())
+                .foregroundStyle(LoudnessReadout.color(v))
+        }
+    }
+}
+
 struct LoudnessPanel: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var meters: MeterModel
@@ -303,11 +331,7 @@ struct LoudnessPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: L10n.t("lufs.title"))
-            Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 4) {
-                row(L10n.t("lufs.momentary"), meters.loudness.momentary)
-                row(L10n.t("lufs.short"), meters.loudness.shortTerm)
-                row(L10n.t("lufs.integrated"), meters.loudness.integrated)
-            }
+            LoudnessGrid(lufs: meters.lufs)
             HStack {
                 Text(L10n.t("lufs.target")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
                 Spacer()
@@ -332,13 +356,6 @@ struct LoudnessPanel: View {
         }
     }
 
-    private func row(_ label: String, _ v: Float) -> some View {
-        GridRow {
-            Text(label).font(.system(size: 11))
-            Text(LoudnessReadout.format(v) + " LUFS").font(.system(size: 13, weight: .semibold).monospacedDigit())
-                .foregroundStyle(LoudnessReadout.color(v))
-        }
-    }
 
     private func slider(_ label: String, _ value: Float, _ range: ClosedRange<Float>, _ fmt: String,
                         set: @escaping (Float) -> Void) -> some View {
