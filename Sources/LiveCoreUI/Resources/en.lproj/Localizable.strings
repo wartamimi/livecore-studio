@@ -1935,3 +1935,19 @@
 "multiview.layout.inputsLeft" = "Inputs left, Program + Preview right";
 "multiview.layout.grid" = "Equal grid";
 "multiview.layout.pvwPgm" = "Preview + Program only";
+
+/* 0.64.0 title template files (.lctitle) */
+"titlecat.mine" = "My";
+"mytpl.menu" = "Template";
+"mytpl.help" = "Save this look to My Templates, or export / import it as a .lctitle file to use in other projects and on other Macs.";
+"mytpl.save" = "Save to My Templates…";
+"mytpl.save_button" = "Save";
+"mytpl.name" = "Template name";
+"mytpl.export" = "Export as .lctitle file…";
+"mytpl.import" = "Import .lctitle file…";
+"mytpl.show_folder" = "Open My Templates folder";
+"mytpl.show_in_finder" = "Show in Finder";
+"mytpl.delete" = "Delete";
+"mytpl.empty" = "No templates yet. Use Template › Save to My Templates… or Import .lctitle file…";
+"mytpl.wrong_kind" = "This template is a different kind (title vs running text) from the input being edited.";
+"mytpl.save_failed" = "Template not saved: %@";

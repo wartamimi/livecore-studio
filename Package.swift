@@ -66,7 +66,7 @@ let package = Package(
         .executableTarget(name: "livecore-ndi-check", dependencies: ["CNDI", "LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-iso-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-replay-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
-        .executableTarget(name: "livecore-title-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
+        .executableTarget(name: "livecore-title-check", dependencies: ["LiveCoreCore", "LiveCoreEngine", "LiveCoreServices"]),
         .executableTarget(name: "livecore-plugin-check", dependencies: ["LiveCoreCore", "LiveCoreEngine", "CVST3"]),
         .executableTarget(name: "livecore-soak-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
         .executableTarget(name: "livecore-radio-check", dependencies: ["LiveCoreCore", "LiveCoreEngine"]),
