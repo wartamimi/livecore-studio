@@ -345,6 +345,7 @@ extension AppModel {
         var accounts = [settings.stream.keychainAccount] + settings.stream.additional.map(\.keychainAccount)
         accounts.append("remote-pin")
         accounts.append(ElevenLabsRealtime.keychainAccount)
+        accounts.append(GroqTranscription.keychainAccount)
         return accounts.compactMap { (try? KeychainStore.load(account: $0)) ?? nil }.filter { $0.count >= 4 }
     }
 

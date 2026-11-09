@@ -85,6 +85,15 @@ public enum LiveCoreScenes {
                 .preferredColorScheme(.dark)
         }
 
+        // Running transcript of a Realtime Transcription input, selectable and copyable (0.57.0).
+        Window(L10n.t("transcript.title"), id: "transcript") {
+            TranscriptWindow()
+                .environmentObject(model)
+                .frame(minWidth: 380, minHeight: 260)
+                .preferredColorScheme(.dark)
+        }
+        .defaultSize(width: 520, height: 600)
+
         Window(L10n.t("rundown.title"), id: "rundown") {
             RundownView()
                 .environmentObject(model)

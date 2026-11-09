@@ -10,6 +10,8 @@ final class ElevenLabsTranscriber: NSObject, URLSessionWebSocketDelegate {
     enum Status: Equatable { case connecting, live, error(String) }
 
     var onText: ((String) -> Void)?
+    /// Each finished sentence once (Transcript window, 0.57.0).
+    var onCommitted: ((String) -> Void)?
     var onStatus: ((Status) -> Void)?
 
     private let apiKey: String
@@ -160,7 +162,7 @@ final class ElevenLabsTranscriber: NSObject, URLSessionWebSocketDelegate {
             // One sentence at a time (0.50.2): the finished sentence stays until the next starts.
             partial = ""
             let t = text.trimmingCharacters(in: .whitespaces)
-            if !t.isEmpty { committed = t }
+            if !t.isEmpty { committed = t; onCommitted?(t) }
             publish()
         case let .error(type, message, fatal):
             Log.devices.error("elevenlabs \(type, privacy: .public): \(message, privacy: .public)")

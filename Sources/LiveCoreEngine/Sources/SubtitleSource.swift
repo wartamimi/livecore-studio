@@ -33,17 +33,40 @@ public final class SubtitleSource: VideoSource {
     private let renderQueue = DispatchQueue(label: "livecore.subtitles", qos: .userInitiated)
     /// ElevenLabs realtime transcription (0.50.0), when `style.provider == .elevenLabs`.
     private var eleven: ElevenLabsTranscriber?
+    /// Groq Whisper transcription (0.57.0), when `style.provider == .groq`.
+    private var groq: GroqTranscriber?
     private let mixRate: Int
+    /// Finished sentences for the Transcript window (0.57.0), newest last.
+    private var log: [TranscriptLine] = []
+    private var revision = 0
+    /// Apple: the current request's text, written to the log when the request ends.
+    private var applePending = ""
 
     init(id: InputID, style: SubtitleStyle, outputSize: PixelSize, sampleRate: Double) {
         self.id = id; self.style = style; self.outputSize = outputSize
         mixRate = Int(sampleRate)
         format = AVAudioFormat(standardFormatWithSampleRate: sampleRate, channels: 1)!
-        if style.provider == .elevenLabs { name = "Realtime Transcription" }
+        if style.provider != .apple { name = "Realtime Transcription" }
         render([])
     }
 
     public var transcript: String { lock.withLock { text } }
+
+    /// Everything said so far (finished sentences) and a counter that changes with every new line.
+    public var transcriptLog: (lines: [TranscriptLine], revision: Int) { lock.withLock { (log, revision) } }
+
+    public func clearTranscriptLog() { lock.withLock { log.removeAll(); revision += 1 } }
+
+    private func commit(_ sentence: String) {
+        let t = sentence.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return }
+        lock.withLock {
+            if log.last?.text == t { return }
+            log.append(TranscriptLine(time: Date(), text: t))
+            if log.count > 10_000 { log.removeFirst(log.count - 10_000) }
+            revision += 1
+        }
+    }
 
     public func update(_ s: SubtitleStyle) {
         func engineSide(_ a: TranscriptionAdvanced) -> TranscriptionAdvanced {
@@ -70,6 +93,7 @@ public final class SubtitleSource: VideoSource {
         running = true
         startClearTimer()
         if style.provider == .elevenLabs { return startElevenLabs() }
+        if style.provider == .groq { return startGroq() }
         SFSpeechRecognizer.requestAuthorization { [weak self] auth in
             guard let self, self.running else { return }
             guard auth == .authorized else {
@@ -110,6 +134,7 @@ public final class SubtitleSource: VideoSource {
             self.lock.withLock { self.text = text; self.lastSpeech = Date() }
             self.redraw()
         }
+        t.onCommitted = { [weak self] sentence in self?.commit(sentence) }
         t.onStatus = { [weak self] st in
             switch st {
             case .connecting: self?.setStatus(.starting)
@@ -119,6 +144,31 @@ public final class SubtitleSource: VideoSource {
         }
         lock.withLock { eleven = t }
         t.start()
+    }
+
+    private func startGroq() {
+        onDevice = false
+        guard let key = (try? KeychainStore.load(account: GroqTranscription.keychainAccount)) ?? nil, !key.isEmpty else {
+            return setStatus(.error("Enter your Groq API key in this input's settings."))
+        }
+        let t = GroqTranscriber(apiKey: key, languageCode: style.languageCode, mixRate: mixRate, advanced: style.advanced)
+        t.onText = { [weak self] text in
+            guard let self else { return }
+            self.commit(text)
+            self.lock.withLock { self.text = text; self.lastSpeech = Date() }
+            self.redraw()
+        }
+        t.onStatus = { [weak self] st in
+            switch st {
+            case .connecting: self?.setStatus(.starting)
+            case .live: self?.setStatus(.live)
+            case let .error(msg): self?.setStatus(.error(msg))
+            }
+        }
+        lock.withLock { groq = t }
+        t.start()
+        // Groq answers only after the first piece of speech; show the input as running meanwhile.
+        setStatus(.live)
     }
 
     private func begin() {
@@ -150,7 +200,10 @@ public final class SubtitleSource: VideoSource {
         task = r.recognitionTask(with: req) { [weak self] result, error in
             guard let self else { return }
             if let result {
-                self.lock.withLock { self.text = result.bestTranscription.formattedString; self.lastSpeech = Date() }
+                self.lock.withLock {
+                    self.text = result.bestTranscription.formattedString; self.lastSpeech = Date()
+                    self.applePending = self.text
+                }
                 self.redraw()
             }
             // A finished or failed request starts a new one so captions keep coming.
@@ -184,7 +237,14 @@ public final class SubtitleSource: VideoSource {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.restart() }
     }
 
+    /// The finished Apple request's text goes to the Transcript window.
+    private func commitApple() {
+        let t: String = lock.withLock { let t = applePending; applePending = ""; return t }
+        commit(t)
+    }
+
     private func restart() {
+        commitApple()
         guard running else { return }
         task?.cancel()
         task = nil
@@ -196,6 +256,9 @@ public final class SubtitleSource: VideoSource {
         running = false
         let e: ElevenLabsTranscriber? = lock.withLock { let e = eleven; eleven = nil; return e }
         e?.stop()
+        let g: GroqTranscriber? = lock.withLock { let g = groq; groq = nil; return g }
+        g?.stop()
+        commitApple()
         task?.cancel()
         task = nil
         lock.withLock { request?.endAudio(); request = nil }
@@ -206,6 +269,7 @@ public final class SubtitleSource: VideoSource {
     /// running transcript stays short.
     func append(_ chunk: ProgramAudioPump.Chunk) {
         if let e = lock.withLock({ eleven }) { return e.append(left: chunk.left, right: chunk.right) }
+        if let g = lock.withLock({ groq }) { return g.append(left: chunk.left, right: chunk.right) }
         guard let req = lock.withLock({ request }), chunk.frames > 0,
               let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(chunk.frames)) else { return }
         buf.frameLength = AVAudioFrameCount(chunk.frames)
