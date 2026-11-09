@@ -186,6 +186,10 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case subtitles(SubtitleStyle)
     /// LCS Live remote guest call (0.52.0).
     case liveCall(ProjectLiveCall)
+    /// SRT stream from an encoder (0.54.0).
+    case srt(ProjectSRTInput)
+    /// Blackmagic DeckLink / UltraStudio capture (0.54.0).
+    case decklink(ProjectDeckLink)
 }
 
 /// A presentation input: the file and the slide on air.

@@ -111,7 +111,7 @@ struct CaptureCardSheet: View {
             HStack {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
-                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                Button(editing == nil ? L10n.t("common.add") : L10n.t("settings.apply")) {
                     let id = editing ?? model.addCamera(uniqueID: deviceID, config: config, audioUID: audioUID.isEmpty ? nil : audioUID)
                     if editing != nil, let id { model.updateCamera(id, config: config) }
                     if let id { model.setSignalFixes(id, range: range, deinterlace: deinterlace) }
@@ -354,7 +354,7 @@ struct SlideshowSheet: View {
             HStack {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
-                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                Button(editing == nil ? L10n.t("common.add") : L10n.t("settings.apply")) {
                     if let id = editing {
                         model.slideshowSource(id)?.update(urls: urls, interval: interval, fade: fade, loop: loop,
                                                           kenBurns: kenBurns, folder: folder)

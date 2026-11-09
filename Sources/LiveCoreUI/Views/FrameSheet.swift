@@ -75,7 +75,7 @@ struct FrameSheet: View {
             HStack {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }
-                Button(editing == nil ? L10n.t("title.add") : L10n.t("settings.apply")) {
+                Button(editing == nil ? L10n.t("common.add") : L10n.t("settings.apply")) {
                     if let id = editing { model.updateFrame(id, design, camera: camera) } else { model.addFrame(design, camera: camera) }
                     dismiss()
                 }
