@@ -281,8 +281,12 @@ struct SettingsView: View {
                         Toggle("", isOn: $d.enabled).labelsHidden()
                         TextField(L10n.t("stream.dest_name"), text: $d.name, prompt: Text("Facebook"))
                         Button(L10n.t("stream.remove_dest"), role: .destructive) {
-                            draft.stream.additional.removeAll { $0.id == d.id }
-                            destKeys[d.id] = nil
+                            // Read the id once, before the array shrinks: `d` reads through an
+                            // index binding, which pointed past the end after the removal (crash
+                            // "Index out of range" on Remove, 0.58.1).
+                            let id = d.id
+                            destKeys[id] = nil
+                            draft.stream.additional.removeAll { $0.id == id }
                         }
                     }
                     TextField(L10n.t("stream.server"), text: $d.serverURL, prompt: Text("rtmps://live-api-s.facebook.com:443/rtmp/"))

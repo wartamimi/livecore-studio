@@ -16,8 +16,11 @@ public final class OutputRouter {
     /// EXTERNAL on: Syphon servers and NDI sources run for the outputs that have them on.
     /// Off: nothing leaves the app.
     public private(set) var external = false
-    /// A frame for output N's window. Main thread.
+    /// A frame for output N's window. Called on a display queue of its own, not the main thread
+    /// (0.58.1), so a busy main thread (a window or sheet opening) does not freeze the picture
+    /// on the TV or projector. Only touch thread-safe state here.
     public var onWindowFrame: ((Int, CVPixelBuffer) -> Void)?
+    private let windowMailbox = LatestOnQueue<[(Int, CVPixelBuffer)]>(label: "livecore.output-windows")
     /// A Syphon server or NDI source could not be started. Main thread.
     public var onError: ((String) -> Void)?
 
@@ -154,8 +157,9 @@ public final class OutputRouter {
             if wantsWindow { toWindows.append((s.index, pb)) }
         }
         if !toWindows.isEmpty {
-            DispatchQueue.main.async { [weak self] in
-                for (i, pb) in toWindows { self?.onWindowFrame?(i, pb) }
+            windowMailbox.post(toWindows) { [weak self] list in
+                guard let show = self?.onWindowFrame else { return }
+                for (i, pb) in list { show(i, pb) }
             }
         }
     }

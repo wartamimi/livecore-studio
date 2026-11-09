@@ -44,6 +44,16 @@ public final class ProductionEngine {
     /// LCS Live (0.52.0): the app wires each new call input to its signaling server before it starts.
     public var liveCallConnector: ((LiveCallSource) -> Void)?
     public var onPreviewFrame: ((CVPixelBuffer) -> Void)?
+    /// Program and Preview pictures for the monitors, called on a display queue of their own, NOT
+    /// the main thread (0.58.1): when the main thread is busy opening a window or a sheet the
+    /// monitors and the fullscreen output keep moving. Only touch thread-safe state here.
+    public var onDisplayFrames: ((DisplayFrames) -> Void)?
+    public struct DisplayFrames {
+        public var program: CVPixelBuffer
+        public var preview: CVPixelBuffer?
+        /// Input thumbnails (inputs panel, Multiview), newest per input.
+        public var thumbs: [InputID: CVPixelBuffer]
+    }
     public var onThumbnails: (([InputID: CVPixelBuffer]) -> Void)?
     /// Full-size picture of `detailInput` (per-input viewer). Main thread.
     public var onDetailFrame: ((InputID, CVPixelBuffer) -> Void)?
@@ -213,6 +223,8 @@ public final class ProductionEngine {
         var scheduled = false
     }
     let uiMailbox = Locked(UIMailbox())
+    /// Program/Preview monitor pictures go through their own queue (0.58.1), see `onDisplayFrames`.
+    let displayMailbox = LatestOnQueue<DisplayFrames>(label: "livecore.display")
 
     /// What the UI shows right now (0.56.0): thumbnails only for input tiles that are on screen
     /// (nil = all), Preview only while a Preview monitor is visible or a remote page needs it.
@@ -267,10 +279,17 @@ public final class ProductionEngine {
 
     func deliverToUI(program: CVPixelBuffer, preview: CVPixelBuffer?, thumbs: [InputID: CVPixelBuffer],
                      detail: (InputID, CVPixelBuffer)?) {
+        if let display = onDisplayFrames {
+            displayMailbox.post(DisplayFrames(program: program, preview: preview, thumbs: thumbs), merge: { old, new in
+                old.program = new.program
+                if let p = new.preview { old.preview = p }
+                old.thumbs.merge(new.thumbs) { _, n in n }
+            }, display)
+        }
         let schedule = uiMailbox.mutate { m -> Bool in
             m.program = program
             if let preview { m.preview = preview }
-            m.thumbs.merge(thumbs) { _, new in new }
+            if onDisplayFrames == nil { m.thumbs.merge(thumbs) { _, new in new } }
             if let detail { m.detail = detail }
             if m.scheduled { return false }
             m.scheduled = true
@@ -287,7 +306,7 @@ public final class ProductionEngine {
             if let d = m.detail { self.onDetailFrame?(d.0, d.1) }
             if let p = m.program { self.onProgramFrame?(p) }
             if let p = m.preview { self.onPreviewFrame?(p) }
-            if !m.thumbs.isEmpty { self.onThumbnails?(m.thumbs) }
+            if !m.thumbs.isEmpty, self.onDisplayFrames == nil { self.onThumbnails?(m.thumbs) }
         }
     }
     /// Mixer settings from a loaded project for video-file channels that appear once the file's
