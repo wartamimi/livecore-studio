@@ -42,6 +42,9 @@ extension AppModel {
 
     func applyInputGroups(from doc: ProjectDocument) {
         rundown = doc.rundown ?? Rundown()
+        stopAllMacros()
+        macroBook = doc.macros ?? MacroBook()
+        quietMacroTriggers()
         rundownIndex = nil
         rundownStart = nil
         inputTags = Dictionary(uniqueKeysWithValues: doc.inputs.compactMap { i in i.colorTag.map { (i.id, $0) } })
@@ -54,6 +57,7 @@ extension AppModel {
 
     func storeInputGroups(in doc: inout ProjectDocument) {
         doc.rundown = rundown.segments.isEmpty ? nil : rundown
+        doc.macros = macroBook.macros.isEmpty ? nil : macroBook
         for k in doc.inputs.indices {
             let id = doc.inputs[k].id
             doc.inputs[k].colorTag = inputTags[id]

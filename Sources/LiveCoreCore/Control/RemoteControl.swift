@@ -330,6 +330,9 @@ public enum RemoteRouter {
             guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
             cmd = .dataRow(input: n, delta: r.path == "/api/data/next" ? 1 : -1)
         case "/api/highlight": cmd = .action(.highlight)
+        case "/api/macro":
+            guard let n = int(r.query["n"]), (1...MacroBook.maxNumber).contains(n) else { return .badRequest("n") }
+            cmd = .action(.macro(n))
         case "/api/fullscreen": cmd = .fullscreen
         case "/api/qr/next", "/api/qr/previous":
             guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
@@ -496,6 +499,14 @@ public struct RemoteState: Equatable, Sendable {
         }
     }
 
+    /// A macro button (0.65.0): number, name and whether it is running.
+    public struct MacroItem: Equatable, Sendable {
+        public var number: Int
+        public var name: String
+        public var running: Bool
+        public init(number: Int, name: String, running: Bool) { self.number = number; self.name = name; self.running = running }
+    }
+
     public struct Choice: Equatable, Sendable {
         public var id: Int
         public var name: String
@@ -547,6 +558,7 @@ public struct RemoteState: Equatable, Sendable {
     public var fps: Double = 0
     public var dropped: Int = 0
     public var fullscreen = false
+    public var macros: [MacroItem] = []
 
     public init() {}
 
@@ -608,6 +620,11 @@ public struct RemoteState: Equatable, Sendable {
         o["fps"] = JSON.number(fps)
         o["dropped"] = "\(dropped)"
         o["fullscreen"] = JSON.bool(fullscreen)
+        o["macros"] = JSON.array(macros.map { m in
+            var e = JSON.Object()
+            e["n"] = "\(m.number)"; e["name"] = JSON.string(m.name); e["running"] = JSON.bool(m.running)
+            return e.rendered
+        })
         return o.rendered
     }
 }

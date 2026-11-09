@@ -157,6 +157,9 @@ extension AppModel {
         s.fps = performance.renderFPS
         s.dropped = Int(clamping: performance.droppedRenderFrames)
         s.fullscreen = isFullscreenActive
+        s.macros = macroBook.macros.prefix(MacroBook.maxNumber).enumerated().map { k, m in
+            RemoteState.MacroItem(number: k + 1, name: m.name, running: runningMacros.contains(m.id))
+        }
         server.update(state: s.json)
         if clients {
             let n = server.activeClients()

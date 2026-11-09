@@ -98,6 +98,7 @@ public enum ShortcutStore {
         case let .replay(s): return L10n.f("replay.last", s)
         case .presentationNext: return L10n.t("shortcut.presentation_next")
         case .presentationPrevious: return L10n.t("shortcut.presentation_previous")
+        case let .macro(n): return AppModel.macroTitle(n)
         }
     }
 }
@@ -142,6 +143,7 @@ extension AppModel {
         case let .replay(s): replayLast(Double(s))
         case .presentationNext: presentationStep(forward: true)
         case .presentationPrevious: presentationStep(forward: false)
+        case let .macro(n): runMacro(number: n)
         }
     }
 

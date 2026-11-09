@@ -57,6 +57,11 @@ public final class ChannelControls: @unchecked Sendable {
     /// Ducking: this channel speaking turns the ducked channels down / this channel is turned down.
     public let duckTrigger = AtomicBool(false)
     public let duckTarget = AtomicBool(false)
+    /// Auto mixer (0.65.0): this microphone is in the gain-sharing group, its weight (dB), and
+    /// the gain the auto mixer currently gives it (meter, written by the render thread).
+    public let autoMix = AtomicBool(false)
+    public let autoMixWeightDB = AtomicFloat(0)
+    public let autoMixGainDB = AtomicFloat(0)
     public var mode: ChannelMode {
         get { ChannelMode(rawValue: Int(channelMode.value.rounded())) ?? .stereo }
         set { channelMode.value = Float(newValue.rawValue) }
@@ -192,6 +197,11 @@ public struct ChannelStripDSP: Sendable {
     /// Plug-in inserts (0.60.0): after the compressor, before the channel limiter and fader.
     /// Set once when the channel is created.
     public var inserts: AudioInsertProcessing?
+    /// Auto mixer (0.65.0): the gain this block ramps to (set by the mixer from earlier blocks'
+    /// levels) and this block's pre-fader power (0 while muted or off air).
+    public var autoMixTarget: Float = 1
+    public private(set) var autoMixPower: Float = 0
+    private var autoMixRamp = GainRamp(initial: 1)
 
     public init(controls: ChannelControls, sampleRate: Float) {
         self.controls = controls
@@ -267,14 +277,17 @@ public struct ChannelStripDSP: Sendable {
             } else {
                 controls.limiterReductionDB.value = 0
             }
+            autoMixPower = muted || controls.afvClosed.value ? 0 : AutoMixer.power(left: left, right: right, frames: frames)
             ramp.apply(target: muted ? 0 : AudioMath.dbToLinear(controls.faderDB.value), left: left, right: right, frames: frames)
         } else {
             controls.gainReductionDB.value = 0
             controls.gateReductionDB.value = 0
             controls.limiterReductionDB.value = 0
+            autoMixPower = muted || controls.afvClosed.value ? 0 : AutoMixer.power(left: left, right: right, frames: frames) * trim * trim
             ramp.apply(target: muted ? 0 : trim * AudioMath.dbToLinear(controls.faderDB.value), left: left, right: right, frames: frames)
         }
         applyAFV(left: left, right: right, frames: frames)
+        autoMixRamp.apply(target: autoMixTarget, left: left, right: right, frames: frames)
         // Balance-style pan (linear): centre = unity on both sides, hard left mutes right.
         let p = min(max(controls.pan.value, -1), 1)
         let gl: Float = p <= 0 ? 1 : 1 - p

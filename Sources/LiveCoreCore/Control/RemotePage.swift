@@ -308,6 +308,8 @@ nav svg{width:22px;height:22px}
       <div id="replays" class="grid4"></div>
       <div class="sub hidden" id="qrHead" data-t="qr"></div>
       <div id="qrs"></div>
+      <div class="sub hidden" id="macHead">Macro</div>
+      <div id="macros" class="grid4"></div>
     </section>
     <section class="card a-tools" data-tab="tools">
       <h2 data-t="tools"></h2>
@@ -560,7 +562,7 @@ const name=n=>{const i=st.inputs.find(x=>x.n===n);return i?n+"  "+i.name:"—"};
 const hms=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),m=Math.floor(s/60)%60,x=s%60;return[h,m,x].map(v=>String(v).padStart(2,"0")).join(":")};
 const sig=a=>JSON.stringify(a);
 const kindIcon=k=>({camera:"🎥",videoFile:"🎞",image:"🖼",color:"🎨",text:"T",browser:"🌐",timer:"⏱",screen:"🖥",replay:"⏪",colorBars:"▦",scene:"◫",ticker:"≡",slideshow:"🖼",ndi:"📡",presentation:"📊",frame:"▢",subtitles:"💬",liveCall:"📞",srt:"📡",decklink:"🎥",qrCode:"▣",virtualSet:"🎬"})[k]||"•";
-let qrSig="",busSig="",ovSig="",rpSig="",kindSig="",stripSig="",ptzSig="",dataSig="",filter="";
+let macSig="",qrSig="",busSig="",ovSig="",rpSig="",kindSig="",stripSig="",ptzSig="",dataSig="",filter="";
 
 function buildBus(box,isPgm){
   box.textContent="";
@@ -614,6 +616,11 @@ function render(){
     b.querySelector(".t").textContent=(x.items[x.item-1]||x.name)+(x.items.length>1?" ("+x.item+"/"+x.items.length+")":"");
     row.children[1].disabled=row.children[2].disabled=x.items.length<2});
   $("qrHead").classList.toggle("hidden",!qrs.length);
+  const ms=st.macros||[];const mg=sig(ms.map(m=>[m.n,m.name]));
+  if(mg!==macSig){macSig=mg;const m=$("macros");m.textContent="";ms.forEach(x=>{const b=el("button","key blue");
+    b.append(el("span","n","M"+x.n),el("span","t",x.name));b.onclick=()=>send("/api/macro?n="+x.n);m.appendChild(b)})}
+  ms.forEach((x,k)=>{const b=$("macros").children[k];if(b)b.classList.toggle("on",!!x.running)});
+  $("macHead").classList.toggle("hidden",!ms.length);
   renderTools();
   $("markN").textContent=st.highlights||0;
 

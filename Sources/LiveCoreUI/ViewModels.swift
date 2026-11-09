@@ -61,6 +61,9 @@ public final class ChannelVM: ObservableObject, Identifiable {
     /// Ducking: this channel (MC microphone) turns the ducked channels down / is turned down (music).
     @Published public var duckTrigger: Bool { didSet { channel.controls.duckTrigger.value = duckTrigger } }
     @Published public var duckTarget: Bool { didSet { channel.controls.duckTarget.value = duckTarget } }
+    /// Auto mixer (0.65.0): in the gain-sharing group, and its weight in dB.
+    @Published public var autoMix: Bool { didSet { channel.controls.autoMix.value = autoMix } }
+    @Published public var autoMixWeight: Double { didSet { channel.controls.autoMixWeightDB.value = Float(autoMixWeight) } }
     /// Audio of a video-file input (removed together with the input, not from the mixer).
     /// Audio that belongs to an input (video file or window/display capture).
     public var isFileChannel: Bool { ProductionEngine.inputOfChannel(channel.id) != nil }
@@ -74,6 +77,8 @@ public final class ChannelVM: ObservableObject, Identifiable {
         locked = channel.locked
         duckTrigger = c.duckTrigger.value
         duckTarget = c.duckTarget.value
+        autoMix = c.autoMix.value
+        autoMixWeight = Double(c.autoMixWeightDB.value)
         name = channel.name
         compMakeup = Double(c.compMakeupDB.value)
         compAttack = Double(c.compAttackMs.value)

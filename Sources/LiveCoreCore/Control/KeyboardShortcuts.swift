@@ -69,18 +69,23 @@ public enum ShortcutAction: Hashable, Sendable {
     case overlayPreview(Int)   // overlay 1...4 on Preview
     case replay(Int)           // seconds
     case presentationNext, presentationPrevious
+    case macro(Int)            // macro 1... (0.65.0)
 
     public static let inputCount = 20
 
     /// All actions in display order.
-    public static var all: [ShortcutAction] {
-        [.cut, .auto, .previewNext, .previewPrevious]
-            + (1...inputCount).map { .preview($0) } + (1...inputCount).map { .program($0) }
-            + (1...4).map { .overlay($0) } + (1...4).map { .overlayPreview($0) }
-            + [5, 10, 20].map { .replay($0) }
-            + [.streamToggle, .recordToggle, .snapshot, .fullscreenToggle, .highlight, .outputsPanel,
-               .presentationNext, .presentationPrevious]
-    }
+    public static let all: [ShortcutAction] = {
+        var a: [ShortcutAction] = [.cut, .auto, .previewNext, .previewPrevious]
+        a += (1...inputCount).map { ShortcutAction.preview($0) }
+        a += (1...inputCount).map { ShortcutAction.program($0) }
+        a += (1...4).map { ShortcutAction.overlay($0) }
+        a += (1...4).map { ShortcutAction.overlayPreview($0) }
+        a += [5, 10, 20].map { ShortcutAction.replay($0) }
+        a += [.streamToggle, .recordToggle, .snapshot, .fullscreenToggle, .highlight, .outputsPanel,
+              .presentationNext, .presentationPrevious]
+        a += (1...MacroBook.maxNumber).map { ShortcutAction.macro($0) }
+        return a
+    }()
 
     /// Stable id used in the saved table.
     public var id: String {
@@ -102,6 +107,7 @@ public enum ShortcutAction: Hashable, Sendable {
         case let .replay(s): return "replay.\(s)"
         case .presentationNext: return "presentation.next"
         case .presentationPrevious: return "presentation.previous"
+        case let .macro(n): return "macro.\(n)"
         }
     }
 
@@ -110,7 +116,7 @@ public enum ShortcutAction: Hashable, Sendable {
         self = a
     }
 
-    public enum Group: String, CaseIterable, Sendable { case switching, preview, program, overlays, replay, output, presentation }
+    public enum Group: String, CaseIterable, Sendable { case switching, preview, program, overlays, replay, output, presentation, macros }
 
     public var group: Group {
         switch self {
@@ -121,6 +127,7 @@ public enum ShortcutAction: Hashable, Sendable {
         case .replay, .highlight: return .replay
         case .streamToggle, .recordToggle, .snapshot, .fullscreenToggle, .outputsPanel: return .output
         case .presentationNext, .presentationPrevious: return .presentation
+        case .macro: return .macros
         }
     }
 }

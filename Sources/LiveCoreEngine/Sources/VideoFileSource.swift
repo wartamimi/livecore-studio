@@ -175,7 +175,12 @@ public final class VideoFileSource: NSObject, VideoSource {
     /// Called on the main thread when another clip of the playlist is loaded.
     public var onClipChange: (() -> Void)?
 
+    /// Posted on the main thread when a clip plays to its end (object: the source). Macro
+    /// triggers "video ended" listen to it (0.65.0).
+    public static let clipEndedNotification = Notification.Name("LiveCoreVideoClipEnded")
+
     private func clipEnded() {
+        NotificationCenter.default.post(name: Self.clipEndedNotification, object: self)
         if stopAfterCurrent { stopAfterCurrent = false; wantsPlay = false; return }
         if let n = PlaylistMath.afterEnd(index: index, count: urls.count, repeat: repeatMode, shuffle: shuffle, random: Int.random(in:)) {
             if n == index { player.seek(to: .zero); player.play() } else { load(n, play: true) }

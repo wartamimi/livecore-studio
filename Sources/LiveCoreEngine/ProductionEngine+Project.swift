@@ -355,6 +355,8 @@ extension ProductionEngine {
         if ch.locked { p.locked = true }
         if c.duckTrigger.value { p.duckTrigger = true }
         if c.duckTarget.value { p.duckTarget = true }
+        if c.autoMix.value { p.autoMix = true }
+        if c.autoMixWeightDB.value != 0 { p.autoMixWeightDB = c.autoMixWeightDB.value }
         var eq = ProjectEQ()
         eq.highPassEnabled = c.highPassEnabled.value; eq.highPassHz = c.highPassHz.value
         eq.eqEnabled = c.eqEnabled.value
@@ -403,6 +405,8 @@ extension ProductionEngine {
         c.delayMs.value = p.delayMs ?? 0
         c.duckTrigger.value = p.duckTrigger ?? false
         c.duckTarget.value = p.duckTarget ?? false
+        c.autoMix.value = p.autoMix ?? false
+        c.autoMixWeightDB.value = min(max(p.autoMixWeightDB ?? 0, AutoMixer.weightRange.lowerBound), AutoMixer.weightRange.upperBound)
         if let eq = p.eq {
             c.highPassEnabled.value = eq.highPassEnabled; c.highPassHz.value = eq.highPassHz
             c.eqEnabled.value = eq.eqEnabled
