@@ -91,28 +91,54 @@ struct RemoteSettingsView: View {
     }
 }
 
-/// Online access (outside the local Wi-Fi) through a Cloudflare quick tunnel (0.45.0).
+/// Online access (outside the local Wi-Fi): Cloudflare quick tunnel (0.45.0) or Tailscale
+/// Serve / Funnel (0.61.0).
 struct RemoteOnlineSection: View {
     @ObservedObject var tunnel: RemoteTunnel
     let port: Int
     let pin: String
     @State private var confirm = false
 
+    private func label(_ m: RemoteTunnel.Method) -> String {
+        switch m {
+        case .cloudflare: return "Cloudflare"
+        case .tailscale: return L10n.t("remote.method_tailscale")
+        case .tailscaleFunnel: return L10n.t("remote.method_funnel")
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Divider()
             Text(L10n.t("remote.online")).font(.system(size: 12, weight: .semibold))
-            Text(L10n.t("remote.online_about")).font(.caption).foregroundStyle(Theme.textDim)
-            if RemoteTunnel.executable == nil {
-                Text(L10n.t("remote.online_install")).font(.caption).foregroundStyle(Theme.warning).textSelection(.enabled)
+            Picker(L10n.t("remote.method"), selection: $tunnel.method) {
+                ForEach(RemoteTunnel.Method.allCases) { Text(label($0)).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .disabled(tunnel.running)
+            Text(L10n.t(tunnel.method == .cloudflare ? "remote.online_about"
+                        : tunnel.method == .tailscale ? "remote.tailscale_about" : "remote.funnel_about"))
+                .font(.caption).foregroundStyle(Theme.textDim)
+            if !tunnel.isInstalled {
+                Text(L10n.t(tunnel.method.isTailscale ? "remote.tailscale_install" : "remote.online_install"))
+                    .font(.caption).foregroundStyle(Theme.warning).textSelection(.enabled)
             }
             HStack {
                 if tunnel.running {
                     Button(L10n.t("remote.online_stop"), role: .destructive) { tunnel.stop() }
                     if tunnel.url == nil { ProgressView().controlSize(.small); Text(L10n.t("remote.online_starting")).font(.caption) }
                 } else {
-                    Button(L10n.t("remote.online_start")) { confirm = true }
-                        .disabled(RemoteTunnel.executable == nil)
+                    // Tailscale Serve stays inside the operator's own tailnet: no internet warning.
+                    Button(L10n.t("remote.online_start")) {
+                        if tunnel.method == .tailscale { tunnel.start(port: port) } else { confirm = true }
+                    }
+                    .disabled(!tunnel.isInstalled)
+                }
+            }
+            if let a = tunnel.actionURL, let link = URL(string: a) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.t("remote.tailscale_enable")).font(.caption).foregroundStyle(Theme.warning)
+                    Link(a, destination: link).font(.caption)
                 }
             }
             if let u = tunnel.url {
@@ -126,8 +152,13 @@ struct RemoteOnlineSection: View {
                     Image(nsImage: img).interpolation(.none).resizable().frame(width: 130, height: 130)
                 }
             }
+            if tunnel.method.isTailscale, let t = tunnel.tailnetAddress {
+                HStack(spacing: 4) {
+                    Text(L10n.t("remote.tailnet_direct")).font(.caption).foregroundStyle(Theme.textDim)
+                    Text(t).font(.system(size: 11).monospaced()).textSelection(.enabled)
+                }
+            }
             if let e = tunnel.error { Text(e).font(.caption).foregroundStyle(Theme.warning) }
-            Text(L10n.t("remote.online_tailscale")).font(.caption).foregroundStyle(Theme.textDim)
         }
         .alert(L10n.t("remote.online_confirm_title"), isPresented: $confirm) {
             Button(L10n.t("remote.online_start")) { tunnel.start(port: port) }

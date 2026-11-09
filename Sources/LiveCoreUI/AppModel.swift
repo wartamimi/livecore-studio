@@ -134,7 +134,7 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var remoteClients = 0
     @Published public internal(set) var remoteAddresses: [String] = []
     /// Online access through a Cloudflare quick tunnel (0.45.0).
-    let remoteTunnel = RemoteTunnel()
+    let remoteTunnel = RemoteTunnel(persistKey: "remote.tunnelMethod")
     var remoteServer: RemoteServer?
 
     // Errors
@@ -142,6 +142,7 @@ public final class AppModel: ObservableObject {
     public struct ErrorItem: Identifiable, Equatable { public let id = UUID(); public let message: String }
 
     var statsTimer: Timer?
+    var isShuttingDown = false
 
     public init() {}
 
@@ -202,9 +203,23 @@ public final class AppModel: ObservableObject {
         DispatchQueue.main.async { [weak self] in self?.updateUIDemand() }
     }
 
+    /// Full teardown on quit (0.61.0: audio is silenced first, tunnels and the LCS Live server
+    /// stop, output windows close, and a guard ends the process if anything hangs).
     public func shutdown() {
+        guard !isShuttingDown else { return }
+        isShuttingDown = true
+        // If some teardown step blocks (a stuck device or plug-in), still end the process so
+        // nothing keeps playing in the background.
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 5) {
+            Log.app.error("Shutdown took longer than 5 s; ending the process")
+            exit(0)
+        }
+        engine?.silenceForQuit()
         statsTimer?.invalidate()
         watchdog.stop()
+        remoteTunnel.stop()
+        LiveCallService.shared.shutdown()
+        outputFullscreens.values.forEach { $0.close() }
         endAutosaveSession()
         outputRouter?.stopAll()
         midi.stop()
