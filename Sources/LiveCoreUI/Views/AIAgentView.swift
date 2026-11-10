@@ -232,10 +232,30 @@ struct AIAgentWindow: View {
                     Circle().fill(Self.gradient).frame(width: 24, height: 24)
                     Image(systemName: "sparkles").font(.system(size: 11, weight: .bold)).foregroundStyle(.white)
                 }
-                Text(line.text).font(.system(size: 13)).textSelection(.enabled)
-                    .padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.panelRaised))
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(line.text).font(.system(size: 13)).textSelection(.enabled)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.panelRaised))
+                        .fixedSize(horizontal: false, vertical: true)
+                    // Ready answers: shown only under the newest answer, one tap sends it.
+                    if !line.suggestions.isEmpty, line.id == session.lines.last(where: { $0.role == .assistant })?.id {
+                        ForEach(Array(line.suggestions.enumerated()), id: \.offset) { k, sug in
+                            Button { session.send(sug) } label: {
+                                HStack(spacing: 6) {
+                                    Image(systemName: k == 0 ? "sparkles" : "arrow.turn.down.right").font(.system(size: 10, weight: .bold))
+                                    Text(sug).font(.system(size: 12, weight: .medium)).multilineTextAlignment(.leading)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
+                                .padding(.horizontal, 10).padding(.vertical, 6)
+                                .background(Capsule().fill(Theme.accent.opacity(k == 0 ? 0.22 : 0.1)))
+                                .overlay(Capsule().strokeBorder(Self.gradient, lineWidth: k == 0 ? 1.4 : 0.8))
+                            }
+                            .buttonStyle(ChipStyle())
+                            .disabled(session.busy)
+                            .help(L10n.t("ai.suggest_help"))
+                        }
+                    }
+                }
                 Spacer(minLength: 40)
             }
         case .action:

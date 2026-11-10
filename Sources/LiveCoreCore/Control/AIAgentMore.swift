@@ -194,6 +194,31 @@ extension AIAgent {
         return cites.isEmpty ? answer : answer + "\n\nSources: " + cites.joined(separator: "; ")
     }
 
+    // MARK: Suggestions (0.69.1)
+
+    /// Splits "answer … <suggest>a\nb</suggest>" into the answer and up to 4 tap-able replies.
+    /// Also accepts a block that the model left unclosed.
+    public static func splitSuggestions(_ s: String) -> (text: String, suggestions: [String]) {
+        guard let open = s.range(of: "<suggest>", options: .caseInsensitive) else { return (s, []) }
+        let rest = s[open.upperBound...]
+        let close = rest.range(of: "</suggest>", options: .caseInsensitive)
+        let block = close.map { rest[..<$0.lowerBound] } ?? rest
+        let after = close.map { String(rest[$0.upperBound...]) } ?? ""
+        var seen = Set<String>()
+        let items = block.components(separatedBy: .newlines).compactMap { raw -> String? in
+            var t = raw.trimmingCharacters(in: .whitespaces)
+            for p in ["- ", "* ", "• "] where t.hasPrefix(p) { t = String(t.dropFirst(p.count)) }
+            if let dot = t.firstIndex(of: "."), t[..<dot].allSatisfy(\.isNumber), !t[..<dot].isEmpty {
+                t = String(t[t.index(after: dot)...]).trimmingCharacters(in: .whitespaces)
+            }
+            t = plainText(t)
+            guard !t.isEmpty, t.count <= 200, seen.insert(t.lowercased()).inserted else { return nil }
+            return t
+        }
+        let text = (String(s[..<open.lowerBound]) + after).trimmingCharacters(in: .whitespacesAndNewlines)
+        return (text, Array(items.prefix(4)))
+    }
+
     // MARK: Plain text
 
     /// Removes Markdown marks a model may still write (**bold**, __bold__, `code`, # headings,

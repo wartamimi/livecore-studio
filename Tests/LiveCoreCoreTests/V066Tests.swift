@@ -238,3 +238,16 @@ final class V069Tests: XCTestCase {
         XCTAssertEqual(AIAgent.exaAnswerText(Data(ans.utf8)), "Final 2-1\n\nSources: BBC (https://bbc.co.uk/x)")
     }
 }
+
+final class V0691Tests: XCTestCase {
+    func testSuggestions() {
+        let r = AIAgent.splitSuggestions("Macro seperti apa?\n<suggest>\n1. Buat macro A\n- **Buat macro B**\nBuat macro A\n</suggest>")
+        XCTAssertEqual(r.text, "Macro seperti apa?")
+        XCTAssertEqual(r.suggestions, ["Buat macro A", "Buat macro B"])
+        let open = AIAgent.splitSuggestions("Done.\n<suggest>\nCut ke input 2")
+        XCTAssertEqual(open.text, "Done.")
+        XCTAssertEqual(open.suggestions, ["Cut ke input 2"])
+        XCTAssertEqual(AIAgent.splitSuggestions("Plain").suggestions, [])
+        XCTAssertTrue(AIAgent.systemPrompt(allowOutputs: false).contains("<suggest>"))
+    }
+}

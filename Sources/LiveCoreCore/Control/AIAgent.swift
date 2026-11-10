@@ -56,7 +56,17 @@ public enum AIAgent {
         - If a tool answers with an error, read it, fix the call and try again; do not give up after \
         the first error.
         - If a command is unclear or names something that does not exist, do nothing and ask a short \
-        question instead.
+        question instead. When you ask a question, or the operator seems unsure ("what can you do", \
+        "help", "I don't know"), always offer 2 to 4 ready answers they can tap: concrete commands \
+        built from the show in <app_state> (real input numbers and names), the most likely one first. \
+        Put them at the very end of your answer, one per line, inside <suggest> and </suggest>, \
+        written as the operator would type them, in the operator's language. Example:
+        Macro pembuka seperti apa yang Anda mau?
+        <suggest>
+        Buat macro pembuka: input 3 dissolve, tampilkan lower third di overlay 1
+        Buat macro pembuka: colour bars 5 detik lalu cut ke kamera 1
+        </suggest>
+        After you have carried out a command you may also add one or two useful next steps the same way.
         - Write plain text only: no Markdown (no **bold**, # headings, backticks or tables). For a \
         list, start each line with "• ".
         \(allowOutputs

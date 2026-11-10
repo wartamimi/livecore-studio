@@ -15,6 +15,11 @@ public final class AIAgentSession: ObservableObject {
         public let id = UUID()
         public let role: Role
         public let text: String
+        /// Ready answers the operator can tap (0.69.1).
+        public var suggestions: [String] = []
+        public init(role: Role, text: String, suggestions: [String] = []) {
+            self.role = role; self.text = text; self.suggestions = suggestions
+        }
     }
 
     @Published public internal(set) var lines: [Line] = []
@@ -217,8 +222,11 @@ public final class AIAgentSession: ObservableObject {
                 return
             }
             messages += AIAgent.assistantTurn(reply, p)
-            let shown = AIAgent.plainText(reply.text)
-            if !shown.isEmpty { lines.append(Line(role: .assistant, text: shown)) }
+            let split = AIAgent.splitSuggestions(reply.text)
+            let shown = AIAgent.plainText(split.text)
+            if !shown.isEmpty || !split.suggestions.isEmpty {
+                lines.append(Line(role: .assistant, text: shown.isEmpty ? "…" : shown, suggestions: split.suggestions))
+            }
             if reply.stopReason == "refusal" {
                 fail("The model declined this command.")
                 return
