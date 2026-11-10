@@ -37,6 +37,7 @@ extension AppModel {
         do {
             try server.start()
             remoteServer = server
+            prompterPushedRev = -1
             startRemoteListen(server)
             remoteAddresses = RemoteServer.lanAddresses()
             pushRemoteState(clients: true)
@@ -114,6 +115,10 @@ extension AppModel {
     func pushRemoteState(clients: Bool) {
         guard let server = remoteServer else { return }
         server.update(state: makeRemoteState().json)
+        if prompter.rev != prompterPushedRev {
+            prompterPushedRev = prompter.rev
+            server.update(prompter: "{\"rev\":\(prompter.rev),\"text\":\(JSON.string(prompter.script.text))}")
+        }
         if clients {
             let n = server.activeClients()
             if n != remoteClients { remoteClients = n }
@@ -126,6 +131,12 @@ extension AppModel {
     func makeRemoteState() -> RemoteState {
         let number: (InputID?) -> Int? = { id in id.flatMap { id in self.inputs.first { $0.id == id }?.number } }
         var s = RemoteState()
+        s.prompterRev = prompter.rev
+        s.prompterPos = prompter.position
+        s.prompterRunning = prompter.running
+        s.prompterWPM = prompter.script.clampedWPM
+        s.prompterSize = prompter.script.fontSize
+        s.prompterMirror = prompter.script.mirror
         s.title = projectURL?.deletingPathExtension().lastPathComponent ?? "LiveCore Studio"
         s.program = number(switcher.program)
         s.preview = number(switcher.preview)
@@ -274,6 +285,8 @@ extension AppModel {
             if let id = inputID(number: n), qrSource(id) != nil { toggleQROnAir(id) }
         case .fullscreen:
             toggleFullscreen()
+        case let .prompter(c):
+            prompter.perform(c)
         }
         pushRemoteState(clients: false)
     }

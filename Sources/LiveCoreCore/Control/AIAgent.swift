@@ -89,7 +89,9 @@ public enum AIAgent {
                                     "input": ["type": "integer", "description": "Input number (for preview, program, transition, video steps)."],
                                     "overlay": ["type": "integer", "description": "Overlay channel 1-4."],
                                     "channel": ["type": "string", "description": "Audio channel id from get_state."],
-                                    "seconds": ["type": "number", "description": "Length of a wait step."],
+                                    "seconds": ["type": "number", "description": "Length of a wait step, or the time of an audioFade."],
+                                    "macro": ["type": "integer", "description": "Macro number for runMacro."],
+                                    "level": ["type": "number", "description": "audioFade target fader level in dB (0 = unity, -90 = silent)."],
                                 ],
                                 "required": ["kind"],
                                 "additionalProperties": false,
@@ -273,6 +275,18 @@ public enum AIAgent {
             if kind == .wait {
                 let sec = doubleValue(s["seconds"]) ?? 1
                 step.seconds = min(max(sec.isFinite ? sec : 1, 0), maxWait)
+            }
+            if kind == .audioFade {
+                let sec = doubleValue(s["seconds"]) ?? 3
+                step.seconds = min(max(sec.isFinite ? sec : 3, 0), MacroStep.maxFade)
+                let lv = doubleValue(s["level"]) ?? 0
+                step.level = min(max(lv.isFinite ? lv : 0, -90), 10)
+            }
+            if kind == .runMacro {
+                guard let m = intValue(s["macro"]), (1...MacroBook.maxNumber).contains(m) else {
+                    return .failure(.init("step \(n) (runMacro): macro must be a macro number 1 to \(MacroBook.maxNumber)"))
+                }
+                step.macro = m
             }
             out.append(step)
         }

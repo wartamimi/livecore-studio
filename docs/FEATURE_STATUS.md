@@ -598,3 +598,16 @@ Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; k
 | Belum: AI membuat desain template baru dari nol (layout/bentuk sendiri), gambar/logo AI, membaca isi Preview/Program (vision) | Planned |
 | AI mengubah pengaturan (0.68.0): `get_input_settings` / `set_input_settings` (JSON merge patch pada model Codable: title + desain, running text, QR, timer, virtual set, koreksi warna, chroma key, layer, nama; nilai tidak valid ditolak), `set_audio` (fader, gain, pan, mute, solo, bus, kompresor, gate, EQ, high/low pass, limiter, master fader), `set_transition`, `delete_input` (bukan input di Program/terkunci). Panel AI baru gaya chat (bubble, chip saran, animasi berpikir, pengaturan dilipat). | Partially implemented — logika patch dites di Linux (T-351); butuh uji di Mac |
 | Belum lewat AI: pengaturan output/stream/rekaman (berisi stream key), perangkat kamera/audio, pengaturan aplikasi (Settings), file media baru | Planned |
+
+## 0.71.0 — Otomasi acara, teleprompter, multitrack
+
+| Fitur | Status | Diuji | Catatan |
+|---|---|---|---|
+| Server cadangan (backup ingest) per tujuan RTMP: key sama; gagal di awal → coba cadangan sekali; setelah live, 2× gagal reconnect → pindah server (bolak-balik) | Implemented, belum dites di Mac | L (StreamFailover, decode setting lama) | T-352. SRT belum punya cadangan |
+| Safe slate: Program kehilangan sinyal (status no signal/error) ≥ N detik → cut ke input slate; kembali otomatis setelah sinyal pulih M detik; operator pindah manual = selesai | Implemented, belum dites di Mac | L (SafeSlateWatch) | T-353. Hanya input yang melaporkan sinyal hilang (kamera, capture card, NDI, SRT, screen) |
+| Auto-director: pasangan mic → kamera, ambang dB, lama bicara, tahan shot minimal, wide shot (banyak bicara / hening), cut atau AUTO; diam saat input lain di Program | Implemented, belum dites di Mac | L (AutoDirector) | T-354. Memakai meter mixer (bukan VAD) |
+| Makro: langkah "Jalankan makro" (bersarang maks 4, tanpa loop), "Fade audio" (dB, detik), kondisi per langkah (Program/Preview adalah…, streaming, merekam), trigger jam (HH:mm setiap hari) | Implemented, belum dites di Mac | L (expandedSteps, MacroCondition, normalizedTime, parser AI) | T-355 |
+| Teleprompter (Production › Teleprompter…, ⌥⌘P): naskah, kecepatan kata/menit, ukuran huruf, cermin, tombol panah/spasi; tampil & dikendalikan di Web Controller (`/api/prompter`, `/api/prompter/cmd`) | Implemented, belum dites di Mac | L (kecepatan, route, state JSON) | T-356 |
+| Transcript window › AI: ringkasan, notulen, chapter YouTube lewat penyedia AI Assistant | Implemented, belum dites di Mac | L (summaryCommand) | T-357. Transkrip > 60 rb karakter dipotong bagian tengahnya |
+| Rekaman audio multitrack: tiap channel mixer → WAV 24-bit (sebelum EQ/dinamika/fader) di folder "… Tracks", mulai pada blok audio yang sama | Implemented, belum dites di Mac | kompilasi CI | T-358. Channel yang ditambah saat merekam tidak ikut |
+| Scoreboard, komentar YouTube Live di layar, Stream Deck langsung | Planned | | Komentar YouTube butuh API key pengguna |

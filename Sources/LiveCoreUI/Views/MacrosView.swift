@@ -117,7 +117,9 @@ private struct MacroEditor: View {
                         ForEach(Array(macro.wrappedValue.triggers.enumerated()), id: \.element.id) { k, _ in triggerRow(k) }
                         Menu {
                             ForEach(MacroTriggerEvent.allCases, id: \.self) { e in
-                                Button(L10n.t("macro.event.\(e.rawValue)")) { macro.wrappedValue.triggers.append(MacroTrigger(e)) }
+                                Button(L10n.t("macro.event.\(e.rawValue)")) {
+                                    macro.wrappedValue.triggers.append(MacroTrigger(e, time: e == .timeOfDay ? "19:00" : nil))
+                                }
                             }
                         } label: { Label(L10n.t("macro.add_trigger"), systemImage: "bolt.fill") }
                             .fixedSize()
@@ -138,9 +140,9 @@ private struct MacroEditor: View {
         let groups: [[MacroStepKind]] = [
             [.cut, .auto, .transition, .program, .preview],
             [.overlayOn, .overlayOff, .overlayToggle],
-            [.audioOn, .audioOff],
+            [.audioOn, .audioOff, .audioFade],
             [.videoPlay, .videoPause, .videoRestart],
-            [.wait],
+            [.wait, .runMacro],
             [.streamStart, .streamStop, .recordStart, .recordStop, .snapshot, .highlight],
         ]
         ForEach(0..<groups.count, id: \.self) { g in
@@ -155,6 +157,8 @@ private struct MacroEditor: View {
         if kind.needsOverlay { s.overlay = 1 }
         if kind.needsChannel { s.channel = model.audioChannels.first?.id }
         if kind == .wait { s.seconds = 2 }
+        if kind == .audioFade { s.seconds = 3; s.level = -90 }
+        if kind == .runMacro { s.macro = 1 }
         macro.wrappedValue.steps.append(s)
     }
 
@@ -166,7 +170,8 @@ private struct MacroEditor: View {
     private func stepRow(_ k: Int) -> some View {
         let s = step(k)
         let v = s.wrappedValue
-        return HStack(spacing: 8) {
+        return VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 8) {
             Text("\(k + 1).").monospacedDigit().frame(width: 22, alignment: .trailing).foregroundStyle(Theme.textDim)
             Menu { stepKindItems { kind in
                 var n = s.wrappedValue
@@ -175,6 +180,8 @@ private struct MacroEditor: View {
                 if kind.needsOverlay, n.overlay == nil { n.overlay = 1 }
                 if kind.needsChannel, n.channel == nil { n.channel = model.audioChannels.first?.id }
                 if kind == .wait, n.seconds == nil { n.seconds = 2 }
+                if kind == .audioFade { n.seconds = n.seconds ?? 3; n.level = n.level ?? -90 }
+                if kind == .runMacro, n.macro == nil { n.macro = 1 }
                 s.wrappedValue = n
             } } label: { Text(L10n.t("macro.step.\(v.kind.rawValue)")) }
                 .frame(width: 190)
@@ -198,12 +205,53 @@ private struct MacroEditor: View {
                     .textFieldStyle(.roundedBorder).frame(width: 70)
                 Text("s")
             }
+            if v.kind == .audioFade {
+                Text(L10n.t("macro.fade_to")).foregroundStyle(Theme.textDim)
+                TextField("", value: Binding(get: { v.level ?? 0 }, set: { s.wrappedValue.level = min(max($0, -90), 10) }),
+                          format: .number.precision(.fractionLength(0...1)))
+                    .textFieldStyle(.roundedBorder).frame(width: 56)
+                Text("dB")
+                TextField("", value: Binding(get: { v.seconds ?? 0 }, set: { s.wrappedValue.seconds = min(max($0, 0), MacroStep.maxFade) }),
+                          format: .number.precision(.fractionLength(0...2)))
+                    .textFieldStyle(.roundedBorder).frame(width: 56)
+                Text("s")
+            }
+            if v.kind == .runMacro {
+                Picker("", selection: Binding(get: { v.macro ?? 1 }, set: { s.wrappedValue.macro = $0 })) {
+                    ForEach(Array(model.macroBook.macros.prefix(MacroBook.maxNumber).enumerated()), id: \.offset) { n, m in
+                        Text("\(n + 1)  \(m.name)").tag(n + 1)
+                    }
+                }
+                .labelsHidden().frame(width: 200)
+            }
+            Menu {
+                Button(L10n.t("macro.cond.none")) { s.wrappedValue.condition = nil }
+                Divider()
+                ForEach(MacroCondition.Kind.allCases, id: \.self) { c in
+                    Button(L10n.t("macro.cond.\(c.rawValue)")) {
+                        s.wrappedValue.condition = MacroCondition(c, input: c.needsInput ? (v.condition?.input ?? model.switcher.program ?? model.inputs.first?.id) : nil)
+                    }
+                }
+            } label: { Image(systemName: v.condition == nil ? "questionmark.diamond" : "questionmark.diamond.fill") }
+                .menuStyle(.borderlessButton).fixedSize().help(L10n.t("macro.cond.help"))
             if !v.isComplete { Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).help(L10n.t("macro.incomplete")) }
             Spacer()
             Button { move(k, -1) } label: { Image(systemName: "chevron.up") }.buttonStyle(.borderless).disabled(k == 0)
             Button { move(k, 1) } label: { Image(systemName: "chevron.down") }.buttonStyle(.borderless)
                 .disabled(k == macro.wrappedValue.steps.count - 1)
             Button { macro.wrappedValue.steps.remove(at: k) } label: { Image(systemName: "trash") }.buttonStyle(.borderless)
+        }
+            if let c = v.condition {
+                HStack(spacing: 8) {
+                    Text(L10n.t("macro.cond.only_if")).foregroundStyle(Theme.textDim)
+                    Text(L10n.t("macro.cond.\(c.kind.rawValue)"))
+                    if c.kind.needsInput {
+                        inputPicker(Binding(get: { s.wrappedValue.condition?.input }, set: { s.wrappedValue.condition?.input = $0 }), allowAny: false)
+                    }
+                }
+                .font(.system(size: 11))
+                .padding(.leading, 30)
+            }
         }
     }
 
@@ -238,6 +286,13 @@ private struct MacroEditor: View {
             }
             .labelsHidden().frame(width: 220)
             if v.event.hasInput { inputPicker(t.input, allowAny: true) }
+            if v.event == .timeOfDay {
+                TextField("HH:mm", text: Binding(get: { v.time ?? "" }, set: { t.wrappedValue.time = $0 }))
+                    .textFieldStyle(.roundedBorder).frame(width: 70)
+                if MacroTrigger.normalizedTime(v.time) == nil {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange).help(L10n.t("macro.time_invalid"))
+                }
+            }
             Spacer()
             Button { macro.wrappedValue.triggers.remove(at: k) } label: { Image(systemName: "trash") }.buttonStyle(.borderless)
         }

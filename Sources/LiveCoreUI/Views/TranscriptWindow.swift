@@ -14,6 +14,7 @@ struct TranscriptWindow: View {
     @State private var timestamps = false
     @State private var follow = true
     @State private var copied = false
+    @Environment(\.openWindow) private var openWindow
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
     private var transcriptionInputs: [ProductionEngine.InputInfo] { model.inputs.filter { $0.kind == .subtitles } }
@@ -49,6 +50,18 @@ struct TranscriptWindow: View {
                 .disabled(lines.isEmpty)
                 Spacer()
                 if copied { Text(L10n.t("transcript.copied")).font(.caption).foregroundStyle(.secondary) }
+                // 0.71.0: summary, minutes and YouTube chapters by the AI Assistant's provider.
+                Menu(L10n.t("transcript.ai")) {
+                    ForEach(AIAgent.SummaryKind.allCases, id: \.self) { k in
+                        Button(L10n.t("transcript.ai.\(k.rawValue)")) {
+                            model.aiAgent.send(AIAgent.summaryCommand(k, transcript: TranscriptLine.join(lines, timestamps: true)),
+                                               shown: L10n.t("transcript.ai.\(k.rawValue)") + " (\(lines.count) " + L10n.t("transcript.lines") + ")")
+                            openWindow(id: "ai-assistant")
+                        }
+                    }
+                }
+                .fixedSize()
+                .disabled(lines.isEmpty)
                 Button(L10n.t("transcript.save")) { save() }.disabled(lines.isEmpty)
                 Button(L10n.t("transcript.copy")) {
                     NSPasteboard.general.clearContents()

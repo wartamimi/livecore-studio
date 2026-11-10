@@ -285,7 +285,14 @@ public final class AppModel: ObservableObject {
             self.overlays = e.overlays
         }
         e.onStreamStats = { [weak self] id, s in self?.destinationStats[id] = s }
-        e.onRecordStats = { [weak self] s in self?.recordStats = s }
+        e.onRecordStats = { [weak self] s in
+            guard let self else { return }
+            let was = self.isRecording
+            self.recordStats = s
+            // The recorder stopped by itself (disk full, error): the multitrack files end too.
+            if was, !self.isRecording, e.multitrack.isRunning { e.multitrack.stop() }
+        }
+        e.multitrack.onError = { [weak self] msg in self?.report(msg) }
         e.onISOStats = { [weak self] s in self?.isoStats = s }
         e.onError = { [weak self] msg in self?.report(msg) }
         e.onDiagnostic = { msg in FileLog.shared.warning(msg) }
@@ -379,6 +386,9 @@ public final class AppModel: ObservableObject {
         tickCount += 1
         if tickCount % 15 == 0 { updateUIDemand() }
         if tickCount % 6 == 0 { checkMacroOutputEvents() }
+        if tickCount % 3 == 0 { checkShowAutomation() }
+        if prompter.running { prompter.tick() }
+        if tickCount % 30 == 0 { checkMacroTimeTriggers() }
         if tickCount % 3 == 0 { meters.updateLoudness(e.mixer) }
         if tickCount % 30 == 0 { performance = e.samplePerformance(); refreshExternalStatus(); logRenderDrops(e) }
         if remoteServer != nil, tickCount % 3 == 0 { pushRemoteState(clients: tickCount % 30 == 0) }
@@ -474,6 +484,20 @@ public final class AppModel: ObservableObject {
     var macroLastStreaming = false
     var macroLastRecording = false
     var macroVideoEndObserver: Any?
+    // 0.71.0: time triggers, audio fades, safe slate, auto-director.
+    var macroLastMinute = ""
+    var audioFadeTokens: [String: Int] = [:]
+    var audioFadeCounter = 0
+    @Published public var safeSlate = SafeSlateConfig()
+    @Published public var autoDirector = AutoDirectorConfig()
+    @Published public internal(set) var safeSlateReplaced: InputID?
+    var safeSlateWatch = SafeSlateWatch()
+    var director = AutoDirector()
+    var directorExpectedProgram: InputID?
+    /// Teleprompter (0.71.0): its own observable object, so scrolling 30 times a second only
+    /// redraws the prompter window.
+    public let prompter = TeleprompterModel()
+    var prompterPushedRev = -1
 
     // Event rundown (0.42.0).
     @Published public var rundown = Rundown()

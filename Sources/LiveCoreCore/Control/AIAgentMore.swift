@@ -32,7 +32,7 @@ public enum AIAppAction: Equatable, Sendable {
                                  "ptz_preset", "ptz_home", "data_row_next", "data_row_previous", "data_row_set",
                                  "qr_next", "qr_previous", "qr_set", "qr_show", "fullscreen",
                                  "slide_next", "slide_previous", "open_window"]
-    public static let windows = ["multiview", "macros", "rundown", "highlights", "transcript", "program-output"]
+    public static let windows = ["multiview", "macros", "rundown", "highlights", "transcript", "program-output", "automation", "teleprompter"]
 
     public var needsInput: Bool {
         switch self {

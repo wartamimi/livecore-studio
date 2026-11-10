@@ -217,6 +217,8 @@ public enum RemoteCommand: Equatable, Sendable {
     case qrShow(input: Int)
     /// Full-screen output on the Mac on / off (0.62.0).
     case fullscreen
+    /// Teleprompter control (0.71.0).
+    case prompter(TeleprompterCommand)
 }
 
 public enum RemoteRoute: Equatable, Sendable {
@@ -233,6 +235,8 @@ public enum RemoteRoute: Equatable, Sendable {
     /// Picture push (0.62.0): one long response that streams every new Program / Preview JPEG
     /// as [UInt32 LE length][UInt8 bus][UInt32 LE seq][JPEG]; `quality` is low, normal or high.
     case videoStream(buses: [String], quality: String)
+    /// Teleprompter script text (0.71.0), fetched when the state's prompter revision changes.
+    case prompterText
     case command(RemoteCommand)
     case notFound
     case methodNotAllowed
@@ -240,7 +244,7 @@ public enum RemoteRoute: Equatable, Sendable {
 
     public var needsPIN: Bool {
         switch self {
-        case .state, .ping, .frame, .listen, .listenStream, .videoStream, .command: return true
+        case .state, .ping, .frame, .listen, .listenStream, .videoStream, .prompterText, .command: return true
         default: return false
         }
     }
@@ -275,6 +279,8 @@ public enum RemoteRouter {
             let q = r.query["q"] ?? "normal"
             guard ["low", "normal", "high"].contains(q) else { return .badRequest("q") }
             return .videoStream(buses: buses, quality: q)
+        case "/api/prompter":
+            return r.method == "GET" ? .prompterText : .methodNotAllowed
         default:
             break
         }
@@ -334,6 +340,9 @@ public enum RemoteRouter {
             guard let n = int(r.query["n"]), (1...MacroBook.maxNumber).contains(n) else { return .badRequest("n") }
             cmd = .action(.macro(n))
         case "/api/fullscreen": cmd = .fullscreen
+        case "/api/prompter/cmd":
+            guard let c = r.query["do"].flatMap(TeleprompterCommand.init(rawValue:)) else { return .badRequest("do") }
+            cmd = .prompter(c)
         case "/api/qr/next", "/api/qr/previous":
             guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
             cmd = .qrItem(input: n, delta: r.path == "/api/qr/next" ? 1 : -1)
@@ -559,6 +568,14 @@ public struct RemoteState: Equatable, Sendable {
     public var dropped: Int = 0
     public var fullscreen = false
     public var macros: [MacroItem] = []
+    /// Teleprompter (0.71.0): script revision (the page fetches /api/prompter when it changes),
+    /// position 0...1, running, speed, size and mirror.
+    public var prompterRev = 0
+    public var prompterPos: Double = 0
+    public var prompterRunning = false
+    public var prompterWPM: Double = 140
+    public var prompterSize: Double = 56
+    public var prompterMirror = false
 
     public init() {}
 
@@ -625,6 +642,10 @@ public struct RemoteState: Equatable, Sendable {
             e["n"] = "\(m.number)"; e["name"] = JSON.string(m.name); e["running"] = JSON.bool(m.running)
             return e.rendered
         })
+        var pr = JSON.Object()
+        pr["rev"] = "\(prompterRev)"; pr["pos"] = JSON.number(prompterPos); pr["run"] = JSON.bool(prompterRunning)
+        pr["wpm"] = JSON.number(prompterWPM); pr["size"] = JSON.number(prompterSize); pr["mirror"] = JSON.bool(prompterMirror)
+        o["prompter"] = pr.rendered
         return o.rendered
     }
 }

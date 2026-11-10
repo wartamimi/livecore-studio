@@ -44,6 +44,10 @@ extension AppModel {
         rundown = doc.rundown ?? Rundown()
         stopAllMacros()
         macroBook = doc.macros ?? MacroBook()
+        safeSlate = doc.safeSlate ?? SafeSlateConfig()
+        autoDirector = doc.autoDirector ?? AutoDirectorConfig()
+        resetShowAutomation()
+        prompter.load(doc.teleprompter ?? TeleprompterScript())
         quietMacroTriggers()
         rundownIndex = nil
         rundownStart = nil
@@ -58,6 +62,9 @@ extension AppModel {
     func storeInputGroups(in doc: inout ProjectDocument) {
         doc.rundown = rundown.segments.isEmpty ? nil : rundown
         doc.macros = macroBook.macros.isEmpty ? nil : macroBook
+        doc.safeSlate = safeSlate == SafeSlateConfig() ? nil : safeSlate
+        doc.autoDirector = autoDirector == AutoDirectorConfig() ? nil : autoDirector
+        doc.teleprompter = prompter.script == TeleprompterScript() ? nil : prompter.script
         for k in doc.inputs.indices {
             let id = doc.inputs[k].id
             doc.inputs[k].colorTag = inputTags[id]

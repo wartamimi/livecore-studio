@@ -85,9 +85,9 @@ extension AppModel {
         }
         var targets: [ProductionEngine.StreamTarget] = []
         let st = settings.stream
-        var candidates: [(id: String, name: String, url: String, account: String, bus: OutputBus)] = []
-        if st.primaryEnabled { candidates.append((Self.primaryDestinationID, st.primaryName, st.serverURL, st.keychainAccount, st.primaryAudioBus)) }
-        for d in st.additional where d.enabled { candidates.append((d.id, d.name, d.serverURL, d.keychainAccount, d.bus)) }
+        var candidates: [(id: String, name: String, url: String, account: String, bus: OutputBus, backup: String)] = []
+        if st.primaryEnabled { candidates.append((Self.primaryDestinationID, st.primaryName, st.serverURL, st.keychainAccount, st.primaryAudioBus, st.primaryBackupURL)) }
+        for d in st.additional where d.enabled { candidates.append((d.id, d.name, d.serverURL, d.keychainAccount, d.bus, d.backupServerURL ?? "")) }
         for c in candidates {
             let label = c.name.isEmpty ? c.id : c.name
             do {
@@ -106,7 +106,16 @@ extension AppModel {
                 }
                 // Never let the key reach the log file, even inside an error message.
                 FileLog.shared.addSecret(key)
-                targets.append(.init(id: c.id, name: label, url: try RTMPURL.parse(serverURL: c.url, streamKey: key), audioBus: c.bus))
+                // Backup ingest server (0.71.0): same key; a bad backup address is reported but the
+                // destination still streams to its main server.
+                var backup: RTMPURL?
+                let b = c.backup.trimmingCharacters(in: .whitespaces)
+                if !b.isEmpty {
+                    do { backup = try RTMPURL.parse(serverURL: b, streamKey: key) } catch {
+                        report(L10n.f("stream.backup_invalid", label))
+                    }
+                }
+                targets.append(.init(id: c.id, name: label, url: try RTMPURL.parse(serverURL: c.url, streamKey: key), backup: backup, audioBus: c.bus))
             } catch let err as RTMPURL.ParseError {
                 report("\(label): \(err.description)")
             } catch let err as SRTURL.ParseError {

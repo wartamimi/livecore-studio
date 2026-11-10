@@ -269,10 +269,12 @@ struct SettingsView: View {
                     TextField(L10n.t("stream.dest_name"), text: $draft.stream.primaryName, prompt: Text("YouTube"))
                 }
                 TextField(L10n.t("stream.server"), text: $draft.stream.serverURL, prompt: Text("rtmp://a.rtmp.youtube.com/live2"))
+                TextField(L10n.t("stream.backup_server"), text: $draft.stream.primaryBackupURL, prompt: Text("rtmp://b.rtmp.youtube.com/live2?backup=1"))
                 OutputBusPicker(selection: $draft.stream.primaryAudioBus)
                 SecureField(L10n.t("stream.key"), text: $keyField,
                             prompt: Text(model.hasStreamKey ? "•••••••• (\(L10n.t("stream.key_saved")))" : ""))
                 Text(L10n.t("stream.srt_hint")).font(.caption).foregroundStyle(Theme.textDim)
+                Text(L10n.t("stream.backup_hint")).font(.caption).foregroundStyle(Theme.textDim)
                 if model.hasStreamKey {
                     Button(L10n.t("stream.delete_key"), role: .destructive) { model.saveStreamKey("") }
                 }
@@ -292,6 +294,8 @@ struct SettingsView: View {
                         }
                     }
                     TextField(L10n.t("stream.server"), text: $d.serverURL, prompt: Text("rtmps://live-api-s.facebook.com:443/rtmp/"))
+                    TextField(L10n.t("stream.backup_server"), text: Binding(get: { d.backupServerURL ?? "" },
+                                                                             set: { d.backupServerURL = $0.isEmpty ? nil : $0 }))
                     OutputBusPicker(selection: Binding(get: { d.bus }, set: { d.audioBus = $0 }))
                     SecureField(L10n.t("stream.key"), text: Binding(get: { destKeys[d.id] ?? "" }, set: { destKeys[d.id] = $0 }),
                                 prompt: Text(model.hasKey(account: d.keychainAccount) ? "•••••••• (\(L10n.t("stream.key_saved")))" : ""))
@@ -318,6 +322,9 @@ struct SettingsView: View {
     private var recordTab: some View {
         Form {
             RecordingProfileForm(settings: $draft.recording, output: draft.output)
+            Toggle(L10n.t("recprofile.multitrack"), isOn: Binding(get: { draft.recording.multitrackAudio == true },
+                                                                   set: { draft.recording.multitrackAudio = $0 ? true : nil }))
+                .help(L10n.t("recprofile.multitrack_help"))
             Text(L10n.t("bus.note")).font(.caption).foregroundStyle(Theme.textDim)
         }
         .formStyle(.grouped)

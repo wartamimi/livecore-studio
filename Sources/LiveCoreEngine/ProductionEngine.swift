@@ -94,6 +94,8 @@ public final class ProductionEngine {
     public internal(set) var streamers: [String: StreamOutput] = [:]
     var streamTerminal: [String: Bool] = [:]
     public let recorder = RecordingEngine()
+    /// Multitrack audio recording (0.71.0), runs with `recorder` when the setting is on.
+    public internal(set) lazy var multitrack = MultitrackRecorder(mixer: mixer)
     /// Instant replay buffer and its input (nil while replay is off).
     public let replay = ReplayRecorder()
     public internal(set) var replaySource: ReplaySource?

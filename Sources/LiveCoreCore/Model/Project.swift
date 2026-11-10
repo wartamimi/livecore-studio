@@ -27,6 +27,10 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
     public var rundown: Rundown?
     /// Macros and their triggers (added in 0.65.0).
     public var macros: MacroBook?
+    /// Safe slate and auto-director (added in 0.71.0).
+    public var safeSlate: SafeSlateConfig?
+    public var autoDirector: AutoDirectorConfig?
+    public var teleprompter: TeleprompterScript?
 
     public init(version: Int = ProjectDocument.currentVersion, settings: ProductionSettings = ProductionSettings(),
                 inputs: [ProjectInput] = [], overlays: [ProjectOverlay] = [], audio: ProjectAudio = ProjectAudio(),
@@ -87,6 +91,8 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
         // A project file only ever makes the app open HTTPS MP3/AAC radio streams.
         doc.audio.radios = audio.radios?.filter { RadioBrowser.isPlayable($0.station) }
         doc.macros = macros?.pruned(inputs: seen)
+        if let sl = safeSlate?.slate, !seen.contains(sl) { doc.safeSlate?.slate = nil }
+        doc.autoDirector = autoDirector?.pruned(inputs: seen)
         return doc
     }
 }

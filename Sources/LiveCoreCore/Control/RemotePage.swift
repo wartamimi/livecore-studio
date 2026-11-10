@@ -248,6 +248,11 @@ nav svg{width:22px;height:22px}
 }
 @media (hover:hover){.key:hover:not(:disabled):not(.on){background:var(--keyH)}.chip:hover:not(.on){color:var(--ink)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+#prompt{position:fixed;inset:0;background:#000;z-index:50;overflow:hidden}
+#prompt .pt{position:absolute;left:6%;right:6%;top:33%;color:#fff;font-weight:600;line-height:1.25;white-space:pre-wrap;transition:transform .3s linear}
+#prompt .pl{position:absolute;left:0;right:0;top:33%;height:2px;background:rgba(255,220,0,.4)}
+#prompt .pc{position:absolute;left:0;right:0;bottom:10px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+#prompt .pc button{min-width:52px}
 </style>
 </head>
 <body data-tab="switch">
@@ -310,6 +315,8 @@ nav svg{width:22px;height:22px}
       <div id="qrs"></div>
       <div class="sub hidden" id="macHead">Macro</div>
       <div id="macros" class="grid4"></div>
+      <div class="sub">Teleprompter</div>
+      <div class="grid4" id="prKeys"></div>
     </section>
     <section class="card a-tools" data-tab="tools">
       <h2 data-t="tools"></h2>
@@ -867,6 +874,29 @@ document.addEventListener("keydown",e=>{
 
 pad();
 if(pin)signIn();
+</script>
+<div id="prompt" class="hidden"><div class="pl"></div><div class="pt" id="prText"></div><div class="pc" id="prCtl"></div></div>
+<script>
+// Teleprompter (0.71.0): the Mac keeps the position; the phone shows it and can control it.
+let prRev=-1,prBusy=false;
+function prCmd(c){send("/api/prompter/cmd?do="+c)}
+(function(){const keys=[["⛶","open"],["⏮","restart"],["⏯","toggle"],["−5s","back"],["+5s","forward"],["🐢","slower"],["🐇","faster"],["⇋","mirror"]];
+  const box=document.getElementById("prKeys"),ctl=document.getElementById("prCtl");
+  keys.forEach(([t,c])=>{const b=document.createElement("button");b.className="key blue";b.textContent=t;
+    b.onclick=()=>{if(c==="open"){document.getElementById("prompt").classList.remove("hidden");prRender()}else prCmd(c)};box.appendChild(b)});
+  keys.slice(1).concat([["✕","close"]]).forEach(([t,c])=>{const b=document.createElement("button");b.className="key";b.textContent=t;
+    b.onclick=(e)=>{e.stopPropagation();if(c==="close")document.getElementById("prompt").classList.add("hidden");else prCmd(c)};ctl.appendChild(b)});
+})();
+async function prFetch(){if(prBusy)return;prBusy=true;
+  try{const r=await api("/api/prompter");const j=await r.json();prRev=j.rev;document.getElementById("prText").textContent=j.text||""}catch(e){}
+  prBusy=false}
+function prRender(){const p=(typeof st!=="undefined"&&st&&st.prompter)||null;if(!p)return;
+  if(p.rev!==prRev)prFetch();
+  const box=document.getElementById("prompt");if(box.classList.contains("hidden"))return;
+  const t=document.getElementById("prText");
+  t.style.fontSize=Math.max(16,Math.round(p.size*Math.min(1,window.innerWidth/1100)))+"px";
+  t.style.transform=(p.mirror?"scaleX(-1) ":"")+"translateY("+(-p.pos*t.scrollHeight)+"px)"}
+setInterval(prRender,250);
 </script>
 </body>
 </html>

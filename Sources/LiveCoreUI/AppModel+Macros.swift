@@ -26,8 +26,9 @@ extension AppModel {
         let token = macroTokenCounter
         macroRunTokens[id] = token
         runningMacros.insert(id)
-        FileLog.shared.info("macro \"\(m.name)\" started (\(m.steps.count) steps)")
-        let steps = m.steps
+        // Macros inside macros are run as their steps (0.71.0).
+        let steps = macroBook.expandedSteps(of: m)
+        FileLog.shared.info("macro \"\(m.name)\" started (\(steps.count) steps)")
         // Never inside the caller (a switcher update or a key press): the first step runs next.
         DispatchQueue.main.async { [weak self] in self?.macroStep(id, steps, 0, token) }
     }
@@ -61,6 +62,11 @@ extension AppModel {
         }
         let s = steps[k]
         let next: () -> Void = { [weak self] in self?.macroStep(id, steps, k + 1, token) }
+        if let c = s.condition, !c.holds(program: switcher.program, preview: switcher.preview,
+                                          streaming: isStreamingActive, recording: isRecording) {
+            DispatchQueue.main.async(execute: next)
+            return
+        }
         if s.kind == .wait {
             DispatchQueue.main.asyncAfter(deadline: .now() + s.waitSeconds, execute: next)
             return
@@ -121,8 +127,44 @@ extension AppModel {
         case .recordStop: if !recordLocked, isRecording { toggleRecord() }
         case .snapshot: saveSnapshot(confirm: false)
         case .highlight: markHighlight()
+        case .audioFade:
+            guard let vm = audioChannels.first(where: { $0.id == s.channel }) else {
+                FileLog.shared.warning("macro: audio channel \(s.channel ?? "") not found"); return
+            }
+            fadeChannel(vm, toDB: s.fadeLevelDB, seconds: s.fadeSeconds)
+        case .runMacro: break   // expanded before the macro runs
         case .wait: break
         }
+    }
+
+    /// Moves a channel's fader to `db` over `seconds` (0.71.0). A newer fade on the same channel
+    /// replaces a running one; touching the fader by hand is simply overwritten until it ends.
+    func fadeChannel(_ vm: ChannelVM, toDB db: Double, seconds: Double) {
+        let target = FaderLaw.position(forDB: Float(db))
+        audioFadeCounter += 1
+        let token = audioFadeCounter
+        audioFadeTokens[vm.id] = token
+        guard seconds > 0.02 else { vm.fader = target; return }
+        let from = vm.fader, start = CACurrentMediaTime()
+        func stepFade() {
+            guard audioFadeTokens[vm.id] == token else { return }
+            let t = min((CACurrentMediaTime() - start) / seconds, 1)
+            vm.fader = from + (target - from) * t
+            if t < 1 { DispatchQueue.main.asyncAfter(deadline: .now() + 1.0 / 30, execute: stepFade) }
+            else { audioFadeTokens[vm.id] = nil }
+        }
+        stepFade()
+    }
+
+    /// Time-of-day triggers: once per minute change (called every second).
+    func checkMacroTimeTriggers(now: Date = Date()) {
+        let c = Calendar.current.dateComponents([.hour, .minute], from: now)
+        guard let h = c.hour, let m = c.minute else { return }
+        let hm = (h < 10 ? "0" : "") + String(h) + ":" + (m < 10 ? "0" : "") + String(m)
+        guard hm != macroLastMinute else { return }
+        let first = macroLastMinute.isEmpty
+        macroLastMinute = hm
+        if !first { fireMacroEvents([MacroEvent(.timeOfDay, time: hm)]) }
     }
 
     // MARK: Triggers

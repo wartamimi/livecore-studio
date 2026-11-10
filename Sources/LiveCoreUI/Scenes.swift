@@ -52,6 +52,8 @@ public enum LiveCoreScenes {
                 WindowCommand(title: L10n.t("rundown.create_menu"), id: "rundown", key: "r", modifiers: [.command, .shift])
                 WindowCommand(title: L10n.t("macro.menu"), id: "macros", key: "k", modifiers: [.command, .option])
                 WindowCommand(title: L10n.t("ai.menu"), id: "ai-assistant", key: "j", modifiers: [.command, .option])
+                WindowCommand(title: L10n.t("automation.menu"), id: "automation", key: "a", modifiers: [.command, .option])
+                WindowCommand(title: L10n.t("prompter.menu"), id: "teleprompter", key: "p", modifiers: [.command, .option])
                 Divider()
                 Button(L10n.t("transition.cut")) { model.cut() }
                 Button(L10n.t("transition.auto")) { model.auto() }
@@ -107,6 +109,21 @@ public enum LiveCoreScenes {
                 .preferredColorScheme(.dark)
         }
         .defaultSize(width: 960, height: 600)
+
+        Window(L10n.t("automation.title"), id: "automation") {
+            ShowAutomationWindow()
+                .environmentObject(model)
+                .frame(minWidth: 560, minHeight: 480)
+                .preferredColorScheme(.dark)
+        }
+        .defaultSize(width: 640, height: 720)
+
+        Window(L10n.t("prompter.title"), id: "teleprompter") {
+            TeleprompterWindow()
+                .environmentObject(model)
+                .frame(minWidth: 480, minHeight: 320)
+        }
+        .defaultSize(width: 900, height: 600)
 
         Window(L10n.t("multiview.title"), id: "multiview") {
             MultiviewView()
