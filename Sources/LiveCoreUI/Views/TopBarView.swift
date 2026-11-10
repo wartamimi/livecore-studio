@@ -81,10 +81,16 @@ struct TopBarView: View {
 /// the bottom-right of the output dock (0.50.0); redrawn on their own via `Live`.
 struct PerformanceReadouts: View {
     @EnvironmentObject var model: AppModel
+    /// Watched here, not only by the `Live` wrapper around it: SwiftUI skips a child view whose
+    /// inputs did not change, so CPU / RAM and the recording time stood still (fixed 0.70.0).
+    @ObservedObject var live: LiveStats
     let compact: Bool
 
     var body: some View {
-        HStack(spacing: compact ? 8 : 12) { liveStats(compact: compact) }
+        // A one-second clock as well, so the readings move even if no new sample was signalled.
+        TimelineView(.periodic(from: .now, by: 1)) { _ in
+            HStack(spacing: compact ? 8 : 12) { liveStats(compact: compact) }
+        }
     }
 
     @ViewBuilder

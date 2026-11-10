@@ -114,7 +114,7 @@ struct OutputDockView: View {
                 .padding(.leading, 4)
             Spacer(minLength: 0)
             // Machine readings and stream / record status, bottom right (0.50.0).
-            Live(model.live) { PerformanceReadouts(compact: compactStats) }
+            PerformanceReadouts(live: model.live, compact: compactStats)
         }
     }
 

@@ -135,6 +135,7 @@ extension AIAgent {
 
     static var extraTools: [[String: Any]] {
         [
+            detailsTool,
             [
                 "name": "app_action",
                 "description": """

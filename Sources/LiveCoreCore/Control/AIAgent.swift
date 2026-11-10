@@ -72,7 +72,7 @@ public enum AIAgent {
         \(allowOutputs
           ? "- You may start or stop the stream and the recording, but only when the operator asks for it in so many words."
           : "- You may NOT start or stop the stream or the recording: the operator has switched that off. Tell them to do it themselves.")
-        """
+        """ + "\n\n" + appManual
     }
 
     /// The steps array of run_steps and create_macro.

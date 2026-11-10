@@ -45,7 +45,7 @@ final class V066Tests: XCTestCase {
         let o = try XCTUnwrap(try JSONSerialization.jsonObject(with: body) as? [String: Any])
         XCTAssertEqual(o["model"] as? String, "claude-opus-5-5")
         XCTAssertEqual(o["fallbacks"] as? String, "default")
-        XCTAssertEqual((o["tools"] as? [Any])?.count, 15)
+        XCTAssertEqual((o["tools"] as? [Any])?.count, 16)
         XCTAssertNil(o["temperature"])
         let haiku = try XCTUnwrap(try JSONSerialization.jsonObject(with: AIAgent.requestBody(model: "claude-haiku-5-5", messages: [], allowOutputs: true)) as? [String: Any])
         XCTAssertNil(haiku["fallbacks"])
@@ -76,7 +76,7 @@ final class V0661Tests: XCTestCase {
         XCTAssertEqual(msgs.first?["role"] as? String, "system")
         XCTAssertEqual(msgs.last?["content"] as? String, "cut")
         let tools = try XCTUnwrap(o["tools"] as? [[String: Any]])
-        XCTAssertEqual(tools.count, 15)
+        XCTAssertEqual(tools.count, 16)
         XCTAssertEqual((tools[1]["function"] as? [String: Any])?["name"] as? String, "run_steps")
 
         let answer = #"{"choices":[{"finish_reason":"tool_calls","message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"run_steps","arguments":"{\"steps\":[{\"kind\":\"preview\",\"input\":2}]}"}}]}}]}"#
@@ -115,8 +115,8 @@ final class V067Tests: XCTestCase {
 
     func testToolsListed() {
         XCTAssertEqual(AIAgent.tools.compactMap { $0["name"] as? String },
-                       ["get_state", "run_steps", "run_macro", "create_title", "create_input", "update_title", "create_ticker", "create_macro", "get_input_settings", "set_input_settings", "set_audio", "set_transition", "delete_input", "app_action", "web_search"])
-        XCTAssertEqual(AIAgent.openAITools.count, 15)
+                       ["get_state", "run_steps", "run_macro", "create_title", "create_input", "update_title", "create_ticker", "create_macro", "get_input_settings", "set_input_settings", "set_audio", "set_transition", "delete_input", "get_app_details", "app_action", "web_search"])
+        XCTAssertEqual(AIAgent.openAITools.count, 16)
     }
 
     func testTitleRequest() throws {
@@ -249,5 +249,16 @@ final class V0691Tests: XCTestCase {
         XCTAssertEqual(open.suggestions, ["Cut ke input 2"])
         XCTAssertEqual(AIAgent.splitSuggestions("Plain").suggestions, [])
         XCTAssertTrue(AIAgent.systemPrompt(allowOutputs: false).contains("<suggest>"))
+    }
+}
+
+final class V070Tests: XCTestCase {
+    func testManualInEveryPrompt() {
+        let p = AIAgent.systemPrompt(allowOutputs: true)
+        XCTAssertTrue(p.contains("LIVECORE STUDIO MANUAL"))
+        XCTAssertTrue(p.contains("get_app_details"))
+        let body = String(data: AIAgent.openAIRequestBody(model: "m", messages: [], allowOutputs: false, provider: .groq), encoding: .utf8)!
+        XCTAssertTrue(body.contains("LIVECORE STUDIO MANUAL"))
+        XCTAssertTrue(AIAgent.tools.contains { $0["name"] as? String == "get_app_details" })
     }
 }

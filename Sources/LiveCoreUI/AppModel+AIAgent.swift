@@ -341,6 +341,8 @@ public final class AIAgentSession: ObservableObject {
                 lines.append(Line(role: .action, text: "new macro \(n) \"\(m.name)\" (\(m.steps.count) steps)"))
                 return (use.id, n <= MacroBook.maxNumber ? "Saved as macro \(n)." : "Saved (macro \(n); only 1-\(MacroBook.maxNumber) can be run by number).", false)
             }
+        case "get_app_details":
+            return (use.id, model.aiAppDetails(), false)
         case "app_action":
             switch AIAppAction.parse(use.input, show: show(model)) {
             case let .failure(e): return (use.id, e.message, true)
