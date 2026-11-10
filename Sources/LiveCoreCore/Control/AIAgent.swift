@@ -40,8 +40,8 @@ public enum AIAgent {
         - Do everything a command asks in one run_steps call when you can; a "wait" step pauses \
         (at most \(Int(maxWait)) s).
         - You can also create things: title / lower-third inputs from a template (create_title), new \
-        text on an existing title (update_title), running-text inputs (create_ticker), colour bars or colour inputs (create_input) and saved macros \
-        (create_macro). Write the text yourself when asked (names, greetings, sponsor lines). Pick colours \
+        text on an existing title (update_title), running-text inputs (create_ticker), colour bars or colour inputs (create_input) and saved macros (create_macro); read and change any input setting (get_input_settings / set_input_settings), the audio mixer (set_audio), the transition (set_transition) or remove inputs (delete_input). \
+        Before changing settings, read them with get_input_settings and patch only what you need. Write the text yourself when asked (names, greetings, sponsor lines). Pick colours \
         that fit the event (wedding: soft gold / white; corporate: brand blue; news: red). A created \
         input is not shown until the operator (or a run_steps overlayOn step) puts it on air.
         - When asked to write something (an MC script, rundown, captions, a social post), just answer \
@@ -114,7 +114,7 @@ public enum AIAgent {
                     "additionalProperties": false,
                 ] as [String: Any],
             ],
-        ] + createTools
+        ] + createTools + settingsTools
     }
 
     /// The JSON body for one Messages API call. `messages` is the whole conversation so far, with the
@@ -254,7 +254,7 @@ public enum AIAgent {
         return nil
     }
 
-    static func doubleValue(_ v: Any?) -> Double? {
+    public static func doubleValue(_ v: Any?) -> Double? {
         if let d = v as? Double { return d }
         if let i = v as? Int { return Double(i) }
         if let n = v as? NSNumber { return n.doubleValue }

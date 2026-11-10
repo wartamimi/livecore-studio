@@ -96,7 +96,7 @@ public enum LiveCoreScenes {
         Window(L10n.t("ai.title"), id: "ai-assistant") {
             AIAgentWindow(session: model.aiAgent)
                 .environmentObject(model)
-                .frame(minWidth: 520, minHeight: 480)
+                .frame(minWidth: 380, idealWidth: 520, minHeight: 420, idealHeight: 640)
                 .preferredColorScheme(.dark)
         }
 

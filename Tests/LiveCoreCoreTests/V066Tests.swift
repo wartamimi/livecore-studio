@@ -45,7 +45,7 @@ final class V066Tests: XCTestCase {
         let o = try XCTUnwrap(try JSONSerialization.jsonObject(with: body) as? [String: Any])
         XCTAssertEqual(o["model"] as? String, "claude-opus-5-5")
         XCTAssertEqual(o["fallbacks"] as? String, "default")
-        XCTAssertEqual((o["tools"] as? [Any])?.count, 8)
+        XCTAssertEqual((o["tools"] as? [Any])?.count, 13)
         XCTAssertNil(o["temperature"])
         let haiku = try XCTUnwrap(try JSONSerialization.jsonObject(with: AIAgent.requestBody(model: "claude-haiku-5-5", messages: [], allowOutputs: true)) as? [String: Any])
         XCTAssertNil(haiku["fallbacks"])
@@ -76,7 +76,7 @@ final class V0661Tests: XCTestCase {
         XCTAssertEqual(msgs.first?["role"] as? String, "system")
         XCTAssertEqual(msgs.last?["content"] as? String, "cut")
         let tools = try XCTUnwrap(o["tools"] as? [[String: Any]])
-        XCTAssertEqual(tools.count, 8)
+        XCTAssertEqual(tools.count, 13)
         XCTAssertEqual((tools[1]["function"] as? [String: Any])?["name"] as? String, "run_steps")
 
         let answer = #"{"choices":[{"finish_reason":"tool_calls","message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"run_steps","arguments":"{\"steps\":[{\"kind\":\"preview\",\"input\":2}]}"}}]}}]}"#
@@ -115,8 +115,8 @@ final class V067Tests: XCTestCase {
 
     func testToolsListed() {
         XCTAssertEqual(AIAgent.tools.compactMap { $0["name"] as? String },
-                       ["get_state", "run_steps", "run_macro", "create_title", "create_input", "update_title", "create_ticker", "create_macro"])
-        XCTAssertEqual(AIAgent.openAITools.count, 8)
+                       ["get_state", "run_steps", "run_macro", "create_title", "create_input", "update_title", "create_ticker", "create_macro", "get_input_settings", "set_input_settings", "set_audio", "set_transition", "delete_input"])
+        XCTAssertEqual(AIAgent.openAITools.count, 13)
     }
 
     func testTitleRequest() throws {
@@ -142,5 +142,37 @@ final class V067Tests: XCTestCase {
         XCTAssertEqual(m.name, "Opening")
         XCTAssertEqual(m.steps.map(\.kind), [.transition, .streamStart])
         XCTAssertThrowsError(try AIAgent.macroRequest(from: json(#"{"name":"","steps":[{"kind":"cut"}]}"#), show: show).get())
+    }
+}
+
+/// 0.68.0: AI settings tools (JSON merge patch on the app's models, mixer values).
+final class V068Tests: XCTestCase {
+    func testMergePatch() throws {
+        let m = AIAgent.mergePatch(["a": 1, "b": ["c": 2, "d": 3]], ["b": ["c": 5, "d": NSNull()], "e": "x"]) as? [String: Any]
+        XCTAssertEqual(m?["a"] as? Int, 1)
+        XCTAssertEqual((m?["b"] as? [String: Any])?["c"] as? Int, 5)
+        XCTAssertNil((m?["b"] as? [String: Any])?["d"])
+        XCTAssertEqual(m?["e"] as? String, "x")
+    }
+
+    func testPatchedTitleKeepsOtherFields() throws {
+        let t = AITitleSettings(title: "A", subtitle: "B", design: TitleTemplate.classicStrap.defaultDesign)
+        let p = try AIAgent.patched(t, patchJSON: #"{"title":"Budi","design":{"titleSize":72,"boxColor":{"r":1,"g":0,"b":0,"a":1}}}"#).get()
+        XCTAssertEqual(p.title, "Budi")
+        XCTAssertEqual(p.subtitle, "B")
+        XCTAssertEqual(p.design?.titleSize, 72)
+        XCTAssertEqual(p.design?.boxColor.r, 1)
+        XCTAssertEqual(p.design?.template, .classicStrap)
+        XCTAssertThrowsError(try AIAgent.patched(t, patchJSON: "not json").get())
+        XCTAssertThrowsError(try AIAgent.patched(t, patchJSON: #"{"title":5}"#).get())
+        let layers = try AIAgent.patched([Layer](), patchJSON: "[]").get()
+        XCTAssertTrue(layers.isEmpty)
+    }
+
+    func testAudioValues() {
+        if case let .success(v) = AIAgent.audioValue("fader", 3) { XCTAssertEqual(v as? Double, 1) } else { XCTFail() }
+        if case let .success(v) = AIAgent.audioValue("muted", true) { XCTAssertEqual(v as? Bool, true) } else { XCTFail() }
+        if case .success = AIAgent.audioValue("muted", 1.5) { XCTFail() }
+        if case .success = AIAgent.audioValue("volume", 1) { XCTFail() }
     }
 }

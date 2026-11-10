@@ -2030,3 +2030,13 @@
 "ai.models" = "Models";
 "ai.ollama_url" = "Ollama address";
 "ai.note_local" = "Ollama runs the model on this Mac (ollama.com, free, no internet needed after the model is downloaded: ollama pull qwen2.5:7b). Use a model that supports tools. The assistant can only do what a macro can: switch inputs, transitions, overlays, mute / unmute, play videos, run your macros.";
+/* 0.68.0 AI panel */
+"ai.settings" = "Provider, model and API key";
+"ai.welcome" = "What shall we make today?";
+"ai.welcome_sub" = "Switch cameras, design titles, write running text, change any setting, mix audio, build macros or write an MC script. Just ask.";
+"ai.chip_switch" = "Put camera 1 on air with a dissolve";
+"ai.chip_title" = "Make an elegant gold wedding lower third for Budi & Ani on overlay 1";
+"ai.chip_ticker" = "Make a running text welcoming the guests";
+"ai.chip_audio" = "Lower the music to half and turn on the mic compressor";
+"ai.chip_macro" = "Create a macro for the opening";
+"ai.chip_script" = "Write a 1-minute MC opening script";

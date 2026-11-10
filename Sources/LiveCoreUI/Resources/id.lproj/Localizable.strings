@@ -2030,3 +2030,13 @@
 "ai.models" = "Model";
 "ai.ollama_url" = "Alamat Ollama";
 "ai.note_local" = "Ollama menjalankan model di Mac ini (ollama.com, gratis, tanpa internet setelah model diunduh: ollama pull qwen2.5:7b). Pakai model yang mendukung tools. Asisten hanya bisa melakukan apa yang bisa dilakukan macro: pindah input, transisi, overlay, mute / unmute, putar video, jalankan macro Anda.";
+/* 0.68.0 Panel AI */
+"ai.settings" = "Penyedia, model dan API key";
+"ai.welcome" = "Mau bikin apa hari ini?";
+"ai.welcome_sub" = "Pindah kamera, desain title, tulis running text, ubah pengaturan apa saja, atur audio, buat macro atau tulis naskah MC. Tinggal minta.";
+"ai.chip_switch" = "Naikkan kamera 1 ke program dengan dissolve";
+"ai.chip_title" = "Buat lower third wedding emas elegan untuk Budi & Ani di overlay 1";
+"ai.chip_ticker" = "Buat running text ucapan selamat datang untuk tamu";
+"ai.chip_audio" = "Turunkan musik setengah dan nyalakan kompresor mic";
+"ai.chip_macro" = "Buatkan macro untuk opening";
+"ai.chip_script" = "Tuliskan naskah MC pembukaan 1 menit";

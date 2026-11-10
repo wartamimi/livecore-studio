@@ -17,7 +17,7 @@ public final class AIAgentSession: ObservableObject {
         public let text: String
     }
 
-    @Published public private(set) var lines: [Line] = []
+    @Published public internal(set) var lines: [Line] = []
     @Published public private(set) var busy = false
 
     static let runID = "ai-assistant"
@@ -247,6 +247,7 @@ public final class AIAgentSession: ObservableObject {
                 return (use.id, n <= MacroBook.maxNumber ? "Saved as macro \(n)." : "Saved (macro \(n); only 1-\(MacroBook.maxNumber) can be run by number).", false)
             }
         default:
+            if let r = settingsTool(use, model) { return r }
             return (use.id, "Unknown tool \(use.name).", true)
         }
     }
