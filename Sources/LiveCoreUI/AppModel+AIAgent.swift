@@ -106,11 +106,20 @@ public final class AIAgentSession: ObservableObject {
                 if AIAgent.usesFallback(modelID) { req.setValue(AIAgent.fallbackBeta, forHTTPHeaderField: "anthropic-beta") }
                 req.httpBody = AIAgent.requestBody(model: modelID, messages: messages, allowOutputs: allowOutputs)
             }
-            let data: Data, code: Int
+            var data = Data(), code = 0
             do {
-                let (d, resp) = try await URLSession.shared.data(for: req)
-                data = d
-                code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                // Busy / rate-limited servers (429, 500, 502, 503, 529): wait and try again, up to 3 times.
+                for attempt in 0...3 {
+                    let (d, resp) = try await URLSession.shared.data(for: req)
+                    data = d
+                    let http = resp as? HTTPURLResponse
+                    code = http?.statusCode ?? 0
+                    guard [429, 500, 502, 503, 529].contains(code), attempt < 3, !Task.isCancelled else { break }
+                    let after = Double(http?.value(forHTTPHeaderField: "retry-after") ?? "") ?? 0
+                    let wait = min(max(after, pow(2, Double(attempt + 1))), 20)
+                    lines.append(Line(role: .error, text: "\(p.displayName) is busy (HTTP \(code)); trying again in \(Int(wait)) s…"))
+                    try await Task.sleep(nanoseconds: UInt64(wait * 1_000_000_000))
+                }
             } catch {
                 if !Task.isCancelled {
                     let code = (error as? URLError).map { " [URLError \($0.errorCode)]" } ?? ""
@@ -125,7 +134,13 @@ public final class AIAgentSession: ObservableObject {
             guard code == 200, let reply = parsed else {
                 let detail = p.usesOpenAIFormat ? AIAgent.openAIErrorText(data) : AIAgent.errorText(data)
                 FileLog.shared.error("ai assistant HTTP \(code): \(detail)")
-                fail(code == 401 || code == 403 ? "\(p.displayName) refused the API key: \(detail)" : "\(p.displayName) HTTP \(code): \(detail)")
+                if code == 401 || code == 403 {
+                    fail("\(p.displayName) refused the API key: \(detail)")
+                } else if [429, 500, 502, 503, 529].contains(code) {
+                    fail("\(p.displayName) is still busy (HTTP \(code)): \(detail) Try again in a minute, or pick another model or provider under ⚙︎.")
+                } else {
+                    fail("\(p.displayName) HTTP \(code): \(detail)")
+                }
                 return
             }
             messages += AIAgent.assistantTurn(reply, p)
