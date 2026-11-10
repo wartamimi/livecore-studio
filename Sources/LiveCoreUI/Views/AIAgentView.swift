@@ -18,6 +18,7 @@ struct AIAgentWindow: View {
     @State private var hasKey = false
     @State private var showSettings = false
     @FocusState private var inputFocused: Bool
+    @Environment(\.openWindow) private var openWindow
 
     private static let gradient = LinearGradient(colors: [Color(red: 0.55, green: 0.36, blue: 1), Color(red: 0.2, green: 0.6, blue: 1),
                                                           Color(red: 1, green: 0.45, blue: 0.6)],
@@ -40,6 +41,7 @@ struct AIAgentWindow: View {
         .background(Theme.background)
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: showSettings)
         .onAppear {
+            session.openWindow = { id in openWindow(id: id) }
             loadProvider()
             if provider.keychainAccount != nil && !hasKey { showSettings = true }
             inputFocused = true
@@ -162,6 +164,9 @@ struct AIAgentWindow: View {
                                                     removal: .opacity))
                     }
                     if session.busy { ThinkingDots().id("thinking").transition(.opacity) }
+                    else if session.canRegenerate, session.lines.last?.role != .user {
+                        regenerateButton.transition(.scale.combined(with: .opacity))
+                    }
                 }
                 .padding(12)
                 .animation(.spring(response: 0.4, dampingFraction: 0.75), value: session.lines.count)
@@ -170,6 +175,22 @@ struct AIAgentWindow: View {
             .onChange(of: session.lines.count) { _ in scrollDown(proxy) }
             .onChange(of: session.busy) { _ in scrollDown(proxy) }
         }
+    }
+
+    /// Asks the model again for the last command (0.69.0).
+    private var regenerateButton: some View {
+        HStack {
+            Button { withAnimation { session.regenerate() } } label: {
+                Label(L10n.t("ai.regenerate"), systemImage: "arrow.clockwise")
+                    .font(.system(size: 11, weight: .semibold))
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Capsule().strokeBorder(Self.gradient, lineWidth: 1.2))
+            }
+            .buttonStyle(.plain)
+            .help(L10n.t("ai.regenerate_help"))
+            Spacer()
+        }
+        .padding(.leading, 32)
     }
 
     private func scrollDown(_ proxy: ScrollViewProxy) {

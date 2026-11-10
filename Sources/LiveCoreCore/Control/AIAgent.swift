@@ -18,7 +18,7 @@ public enum AIAgent {
         ("claude-haiku-5-5", "Claude Haiku 5.5 (fastest, cheapest)"),
     ]
     /// Model calls per command at most (each tool round is one call).
-    public static let maxRounds = 8
+    public static let maxRounds = 12
     /// Longest wait step the assistant may use (a macro may wait up to an hour).
     public static let maxWait: Double = 30
     /// Steps that start or stop the stream or the recording: only when the operator allows them.
@@ -46,8 +46,19 @@ public enum AIAgent {
         input is not shown until the operator (or a run_steps overlayOn step) puts it on air.
         - When asked to write something (an MC script, rundown, captions, a social post), just answer \
         with the text; no tool is needed.
+        - Everything else the operator can do from a button or shortcut (next / previous preview, \
+        overlay on Preview, instant replay, T-bar, PTZ presets, title data rows, QR items, slides, \
+        full screen, opening a window) goes through app_action. web_search looks things up on the \
+        web (Exa) when you need facts you do not know.
+        - Each command comes with an <app_state> block: the show as it is now (inputs with number, \
+        name and type, Program / Preview, overlays, audio channels, macros). Use it instead of \
+        get_state when it has what you need; inputs may be named by number or by their name.
+        - If a tool answers with an error, read it, fix the call and try again; do not give up after \
+        the first error.
         - If a command is unclear or names something that does not exist, do nothing and ask a short \
         question instead.
+        - Write plain text only: no Markdown (no **bold**, # headings, backticks or tables). For a \
+        list, start each line with "• ".
         \(allowOutputs
           ? "- You may start or stop the stream and the recording, but only when the operator asks for it in so many words."
           : "- You may NOT start or stop the stream or the recording: the operator has switched that off. Tell them to do it themselves.")
@@ -114,7 +125,7 @@ public enum AIAgent {
                     "additionalProperties": false,
                 ] as [String: Any],
             ],
-        ] + createTools + settingsTools
+        ] + createTools + settingsTools + extraTools
     }
 
     /// The JSON body for one Messages API call. `messages` is the whole conversation so far, with the
@@ -192,8 +203,21 @@ public enum AIAgent {
     public struct Show {
         public var inputs: [(number: Int, id: InputID)]
         public var channels: [(id: String, name: String)]
-        public init(inputs: [(number: Int, id: InputID)], channels: [(id: String, name: String)]) {
-            self.inputs = inputs; self.channels = channels
+        /// Input names by number, so "camera 2" or "Logo" can name an input (0.69.0).
+        public var names: [Int: String]
+        public init(inputs: [(number: Int, id: InputID)], channels: [(id: String, name: String)], names: [Int: String] = [:]) {
+            self.inputs = inputs; self.channels = channels; self.names = names
+        }
+
+        /// An input number from a number, "3", "input 3", "#3", or an input name.
+        public func inputNumber(_ v: Any?) -> Int? {
+            if let n = AIAgent.intValue(v) { return n }
+            guard let raw = (v as? String)?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else { return nil }
+            if let exact = names.first(where: { $0.value.caseInsensitiveCompare(raw) == .orderedSame }) { return exact.key }
+            let digits = raw.filter(\.isNumber)
+            if !digits.isEmpty, raw.count - digits.count <= 8, let n = Int(digits) { return n }
+            let hits = names.filter { $0.value.range(of: raw, options: .caseInsensitive) != nil }
+            return hits.count == 1 ? hits.first?.key : nil
         }
     }
 
@@ -205,17 +229,19 @@ public enum AIAgent {
         var out: [MacroStep] = []
         for (k, s) in raw.enumerated() {
             let n = k + 1
-            guard let name = s["kind"] as? String, let kind = MacroStepKind(rawValue: name) else {
-                return .failure(.init("step \(n): unknown kind \(s["kind"].map { "\($0)" } ?? "nil")"))
+            guard let name = s["kind"] as? String, let kind = stepKind(name) else {
+                return .failure(.init("step \(n): unknown kind \(s["kind"].map { "\($0)" } ?? "nil"); use one of \(MacroStepKind.allCases.map(\.rawValue).joined(separator: ", "))"))
             }
             if outputKinds.contains(kind) && !allowOutputs {
                 return .failure(.init("step \(n): the operator has not allowed the assistant to start or stop the stream or the recording"))
             }
             var step = MacroStep(kind)
             if kind.needsInput {
-                guard let num = intValue(s["input"]) else { return .failure(.init("step \(n) (\(name)): input number is missing")) }
+                guard let num = show.inputNumber(s["input"]) else {
+                    return .failure(.init("step \(n) (\(name)): input is missing or unknown; inputs are \(show.inputList)"))
+                }
                 guard let i = show.inputs.first(where: { $0.number == num }) else {
-                    return .failure(.init("step \(n): there is no input \(num)"))
+                    return .failure(.init("step \(n): there is no input \(num); inputs are \(show.inputList)"))
                 }
                 step.input = i.id
             }
@@ -228,8 +254,9 @@ public enum AIAgent {
             if kind.needsChannel {
                 let c = (s["channel"] as? String ?? "").trimmingCharacters(in: .whitespaces)
                 guard let ch = show.channels.first(where: { $0.id == c })
-                        ?? show.channels.first(where: { $0.name.caseInsensitiveCompare(c) == .orderedSame }) else {
-                    return .failure(.init("step \(n): there is no audio channel \"\(c)\""))
+                        ?? show.channels.first(where: { $0.name.caseInsensitiveCompare(c) == .orderedSame })
+                        ?? show.channels.first(where: { !c.isEmpty && $0.name.range(of: c, options: .caseInsensitive) != nil }) else {
+                    return .failure(.init("step \(n): there is no audio channel \"\(c)\"; channels are \(show.channels.map { "\($0.id) (\($0.name))" }.joined(separator: ", "))"))
                 }
                 step.channel = ch.id
             }

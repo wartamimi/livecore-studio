@@ -2028,6 +2028,8 @@
 "ai.clear" = "Bersihkan";
 "ai.provider" = "Penyedia";
 "ai.refresh_models" = "Cek model untuk API key saya";
+"ai.regenerate" = "Buat ulang";
+"ai.regenerate_help" = "Minta jawaban baru untuk perintah terakhir (aksinya dijalankan lagi)";
 "ai.models" = "Model";
 "ai.ollama_url" = "Alamat Ollama";
 "ai.note_local" = "Ollama menjalankan model di Mac ini (ollama.com, gratis, tanpa internet setelah model diunduh: ollama pull qwen2.5:7b). Pakai model yang mendukung tools. Asisten hanya bisa melakukan apa yang bisa dilakukan macro: pindah input, transisi, overlay, mute / unmute, putar video, jalankan macro Anda.";

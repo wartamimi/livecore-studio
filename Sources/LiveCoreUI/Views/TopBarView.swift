@@ -27,6 +27,7 @@ struct TopBarView: View {
             Spacer(minLength: 0)
             // Rundown lives in Production › Create Rundown… (0.55.1). Multiview and Settings are
             // real buttons with a hover, like the padlock in the bottom dock.
+            AIAssistantButton { openWindow(id: "ai-assistant") }
             Button { openWindow(id: "multiview") } label: { Image(systemName: "square.grid.3x2") }
                 .help(L10n.t("multiview.open"))
                 .buttonStyle(StudioButtonStyle())
@@ -298,5 +299,36 @@ struct StatusPill: View {
 func formatDuration(_ s: Double) -> String {
     let t = Int(max(0, s))
     return String(format: "%02d:%02d:%02d", t / 3600, (t / 60) % 60, t % 60)
+}
+/// The AI Assistant button next to Multiview (0.69.0): a gradient sparkle that glows and
+/// wiggles on hover.
+struct AIAssistantButton: View {
+    let action: () -> Void
+    @State private var hover = false
+
+    private static let gradient = LinearGradient(colors: [Color(red: 0.55, green: 0.36, blue: 1), Color(red: 0.2, green: 0.6, blue: 1),
+                                                          Color(red: 1, green: 0.45, blue: 0.6)],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing)
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Capsule().fill(Self.gradient).blur(radius: hover ? 8 : 4).opacity(hover ? 0.75 : 0.35)
+                Capsule().fill(Self.gradient)
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                        .rotationEffect(.degrees(hover ? -12 : 0))
+                        .scaleEffect(hover ? 1.2 : 1)
+                    Text("AI").font(.system(size: 11, weight: .heavy, design: .rounded))
+                }
+                .foregroundStyle(.white)
+            }
+            .frame(width: 52, height: 24)
+            .scaleEffect(hover ? 1.06 : 1)
+        }
+        .buttonStyle(.plain)
+        .help(L10n.t("ai.title") + " (⌥⌘J)")
+        .onHover { h in withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { hover = h } }
+    }
 }
 #endif

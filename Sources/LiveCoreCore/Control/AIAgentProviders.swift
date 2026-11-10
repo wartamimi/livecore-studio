@@ -4,7 +4,7 @@ import Foundation
 /// Gemini and Ollama (a model running on this Mac) use the OpenAI-style Chat Completions format
 /// with function tools. The tools and the checks on every step are the same for all of them.
 public enum AIProvider: String, CaseIterable, Codable, Sendable {
-    case anthropic, openAI, gemini, groq, openRouter, ollama
+    case anthropic, openAI, gemini, groq, openRouter, exa, ollama
 
     public var displayName: String {
         switch self {
@@ -13,6 +13,7 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         case .gemini: return "Google Gemini"
         case .groq: return "Groq (free tier)"
         case .openRouter: return "OpenRouter (free models)"
+        case .exa: return "Exa (web answers)"
         case .ollama: return "Ollama (local, on this Mac)"
         }
     }
@@ -25,6 +26,7 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         case .gemini: return "gemini-api-key"
         case .groq: return "groq-api-key"
         case .openRouter: return "openrouter-api-key"
+        case .exa: return AIAgent.exaKeychainAccount
         case .ollama: return nil
         }
     }
@@ -36,6 +38,7 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         case .gemini: return "AIza…  (aistudio.google.com)"
         case .groq: return "gsk_…  (console.groq.com)"
         case .openRouter: return "sk-or-…  (openrouter.ai/keys)"
+        case .exa: return "Exa key  (dashboard.exa.ai)"
         case .ollama: return ""
         }
     }
@@ -52,6 +55,8 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         // ":free" models cost nothing (daily limits); "Check models" lists the current free ones.
         case .openRouter: return [("meta-llama/llama-3.3-70b-instruct:free", "Llama 3.3 70B (free)"),
                                   ("openrouter/auto", "Auto (OpenRouter picks, paid)")]
+        // Exa answers questions from the web; it has no tools, so it cannot control the app.
+        case .exa: return [("exa", "Exa answer (web search)")]
         case .ollama: return [("qwen2.5:7b", "Qwen 2.5 7B"), ("llama3.1:8b", "Llama 3.1 8B"), ("mistral-nemo", "Mistral Nemo")]
         }
     }
@@ -59,6 +64,9 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
     public var defaultModel: String { models[0].0 }
 
     public var usesOpenAIFormat: Bool { self != .anthropic }
+
+    /// Can call the app's tools (Exa only answers questions).
+    public var supportsTools: Bool { self != .exa }
 
     /// Chat endpoint. `ollamaBase` is the Ollama server (default http://localhost:11434).
     public func endpoint(ollamaBase: String = "http://localhost:11434") -> URL? {
@@ -68,6 +76,7 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         case .gemini: return URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
         case .groq: return URL(string: "https://api.groq.com/openai/v1/chat/completions")
         case .openRouter: return URL(string: "https://openrouter.ai/api/v1/chat/completions")
+        case .exa: return URL(string: "https://api.exa.ai/chat/completions")
         case .ollama:
             var b = ollamaBase.trimmingCharacters(in: .whitespacesAndNewlines)
             while b.hasSuffix("/") { b.removeLast() }
@@ -95,9 +104,11 @@ extension AIAgent {
         var body: [String: Any] = [
             "model": model,
             "messages": [["role": "system", "content": systemPrompt(allowOutputs: allowOutputs)]] + messages,
-            "tools": openAITools,
-            "tool_choice": "auto",
         ]
+        if provider.supportsTools {
+            body["tools"] = openAITools
+            body["tool_choice"] = "auto"
+        }
         // Gemini 2.5 thinks before answering by default; live commands need a quick answer.
         if provider == .gemini { body["reasoning_effort"] = "low" }
         return (try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])) ?? Data()
@@ -174,6 +185,7 @@ extension AIProvider {
         case .gemini: return URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/models")
         case .groq: return URL(string: "https://api.groq.com/openai/v1/models")
         case .openRouter: return URL(string: "https://openrouter.ai/api/v1/models?supported_parameters=tools")
+        case .exa: return nil
         case .ollama:
             guard let chat = endpoint(ollamaBase: ollamaBase)?.absoluteString else { return nil }
             return URL(string: chat.replacingOccurrences(of: "/v1/chat/completions", with: "/api/tags"))
@@ -212,7 +224,7 @@ extension AIProvider {
             }
         case .groq:
             ids = ids.filter { id in !["whisper", "tts", "guard", "playai", "orpheus", "distil"].contains { id.contains($0) } }
-        case .openRouter, .ollama: break
+        case .openRouter, .exa, .ollama: break
         }
         return Array(Set(ids)).sorted { $0.localizedStandardCompare($1) == .orderedDescending }
     }

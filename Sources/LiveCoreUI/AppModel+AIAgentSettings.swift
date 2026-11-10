@@ -58,7 +58,7 @@ extension AIAgentSession {
     }
 
     private func input(_ use: AIAgent.ToolUse, _ model: AppModel) -> (id: InputID, number: Int, name: String)? {
-        guard let n = AIAgent.intValue(use.input["input"]), let i = model.inputs.first(where: { $0.number == n }) else { return nil }
+        guard let n = show(model).inputNumber(use.input["input"]), let i = model.inputs.first(where: { $0.number == n }) else { return nil }
         return (i.id, i.number, i.name)
     }
 

@@ -45,7 +45,7 @@ final class V066Tests: XCTestCase {
         let o = try XCTUnwrap(try JSONSerialization.jsonObject(with: body) as? [String: Any])
         XCTAssertEqual(o["model"] as? String, "claude-opus-5-5")
         XCTAssertEqual(o["fallbacks"] as? String, "default")
-        XCTAssertEqual((o["tools"] as? [Any])?.count, 13)
+        XCTAssertEqual((o["tools"] as? [Any])?.count, 15)
         XCTAssertNil(o["temperature"])
         let haiku = try XCTUnwrap(try JSONSerialization.jsonObject(with: AIAgent.requestBody(model: "claude-haiku-5-5", messages: [], allowOutputs: true)) as? [String: Any])
         XCTAssertNil(haiku["fallbacks"])
@@ -76,7 +76,7 @@ final class V0661Tests: XCTestCase {
         XCTAssertEqual(msgs.first?["role"] as? String, "system")
         XCTAssertEqual(msgs.last?["content"] as? String, "cut")
         let tools = try XCTUnwrap(o["tools"] as? [[String: Any]])
-        XCTAssertEqual(tools.count, 13)
+        XCTAssertEqual(tools.count, 15)
         XCTAssertEqual((tools[1]["function"] as? [String: Any])?["name"] as? String, "run_steps")
 
         let answer = #"{"choices":[{"finish_reason":"tool_calls","message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"run_steps","arguments":"{\"steps\":[{\"kind\":\"preview\",\"input\":2}]}"}}]}}]}"#
@@ -115,8 +115,8 @@ final class V067Tests: XCTestCase {
 
     func testToolsListed() {
         XCTAssertEqual(AIAgent.tools.compactMap { $0["name"] as? String },
-                       ["get_state", "run_steps", "run_macro", "create_title", "create_input", "update_title", "create_ticker", "create_macro", "get_input_settings", "set_input_settings", "set_audio", "set_transition", "delete_input"])
-        XCTAssertEqual(AIAgent.openAITools.count, 13)
+                       ["get_state", "run_steps", "run_macro", "create_title", "create_input", "update_title", "create_ticker", "create_macro", "get_input_settings", "set_input_settings", "set_audio", "set_transition", "delete_input", "app_action", "web_search"])
+        XCTAssertEqual(AIAgent.openAITools.count, 15)
     }
 
     func testTitleRequest() throws {
@@ -195,5 +195,46 @@ final class V0682Tests: XCTestCase {
         XCTAssertEqual(AIProvider.groq.parseModels(Data(g.utf8)), ["llama-3.3-70b-versatile"])
         let r = #"{"data":[{"id":"x/b","supported_parameters":["tools"]},{"id":"x/a:free","supported_parameters":["tools"]},{"id":"x/c:free","supported_parameters":["temperature"]}]}"#
         XCTAssertEqual(AIProvider.openRouter.parseModels(Data(r.utf8)), ["x/a:free", "x/b"])
+    }
+}
+
+final class V069Tests: XCTestCase {
+    func testPlainText() {
+        XCTAssertEqual(AIAgent.plainText("Ini **obat** dan __x__ `y`"), "Ini obat dan x y")
+        XCTAssertEqual(AIAgent.plainText("## Judul\n- satu\n* dua\n---\n[Exa](https://exa.ai)"), "Judul\n• satu\n• dua\nExa (https://exa.ai)")
+        XCTAssertEqual(AIAgent.plainText("2 * 3 = 6"), "2 * 3 = 6")
+    }
+
+    func testForgivingSteps() {
+        let a = InputID("a"), b = InputID("b")
+        let show = AIAgent.Show(inputs: [(1, a), (2, b)], channels: [(id: "mic1", name: "Mic Host")],
+                                names: [1: "Camera Wide", 2: "Logo"])
+        XCTAssertEqual(AIAgent.stepKind("overlay_on"), .overlayOn)
+        XCTAssertEqual(AIAgent.stepKind("Mute"), .audioOff)
+        XCTAssertEqual(show.inputNumber("input 2"), 2)
+        XCTAssertEqual(show.inputNumber("logo"), 2)
+        XCTAssertEqual(show.inputNumber("Wide"), 1)
+        let r = AIAgent.steps(from: ["steps": [["kind": "Transition", "input": "Logo"], ["kind": "mute", "channel": "host"]]],
+                              show: show, allowOutputs: false)
+        guard case let .success(steps) = r else { return XCTFail("\(r)") }
+        XCTAssertEqual(steps.map(\.kind), [.transition, .audioOff])
+        XCTAssertEqual(steps[0].input, b)
+        XCTAssertEqual(steps[1].channel, "mic1")
+        guard case let .failure(e) = AIAgent.steps(from: ["steps": [["kind": "program", "input": 9]]], show: show, allowOutputs: false) else { return XCTFail() }
+        XCTAssertTrue(e.message.contains("1 Camera Wide, 2 Logo"))
+    }
+
+    func testAppActionAndExa() {
+        let show = AIAgent.Show(inputs: [(3, InputID("p"))], channels: [], names: [3: "PTZ"])
+        XCTAssertEqual(try AIAppAction.parse(["action": "ptz_preset", "input": "PTZ", "number": 2], show: show).get(), .ptzPreset(input: 3, preset: 2))
+        XCTAssertEqual(try AIAppAction.parse(["action": "tbar", "value": 50], show: show).get(), .tbar(0.5))
+        XCTAssertEqual(try AIAppAction.parse(["action": "open_window", "window": "Multiview"], show: show).get(), .openWindow("multiview"))
+        if case .success = AIAppAction.parse(["action": "qr_show", "input": 7], show: show) { XCTFail() }
+        XCTAssertTrue(AIAgent.tools.contains { $0["name"] as? String == "app_action" })
+        XCTAssertFalse(AIProvider.exa.supportsTools)
+        let body = String(data: AIAgent.openAIRequestBody(model: "exa", messages: [], allowOutputs: false, provider: .exa), encoding: .utf8)!
+        XCTAssertFalse(body.contains("\"tools\""))
+        let ans = #"{"answer":"Final 2-1","citations":[{"title":"BBC","url":"https://bbc.co.uk/x"}]}"#
+        XCTAssertEqual(AIAgent.exaAnswerText(Data(ans.utf8)), "Final 2-1\n\nSources: BBC (https://bbc.co.uk/x)")
     }
 }

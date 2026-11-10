@@ -27,6 +27,7 @@ public final class AIAgentSession: ObservableObject {
     public func refreshModels() {
         let p = provider
         let base = UserDefaults.standard.string(forKey: Self.ollamaURLKey) ?? ""
+        if p == .exa { modelsNote = "Exa has one model: exa (answers from the web, cannot control the app)."; return }
         guard let url = p.modelsURL(ollamaBase: base) else { modelsNote = "The Ollama address is not valid."; return }
         var key = ""
         if let account = p.keychainAccount {
@@ -89,6 +90,7 @@ public final class AIAgentSession: ObservableObject {
         stop()
         lines = []
         messages = []
+        lastCommand = nil
     }
 
     public func stop() {
@@ -100,7 +102,31 @@ public final class AIAgentSession: ObservableObject {
         busy = false
     }
 
-    public func send(_ command: String) {
+    /// The last command and the conversation / chat before it, for Regenerate (0.69.0).
+    private var lastCommand: String?
+    private var messagesBeforeLast: [[String: Any]] = []
+    private var linesBeforeLast = 0
+    /// Opens an app window (set by the AI panel, which has SwiftUI's openWindow).
+    public var openWindow: ((String) -> Void)?
+
+    public var canRegenerate: Bool { !busy && lastCommand != nil && messagesProvider == provider }
+
+    /// Asks again for the last command: its answer and actions are dropped from the chat and
+    /// the model answers anew (actions it takes run again).
+    public func regenerate() {
+        guard canRegenerate, let cmd = lastCommand else { return }
+        messages = messagesBeforeLast
+        lines = Array(lines.prefix(linesBeforeLast))
+        send(cmd, again: true)
+    }
+
+    func show(_ model: AppModel) -> AIAgent.Show {
+        AIAgent.Show(inputs: model.inputs.map { (number: $0.number, id: $0.id) },
+                     channels: model.audioChannels.map { (id: $0.id, name: $0.name) },
+                     names: Dictionary(model.inputs.map { ($0.number, $0.name) }, uniquingKeysWith: { a, _ in a }))
+    }
+
+    public func send(_ command: String, again: Bool = false) {
         let text = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !busy else { return }
         let p = provider
@@ -114,10 +140,17 @@ public final class AIAgentSession: ObservableObject {
         }
         // A conversation cannot move between providers (different message formats).
         if p != messagesProvider { messages = []; messagesProvider = p }
-        lines.append(Line(role: .user, text: text))
         // Keep the conversation short: the last few commands are enough context for a live show.
         if messages.count > 24 { messages = [] }
-        messages += AIAgent.userTurn(text, p)
+        if !again {
+            lastCommand = text
+            messagesBeforeLast = messages
+            linesBeforeLast = lines.count + 1
+            lines.append(Line(role: .user, text: text))
+        }
+        // The show as it is now rides along, so the model knows the inputs without asking.
+        let state = p.supportsTools ? model.map { AIAgent.withState(text, stateJSON: $0.makeRemoteState().json) } : nil
+        messages += AIAgent.userTurn(state ?? text, p)
         busy = true
         let modelID = self.modelID, allow = allowOutputs
         task = Task { @MainActor [weak self] in
@@ -184,7 +217,8 @@ public final class AIAgentSession: ObservableObject {
                 return
             }
             messages += AIAgent.assistantTurn(reply, p)
-            if !reply.text.isEmpty { lines.append(Line(role: .assistant, text: reply.text)) }
+            let shown = AIAgent.plainText(reply.text)
+            if !shown.isEmpty { lines.append(Line(role: .assistant, text: shown)) }
             if reply.stopReason == "refusal" {
                 fail("The model declined this command.")
                 return
@@ -229,8 +263,7 @@ public final class AIAgentSession: ObservableObject {
             await waitWhileRunning(m.id, model)
             return (use.id, "Macro \(n) finished.", false)
         case "run_steps":
-            let show = AIAgent.Show(inputs: model.inputs.map { (number: $0.number, id: $0.id) },
-                                    channels: model.audioChannels.map { (id: $0.id, name: $0.name) })
+            let show = show(model)
             switch AIAgent.steps(from: use.input, show: show, allowOutputs: allowOutputs) {
             case let .failure(e):
                 return (use.id, e.message, true)
@@ -279,7 +312,7 @@ public final class AIAgentSession: ObservableObject {
                                            what: "running text \"\(r.config.text.prefix(40))\"")
             }
         case "update_title":
-            guard let n = AIAgent.intValue(use.input["input"]),
+            guard let n = show(model).inputNumber(use.input["input"]),
                   let i = model.inputs.first(where: { $0.number == n }),
                   let src = model.engine?.source(i.id) as? TextSource else {
                 return (use.id, "Input \(use.input["input"].map { "\($0)" } ?? "?") is not a title.", true)
@@ -291,8 +324,7 @@ public final class AIAgentSession: ObservableObject {
             lines.append(Line(role: .action, text: "update title input \(n): \"\(style.title)\""))
             return (use.id, "Input \(n) now reads \"\(style.title)\" / \"\(style.subtitle)\".", false)
         case "create_macro":
-            let show = AIAgent.Show(inputs: model.inputs.map { (number: $0.number, id: $0.id) },
-                                    channels: model.audioChannels.map { (id: $0.id, name: $0.name) })
+            let show = show(model)
             switch AIAgent.macroRequest(from: use.input, show: show) {
             case let .failure(e): return (use.id, e.message, true)
             case let .success(m):
@@ -300,6 +332,41 @@ public final class AIAgentSession: ObservableObject {
                 let n = model.macroBook.macros.count
                 lines.append(Line(role: .action, text: "new macro \(n) \"\(m.name)\" (\(m.steps.count) steps)"))
                 return (use.id, n <= MacroBook.maxNumber ? "Saved as macro \(n)." : "Saved (macro \(n); only 1-\(MacroBook.maxNumber) can be run by number).", false)
+            }
+        case "app_action":
+            switch AIAppAction.parse(use.input, show: show(model)) {
+            case let .failure(e): return (use.id, e.message, true)
+            case let .success(a):
+                if case let .openWindow(w) = a {
+                    guard let open = openWindow else { return (use.id, "Windows cannot be opened from here.", true) }
+                    open(w)
+                } else {
+                    model.performAIAction(a)
+                }
+                lines.append(Line(role: .action, text: a.label))
+                return (use.id, "Done: \(a.label).", false)
+            }
+        case "web_search":
+            let q = (use.input["query"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !q.isEmpty else { return (use.id, "query is missing.", true) }
+            guard let key = (try? KeychainStore.load(account: AIAgent.exaKeychainAccount)) ?? nil, !key.isEmpty else {
+                return (use.id, "No Exa API key saved (choose Exa under ⚙︎ and save a key to enable web search). Answer from what you know and say so.", true)
+            }
+            lines.append(Line(role: .action, text: "web search: \(q)"))
+            var req = URLRequest(url: AIAgent.exaAnswerURL, timeoutInterval: 60)
+            req.httpMethod = "POST"
+            req.setValue("application/json", forHTTPHeaderField: "content-type")
+            req.setValue(key, forHTTPHeaderField: "x-api-key")
+            req.httpBody = AIAgent.exaAnswerBody(q)
+            do {
+                let (data, resp) = try await URLSession.shared.data(for: req)
+                let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                guard code == 200, let text = AIAgent.exaAnswerText(data) else {
+                    return (use.id, "Exa HTTP \(code): \(AIAgent.errorText(data))", true)
+                }
+                return (use.id, String(text.prefix(6000)), false)
+            } catch {
+                return (use.id, "Cannot reach Exa: \(error.localizedDescription)", true)
             }
         default:
             if let r = settingsTool(use, model) { return r }
