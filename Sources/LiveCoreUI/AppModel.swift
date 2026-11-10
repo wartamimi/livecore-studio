@@ -465,6 +465,8 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var macroTriggersTripped = false
     @Published public var macroTriggersEnabled = true
     var macroRunTokens: [String: Int] = [:]
+    /// AI Assistant (0.66.0): the conversation and its running command.
+    public lazy var aiAgent = AIAgentSession(model: self)
     var macroTokenCounter = 0
     var macroGuard = MacroTriggerGuard()
     /// Triggers are ignored until this time (a project being loaded switches inputs by itself).

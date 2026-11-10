@@ -169,11 +169,6 @@ public struct TranscriptionAdvanced: Codable, Equatable, Sendable {
     /// Send `vocabulary` as keyterms (max 50; ElevenLabs charges 20 % more).
     public var elevenKeyterms = false
 
-    // Groq (0.57.0)
-    public var groqModel = GroqTranscription.defaultModel
-    /// Longest piece of speech sent at once (s); pieces are cut earlier at a pause.
-    public var groqMaxChunk: Double = 8
-
     public init() {}
 
     public init(from decoder: Decoder) throws {
@@ -194,8 +189,6 @@ public struct TranscriptionAdvanced: Codable, Equatable, Sendable {
         filterBackground = (try? c.decodeIfPresent(Bool.self, forKey: .filterBackground)) ?? false
         secondaryLanguages = (try? c.decodeIfPresent([String].self, forKey: .secondaryLanguages)) ?? []
         elevenKeyterms = (try? c.decodeIfPresent(Bool.self, forKey: .elevenKeyterms)) ?? false
-        groqModel = (try? c.decodeIfPresent(String.self, forKey: .groqModel)) ?? d.groqModel
-        groqMaxChunk = (try? c.decodeIfPresent(Double.self, forKey: .groqMaxChunk)) ?? d.groqMaxChunk
     }
 
     /// Cleaned vocabulary: trimmed, no empties or duplicates, at most 50 (ElevenLabs limit).
@@ -232,9 +225,7 @@ public struct TranscriptionAdvanced: Codable, Equatable, Sendable {
 public enum SubtitleProvider: String, Codable, Sendable, CaseIterable {
     case apple
     case elevenLabs
-    /// Groq Whisper (0.57.0): sentences cut at pauses are uploaded to Groq's OpenAI-compatible
-    /// transcription API (whisper-large-v3 / -turbo), with the operator's own API key.
-    case groq
+    // Groq Whisper (0.57.0) was removed in 0.66.0; projects that chose it decode as Apple.
 }
 
 /// ElevenLabs realtime speech-to-text protocol (0.50.0): the WebSocket URL, the audio message and
@@ -332,135 +323,6 @@ public enum ElevenLabsRealtime {
             out[i] = Int16(v * 32767)
         }
         return out
-    }
-}
-
-/// Groq speech-to-text (0.57.0). Groq has no streaming endpoint, so the Program sound is cut into
-/// pieces at pauses (`GroqSegmenter`) and each piece is sent as a WAV file to the
-/// OpenAI-compatible `/audio/transcriptions` endpoint. Pure logic so it is tested on Linux.
-public enum GroqTranscription {
-    public static let keychainAccount = "groq-api-key"
-    public static let url = URL(string: "https://api.groq.com/openai/v1/audio/transcriptions")!
-    public static let defaultModel = "whisper-large-v3"
-    public static let models = [("whisper-large-v3", "Whisper large-v3 (best accuracy)"),
-                                ("whisper-large-v3-turbo", "Whisper large-v3 turbo (faster, cheaper)")]
-
-    /// Mono 16-bit PCM WAV file.
-    public static func wav(pcm: [Int16], sampleRate: Int) -> Data {
-        var d = Data(capacity: 44 + pcm.count * 2)
-        func u32(_ v: UInt32) { withUnsafeBytes(of: v.littleEndian) { d.append(contentsOf: $0) } }
-        func u16(_ v: UInt16) { withUnsafeBytes(of: v.littleEndian) { d.append(contentsOf: $0) } }
-        let bytes = UInt32(pcm.count * 2)
-        d.append(contentsOf: Array("RIFF".utf8)); u32(36 + bytes); d.append(contentsOf: Array("WAVE".utf8))
-        d.append(contentsOf: Array("fmt ".utf8)); u32(16); u16(1); u16(1)
-        u32(UInt32(sampleRate)); u32(UInt32(sampleRate * 2)); u16(2); u16(16)
-        d.append(contentsOf: Array("data".utf8)); u32(bytes)
-        for v in pcm { u16(UInt16(bitPattern: v)) }
-        return d
-    }
-
-    /// Form fields of one request: model, JSON answer, optional language and vocabulary prompt.
-    public static func fields(model: String, languageCode: String?, vocabulary: [String]) -> [(String, String)] {
-        var f = [("model", model), ("response_format", "json"), ("temperature", "0")]
-        if let languageCode { f.append(("language", languageCode)) }
-        // Whisper takes a short prompt (≈224 tokens) that steers spelling of names.
-        let prompt = vocabulary.joined(separator: ", ")
-        if !prompt.isEmpty { f.append(("prompt", String(prompt.prefix(600)))) }
-        return f
-    }
-
-    /// multipart/form-data body with `fields` and the WAV as `file`.
-    public static func multipart(boundary: String, fields: [(String, String)], wav: Data) -> Data {
-        var d = Data()
-        func s(_ t: String) { d.append(contentsOf: Array(t.utf8)) }
-        for (k, v) in fields {
-            s("--\(boundary)\r\nContent-Disposition: form-data; name=\"\(k)\"\r\n\r\n\(v)\r\n")
-        }
-        s("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"speech.wav\"\r\nContent-Type: audio/wav\r\n\r\n")
-        d.append(wav)
-        s("\r\n--\(boundary)--\r\n")
-        return d
-    }
-
-    /// `text` of a successful answer.
-    public static func parseText(_ data: Data) -> String? {
-        (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["text"] as? String
-    }
-
-    /// Readable error from {"error": {"message": …}}.
-    public static func errorText(_ data: Data) -> String {
-        if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            if let e = obj["error"] as? [String: Any], let m = e["message"] as? String { return m }
-            if let m = obj["error"] as? String { return m }
-        }
-        return String(decoding: data.prefix(200), as: UTF8.self)
-    }
-
-    /// Whisper invents these on music, noise or silence; a piece that is only one of them is dropped.
-    public static func isHallucination(_ text: String) -> Bool {
-        let t = text.lowercased().trimmingCharacters(in: CharacterSet.whitespacesAndNewlines.union(.punctuationCharacters))
-        if t.isEmpty { return true }
-        let known = ["thank you", "thanks for watching", "thank you for watching", "terima kasih", "terima kasih telah menonton",
-                     "terima kasih sudah menonton", "you", "bye", "subtitles by the amara.org community", "sampai jumpa"]
-        return known.contains(t)
-    }
-}
-
-/// Cuts mono audio into pieces of speech (0.57.0): a piece ends at the first pause of `pauseSecs`
-/// after `minSecs`, or at `maxSecs`; pieces without any loud block are silence and are dropped.
-/// Audio is judged in 100 ms blocks by RMS level.
-public struct GroqSegmenter {
-    public let sampleRate: Int
-    public var minSecs: Double
-    public var maxSecs: Double
-    public var pauseSecs: Double
-    /// RMS below this (≈ -40 dBFS) counts as quiet.
-    public var quietLevel: Float
-    private var buffer: [Float] = []
-    private var voiced = false
-    private var quietRun = 0              // samples of quiet at the end of `buffer`
-    private var blockAcc: Float = 0
-    private var blockCount = 0
-
-    public init(sampleRate: Int, minSecs: Double = 2, maxSecs: Double = 8, pauseSecs: Double = 0.5, quietLevel: Float = 0.01) {
-        self.sampleRate = sampleRate; self.minSecs = minSecs; self.maxSecs = max(maxSecs, minSecs)
-        self.pauseSecs = pauseSecs; self.quietLevel = quietLevel
-    }
-
-    public var bufferedSeconds: Double { Double(buffer.count) / Double(sampleRate) }
-
-    /// Adds samples; returns finished pieces of speech (usually none, sometimes one).
-    public mutating func append(_ samples: [Float]) -> [[Float]] {
-        var out: [[Float]] = []
-        let block = max(1, sampleRate / 10)
-        for v in samples {
-            buffer.append(v)
-            blockAcc += v * v; blockCount += 1
-            guard blockCount == block else { continue }
-            let rms = (blockAcc / Float(block)).squareRoot()
-            blockAcc = 0; blockCount = 0
-            if rms >= quietLevel { voiced = true; quietRun = 0 } else { quietRun += block }
-            let secs = bufferedSeconds
-            // Leading silence is never sent: keep only the last 0.3 s before speech starts.
-            if !voiced {
-                let keep = sampleRate * 3 / 10
-                if buffer.count > keep { buffer.removeFirst(buffer.count - keep) }
-                continue
-            }
-            let paused = Double(quietRun) / Double(sampleRate) >= pauseSecs
-            if (secs >= minSecs && paused) || secs >= maxSecs {
-                out.append(buffer)
-                buffer.removeAll(keepingCapacity: true)
-                voiced = false; quietRun = 0
-            }
-        }
-        return out
-    }
-
-    /// The rest (when transcription stops), if it holds speech.
-    public mutating func flush() -> [Float]? {
-        defer { buffer.removeAll(); voiced = false; quietRun = 0; blockAcc = 0; blockCount = 0 }
-        return voiced && !buffer.isEmpty ? buffer : nil
     }
 }
 

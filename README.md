@@ -69,7 +69,7 @@ kode, **Blocked** = butuh sesuatu di luar kendali proyek.
 | Shortcut keyboard yang bisa diatur (dengan preset), MIDI dengan Learn | Implemented |
 | Web Controller dari HP/tablet (PIN, video Program/Preview, mixer, audio monitor), online via Cloudflare/Tailscale | Implemented / Partial |
 | LCS Live: tamu jarak jauh lewat link browser | Partial, belum dites di Mac |
-| Transkripsi/subtitle realtime (Apple Speech, ElevenLabs, Groq) | Implemented / Partial |
+| Transkripsi/subtitle realtime (Apple Speech, ElevenLabs) | Implemented / Partial |
 | Pustaka online Pixabay (API key sendiri) | Implemented |
 | Simpan/muat proyek `.livecore`, template proyek, tema tampilan, UI Inggris + Indonesia | Implemented |
 | AJA Kona/Io (NTV2) | Blocked (butuh integrasi SDK besar dan perangkat uji) |

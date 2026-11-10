@@ -1548,11 +1548,6 @@
 "transport.next" = "Next clip";
 "transport.none" = "No playback controls for this input";
 
-/* 0.57.0 Groq transcription + Transcript window */
-"transcription.groq_key" = "Groq API key";
-"transcription.groq_model" = "Groq model";
-"transcription.groq_live" = "Live (Groq Whisper)";
-"transcription.groq_note" = "Program sound is cut at pauses and sent to Groq (Whisper) over the internet with your own API key (console.groq.com › API Keys); it uses your Groq quota. Text appears a few seconds after it is spoken. Captions appear as a transparent overlay; put this input on an overlay channel.";
 "transcript.title" = "Transcript";
 "transcript.open" = "Open Transcript Window";
 "transcript.timestamps" = "Timestamps";
@@ -2017,3 +2012,17 @@
 "automix.gain" = "Auto mix gain now";
 "automix.group" = "Channels in the group";
 "automix.help" = "Gain-sharing automatic microphone mixer: every channel with Auto Mix on gets the share of the total level that its own level is. The person talking stays at full level, open microphones of people not talking go down, two talkers get −3 dB each, and with nobody talking all microphones sit evenly low. No threshold to set; needs at least two channels. Weight + makes a microphone win more easily (the moderator). Use it for microphones only (not music or video audio).";
+
+/* 0.66.0 AI Assistant */
+"ai.menu" = "AI Assistant…";
+"ai.title" = "AI Assistant";
+"ai.model" = "Model";
+"ai.key" = "Anthropic API key";
+"ai.save_key" = "Save";
+"ai.allow_outputs" = "Allow the assistant to start / stop streaming and recording";
+"ai.note" = "Commands are sent to Anthropic (Claude) over the internet with your own API key (console.anthropic.com, billed per use). The assistant can only do what a macro can: switch inputs, transitions, overlays, mute / unmute, play videos, run your macros.";
+"ai.hint" = "Examples: \"put camera 2 on air with the transition\", \"show the lower third on overlay 1 for 10 seconds\", \"mute the music\", \"run macro 3\".";
+"ai.placeholder" = "Type a command…";
+"ai.send" = "Send";
+"ai.stop" = "Stop";
+"ai.clear" = "Clear";

@@ -32,6 +32,16 @@ extension AppModel {
         DispatchQueue.main.async { [weak self] in self?.macroStep(id, steps, 0, token) }
     }
 
+    /// Runs steps that are not a saved macro (the AI Assistant, 0.66.0) under `runID`; they stop
+    /// with `stopMacro(runID)` like a macro.
+    func runSteps(_ steps: [MacroStep], runID: String) {
+        macroTokenCounter += 1
+        let token = macroTokenCounter
+        macroRunTokens[runID] = token
+        runningMacros.insert(runID)
+        DispatchQueue.main.async { [weak self] in self?.macroStep(runID, steps, 0, token) }
+    }
+
     public func stopMacro(_ id: String) {
         macroRunTokens[id] = nil
         runningMacros.remove(id)

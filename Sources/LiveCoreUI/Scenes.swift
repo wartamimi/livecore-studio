@@ -51,6 +51,7 @@ public enum LiveCoreScenes {
             CommandMenu("Production") {
                 WindowCommand(title: L10n.t("rundown.create_menu"), id: "rundown", key: "r", modifiers: [.command, .shift])
                 WindowCommand(title: L10n.t("macro.menu"), id: "macros", key: "k", modifiers: [.command, .option])
+                WindowCommand(title: L10n.t("ai.menu"), id: "ai-assistant", key: "j", modifiers: [.command, .option])
                 Divider()
                 Button(L10n.t("transition.cut")) { model.cut() }
                 Button(L10n.t("transition.auto")) { model.auto() }
@@ -91,6 +92,13 @@ public enum LiveCoreScenes {
             AboutView().preferredColorScheme(.dark)
         }
         .windowResizability(.contentSize)
+
+        Window(L10n.t("ai.title"), id: "ai-assistant") {
+            AIAgentWindow(session: model.aiAgent)
+                .environmentObject(model)
+                .frame(minWidth: 520, minHeight: 480)
+                .preferredColorScheme(.dark)
+        }
 
         Window(L10n.t("macro.title"), id: "macros") {
             MacrosWindow()
