@@ -93,12 +93,12 @@ public final class AIAgentSession: ObservableObject {
             let ollama = UserDefaults.standard.string(forKey: Self.ollamaURLKey) ?? ""
             guard let url = p.endpoint(ollamaBase: ollama) else { fail("The Ollama address is not valid."); return }
             // A local model can take long for its first answer (loading into memory).
-            var req = URLRequest(url: url, timeoutInterval: p == .ollama ? 180 : 60)
+            var req = URLRequest(url: url, timeoutInterval: p == .ollama ? 180 : 120)
             req.httpMethod = "POST"
             req.setValue("application/json", forHTTPHeaderField: "content-type")
             if p.usesOpenAIFormat {
                 if !key.isEmpty { req.setValue("Bearer \(key)", forHTTPHeaderField: "authorization") }
-                req.httpBody = AIAgent.openAIRequestBody(model: modelID, messages: messages, allowOutputs: allowOutputs)
+                req.httpBody = AIAgent.openAIRequestBody(model: modelID, messages: messages, allowOutputs: allowOutputs, provider: p)
             } else {
                 req.setValue(key, forHTTPHeaderField: "x-api-key")
                 req.setValue(AIAgent.apiVersion, forHTTPHeaderField: "anthropic-version")
@@ -112,8 +112,10 @@ public final class AIAgentSession: ObservableObject {
                 code = (resp as? HTTPURLResponse)?.statusCode ?? 0
             } catch {
                 if !Task.isCancelled {
-                    fail(p == .ollama ? "Cannot reach Ollama at \(url.host ?? "") (is Ollama running?): \(error.localizedDescription)"
-                                      : "Cannot reach \(p.displayName): \(error.localizedDescription)")
+                    let code = (error as? URLError).map { " [URLError \($0.errorCode)]" } ?? ""
+                    FileLog.shared.error("ai assistant \(p.rawValue) network error: \(error)")
+                    fail(p == .ollama ? "Cannot reach Ollama at \(url.host ?? "") (is Ollama running?): \(error.localizedDescription)\(code)"
+                                      : "Cannot reach \(p.displayName) (\(url.host ?? "")): \(error.localizedDescription)\(code)")
                 }
                 return
             }

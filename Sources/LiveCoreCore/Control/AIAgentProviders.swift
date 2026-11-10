@@ -76,13 +76,16 @@ extension AIAgent {
         }
     }
 
-    public static func openAIRequestBody(model: String, messages: [[String: Any]], allowOutputs: Bool) -> Data {
-        let body: [String: Any] = [
+    public static func openAIRequestBody(model: String, messages: [[String: Any]], allowOutputs: Bool,
+                                         provider: AIProvider = .openAI) -> Data {
+        var body: [String: Any] = [
             "model": model,
             "messages": [["role": "system", "content": systemPrompt(allowOutputs: allowOutputs)]] + messages,
             "tools": openAITools,
             "tool_choice": "auto",
         ]
+        // Gemini 2.5 thinks before answering by default; live commands need a quick answer.
+        if provider == .gemini { body["reasoning_effort"] = "low" }
         return (try? JSONSerialization.data(withJSONObject: body, options: [.sortedKeys])) ?? Data()
     }
 
