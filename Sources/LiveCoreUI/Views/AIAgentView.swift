@@ -100,9 +100,20 @@ struct AIAgentWindow: View {
                         UserDefaults.standard.set(v.trimmingCharacters(in: .whitespaces), forKey: AIAgentSession.modelKey(provider))
                     }
                 Menu(L10n.t("ai.models")) {
-                    ForEach(provider.models, id: \.0) { m in Button(m.1) { modelID = m.0 } }
+                    let live = session.liveModels[provider] ?? []
+                    if live.isEmpty {
+                        ForEach(provider.models, id: \.0) { m in Button(m.1) { modelID = m.0 } }
+                    } else {
+                        ForEach(live, id: \.self) { m in Button(m) { modelID = m } }
+                    }
+                    Divider()
+                    Button(L10n.t("ai.refresh_models")) { session.refreshModels() }
                 }
                 .fixedSize()
+            }
+            if !session.modelsNote.isEmpty {
+                Text(session.modelsNote).font(.caption).foregroundStyle(Theme.textDim)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if provider.keychainAccount != nil {
                 HStack {
@@ -134,7 +145,7 @@ struct AIAgentWindow: View {
         try? KeychainStore.save(streamKey: k, account: account)
         apiKey = ""
         hasKey = true
-        withAnimation { showSettings = false }
+        session.refreshModels()
     }
 
     // MARK: Conversation

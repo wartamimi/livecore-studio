@@ -149,3 +149,45 @@ extension AIAgent {
         return [["role": "user", "content": results.map { toolResult($0.id, $0.text, isError: $0.isError) }]]
     }
 }
+
+// MARK: Live model list (0.68.2)
+
+extension AIProvider {
+    /// Where the provider lists the models this key can use.
+    public func modelsURL(ollamaBase: String = "http://localhost:11434") -> URL? {
+        switch self {
+        case .anthropic: return URL(string: "https://api.anthropic.com/v1/models?limit=100")
+        case .openAI: return URL(string: "https://api.openai.com/v1/models")
+        case .gemini: return URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/models")
+        case .ollama:
+            guard let chat = endpoint(ollamaBase: ollamaBase)?.absoluteString else { return nil }
+            return URL(string: chat.replacingOccurrences(of: "/v1/chat/completions", with: "/api/tags"))
+        }
+    }
+
+    /// Model ids from a models answer, chat models only, sorted (newest names first).
+    public func parseModels(_ data: Data) -> [String] {
+        guard let o = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return [] }
+        var ids: [String]
+        if self == .ollama {
+            ids = ((o["models"] as? [[String: Any]]) ?? []).compactMap { $0["name"] as? String }
+        } else {
+            ids = ((o["data"] as? [[String: Any]]) ?? []).compactMap { $0["id"] as? String }
+        }
+        ids = ids.map { $0.hasPrefix("models/") ? String($0.dropFirst(7)) : $0 }
+        switch self {
+        case .anthropic: ids = ids.filter { $0.hasPrefix("claude") }
+        case .openAI:
+            ids = ids.filter { id in
+                (id.hasPrefix("gpt-") || id.hasPrefix("o")) &&
+                !["audio", "realtime", "transcribe", "tts", "image", "search", "embedding", "instruct"].contains { id.contains($0) }
+            }
+        case .gemini:
+            ids = ids.filter { id in
+                id.hasPrefix("gemini") && !["embedding", "image", "tts", "audio", "live", "aqa"].contains { id.contains($0) }
+            }
+        case .ollama: break
+        }
+        return Array(Set(ids)).sorted { $0.localizedStandardCompare($1) == .orderedDescending }
+    }
+}

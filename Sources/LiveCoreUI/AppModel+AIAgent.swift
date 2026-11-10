@@ -19,6 +19,46 @@ public final class AIAgentSession: ObservableObject {
 
     @Published public internal(set) var lines: [Line] = []
     @Published public private(set) var busy = false
+    /// Models the provider says this key can use (0.68.2), and a short note on the last check.
+    @Published public private(set) var liveModels: [AIProvider: [String]] = [:]
+    @Published public private(set) var modelsNote = ""
+
+    /// Asks the provider which models this key can use (Ollama: the models pulled on this Mac).
+    public func refreshModels() {
+        let p = provider
+        let base = UserDefaults.standard.string(forKey: Self.ollamaURLKey) ?? ""
+        guard let url = p.modelsURL(ollamaBase: base) else { modelsNote = "The Ollama address is not valid."; return }
+        var key = ""
+        if let account = p.keychainAccount {
+            guard let k = (try? KeychainStore.load(account: account)) ?? nil, !k.isEmpty else {
+                modelsNote = "Enter your \(p.displayName) API key first."; return
+            }
+            key = k
+        }
+        var req = URLRequest(url: url, timeoutInterval: 20)
+        if p == .anthropic {
+            req.setValue(key, forHTTPHeaderField: "x-api-key")
+            req.setValue(AIAgent.apiVersion, forHTTPHeaderField: "anthropic-version")
+        } else if !key.isEmpty {
+            req.setValue("Bearer \(key)", forHTTPHeaderField: "authorization")
+        }
+        modelsNote = "Checking…"
+        Task { @MainActor [weak self] in
+            do {
+                let (data, resp) = try await URLSession.shared.data(for: req)
+                let code = (resp as? HTTPURLResponse)?.statusCode ?? 0
+                guard code == 200 else {
+                    self?.modelsNote = "\(p.displayName) HTTP \(code): \(p == .anthropic ? AIAgent.errorText(data) : AIAgent.openAIErrorText(data))"
+                    return
+                }
+                let ids = p.parseModels(data)
+                self?.liveModels[p] = ids
+                self?.modelsNote = ids.isEmpty ? "No chat models found for this key." : "\(ids.count) models available for your key."
+            } catch {
+                self?.modelsNote = "Cannot reach \(p.displayName): \(error.localizedDescription)"
+            }
+        }
+    }
 
     static let runID = "ai-assistant"
     static let modelKey = "aiAgent.model"

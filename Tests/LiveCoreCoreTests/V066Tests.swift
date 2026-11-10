@@ -176,3 +176,15 @@ final class V068Tests: XCTestCase {
         if case .success = AIAgent.audioValue("volume", 1) { XCTFail() }
     }
 }
+
+final class V0682Tests: XCTestCase {
+    func testModelLists() {
+        let g = #"{"object":"list","data":[{"id":"models/gemini-3.8-flash"},{"id":"models/gemini-embedding-001"},{"id":"models/gemini-3.8-pro"},{"id":"models/imagen-4"}]}"#
+        XCTAssertEqual(AIProvider.gemini.parseModels(Data(g.utf8)), ["gemini-3.8-pro", "gemini-3.8-flash"])
+        let o = #"{"data":[{"id":"gpt-5"},{"id":"gpt-4o-realtime-preview"},{"id":"text-embedding-3-small"},{"id":"o4-mini"},{"id":"dall-e-3"}]}"#
+        XCTAssertEqual(AIProvider.openAI.parseModels(Data(o.utf8)), ["o4-mini", "gpt-5"])
+        XCTAssertEqual(AIProvider.ollama.parseModels(Data(#"{"models":[{"name":"qwen2.5:7b"}]}"#.utf8)), ["qwen2.5:7b"])
+        XCTAssertEqual(AIProvider.ollama.modelsURL(ollamaBase: "")?.absoluteString, "http://localhost:11434/api/tags")
+        XCTAssertEqual(AIProvider.anthropic.parseModels(Data(#"{"data":[{"id":"claude-opus-5-5"}]}"#.utf8)), ["claude-opus-5-5"])
+    }
+}

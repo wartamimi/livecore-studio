@@ -2027,6 +2027,7 @@
 "ai.stop" = "Stop";
 "ai.clear" = "Clear";
 "ai.provider" = "Provider";
+"ai.refresh_models" = "Check models for my key";
 "ai.models" = "Models";
 "ai.ollama_url" = "Ollama address";
 "ai.note_local" = "Ollama runs the model on this Mac (ollama.com, free, no internet needed after the model is downloaded: ollama pull qwen2.5:7b). Use a model that supports tools. The assistant can only do what a macro can: switch inputs, transitions, overlays, mute / unmute, play videos, run your macros.";
