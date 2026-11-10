@@ -29,8 +29,8 @@ targets:
       properties:
         CFBundleName: LiveCore Studio
         CFBundleDisplayName: LiveCore Studio
-        CFBundleShortVersionString: "0.67.1"
-        CFBundleVersion: "95"
+        CFBundleShortVersionString: "0.67.2"
+        CFBundleVersion: "96"
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, id, ms, es, zh-Hans]
         LSApplicationCategoryType: public.app-category.video

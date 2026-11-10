@@ -30,6 +30,20 @@ extension AIAgent {
                 ] as [String: Any],
             ],
             [
+                "name": "create_input",
+                "description": "Adds a simple input: colour bars (test pattern) or a solid colour. Returns the new input number.",
+                "input_schema": [
+                    "type": "object",
+                    "properties": [
+                        "kind": ["type": "string", "enum": ["colorBars", "color"]],
+                        "color": color,
+                        "name": ["type": "string"],
+                    ] as [String: Any],
+                    "required": ["kind"],
+                    "additionalProperties": false,
+                ] as [String: Any],
+            ],
+            [
                 "name": "update_title",
                 "description": "Changes the text of an existing title input (see get_state for numbers). Fields left out stay as they are.",
                 "input_schema": [

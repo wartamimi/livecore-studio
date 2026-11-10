@@ -39,7 +39,8 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         switch self {
         case .anthropic: return AIAgent.models
         case .openAI: return [("gpt-4.1", "GPT-4.1"), ("gpt-4.1-mini", "GPT-4.1 mini (faster, cheaper)"), ("gpt-4o", "GPT-4o")]
-        case .gemini: return [("gemini-2.5-flash", "Gemini 2.5 Flash"), ("gemini-2.5-pro", "Gemini 2.5 Pro")]
+        // 2.5 models are closed to new keys (Google answers 404 and names gemini-3.8-flash).
+        case .gemini: return [("gemini-3.8-flash", "Gemini 3.8 Flash")]
         case .ollama: return [("qwen2.5:7b", "Qwen 2.5 7B"), ("llama3.1:8b", "Llama 3.1 8B"), ("mistral-nemo", "Mistral Nemo")]
         }
     }

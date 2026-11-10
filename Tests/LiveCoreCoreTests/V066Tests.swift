@@ -45,7 +45,7 @@ final class V066Tests: XCTestCase {
         let o = try XCTUnwrap(try JSONSerialization.jsonObject(with: body) as? [String: Any])
         XCTAssertEqual(o["model"] as? String, "claude-opus-5-5")
         XCTAssertEqual(o["fallbacks"] as? String, "default")
-        XCTAssertEqual((o["tools"] as? [Any])?.count, 7)
+        XCTAssertEqual((o["tools"] as? [Any])?.count, 8)
         XCTAssertNil(o["temperature"])
         let haiku = try XCTUnwrap(try JSONSerialization.jsonObject(with: AIAgent.requestBody(model: "claude-haiku-5-5", messages: [], allowOutputs: true)) as? [String: Any])
         XCTAssertNil(haiku["fallbacks"])
@@ -76,7 +76,7 @@ final class V0661Tests: XCTestCase {
         XCTAssertEqual(msgs.first?["role"] as? String, "system")
         XCTAssertEqual(msgs.last?["content"] as? String, "cut")
         let tools = try XCTUnwrap(o["tools"] as? [[String: Any]])
-        XCTAssertEqual(tools.count, 7)
+        XCTAssertEqual(tools.count, 8)
         XCTAssertEqual((tools[1]["function"] as? [String: Any])?["name"] as? String, "run_steps")
 
         let answer = #"{"choices":[{"finish_reason":"tool_calls","message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"run_steps","arguments":"{\"steps\":[{\"kind\":\"preview\",\"input\":2}]}"}}]}}]}"#
@@ -115,8 +115,8 @@ final class V067Tests: XCTestCase {
 
     func testToolsListed() {
         XCTAssertEqual(AIAgent.tools.compactMap { $0["name"] as? String },
-                       ["get_state", "run_steps", "run_macro", "create_title", "update_title", "create_ticker", "create_macro"])
-        XCTAssertEqual(AIAgent.openAITools.count, 7)
+                       ["get_state", "run_steps", "run_macro", "create_title", "create_input", "update_title", "create_ticker", "create_macro"])
+        XCTAssertEqual(AIAgent.openAITools.count, 8)
     }
 
     func testTitleRequest() throws {

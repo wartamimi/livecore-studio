@@ -40,7 +40,7 @@ public enum AIAgent {
         - Do everything a command asks in one run_steps call when you can; a "wait" step pauses \
         (at most \(Int(maxWait)) s).
         - You can also create things: title / lower-third inputs from a template (create_title), new \
-        text on an existing title (update_title), running-text inputs (create_ticker) and saved macros \
+        text on an existing title (update_title), running-text inputs (create_ticker), colour bars or colour inputs (create_input) and saved macros \
         (create_macro). Write the text yourself when asked (names, greetings, sponsor lines). Pick colours \
         that fit the event (wedding: soft gold / white; corporate: brand blue; news: red). A created \
         input is not shown until the operator (or a run_steps overlayOn step) puts it on air.

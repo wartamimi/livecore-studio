@@ -1,4 +1,5 @@
 #if os(macOS)
+import AppKit
 import Foundation
 import LiveCoreCore
 import LiveCoreEngine
@@ -196,6 +197,22 @@ public final class AIAgentSession: ObservableObject {
                 let id = engine.addTitle(style)
                 return await finishCreated(use, id, name: r.name ?? r.title, overlay: r.overlay, model,
                                            what: "title \(r.template.rawValue) \"\(r.title)\"")
+            }
+        case "create_input":
+            guard let engine = model.engine else { return (use.id, "No engine.", true) }
+            let name = (use.input["name"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            switch use.input["kind"] as? String {
+            case "colorBars":
+                let id = engine.addColorBars(name: name ?? L10n.t("inputs.colorbars"))
+                return await finishCreated(use, id, name: name ?? L10n.t("inputs.colorbars"), overlay: nil, model, what: "colour bars")
+            case "color":
+                guard let c = AIAgent.color(use.input["color"]) else { return (use.id, "color must be #RRGGBB.", true) }
+                let ns = NSColor(srgbRed: c.r, green: c.g, blue: c.b, alpha: c.a)
+                let n = name ?? "Colour"
+                let id = engine.addColor(ns, name: n)
+                return await finishCreated(use, id, name: n, overlay: nil, model, what: "colour input")
+            default:
+                return (use.id, "kind must be colorBars or color.", true)
             }
         case "create_ticker":
             switch AIAgent.tickerRequest(from: use.input) {
