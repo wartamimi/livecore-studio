@@ -593,3 +593,4 @@ Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; k
 | Jendela Title / Lower Third: tab kategori jadi tombol 3 kolom, kolom galeri tidak lagi terpotong di kiri | Implemented — perlu dicek di Mac |
 | Model transkripsi Groq dihapus; proyek lama yang memakai Groq terbuka sebagai Apple | Implemented |
 | Belum: perintah suara, mengatur volume fader/transisi lewat AI, konfirmasi per aksi | Planned |
+| AI Assistant penyedia lain (0.66.1): OpenAI, Google Gemini (endpoint OpenAI-compatible), Ollama lokal (`/v1/chat/completions`, alamat bisa diubah), model diketik atau dipilih per penyedia, API key per penyedia di Keychain. Tool & pemeriksaan langkah sama dengan Claude. | Partially implemented — format dites di Linux (T-349); butuh uji di Mac dengan key / Ollama |

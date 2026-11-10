@@ -66,3 +66,43 @@ final class V066Tests: XCTestCase {
         XCTAssertEqual(s.provider, .apple)
     }
 }
+
+/// 0.66.1: OpenAI, Gemini and Ollama for the AI Assistant (OpenAI-style function tools).
+final class V0661Tests: XCTestCase {
+    func testOpenAIBodyAndToolCall() throws {
+        let body = AIAgent.openAIRequestBody(model: "gpt-4.1", messages: AIAgent.userTurn("cut", .openAI), allowOutputs: false)
+        let o = try XCTUnwrap(try JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let msgs = try XCTUnwrap(o["messages"] as? [[String: Any]])
+        XCTAssertEqual(msgs.first?["role"] as? String, "system")
+        XCTAssertEqual(msgs.last?["content"] as? String, "cut")
+        let tools = try XCTUnwrap(o["tools"] as? [[String: Any]])
+        XCTAssertEqual(tools.count, 3)
+        XCTAssertEqual((tools[1]["function"] as? [String: Any])?["name"] as? String, "run_steps")
+
+        let answer = #"{"choices":[{"finish_reason":"tool_calls","message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"run_steps","arguments":"{\"steps\":[{\"kind\":\"preview\",\"input\":2}]}"}}]}}]}"#
+        let r = try XCTUnwrap(AIAgent.parseOpenAI(Data(answer.utf8)))
+        XCTAssertEqual(r.stopReason, "tool_use")
+        XCTAssertEqual(r.toolUses.first?.id, "call_1")
+        XCTAssertEqual(AIAgent.intValue((r.toolUses.first?.input["steps"] as? [[String: Any]])?.first?["input"]), 2)
+        XCTAssertEqual(AIAgent.assistantTurn(r, .openAI).first?["content"] as? String, "")
+        let tool = AIAgent.toolTurn([(id: "call_1", text: "Done.", isError: false)], .openAI)
+        XCTAssertEqual(tool.first?["role"] as? String, "tool")
+        XCTAssertEqual(tool.first?["tool_call_id"] as? String, "call_1")
+        // Anthropic keeps one user turn of tool_result blocks.
+        XCTAssertEqual(AIAgent.toolTurn([(id: "t", text: "x", isError: true)], .anthropic).first?["role"] as? String, "user")
+    }
+
+    func testOllamaArgumentsAsObjectAndPlainAnswer() throws {
+        let answer = #"{"choices":[{"finish_reason":"stop","message":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"get_state","arguments":{}}}]}}]}"#
+        let r = try XCTUnwrap(AIAgent.parseOpenAI(Data(answer.utf8)))
+        XCTAssertEqual(r.toolUses.first?.name, "get_state")
+        XCTAssertEqual(r.toolUses.first?.id, "call_0")
+        let plain = try XCTUnwrap(AIAgent.parseOpenAI(Data(#"{"choices":[{"finish_reason":"stop","message":{"role":"assistant","content":"Oke, sudah."}}]}"#.utf8)))
+        XCTAssertEqual(plain.stopReason, "end_turn")
+        XCTAssertEqual(plain.text, "Oke, sudah.")
+        XCTAssertEqual(AIProvider.ollama.endpoint(ollamaBase: "192.168.1.5:11434/")?.absoluteString, "http://192.168.1.5:11434/v1/chat/completions")
+        XCTAssertEqual(AIProvider.ollama.endpoint(ollamaBase: "")?.absoluteString, "http://localhost:11434/v1/chat/completions")
+        XCTAssertNil(AIProvider.ollama.keychainAccount)
+        XCTAssertEqual(AIAgent.openAIErrorText(Data(#"[{"error":{"code":400,"message":"API key not valid"}}]"#.utf8)), "API key not valid")
+    }
+}

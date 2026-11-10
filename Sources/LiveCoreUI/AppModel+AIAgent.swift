@@ -21,18 +21,26 @@ public final class AIAgentSession: ObservableObject {
 
     static let runID = "ai-assistant"
     static let modelKey = "aiAgent.model"
+    static let providerKey = "aiAgent.provider"
+    static let ollamaURLKey = "aiAgent.ollamaURL"
     static let allowOutputsKey = "aiAgent.allowOutputs"
 
     private weak var model: AppModel?
     /// The conversation as sent to the API (assistant turns unchanged, thinking blocks included).
     private var messages: [[String: Any]] = []
     private var task: Task<Void, Never>?
+    private var messagesProvider: AIProvider = .anthropic
 
     init(model: AppModel) { self.model = model }
 
+    public var provider: AIProvider {
+        AIProvider(rawValue: UserDefaults.standard.string(forKey: Self.providerKey) ?? "") ?? .anthropic
+    }
+    /// Model per provider (typed freely; empty = the provider's first suggestion).
+    static func modelKey(_ p: AIProvider) -> String { p == .anthropic ? modelKey : "\(modelKey).\(p.rawValue)" }
     public var modelID: String {
-        let m = UserDefaults.standard.string(forKey: Self.modelKey) ?? ""
-        return AIAgent.models.contains { $0.0 == m } ? m : AIAgent.defaultModel
+        let m = (UserDefaults.standard.string(forKey: Self.modelKey(provider)) ?? "").trimmingCharacters(in: .whitespaces)
+        return m.isEmpty ? provider.defaultModel : m
     }
     public var allowOutputs: Bool { UserDefaults.standard.bool(forKey: Self.allowOutputsKey) }
 
@@ -54,51 +62,70 @@ public final class AIAgentSession: ObservableObject {
     public func send(_ command: String) {
         let text = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !busy else { return }
-        guard let key = (try? KeychainStore.load(account: AIAgent.keychainAccount)) ?? nil, !key.isEmpty else {
-            lines.append(Line(role: .error, text: "Enter your Anthropic API key first (console.anthropic.com)."))
-            return
+        let p = provider
+        var key = ""
+        if let account = p.keychainAccount {
+            guard let k = (try? KeychainStore.load(account: account)) ?? nil, !k.isEmpty else {
+                lines.append(Line(role: .error, text: "Enter your \(p.displayName) API key first."))
+                return
+            }
+            key = k
         }
+        // A conversation cannot move between providers (different message formats).
+        if p != messagesProvider { messages = []; messagesProvider = p }
         lines.append(Line(role: .user, text: text))
         // Keep the conversation short: the last few commands are enough context for a live show.
         if messages.count > 24 { messages = [] }
-        messages.append(["role": "user", "content": text])
+        messages += AIAgent.userTurn(text, p)
         busy = true
         let modelID = self.modelID, allow = allowOutputs
         task = Task { @MainActor [weak self] in
-            await self?.loop(key: key, modelID: modelID, allowOutputs: allow)
+            await self?.loop(provider: p, key: key, modelID: modelID, allowOutputs: allow)
             self?.busy = false
             self?.task = nil
         }
     }
 
     @MainActor
-    private func loop(key: String, modelID: String, allowOutputs: Bool) async {
+    private func loop(provider p: AIProvider, key: String, modelID: String, allowOutputs: Bool) async {
         for _ in 0..<AIAgent.maxRounds {
             guard !Task.isCancelled else { return }
-            var req = URLRequest(url: AIAgent.url, timeoutInterval: 60)
+            let ollama = UserDefaults.standard.string(forKey: Self.ollamaURLKey) ?? ""
+            guard let url = p.endpoint(ollamaBase: ollama) else { fail("The Ollama address is not valid."); return }
+            // A local model can take long for its first answer (loading into memory).
+            var req = URLRequest(url: url, timeoutInterval: p == .ollama ? 180 : 60)
             req.httpMethod = "POST"
             req.setValue("application/json", forHTTPHeaderField: "content-type")
-            req.setValue(key, forHTTPHeaderField: "x-api-key")
-            req.setValue(AIAgent.apiVersion, forHTTPHeaderField: "anthropic-version")
-            if AIAgent.usesFallback(modelID) { req.setValue(AIAgent.fallbackBeta, forHTTPHeaderField: "anthropic-beta") }
-            req.httpBody = AIAgent.requestBody(model: modelID, messages: messages, allowOutputs: allowOutputs)
+            if p.usesOpenAIFormat {
+                if !key.isEmpty { req.setValue("Bearer \(key)", forHTTPHeaderField: "authorization") }
+                req.httpBody = AIAgent.openAIRequestBody(model: modelID, messages: messages, allowOutputs: allowOutputs)
+            } else {
+                req.setValue(key, forHTTPHeaderField: "x-api-key")
+                req.setValue(AIAgent.apiVersion, forHTTPHeaderField: "anthropic-version")
+                if AIAgent.usesFallback(modelID) { req.setValue(AIAgent.fallbackBeta, forHTTPHeaderField: "anthropic-beta") }
+                req.httpBody = AIAgent.requestBody(model: modelID, messages: messages, allowOutputs: allowOutputs)
+            }
             let data: Data, code: Int
             do {
                 let (d, resp) = try await URLSession.shared.data(for: req)
                 data = d
                 code = (resp as? HTTPURLResponse)?.statusCode ?? 0
             } catch {
-                if !Task.isCancelled { fail("Cannot reach Anthropic: \(error.localizedDescription)") }
+                if !Task.isCancelled {
+                    fail(p == .ollama ? "Cannot reach Ollama at \(url.host ?? "") (is Ollama running?): \(error.localizedDescription)"
+                                      : "Cannot reach \(p.displayName): \(error.localizedDescription)")
+                }
                 return
             }
             guard !Task.isCancelled else { return }
-            guard code == 200, let reply = AIAgent.parse(data) else {
-                let detail = AIAgent.errorText(data)
+            let parsed = p.usesOpenAIFormat ? AIAgent.parseOpenAI(data) : AIAgent.parse(data)
+            guard code == 200, let reply = parsed else {
+                let detail = p.usesOpenAIFormat ? AIAgent.openAIErrorText(data) : AIAgent.errorText(data)
                 FileLog.shared.error("ai assistant HTTP \(code): \(detail)")
-                fail(code == 401 ? "Anthropic refused the API key: \(detail)" : "Anthropic HTTP \(code): \(detail)")
+                fail(code == 401 || code == 403 ? "\(p.displayName) refused the API key: \(detail)" : "\(p.displayName) HTTP \(code): \(detail)")
                 return
             }
-            messages.append(["role": "assistant", "content": reply.content])
+            messages += AIAgent.assistantTurn(reply, p)
             if !reply.text.isEmpty { lines.append(Line(role: .assistant, text: reply.text)) }
             if reply.stopReason == "refusal" {
                 fail("The model declined this command.")
@@ -108,12 +135,12 @@ public final class AIAgentSession: ObservableObject {
                 if reply.stopReason == "max_tokens" { lines.append(Line(role: .error, text: "The answer was cut off.")) }
                 return
             }
-            var results: [[String: Any]] = []
+            var results: [(id: String, text: String, isError: Bool)] = []
             for use in reply.toolUses {
                 guard !Task.isCancelled else { return }
                 results.append(await run(use, allowOutputs: allowOutputs))
             }
-            messages.append(["role": "user", "content": results])
+            messages += AIAgent.toolTurn(results, p)
         }
         lines.append(Line(role: .error, text: "Stopped after \(AIAgent.maxRounds) steps with the model."))
     }
@@ -126,39 +153,39 @@ public final class AIAgentSession: ObservableObject {
     }
 
     @MainActor
-    private func run(_ use: AIAgent.ToolUse, allowOutputs: Bool) async -> [String: Any] {
-        guard let model else { return AIAgent.toolResult(use.id, "The app is closing.", isError: true) }
+    private func run(_ use: AIAgent.ToolUse, allowOutputs: Bool) async -> (id: String, text: String, isError: Bool) {
+        guard let model else { return (use.id, "The app is closing.", true) }
         switch use.name {
         case "get_state":
-            return AIAgent.toolResult(use.id, model.makeRemoteState().json)
+            return (use.id, model.makeRemoteState().json, false)
         case "run_macro":
-            let n = (use.input["number"] as? Int) ?? 0
+            let n = AIAgent.intValue(use.input["number"]) ?? 0
             guard let m = model.macroBook.macro(number: n) else {
-                return AIAgent.toolResult(use.id, "There is no macro \(n).", isError: true)
+                return (use.id, "There is no macro \(n).", true)
             }
             if !allowOutputs, m.steps.contains(where: { AIAgent.outputKinds.contains($0.kind) }) {
-                return AIAgent.toolResult(use.id, "Macro \(n) starts or stops the stream or recording, which the operator has not allowed.", isError: true)
+                return (use.id, "Macro \(n) starts or stops the stream or recording, which the operator has not allowed.", true)
             }
             lines.append(Line(role: .action, text: "macro \(n) \"\(m.name)\""))
             model.runMacro(m.id)
             await waitWhileRunning(m.id, model)
-            return AIAgent.toolResult(use.id, "Macro \(n) finished.")
+            return (use.id, "Macro \(n) finished.", false)
         case "run_steps":
             let show = AIAgent.Show(inputs: model.inputs.map { (number: $0.number, id: $0.id) },
                                     channels: model.audioChannels.map { (id: $0.id, name: $0.name) })
             switch AIAgent.steps(from: use.input, show: show, allowOutputs: allowOutputs) {
             case let .failure(e):
-                return AIAgent.toolResult(use.id, e.message, isError: true)
+                return (use.id, e.message, true)
             case let .success(steps):
                 let inputs = model.inputs
                 lines.append(Line(role: .action, text: AIAgent.describe(steps) { id in inputs.first { $0.id == id }?.number }))
                 FileLog.shared.info("ai assistant runs \(steps.count) steps")
                 model.runSteps(steps, runID: Self.runID)
                 await waitWhileRunning(Self.runID, model)
-                return AIAgent.toolResult(use.id, Task.isCancelled ? "Stopped by the operator." : "Done.")
+                return (use.id, Task.isCancelled ? "Stopped by the operator." : "Done.", false)
             }
         default:
-            return AIAgent.toolResult(use.id, "Unknown tool \(use.name).", isError: true)
+            return (use.id, "Unknown tool \(use.name).", true)
         }
     }
 

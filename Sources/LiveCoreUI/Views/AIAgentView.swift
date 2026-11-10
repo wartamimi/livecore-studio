@@ -8,7 +8,9 @@ import SwiftUI
 struct AIAgentWindow: View {
     @EnvironmentObject var model: AppModel
     @ObservedObject var session: AIAgentSession
-    @AppStorage(AIAgentSession.modelKey) private var modelID = AIAgent.defaultModel
+    @AppStorage(AIAgentSession.providerKey) private var providerRaw = AIProvider.anthropic.rawValue
+    @AppStorage(AIAgentSession.ollamaURLKey) private var ollamaURL = "http://localhost:11434"
+    @State private var modelID = ""
     @AppStorage(AIAgentSession.allowOutputsKey) private var allowOutputs = false
     @State private var command = ""
     @State private var apiKey = ""
@@ -51,24 +53,49 @@ struct AIAgentWindow: View {
             }
             .padding(10)
         }
-        .onAppear { hasKey = ((try? KeychainStore.load(account: AIAgent.keychainAccount)) ?? nil)?.isEmpty == false }
+        .onAppear(perform: loadProvider)
+        .onChange(of: providerRaw) { _ in loadProvider() }
+
     }
+
+    private var provider: AIProvider { AIProvider(rawValue: providerRaw) ?? .anthropic }
 
     private var settings: some View {
         Form {
-            Picker(L10n.t("ai.model"), selection: $modelID) {
-                ForEach(AIAgent.models, id: \.0) { Text($0.1).tag($0.0) }
+            Picker(L10n.t("ai.provider"), selection: $providerRaw) {
+                ForEach(AIProvider.allCases, id: \.self) { Text($0.displayName).tag($0.rawValue) }
             }
             HStack {
-                SecureField(L10n.t("ai.key"), text: $apiKey,
-                            prompt: Text(hasKey ? L10n.t("transcription.key_stored") : "sk-ant-…"))
-                    .onSubmit(saveKey)
-                Button(L10n.t("ai.save_key"), action: saveKey).disabled(apiKey.isEmpty)
+                TextField(L10n.t("ai.model"), text: $modelID, prompt: Text(provider.defaultModel))
+                    .onChange(of: modelID) { v in
+                        UserDefaults.standard.set(v.trimmingCharacters(in: .whitespaces), forKey: AIAgentSession.modelKey(provider))
+                    }
+                Menu(L10n.t("ai.models")) {
+                    ForEach(provider.models, id: \.0) { m in Button(m.1) { modelID = m.0 } }
+                }
+                .fixedSize()
+            }
+            if provider.keychainAccount != nil {
+                HStack {
+                    SecureField(L10n.t("ai.key"), text: $apiKey,
+                                prompt: Text(hasKey ? L10n.t("transcription.key_stored") : provider.keyHint))
+                        .onSubmit(saveKey)
+                    Button(L10n.t("ai.save_key"), action: saveKey).disabled(apiKey.isEmpty)
+                }
+            } else {
+                TextField(L10n.t("ai.ollama_url"), text: $ollamaURL)
             }
             Toggle(L10n.t("ai.allow_outputs"), isOn: $allowOutputs)
-            Text(L10n.t("ai.note")).font(.caption).foregroundStyle(Theme.textDim)
+            Text(L10n.t(provider == .ollama ? "ai.note_local" : "ai.note")).font(.caption).foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    private func loadProvider() {
+        let p = provider
+        modelID = UserDefaults.standard.string(forKey: AIAgentSession.modelKey(p)) ?? ""
+        apiKey = ""
+        hasKey = p.keychainAccount.flatMap { a in (try? KeychainStore.load(account: a)) ?? nil }?.isEmpty == false
     }
 
     private func row(_ line: AIAgentSession.Line) -> some View {
@@ -91,7 +118,8 @@ struct AIAgentWindow: View {
     private func saveKey() {
         let k = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !k.isEmpty else { return }
-        try? KeychainStore.save(streamKey: k, account: AIAgent.keychainAccount)
+        guard let account = provider.keychainAccount else { return }
+        try? KeychainStore.save(streamKey: k, account: account)
         apiKey = ""
         hasKey = true
     }

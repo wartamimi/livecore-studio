@@ -235,7 +235,7 @@ public enum AIAgent {
         public init(_ m: String) { message = m }
     }
 
-    static func intValue(_ v: Any?) -> Int? {
+    public static func intValue(_ v: Any?) -> Int? {
         if let i = v as? Int { return i }
         if let d = doubleValue(v) { return d.isFinite && d == d.rounded() && abs(d) < 1e9 ? Int(d) : nil }
         if let s = v as? String { return Int(s.trimmingCharacters(in: .whitespaces)) }

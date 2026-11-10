@@ -2020,9 +2020,13 @@
 "ai.key" = "Anthropic API key";
 "ai.save_key" = "Save";
 "ai.allow_outputs" = "Allow the assistant to start / stop streaming and recording";
-"ai.note" = "Commands are sent to Anthropic (Claude) over the internet with your own API key (console.anthropic.com, billed per use). The assistant can only do what a macro can: switch inputs, transitions, overlays, mute / unmute, play videos, run your macros.";
+"ai.note" = "Commands are sent over the internet to the chosen provider with your own API key (billed per use by that provider). The assistant can only do what a macro can: switch inputs, transitions, overlays, mute / unmute, play videos, run your macros.";
 "ai.hint" = "Examples: \"put camera 2 on air with the transition\", \"show the lower third on overlay 1 for 10 seconds\", \"mute the music\", \"run macro 3\".";
 "ai.placeholder" = "Type a command…";
 "ai.send" = "Send";
 "ai.stop" = "Stop";
 "ai.clear" = "Clear";
+"ai.provider" = "Provider";
+"ai.models" = "Models";
+"ai.ollama_url" = "Ollama address";
+"ai.note_local" = "Ollama runs the model on this Mac (ollama.com, free, no internet needed after the model is downloaded: ollama pull qwen2.5:7b). Use a model that supports tools. The assistant can only do what a macro can: switch inputs, transitions, overlays, mute / unmute, play videos, run your macros.";
