@@ -39,6 +39,13 @@ public enum AIAgent {
         - Overlay channels are 1 to 4 (lower thirds, titles, logos are usually on an overlay channel).
         - Do everything a command asks in one run_steps call when you can; a "wait" step pauses \
         (at most \(Int(maxWait)) s).
+        - You can also create things: title / lower-third inputs from a template (create_title), new \
+        text on an existing title (update_title), running-text inputs (create_ticker) and saved macros \
+        (create_macro). Write the text yourself when asked (names, greetings, sponsor lines). Pick colours \
+        that fit the event (wedding: soft gold / white; corporate: brand blue; news: red). A created \
+        input is not shown until the operator (or a run_steps overlayOn step) puts it on air.
+        - When asked to write something (an MC script, rundown, captions, a social post), just answer \
+        with the text; no tool is needed.
         - If a command is unclear or names something that does not exist, do nothing and ask a short \
         question instead.
         \(allowOutputs
@@ -47,10 +54,31 @@ public enum AIAgent {
         """
     }
 
-    /// The tool definitions sent with every request (kept in a fixed order so prompt caching works).
-    public static var tools: [[String: Any]] {
+    /// The steps array of run_steps and create_macro.
+    static var stepsSchema: [String: Any] {
         let kinds = MacroStepKind.allCases.map(\.rawValue)
         return [
+                            "type": "array",
+                            "minItems": 1,
+                            "maxItems": 20,
+                            "items": [
+                                "type": "object",
+                                "properties": [
+                                    "kind": ["type": "string", "enum": kinds],
+                                    "input": ["type": "integer", "description": "Input number (for preview, program, transition, video steps)."],
+                                    "overlay": ["type": "integer", "description": "Overlay channel 1-4."],
+                                    "channel": ["type": "string", "description": "Audio channel id from get_state."],
+                                    "seconds": ["type": "number", "description": "Length of a wait step."],
+                                ],
+                                "required": ["kind"],
+                                "additionalProperties": false,
+                            ] as [String: Any],
+        ]
+    }
+
+    /// The tool definitions sent with every request (kept in a fixed order so prompt caching works).
+    public static var tools: [[String: Any]] {
+        [
             [
                 "name": "get_state",
                 "description": "Returns the current show as JSON: inputs (number, name, kind), which input number is on preview and on program, overlay channels 1-4 (on/off and their input), audio channels (id, name, fader 0-1, muted), macros (number, name), and whether streaming / recording is running.",
@@ -70,23 +98,7 @@ public enum AIAgent {
                 "input_schema": [
                     "type": "object",
                     "properties": [
-                        "steps": [
-                            "type": "array",
-                            "minItems": 1,
-                            "maxItems": 20,
-                            "items": [
-                                "type": "object",
-                                "properties": [
-                                    "kind": ["type": "string", "enum": kinds],
-                                    "input": ["type": "integer", "description": "Input number (for preview, program, transition, video steps)."],
-                                    "overlay": ["type": "integer", "description": "Overlay channel 1-4."],
-                                    "channel": ["type": "string", "description": "Audio channel id from get_state."],
-                                    "seconds": ["type": "number", "description": "Length of a wait step."],
-                                ],
-                                "required": ["kind"],
-                                "additionalProperties": false,
-                            ] as [String: Any],
-                        ] as [String: Any],
+                        "steps": stepsSchema,
                     ],
                     "required": ["steps"],
                     "additionalProperties": false,
@@ -102,7 +114,7 @@ public enum AIAgent {
                     "additionalProperties": false,
                 ] as [String: Any],
             ],
-        ]
+        ] + createTools
     }
 
     /// The JSON body for one Messages API call. `messages` is the whole conversation so far, with the
@@ -110,7 +122,7 @@ public enum AIAgent {
     public static func requestBody(model: String, messages: [[String: Any]], allowOutputs: Bool) -> Data {
         var body: [String: Any] = [
             "model": model,
-            "max_tokens": 4096,
+            "max_tokens": 8000,
             "system": [["type": "text", "text": systemPrompt(allowOutputs: allowOutputs),
                         "cache_control": ["type": "ephemeral"]]],
             "tools": tools,

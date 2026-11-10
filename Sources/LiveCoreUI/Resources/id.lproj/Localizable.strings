@@ -2017,11 +2017,11 @@
 "ai.menu" = "Asisten AI…";
 "ai.title" = "Asisten AI";
 "ai.model" = "Model";
-"ai.key" = "API key Anthropic";
+"ai.key" = "API key";
 "ai.save_key" = "Simpan";
 "ai.allow_outputs" = "Izinkan asisten memulai / menghentikan streaming dan rekaman";
 "ai.note" = "Perintah dikirim lewat internet ke penyedia yang dipilih dengan API key Anda sendiri (bayar sesuai pemakaian ke penyedia itu). Asisten hanya bisa melakukan apa yang bisa dilakukan macro: pindah input, transisi, overlay, mute / unmute, putar video, jalankan macro Anda.";
-"ai.hint" = "Contoh: \"naikkan kamera 2 ke program pakai transisi\", \"tampilkan lower third di overlay 1 selama 10 detik\", \"matikan musik\", \"jalankan macro 3\".";
+"ai.hint" = "Contoh: \"naikkan kamera 2 pakai transisi\", \"buat lower third wedding emas untuk Budi & Ani di overlay 1\", \"buat running text ucapan selamat datang\", \"buat macro untuk opening\", \"tuliskan naskah MC pembukaan 2 menit\", \"matikan musik\".";
 "ai.placeholder" = "Ketik perintah…";
 "ai.send" = "Kirim";
 "ai.stop" = "Berhenti";

@@ -45,7 +45,7 @@ final class V066Tests: XCTestCase {
         let o = try XCTUnwrap(try JSONSerialization.jsonObject(with: body) as? [String: Any])
         XCTAssertEqual(o["model"] as? String, "claude-opus-5-5")
         XCTAssertEqual(o["fallbacks"] as? String, "default")
-        XCTAssertEqual((o["tools"] as? [Any])?.count, 3)
+        XCTAssertEqual((o["tools"] as? [Any])?.count, 7)
         XCTAssertNil(o["temperature"])
         let haiku = try XCTUnwrap(try JSONSerialization.jsonObject(with: AIAgent.requestBody(model: "claude-haiku-5-5", messages: [], allowOutputs: true)) as? [String: Any])
         XCTAssertNil(haiku["fallbacks"])
@@ -76,7 +76,7 @@ final class V0661Tests: XCTestCase {
         XCTAssertEqual(msgs.first?["role"] as? String, "system")
         XCTAssertEqual(msgs.last?["content"] as? String, "cut")
         let tools = try XCTUnwrap(o["tools"] as? [[String: Any]])
-        XCTAssertEqual(tools.count, 3)
+        XCTAssertEqual(tools.count, 7)
         XCTAssertEqual((tools[1]["function"] as? [String: Any])?["name"] as? String, "run_steps")
 
         let answer = #"{"choices":[{"finish_reason":"tool_calls","message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"run_steps","arguments":"{\"steps\":[{\"kind\":\"preview\",\"input\":2}]}"}}]}}]}"#
@@ -104,5 +104,43 @@ final class V0661Tests: XCTestCase {
         XCTAssertEqual(AIProvider.ollama.endpoint(ollamaBase: "")?.absoluteString, "http://localhost:11434/v1/chat/completions")
         XCTAssertNil(AIProvider.ollama.keychainAccount)
         XCTAssertEqual(AIAgent.openAIErrorText(Data(#"[{"error":{"code":400,"message":"API key not valid"}}]"#.utf8)), "API key not valid")
+    }
+}
+
+/// 0.67.0: AI Assistant content tools (titles, running text, macros).
+final class V067Tests: XCTestCase {
+    private func json(_ s: String) -> [String: Any] {
+        (try? JSONSerialization.jsonObject(with: Data(s.utf8))) as? [String: Any] ?? [:]
+    }
+
+    func testToolsListed() {
+        XCTAssertEqual(AIAgent.tools.compactMap { $0["name"] as? String },
+                       ["get_state", "run_steps", "run_macro", "create_title", "update_title", "create_ticker", "create_macro"])
+        XCTAssertEqual(AIAgent.openAITools.count, 7)
+    }
+
+    func testTitleRequest() throws {
+        let r = try AIAgent.titleRequest(from: json(##"{"template":"weddingScript","title":"Budi & Ani","subtitle":"12.12.2026","box_color":"#C9A227","title_color":"FFFFFFCC","font":"Snell Roundhand","overlay":2}"##)).get()
+        XCTAssertEqual(r.template, .weddingScript)
+        XCTAssertEqual(r.title, "Budi & Ani")
+        XCTAssertEqual(r.design.boxColor.r, 0xC9 / 255.0, accuracy: 1e-9)
+        XCTAssertEqual(r.design.titleColor.a, 0xCC / 255.0, accuracy: 1e-9)
+        XCTAssertEqual(r.design.fontFamily, "Snell Roundhand")
+        XCTAssertEqual(r.overlay, 2)
+        XCTAssertThrowsError(try AIAgent.titleRequest(from: json(#"{"template":"nope","title":"x"}"#)).get())
+        XCTAssertThrowsError(try AIAgent.titleRequest(from: json(#"{"template":"pill","title":"  "}"#)).get())
+        XCTAssertThrowsError(try AIAgent.titleRequest(from: json(#"{"template":"pill","title":"x","overlay":7}"#)).get())
+        XCTAssertNil(AIAgent.color("#12345"))
+    }
+
+    func testTickerAndMacroRequests() throws {
+        let t = try AIAgent.tickerRequest(from: json(#"{"text":"Selamat datang"}"#)).get()
+        XCTAssertEqual(t.config.text, "Selamat datang")
+        XCTAssertThrowsError(try AIAgent.tickerRequest(from: json(#"{"text":"x","template":"zzz"}"#)).get())
+        let show = AIAgent.Show(inputs: [(1, InputID("a"))], channels: [])
+        let m = try AIAgent.macroRequest(from: json(#"{"name":"Opening","steps":[{"kind":"transition","input":1},{"kind":"streamStart"}]}"#), show: show).get()
+        XCTAssertEqual(m.name, "Opening")
+        XCTAssertEqual(m.steps.map(\.kind), [.transition, .streamStart])
+        XCTAssertThrowsError(try AIAgent.macroRequest(from: json(#"{"name":"","steps":[{"kind":"cut"}]}"#), show: show).get())
     }
 }

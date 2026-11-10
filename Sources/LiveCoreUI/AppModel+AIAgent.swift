@@ -184,9 +184,69 @@ public final class AIAgentSession: ObservableObject {
                 await waitWhileRunning(Self.runID, model)
                 return (use.id, Task.isCancelled ? "Stopped by the operator." : "Done.", false)
             }
+        case "create_title":
+            switch AIAgent.titleRequest(from: use.input) {
+            case let .failure(e): return (use.id, e.message, true)
+            case let .success(r):
+                guard let engine = model.engine else { return (use.id, "No engine.", true) }
+                var style = TextSource.Style(template: r.template, title: r.title, subtitle: r.subtitle)
+                style.design = r.design
+                let id = engine.addTitle(style)
+                return await finishCreated(use, id, name: r.name ?? r.title, overlay: r.overlay, model,
+                                           what: "title \(r.template.rawValue) \"\(r.title)\"")
+            }
+        case "create_ticker":
+            switch AIAgent.tickerRequest(from: use.input) {
+            case let .failure(e): return (use.id, e.message, true)
+            case let .success(r):
+                guard let engine = model.engine else { return (use.id, "No engine.", true) }
+                let id = engine.addTicker(r.config)
+                return await finishCreated(use, id, name: r.name ?? "Running text", overlay: r.overlay, model,
+                                           what: "running text \"\(r.config.text.prefix(40))\"")
+            }
+        case "update_title":
+            guard let n = AIAgent.intValue(use.input["input"]),
+                  let i = model.inputs.first(where: { $0.number == n }),
+                  let src = model.engine?.source(i.id) as? TextSource else {
+                return (use.id, "Input \(use.input["input"].map { "\($0)" } ?? "?") is not a title.", true)
+            }
+            var style = src.style
+            if let t = use.input["title"] as? String { style.title = t }
+            if let t = use.input["subtitle"] as? String { style.subtitle = t }
+            model.updateTitle(i.id, style: style)
+            lines.append(Line(role: .action, text: "update title input \(n): \"\(style.title)\""))
+            return (use.id, "Input \(n) now reads \"\(style.title)\" / \"\(style.subtitle)\".", false)
+        case "create_macro":
+            let show = AIAgent.Show(inputs: model.inputs.map { (number: $0.number, id: $0.id) },
+                                    channels: model.audioChannels.map { (id: $0.id, name: $0.name) })
+            switch AIAgent.macroRequest(from: use.input, show: show) {
+            case let .failure(e): return (use.id, e.message, true)
+            case let .success(m):
+                model.macroBook.macros.append(m)
+                let n = model.macroBook.macros.count
+                lines.append(Line(role: .action, text: "new macro \(n) \"\(m.name)\" (\(m.steps.count) steps)"))
+                return (use.id, n <= MacroBook.maxNumber ? "Saved as macro \(n)." : "Saved (macro \(n); only 1-\(MacroBook.maxNumber) can be run by number).", false)
+            }
         default:
             return (use.id, "Unknown tool \(use.name).", true)
         }
+    }
+
+    /// A new input: name it, optionally load it on an overlay channel, and report its number
+    /// (the input list updates on the next main-thread pass).
+    @MainActor
+    private func finishCreated(_ use: AIAgent.ToolUse, _ id: InputID, name: String, overlay: Int?, _ model: AppModel,
+                               what: String) async -> (id: String, text: String, isError: Bool) {
+        model.rename(id, String(name.prefix(60)))
+        if let o = overlay { model.configureOverlay(o, source: id, preset: .fullScreen) }
+        var number: Int?
+        for _ in 0..<20 {
+            if let i = model.inputs.first(where: { $0.id == id }) { number = i.number; break }
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
+        lines.append(Line(role: .action, text: "new \(what)" + (number.map { " → input \($0)" } ?? "")
+                          + (overlay.map { ", overlay \($0)" } ?? "")))
+        return (use.id, "Created" + (number.map { " as input \($0)" } ?? "") + (overlay.map { ", loaded on overlay \($0) (not shown yet)" } ?? "") + ".", false)
     }
 
     /// Steps run on the main thread one after another; wait for them (at most 2 minutes).

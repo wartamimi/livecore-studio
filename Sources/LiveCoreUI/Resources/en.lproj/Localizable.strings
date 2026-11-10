@@ -2017,11 +2017,11 @@
 "ai.menu" = "AI Assistant…";
 "ai.title" = "AI Assistant";
 "ai.model" = "Model";
-"ai.key" = "Anthropic API key";
+"ai.key" = "API key";
 "ai.save_key" = "Save";
 "ai.allow_outputs" = "Allow the assistant to start / stop streaming and recording";
 "ai.note" = "Commands are sent over the internet to the chosen provider with your own API key (billed per use by that provider). The assistant can only do what a macro can: switch inputs, transitions, overlays, mute / unmute, play videos, run your macros.";
-"ai.hint" = "Examples: \"put camera 2 on air with the transition\", \"show the lower third on overlay 1 for 10 seconds\", \"mute the music\", \"run macro 3\".";
+"ai.hint" = "Examples: \"put camera 2 on air with the transition\", \"make a gold wedding lower third for Budi & Ani on overlay 1\", \"make a running text welcoming the guests\", \"create a macro for the opening\", \"write a 2-minute MC opening script\", \"mute the music\".";
 "ai.placeholder" = "Type a command…";
 "ai.send" = "Send";
 "ai.stop" = "Stop";

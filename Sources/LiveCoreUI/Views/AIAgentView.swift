@@ -77,7 +77,7 @@ struct AIAgentWindow: View {
             }
             if provider.keychainAccount != nil {
                 HStack {
-                    SecureField(L10n.t("ai.key"), text: $apiKey,
+                    SecureField(provider.displayName + " " + L10n.t("ai.key"), text: $apiKey,
                                 prompt: Text(hasKey ? L10n.t("transcription.key_stored") : provider.keyHint))
                         .onSubmit(saveKey)
                     Button(L10n.t("ai.save_key"), action: saveKey).disabled(apiKey.isEmpty)
