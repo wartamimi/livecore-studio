@@ -4,13 +4,15 @@ import Foundation
 /// Gemini and Ollama (a model running on this Mac) use the OpenAI-style Chat Completions format
 /// with function tools. The tools and the checks on every step are the same for all of them.
 public enum AIProvider: String, CaseIterable, Codable, Sendable {
-    case anthropic, openAI, gemini, ollama
+    case anthropic, openAI, gemini, groq, openRouter, ollama
 
     public var displayName: String {
         switch self {
         case .anthropic: return "Anthropic Claude"
         case .openAI: return "OpenAI"
         case .gemini: return "Google Gemini"
+        case .groq: return "Groq (free tier)"
+        case .openRouter: return "OpenRouter (free models)"
         case .ollama: return "Ollama (local, on this Mac)"
         }
     }
@@ -21,6 +23,8 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         case .anthropic: return AIAgent.keychainAccount
         case .openAI: return "openai-api-key"
         case .gemini: return "gemini-api-key"
+        case .groq: return "groq-api-key"
+        case .openRouter: return "openrouter-api-key"
         case .ollama: return nil
         }
     }
@@ -30,6 +34,8 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         case .anthropic: return "sk-ant-…  (console.anthropic.com)"
         case .openAI: return "sk-…  (platform.openai.com)"
         case .gemini: return "AIza…  (aistudio.google.com)"
+        case .groq: return "gsk_…  (console.groq.com)"
+        case .openRouter: return "sk-or-…  (openrouter.ai/keys)"
         case .ollama: return ""
         }
     }
@@ -41,6 +47,11 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         case .openAI: return [("gpt-4.1", "GPT-4.1"), ("gpt-4.1-mini", "GPT-4.1 mini (faster, cheaper)"), ("gpt-4o", "GPT-4o")]
         // 2.5 models are closed to new keys (Google answers 404 and names gemini-3.8-flash).
         case .gemini: return [("gemini-3.8-flash", "Gemini 3.8 Flash")]
+        case .groq: return [("llama-3.3-70b-versatile", "Llama 3.3 70B"), ("openai/gpt-oss-120b", "GPT-OSS 120B"),
+                            ("llama-3.1-8b-instant", "Llama 3.1 8B (fastest)")]
+        // ":free" models cost nothing (daily limits); "Check models" lists the current free ones.
+        case .openRouter: return [("meta-llama/llama-3.3-70b-instruct:free", "Llama 3.3 70B (free)"),
+                                  ("openrouter/auto", "Auto (OpenRouter picks, paid)")]
         case .ollama: return [("qwen2.5:7b", "Qwen 2.5 7B"), ("llama3.1:8b", "Llama 3.1 8B"), ("mistral-nemo", "Mistral Nemo")]
         }
     }
@@ -55,6 +66,8 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         case .anthropic: return AIAgent.url
         case .openAI: return URL(string: "https://api.openai.com/v1/chat/completions")
         case .gemini: return URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
+        case .groq: return URL(string: "https://api.groq.com/openai/v1/chat/completions")
+        case .openRouter: return URL(string: "https://openrouter.ai/api/v1/chat/completions")
         case .ollama:
             var b = ollamaBase.trimmingCharacters(in: .whitespacesAndNewlines)
             while b.hasSuffix("/") { b.removeLast() }
@@ -159,6 +172,8 @@ extension AIProvider {
         case .anthropic: return URL(string: "https://api.anthropic.com/v1/models?limit=100")
         case .openAI: return URL(string: "https://api.openai.com/v1/models")
         case .gemini: return URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/models")
+        case .groq: return URL(string: "https://api.groq.com/openai/v1/models")
+        case .openRouter: return URL(string: "https://openrouter.ai/api/v1/models?supported_parameters=tools")
         case .ollama:
             guard let chat = endpoint(ollamaBase: ollamaBase)?.absoluteString else { return nil }
             return URL(string: chat.replacingOccurrences(of: "/v1/chat/completions", with: "/api/tags"))
@@ -169,6 +184,15 @@ extension AIProvider {
     public func parseModels(_ data: Data) -> [String] {
         guard let o = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return [] }
         var ids: [String]
+        if self == .openRouter {
+            // Only models that can call tools; free ones first, then the rest by name.
+            let rows = ((o["data"] as? [[String: Any]]) ?? []).filter { r in
+                guard let p = r["supported_parameters"] as? [String] else { return true }
+                return p.contains("tools")
+            }.compactMap { $0["id"] as? String }
+            let free = rows.filter { $0.hasSuffix(":free") }.sorted()
+            return free + rows.filter { !$0.hasSuffix(":free") }.sorted().prefix(max(0, 40 - free.count))
+        }
         if self == .ollama {
             ids = ((o["models"] as? [[String: Any]]) ?? []).compactMap { $0["name"] as? String }
         } else {
@@ -186,7 +210,9 @@ extension AIProvider {
             ids = ids.filter { id in
                 id.hasPrefix("gemini") && !["embedding", "image", "tts", "audio", "live", "aqa"].contains { id.contains($0) }
             }
-        case .ollama: break
+        case .groq:
+            ids = ids.filter { id in !["whisper", "tts", "guard", "playai", "orpheus", "distil"].contains { id.contains($0) } }
+        case .openRouter, .ollama: break
         }
         return Array(Set(ids)).sorted { $0.localizedStandardCompare($1) == .orderedDescending }
     }

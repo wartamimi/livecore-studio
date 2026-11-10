@@ -187,4 +187,13 @@ final class V0682Tests: XCTestCase {
         XCTAssertEqual(AIProvider.ollama.modelsURL(ollamaBase: "")?.absoluteString, "http://localhost:11434/api/tags")
         XCTAssertEqual(AIProvider.anthropic.parseModels(Data(#"{"data":[{"id":"claude-opus-5-5"}]}"#.utf8)), ["claude-opus-5-5"])
     }
+
+    func testGroqOpenRouter() {
+        XCTAssertEqual(AIProvider.groq.endpoint()?.host, "api.groq.com")
+        XCTAssertEqual(AIProvider.openRouter.keychainAccount, "openrouter-api-key")
+        let g = #"{"data":[{"id":"llama-3.3-70b-versatile"},{"id":"whisper-large-v3"},{"id":"meta-llama/llama-guard-4-12b"}]}"#
+        XCTAssertEqual(AIProvider.groq.parseModels(Data(g.utf8)), ["llama-3.3-70b-versatile"])
+        let r = #"{"data":[{"id":"x/b","supported_parameters":["tools"]},{"id":"x/a:free","supported_parameters":["tools"]},{"id":"x/c:free","supported_parameters":["temperature"]}]}"#
+        XCTAssertEqual(AIProvider.openRouter.parseModels(Data(r.utf8)), ["x/a:free", "x/b"])
+    }
 }
