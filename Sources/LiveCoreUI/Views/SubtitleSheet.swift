@@ -26,7 +26,6 @@ struct SubtitleSheet: View {
                 Picker(L10n.t("transcription.engine"), selection: $style.provider) {
                     Text(L10n.t("transcription.apple")).tag(SubtitleProvider.apple)
                     Text("ElevenLabs (Scribe realtime)").tag(SubtitleProvider.elevenLabs)
-                    Text("Groq (Whisper large-v3)").tag(SubtitleProvider.groq)
                 }
                 .onChange(of: style.provider) { p in
                     if p == .apple && style.locale == "auto" { style.locale = "id-ID" }
@@ -40,12 +39,6 @@ struct SubtitleSheet: View {
                 if style.provider == .elevenLabs {
                     SecureField(L10n.t("transcription.key"), text: $apiKey,
                                 prompt: Text(hasKey ? L10n.t("transcription.key_stored") : "xi-api-key"))
-                } else if style.provider == .groq {
-                    SecureField(L10n.t("transcription.groq_key"), text: $apiKey,
-                                prompt: Text(hasKey ? L10n.t("transcription.key_stored") : "gsk_…"))
-                    Picker(L10n.t("transcription.groq_model"), selection: $style.advanced.groqModel) {
-                        ForEach(GroqTranscription.models, id: \.0) { Text($0.1).tag($0.0) }
-                    }
                 } else {
                     Toggle(L10n.t("subtitles.allow_server"), isOn: $style.allowServer)
                 }
@@ -93,7 +86,6 @@ struct SubtitleSheet: View {
         switch style.provider {
         case .apple: return L10n.t("subtitles.note")
         case .elevenLabs: return L10n.t("transcription.note")
-        case .groq: return L10n.t("transcription.groq_note")
         }
     }
 
@@ -101,7 +93,6 @@ struct SubtitleSheet: View {
         switch p {
         case .apple: return nil
         case .elevenLabs: return ElevenLabsRealtime.keychainAccount
-        case .groq: return GroqTranscription.keychainAccount
         }
     }
 
@@ -137,10 +128,6 @@ struct SubtitleSheet: View {
                     }
                     Toggle("Automatic punctuation", isOn: $adv.applePunctuation)
                     Text("Apple uses the vocabulary as preferred words (free).").font(.caption).foregroundStyle(.secondary)
-                } else if provider == .groq {
-                    Stepper(String(format: "Longest piece sent at once: %.0f s", adv.groqMaxChunk),
-                            value: $adv.groqMaxChunk, in: 3...30, step: 1)
-                    Text("Groq has no live stream: speech is cut at pauses (or at this length) and each piece is sent to Whisper, so text appears a few seconds after it is spoken. Shorter = quicker text but more requests (free plan: 20 per minute). The vocabulary is sent as a hint prompt.").font(.caption).foregroundStyle(.secondary)
                 } else {
                     Toggle("Send vocabulary as keyterms (max 50, ElevenLabs charges +20%)", isOn: $adv.elevenKeyterms)
                     Picker("Sentence end", selection: $adv.commitStrategy) {
@@ -184,7 +171,6 @@ struct SubtitleSheet: View {
     private func statusLine(_ s: SubtitleSource) -> String {
         switch s.status {
         case .live where s.style.provider == .elevenLabs: return L10n.t("transcription.live")
-        case .live where s.style.provider == .groq: return L10n.t("transcription.groq_live")
         case .live: return s.onDevice ? L10n.t("subtitles.on_device") : L10n.t("subtitles.server")
         default: return s.status.label
         }

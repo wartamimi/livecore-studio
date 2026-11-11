@@ -1548,11 +1548,6 @@
 "transport.next" = "Klip berikutnya";
 "transport.none" = "Input ini tidak punya kontrol putar";
 
-/* 0.57.0 Transkripsi Groq + jendela Transcript */
-"transcription.groq_key" = "API key Groq";
-"transcription.groq_model" = "Model Groq";
-"transcription.groq_live" = "Live (Groq Whisper)";
-"transcription.groq_note" = "Suara Program dipotong per jeda dan dikirim ke Groq (Whisper) lewat internet dengan API key Anda sendiri (console.groq.com › API Keys); memakai kuota Groq Anda. Teks muncul beberapa detik setelah diucapkan. Teks tampil sebagai overlay transparan; pasang input ini di kanal overlay.";
 "transcript.title" = "Transkrip";
 "transcript.open" = "Buka Jendela Transkrip";
 "transcript.timestamps" = "Jam";
@@ -2017,3 +2012,37 @@
 "automix.gain" = "Gain auto mix sekarang";
 "automix.group" = "Channel dalam grup";
 "automix.help" = "Auto mixer mic gain-sharing: setiap channel dengan Auto Mix aktif mendapat porsi dari total level sesuai levelnya sendiri. Orang yang bicara tetap penuh, mic terbuka orang yang diam turun, dua orang bicara masing-masing −3 dB, dan saat semua diam semua mic rata rendah. Tanpa threshold; perlu minimal dua channel. Bobot + membuat mic lebih mudah menang (moderator). Pakai untuk mic saja (bukan musik atau audio video).";
+
+/* 0.66.0 AI Assistant */
+"ai.menu" = "Asisten AI…";
+"ai.title" = "Asisten AI";
+"ai.model" = "Model";
+"ai.key" = "API key";
+"ai.save_key" = "Simpan";
+"ai.allow_outputs" = "Izinkan asisten memulai / menghentikan streaming dan rekaman";
+"ai.note" = "Perintah dikirim lewat internet ke penyedia yang dipilih dengan API key Anda sendiri (bayar sesuai pemakaian ke penyedia itu). Asisten hanya bisa melakukan apa yang bisa dilakukan macro: pindah input, transisi, overlay, mute / unmute, putar video, jalankan macro Anda.";
+"ai.hint" = "Contoh: \"naikkan kamera 2 pakai transisi\", \"buat lower third wedding emas untuk Budi & Ani di overlay 1\", \"buat running text ucapan selamat datang\", \"buat macro untuk opening\", \"tuliskan naskah MC pembukaan 2 menit\", \"matikan musik\".";
+"ai.placeholder" = "Ketik perintah…";
+"ai.send" = "Kirim";
+"ai.stop" = "Berhenti";
+"ai.clear" = "Bersihkan";
+"ai.provider" = "Penyedia";
+"ai.refresh_models" = "Cek model untuk API key saya";
+"ai.regenerate" = "Buat ulang";
+"ai.regenerate_help" = "Minta jawaban baru untuk perintah terakhir (aksinya dijalankan lagi)";
+"ai.suggest_help" = "Kirim jawaban ini";
+"ai.show_in_finder" = "Tampilkan di Finder";
+"ai.open_file" = "Buka";
+"ai.models" = "Model";
+"ai.ollama_url" = "Alamat Ollama";
+"ai.note_local" = "Ollama menjalankan model di Mac ini (ollama.com, gratis, tanpa internet setelah model diunduh: ollama pull qwen2.5:7b). Pakai model yang mendukung tools. Asisten hanya bisa melakukan apa yang bisa dilakukan macro: pindah input, transisi, overlay, mute / unmute, putar video, jalankan macro Anda.";
+/* 0.68.0 Panel AI */
+"ai.settings" = "Penyedia, model dan API key";
+"ai.welcome" = "Mau bikin apa hari ini?";
+"ai.welcome_sub" = "Pindah kamera, desain title, tulis running text, ubah pengaturan apa saja, atur audio, buat macro atau tulis naskah MC. Tinggal minta.";
+"ai.chip_switch" = "Naikkan kamera 1 ke program dengan dissolve";
+"ai.chip_title" = "Buat lower third wedding emas elegan untuk Budi & Ani di overlay 1";
+"ai.chip_ticker" = "Buat running text ucapan selamat datang untuk tamu";
+"ai.chip_audio" = "Turunkan musik setengah dan nyalakan kompresor mic";
+"ai.chip_macro" = "Buatkan macro untuk opening";
+"ai.chip_script" = "Tuliskan naskah MC pembukaan 1 menit";

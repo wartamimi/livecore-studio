@@ -1548,11 +1548,6 @@
 "transport.next" = "Next clip";
 "transport.none" = "No playback controls for this input";
 
-/* 0.57.0 Groq transcription + Transcript window */
-"transcription.groq_key" = "Groq API key";
-"transcription.groq_model" = "Groq model";
-"transcription.groq_live" = "Live (Groq Whisper)";
-"transcription.groq_note" = "Program sound is cut at pauses and sent to Groq (Whisper) over the internet with your own API key (console.groq.com › API Keys); it uses your Groq quota. Text appears a few seconds after it is spoken. Captions appear as a transparent overlay; put this input on an overlay channel.";
 "transcript.title" = "Transcript";
 "transcript.open" = "Open Transcript Window";
 "transcript.timestamps" = "Timestamps";
@@ -2017,3 +2012,37 @@
 "automix.gain" = "Auto mix gain now";
 "automix.group" = "Channels in the group";
 "automix.help" = "Gain-sharing automatic microphone mixer: every channel with Auto Mix on gets the share of the total level that its own level is. The person talking stays at full level, open microphones of people not talking go down, two talkers get −3 dB each, and with nobody talking all microphones sit evenly low. No threshold to set; needs at least two channels. Weight + makes a microphone win more easily (the moderator). Use it for microphones only (not music or video audio).";
+
+/* 0.66.0 AI Assistant */
+"ai.menu" = "AI Assistant…";
+"ai.title" = "AI Assistant";
+"ai.model" = "Model";
+"ai.key" = "API key";
+"ai.save_key" = "Save";
+"ai.allow_outputs" = "Allow the assistant to start / stop streaming and recording";
+"ai.note" = "Commands are sent over the internet to the chosen provider with your own API key (billed per use by that provider). The assistant can only do what a macro can: switch inputs, transitions, overlays, mute / unmute, play videos, run your macros.";
+"ai.hint" = "Examples: \"put camera 2 on air with the transition\", \"make a gold wedding lower third for Budi & Ani on overlay 1\", \"make a running text welcoming the guests\", \"create a macro for the opening\", \"write a 2-minute MC opening script\", \"mute the music\".";
+"ai.placeholder" = "Type a command…";
+"ai.send" = "Send";
+"ai.stop" = "Stop";
+"ai.clear" = "Clear";
+"ai.provider" = "Provider";
+"ai.refresh_models" = "Check models for my key";
+"ai.regenerate" = "Regenerate";
+"ai.regenerate_help" = "Ask again for the last command (its actions run again)";
+"ai.suggest_help" = "Send this answer";
+"ai.show_in_finder" = "Show in Finder";
+"ai.open_file" = "Open";
+"ai.models" = "Models";
+"ai.ollama_url" = "Ollama address";
+"ai.note_local" = "Ollama runs the model on this Mac (ollama.com, free, no internet needed after the model is downloaded: ollama pull qwen2.5:7b). Use a model that supports tools. The assistant can only do what a macro can: switch inputs, transitions, overlays, mute / unmute, play videos, run your macros.";
+/* 0.68.0 AI panel */
+"ai.settings" = "Provider, model and API key";
+"ai.welcome" = "What shall we make today?";
+"ai.welcome_sub" = "Switch cameras, design titles, write running text, change any setting, mix audio, build macros or write an MC script. Just ask.";
+"ai.chip_switch" = "Put camera 1 on air with a dissolve";
+"ai.chip_title" = "Make an elegant gold wedding lower third for Budi & Ani on overlay 1";
+"ai.chip_ticker" = "Make a running text welcoming the guests";
+"ai.chip_audio" = "Lower the music to half and turn on the mic compressor";
+"ai.chip_macro" = "Create a macro for the opening";
+"ai.chip_script" = "Write a 1-minute MC opening script";

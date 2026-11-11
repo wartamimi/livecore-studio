@@ -113,6 +113,17 @@ extension AppModel {
     /// Refreshes what the remote page shows (10 times a second while the server runs).
     func pushRemoteState(clients: Bool) {
         guard let server = remoteServer else { return }
+        server.update(state: makeRemoteState().json)
+        if clients {
+            let n = server.activeClients()
+            if n != remoteClients { remoteClients = n }
+            let a = RemoteServer.lanAddresses()
+            if a != remoteAddresses { remoteAddresses = a }
+        }
+    }
+
+    /// The show as the Web Controller (and the AI Assistant's get_state, 0.66.0) sees it.
+    func makeRemoteState() -> RemoteState {
         let number: (InputID?) -> Int? = { id in id.flatMap { id in self.inputs.first { $0.id == id }?.number } }
         var s = RemoteState()
         s.title = projectURL?.deletingPathExtension().lastPathComponent ?? "LiveCore Studio"
@@ -160,13 +171,7 @@ extension AppModel {
         s.macros = macroBook.macros.prefix(MacroBook.maxNumber).enumerated().map { k, m in
             RemoteState.MacroItem(number: k + 1, name: m.name, running: runningMacros.contains(m.id))
         }
-        server.update(state: s.json)
-        if clients {
-            let n = server.activeClients()
-            if n != remoteClients { remoteClients = n }
-            let a = RemoteServer.lanAddresses()
-            if a != remoteAddresses { remoteAddresses = a }
-        }
+        return s
     }
 
     /// Transitions offered on the remote: the built-in ones, the stinger once a clip is chosen,

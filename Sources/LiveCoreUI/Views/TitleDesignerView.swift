@@ -227,14 +227,20 @@ struct TitleSheet: View {
     private var gallery: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L10n.t("inputs.title_generator")).font(.headline)
-            Picker("", selection: $galleryTab) {
-                if !editingTicker {
-                    ForEach(TitleCategory.allCases, id: \.self) { Text(L10n.t("titlecat." + $0.rawValue)).tag(TitleGalleryTab.title($0)) }
+            // Category chips in rows of three (0.66.0): a five-part segmented control is wider than
+            // the gallery column, which pushed the whole column past the sheet's left edge.
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
+                ForEach(galleryTabs, id: \.1) { tab, name in
+                    Button { galleryTab = tab } label: {
+                        Text(name).font(.system(size: 11, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
+                            .frame(maxWidth: .infinity).padding(.vertical, 4)
+                            .background(RoundedRectangle(cornerRadius: 5)
+                                .fill(galleryTab == tab ? Theme.accent : Color.white.opacity(0.07)))
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
                 }
-                if editing == nil || editingTicker { Text(L10n.t("titlecat.ticker")).tag(TitleGalleryTab.ticker) }
-                Text(L10n.t("titlecat.mine")).tag(TitleGalleryTab.mine)
             }
-            .pickerStyle(.segmented).labelsHidden()
             ScrollView {
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
                     switch galleryTab {
@@ -256,6 +262,17 @@ struct TitleSheet: View {
         }
         .padding(12)
         .frame(width: 290)
+        .clipped()
+    }
+
+    private var galleryTabs: [(TitleGalleryTab, String)] {
+        var tabs: [(TitleGalleryTab, String)] = []
+        if !editingTicker {
+            tabs += TitleCategory.allCases.map { (TitleGalleryTab.title($0), L10n.t("titlecat." + $0.rawValue)) }
+        }
+        if editing == nil || editingTicker { tabs.append((.ticker, L10n.t("titlecat.ticker"))) }
+        tabs.append((.mine, L10n.t("titlecat.mine")))
+        return tabs
     }
 
     private func templateTile(_ t: TitleTemplate) -> some View {

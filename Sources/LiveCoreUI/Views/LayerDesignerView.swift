@@ -305,13 +305,19 @@ struct LayerDesignerBar: View {
         .help(help)
     }
 
+    /// Menu text of one layer (own function: the inline string was too slow to type-check).
+    private func layerLabel(_ i: Int, _ l: Layer) -> String {
+        let check: String = i == state.selected ? "✓ " : ""
+        let hidden: String = l.isHidden ? "  (" + L10n.t("designer.hidden") + ")" : ""
+        let locked: String = l.isLocked ? "  🔒" : ""
+        return check + "\(i + 1)  " + name(l.source) + hidden + locked
+    }
+
     private var layerMenu: some View {
         Menu {
             ForEach(Array(state.layers.enumerated()).reversed(), id: \.offset) { i, l in
                 if state.editable(i, model: model) {
-                    Button((i == state.selected ? "✓ " : "") + "\(i + 1)  \(name(l.source))"
-                           + (l.isHidden ? "  (" + L10n.t("designer.hidden") + ")" : "")
-                           + (l.isLocked ? "  🔒" : "")) { state.selected = i }
+                    Button(layerLabel(i, l)) { state.selected = i }
                 }
             }
             Divider()

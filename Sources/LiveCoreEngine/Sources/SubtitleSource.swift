@@ -33,8 +33,6 @@ public final class SubtitleSource: VideoSource {
     private let renderQueue = DispatchQueue(label: "livecore.subtitles", qos: .userInitiated)
     /// ElevenLabs realtime transcription (0.50.0), when `style.provider == .elevenLabs`.
     private var eleven: ElevenLabsTranscriber?
-    /// Groq Whisper transcription (0.57.0), when `style.provider == .groq`.
-    private var groq: GroqTranscriber?
     private let mixRate: Int
     /// Finished sentences for the Transcript window (0.57.0), newest last.
     private var log: [TranscriptLine] = []
@@ -93,7 +91,6 @@ public final class SubtitleSource: VideoSource {
         running = true
         startClearTimer()
         if style.provider == .elevenLabs { return startElevenLabs() }
-        if style.provider == .groq { return startGroq() }
         SFSpeechRecognizer.requestAuthorization { [weak self] auth in
             guard let self, self.running else { return }
             guard auth == .authorized else {
@@ -146,30 +143,6 @@ public final class SubtitleSource: VideoSource {
         t.start()
     }
 
-    private func startGroq() {
-        onDevice = false
-        guard let key = (try? KeychainStore.load(account: GroqTranscription.keychainAccount)) ?? nil, !key.isEmpty else {
-            return setStatus(.error("Enter your Groq API key in this input's settings."))
-        }
-        let t = GroqTranscriber(apiKey: key, languageCode: style.languageCode, mixRate: mixRate, advanced: style.advanced)
-        t.onText = { [weak self] text in
-            guard let self else { return }
-            self.commit(text)
-            self.lock.withLock { self.text = text; self.lastSpeech = Date() }
-            self.redraw()
-        }
-        t.onStatus = { [weak self] st in
-            switch st {
-            case .connecting: self?.setStatus(.starting)
-            case .live: self?.setStatus(.live)
-            case let .error(msg): self?.setStatus(.error(msg))
-            }
-        }
-        lock.withLock { groq = t }
-        t.start()
-        // Groq answers only after the first piece of speech; show the input as running meanwhile.
-        setStatus(.live)
-    }
 
     private func begin() {
         guard running else { return }
@@ -256,8 +229,6 @@ public final class SubtitleSource: VideoSource {
         running = false
         let e: ElevenLabsTranscriber? = lock.withLock { let e = eleven; eleven = nil; return e }
         e?.stop()
-        let g: GroqTranscriber? = lock.withLock { let g = groq; groq = nil; return g }
-        g?.stop()
         commitApple()
         task?.cancel()
         task = nil
@@ -269,7 +240,6 @@ public final class SubtitleSource: VideoSource {
     /// running transcript stays short.
     func append(_ chunk: ProgramAudioPump.Chunk) {
         if let e = lock.withLock({ eleven }) { return e.append(left: chunk.left, right: chunk.right) }
-        if let g = lock.withLock({ groq }) { return g.append(left: chunk.left, right: chunk.right) }
         guard let req = lock.withLock({ request }), chunk.frames > 0,
               let buf = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(chunk.frames)) else { return }
         buf.frameLength = AVAudioFrameCount(chunk.frames)
