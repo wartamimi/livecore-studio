@@ -855,8 +855,9 @@ struct TickerEditorPanel: View {
                 Picker("", selection: Binding(get: { config.scrollDirection }, set: { config.direction = $0 })) {
                     Text(L10n.t("ticker.rtl")).tag(TickerDirection.rightToLeft)
                     Text(L10n.t("ticker.ltr")).tag(TickerDirection.leftToRight)
+                    Text(L10n.t("ticker.credits")).tag(TickerDirection.bottomToTop)
                 }
-                .pickerStyle(.segmented).labelsHidden().frame(width: 220)
+                .pickerStyle(.segmented).labelsHidden().frame(width: 300)
             }
             slider(L10n.t("ticker.speed"), $config.speed, TickerConfig.speedRange)
             Divider()

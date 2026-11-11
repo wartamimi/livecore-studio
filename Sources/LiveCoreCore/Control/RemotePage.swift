@@ -317,6 +317,7 @@ nav svg{width:22px;height:22px}
       <div id="macros" class="grid4"></div>
       <div class="sub">Teleprompter</div>
       <div class="grid4" id="prKeys"></div>
+      <div id="scBox" class="hidden"><div class="sub" id="scHead">Score</div><div class="grid4" id="scKeys"></div></div>
     </section>
     <section class="card a-tools" data-tab="tools">
       <h2 data-t="tools"></h2>
@@ -897,6 +898,14 @@ function prRender(){const p=(typeof st!=="undefined"&&st&&st.prompter)||null;if(
   t.style.fontSize=Math.max(16,Math.round(p.size*Math.min(1,window.innerWidth/1100)))+"px";
   t.style.transform=(p.mirror?"scaleX(-1) ":"")+"translateY("+(-p.pos*t.scrollHeight)+"px)"}
 setInterval(prRender,250);
+// Scoreboard (0.74.0): +/- for each side, period, reset.
+(function(){[["+1","homePlus"],["−1","homeMinus"],["+1","awayPlus"],["−1","awayMinus"],["◀","periodBack"],["▶","periodNext"],["0:0","reset"]].forEach(([t,c])=>{
+  const b=document.createElement("button");b.className="key"+(c.startsWith("period")?" blue":"");b.textContent=t;b.dataset.c=c;
+  b.onclick=()=>send("/api/score?do="+c);document.getElementById("scKeys").appendChild(b)})})();
+setInterval(()=>{const s=(typeof st!=="undefined"&&st&&st.score)||null;document.getElementById("scBox").classList.toggle("hidden",!s);if(!s)return;
+  document.getElementById("scHead").textContent=s.home+"  "+s.h+" - "+s.a+"  "+s.away+(s.p?"  ·  "+s.p:"");
+  document.querySelectorAll("#scKeys button").forEach(b=>{if(b.dataset.c.startsWith("home"))b.textContent=s.home.slice(0,4)+" "+(b.dataset.c==="homePlus"?"+1":"−1");
+    if(b.dataset.c.startsWith("away"))b.textContent=s.away.slice(0,4)+" "+(b.dataset.c==="awayPlus"?"+1":"−1")})},500);
 </script>
 </body>
 </html>

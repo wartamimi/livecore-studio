@@ -44,6 +44,7 @@ struct AddInputMenuItems: View {
         Section(L10n.t("inputs.graphics_group")) {
             // Titles, lower thirds and running text are all made in the Title Designer.
             Button { model.addInputSheet = .title } label: { Label(L10n.t("inputs.title_menu"), systemImage: "textformat") }
+            Button { model.addLogoBug() } label: { Label(L10n.t("logobug.add"), systemImage: "seal") }
             Button { model.addInputSheet = .timer } label: { Label(L10n.t("timer.add"), systemImage: "timer") }
             Button { model.addInputSheet = .frame } label: { Label(L10n.t("frame.add"), systemImage: "person.crop.rectangle") }
             Button { model.addInputSheet = .virtualSet } label: { Label(L10n.t("vset.add"), systemImage: "person.and.background.dotted") }

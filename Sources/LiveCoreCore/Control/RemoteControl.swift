@@ -219,6 +219,8 @@ public enum RemoteCommand: Equatable, Sendable {
     case fullscreen
     /// Teleprompter control (0.71.0).
     case prompter(TeleprompterCommand)
+    /// Scoreboard buttons (0.74.0).
+    case score(ScoreCommand)
 }
 
 public enum RemoteRoute: Equatable, Sendable {
@@ -343,6 +345,9 @@ public enum RemoteRouter {
         case "/api/prompter/cmd":
             guard let c = r.query["do"].flatMap(TeleprompterCommand.init(rawValue:)) else { return .badRequest("do") }
             cmd = .prompter(c)
+        case "/api/score":
+            guard let c = r.query["do"].flatMap(ScoreCommand.init(rawValue:)) else { return .badRequest("do") }
+            cmd = .score(c)
         case "/api/qr/next", "/api/qr/previous":
             guard let n = int(r.query["input"]), (1...maxInputNumber).contains(n) else { return .badRequest("input") }
             cmd = .qrItem(input: n, delta: r.path == "/api/qr/next" ? 1 : -1)
@@ -576,6 +581,8 @@ public struct RemoteState: Equatable, Sendable {
     public var prompterWPM: Double = 140
     public var prompterSize: Double = 56
     public var prompterMirror = false
+    /// Scoreboard (0.74.0), only when it has a title input.
+    public var score: Scoreboard?
 
     public init() {}
 
@@ -646,6 +653,12 @@ public struct RemoteState: Equatable, Sendable {
         pr["rev"] = "\(prompterRev)"; pr["pos"] = JSON.number(prompterPos); pr["run"] = JSON.bool(prompterRunning)
         pr["wpm"] = JSON.number(prompterWPM); pr["size"] = JSON.number(prompterSize); pr["mirror"] = JSON.bool(prompterMirror)
         o["prompter"] = pr.rendered
+        if let sc = score {
+            var j = JSON.Object()
+            j["home"] = JSON.string(sc.home); j["away"] = JSON.string(sc.away)
+            j["h"] = "\(sc.homeScore)"; j["a"] = "\(sc.awayScore)"; j["p"] = JSON.string(sc.subtitleText)
+            o["score"] = j.rendered
+        }
         return o.rendered
     }
 }

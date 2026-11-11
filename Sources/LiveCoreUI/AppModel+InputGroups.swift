@@ -48,6 +48,9 @@ extension AppModel {
         autoDirector = doc.autoDirector ?? AutoDirectorConfig()
         resetShowAutomation()
         prompter.load(doc.teleprompter ?? TeleprompterScript())
+        scoreboard = doc.scoreboard ?? Scoreboard()
+        nameTags = doc.nameTags ?? NameTagConfig()
+        nameTagger.reset()
         quietMacroTriggers()
         rundownIndex = nil
         rundownStart = nil
@@ -65,6 +68,8 @@ extension AppModel {
         doc.safeSlate = safeSlate == SafeSlateConfig() ? nil : safeSlate
         doc.autoDirector = autoDirector == AutoDirectorConfig() ? nil : autoDirector
         doc.teleprompter = prompter.script == TeleprompterScript() ? nil : prompter.script
+        doc.scoreboard = scoreboard == Scoreboard() ? nil : scoreboard
+        doc.nameTags = nameTags == NameTagConfig() ? nil : nameTags
         for k in doc.inputs.indices {
             let id = doc.inputs[k].id
             doc.inputs[k].colorTag = inputTags[id]

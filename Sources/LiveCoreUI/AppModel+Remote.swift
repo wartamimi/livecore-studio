@@ -137,6 +137,7 @@ extension AppModel {
         s.prompterWPM = prompter.script.clampedWPM
         s.prompterSize = prompter.script.fontSize
         s.prompterMirror = prompter.script.mirror
+        s.score = scoreboard.input == nil ? nil : scoreboard
         s.title = projectURL?.deletingPathExtension().lastPathComponent ?? "LiveCore Studio"
         s.program = number(switcher.program)
         s.preview = number(switcher.preview)
@@ -287,6 +288,8 @@ extension AppModel {
             toggleFullscreen()
         case let .prompter(c):
             prompter.perform(c)
+        case let .score(c):
+            score(c)
         }
         pushRemoteState(clients: false)
     }

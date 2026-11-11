@@ -31,6 +31,9 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
     public var safeSlate: SafeSlateConfig?
     public var autoDirector: AutoDirectorConfig?
     public var teleprompter: TeleprompterScript?
+    /// Scoreboard and automatic name tags (added in 0.74.0).
+    public var scoreboard: Scoreboard?
+    public var nameTags: NameTagConfig?
 
     public init(version: Int = ProjectDocument.currentVersion, settings: ProductionSettings = ProductionSettings(),
                 inputs: [ProjectInput] = [], overlays: [ProjectOverlay] = [], audio: ProjectAudio = ProjectAudio(),
@@ -93,6 +96,8 @@ public struct ProjectDocument: Codable, Equatable, Sendable {
         doc.macros = macros?.pruned(inputs: seen)
         if let sl = safeSlate?.slate, !seen.contains(sl) { doc.safeSlate?.slate = nil }
         doc.autoDirector = autoDirector?.pruned(inputs: seen)
+        if let i = scoreboard?.input, !seen.contains(i) { doc.scoreboard?.input = nil }
+        doc.nameTags = nameTags?.pruned(inputs: seen)
         return doc
     }
 }

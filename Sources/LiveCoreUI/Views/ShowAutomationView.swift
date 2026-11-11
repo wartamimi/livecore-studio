@@ -3,7 +3,8 @@ import SwiftUI
 import LiveCoreCore
 import LiveCoreEngine
 
-/// Production ▸ Show Automation (0.71.0): safe slate and auto-director, saved in the project.
+/// Production ▸ Show Automation (0.71.0): safe slate and auto-director; scoreboard and speaker
+/// name tags (0.74.0). All saved in the project.
 public struct ShowAutomationWindow: View {
     @EnvironmentObject var model: AppModel
 
@@ -72,6 +73,48 @@ public struct ShowAutomationWindow: View {
                 Toggle(L10n.t("director.transition"), isOn: $model.autoDirector.useTransition)
                 Text(L10n.t("director.help")).font(.caption).foregroundStyle(Theme.textDim)
             } header: { Text(L10n.t("director.title")) }
+
+            Section {
+                titlePicker(L10n.t("score.input"), $model.scoreboard.input)
+                HStack {
+                    TextField(L10n.t("score.home"), text: $model.scoreboard.home)
+                    scoreButtons(model.scoreboard.homeScore, .homeMinus, .homePlus)
+                }
+                HStack {
+                    TextField(L10n.t("score.away"), text: $model.scoreboard.away)
+                    scoreButtons(model.scoreboard.awayScore, .awayMinus, .awayPlus)
+                }
+                HStack {
+                    TextField(L10n.t("score.period"), text: $model.scoreboard.periodLabel)
+                    scoreButtons(model.scoreboard.period, .periodBack, .periodNext)
+                }
+                Button(L10n.t("score.reset")) { model.score(.reset) }
+                Text(L10n.t("score.help")).font(.caption).foregroundStyle(Theme.textDim)
+            } header: { Text(L10n.t("score.title")) }
+
+            Section {
+                Toggle(L10n.t("nametag.enable"), isOn: $model.nameTags.enabled)
+                titlePicker(L10n.t("nametag.title_input"), $model.nameTags.title)
+                Picker(L10n.t("nametag.overlay"), selection: $model.nameTags.overlay) {
+                    ForEach(1...4, id: \.self) { Text("\($0)").tag($0) }
+                }
+                Stepper(value: $model.nameTags.seconds, in: 2 ... 60, step: 1) {
+                    Text(L10n.f("nametag.seconds", Int(model.nameTags.seconds)))
+                }
+                ForEach($model.nameTags.tags) { $t in
+                    HStack {
+                        inputPicker("", $t.input).labelsHidden().frame(width: 180)
+                        TextField(L10n.t("nametag.name"), text: $t.name)
+                        TextField(L10n.t("nametag.role"), text: $t.role)
+                        Button {
+                            let id = t.id
+                            model.nameTags.tags.removeAll { $0.id == id }
+                        } label: { Image(systemName: "trash") }.buttonStyle(.borderless)
+                    }
+                }
+                Button { model.nameTags.tags.append(.init()) } label: { Label(L10n.t("nametag.add"), systemImage: "plus") }
+                Text(L10n.t("nametag.help")).font(.caption).foregroundStyle(Theme.textDim)
+            } header: { Text(L10n.t("nametag.header")) }
         }
         .formStyle(.grouped)
     }
@@ -80,6 +123,21 @@ public struct ShowAutomationWindow: View {
         let used = Set(model.autoDirector.pairs.map(\.channel))
         let ch = model.audioChannels.first { !used.contains($0.id) }?.id ?? model.audioChannels.first?.id ?? ""
         model.autoDirector.pairs.append(.init(channel: ch, input: nil))
+    }
+
+    private func scoreButtons(_ value: Int, _ minus: ScoreCommand, _ plus: ScoreCommand) -> some View {
+        HStack {
+            Button { model.score(minus) } label: { Image(systemName: "minus") }
+            Text("\(value)").font(.title3.monospacedDigit()).frame(minWidth: 36)
+            Button { model.score(plus) } label: { Image(systemName: "plus") }
+        }
+    }
+
+    private func titlePicker(_ title: String, _ b: Binding<InputID?>) -> some View {
+        Picker(title, selection: b) {
+            Text(L10n.t("automation.none")).tag(InputID?.none)
+            ForEach(model.titleInputs) { i in Text("\(i.number)  \(i.name)").tag(InputID?.some(i.id)) }
+        }
     }
 
     private func inputPicker(_ title: String, _ b: Binding<InputID?>, allowNone: Bool = true) -> some View {

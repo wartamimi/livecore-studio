@@ -374,6 +374,7 @@ public final class AppModel: ObservableObject {
             switcher = s
             fireMacroEvents(MacroEvent.switching(oldProgram: old.program, newProgram: s.program,
                                                  oldPreview: old.preview, newPreview: s.preview))
+            if s.program != old.program { showNameTag(for: s.program) }
         }
         if s.transition == nil, tbar != s.tbarRest { tbar = s.tbarRest }
     }
@@ -494,6 +495,11 @@ public final class AppModel: ObservableObject {
     var safeSlateWatch = SafeSlateWatch()
     var director = AutoDirector()
     var directorExpectedProgram: InputID?
+    // 0.74.0: scoreboard and speaker name tags (AppModel+ShowGraphics.swift).
+    @Published public var scoreboard = Scoreboard() { didSet { if scoreboard != oldValue { applyScore() } } }
+    @Published public var nameTags = NameTagConfig()
+    var nameTagger = NameTagger()
+    var nameTagToken = 0
     /// Teleprompter (0.71.0): its own observable object, so scrolling 30 times a second only
     /// redraws the prompter window.
     public let prompter = TeleprompterModel()

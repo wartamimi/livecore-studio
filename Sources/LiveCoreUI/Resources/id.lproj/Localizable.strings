@@ -2107,3 +2107,24 @@
 
 /* 0.72.0 splash */
 "appearance.splash" = "Logo animasi saat aplikasi dibuka";
+
+/* 0.74.0 show graphics */
+"ticker.credits" = "Bawah → atas (kredit)";
+"tickertpl.endCredits" = "Kredit penutup";
+"logobug.add" = "Logo bug (logo di sudut)…";
+"score.title" = "Papan skor";
+"score.input" = "Input title";
+"score.home" = "Tim tuan rumah";
+"score.away" = "Tim tamu";
+"score.period" = "Kata babak";
+"score.reset" = "Reset skor";
+"score.help" = "Skor ditulis ke title yang dipilih (baris judul = tim dan skor, subjudul = babak). Juga ada di Web Controller.";
+"nametag.header" = "Name tag pembicara";
+"nametag.enable" = "Tampilkan name tag otomatis";
+"nametag.title_input" = "Title lower third";
+"nametag.overlay" = "Overlay";
+"nametag.seconds" = "Tampil %d dtk";
+"nametag.name" = "Nama";
+"nametag.role" = "Jabatan";
+"nametag.add" = "Tambah pembicara";
+"nametag.help" = "Saat kamera pembicara masuk Program, nama dan jabatannya tampil di lower third beberapa detik (sekali tiap 2 menit per pembicara).";

@@ -2107,3 +2107,24 @@
 
 /* 0.72.0 splash */
 "appearance.splash" = "Animated logo when the app opens";
+
+/* 0.74.0 show graphics */
+"ticker.credits" = "Bottom → top (credits)";
+"tickertpl.endCredits" = "End credits";
+"logobug.add" = "Logo bug (corner logo)…";
+"score.title" = "Scoreboard";
+"score.input" = "Title input";
+"score.home" = "Home team";
+"score.away" = "Away team";
+"score.period" = "Period word";
+"score.reset" = "Reset score";
+"score.help" = "The score is written into the chosen title (title line = teams and score, subtitle = period). Also on the Web Controller.";
+"nametag.header" = "Speaker name tags";
+"nametag.enable" = "Show name tags automatically";
+"nametag.title_input" = "Lower third title";
+"nametag.overlay" = "Overlay";
+"nametag.seconds" = "Show for %d s";
+"nametag.name" = "Name";
+"nametag.role" = "Role";
+"nametag.add" = "Add speaker";
+"nametag.help" = "When a speaker's camera goes on Program, their name and role are shown on the lower third for a few seconds (once every 2 minutes per speaker).";
