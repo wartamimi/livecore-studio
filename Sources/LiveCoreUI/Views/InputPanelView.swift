@@ -438,11 +438,8 @@ struct InputTile: View {
         .overlay(alignment: .top) {
             if let t = model.inputTags[info.id] { Rectangle().fill(t.color).frame(height: 4) }
         }
-        // 0.73.0: raised card; the tally edge glows, and the tile lifts a little under the pointer.
-        .card(stroke: isProgram ? Theme.program : (isPreview ? Theme.preview : (hovering ? Color.white.opacity(0.4) : Color.white.opacity(0.14))),
-              lineWidth: isProgram || isPreview ? 2 : 1, glow: isProgram || isPreview)
-        .scaleEffect(hovering ? 1.015 : 1)
-        .animation(.spring(response: 0.3, dampingFraction: 0.65), value: hovering)
+        .card(stroke: isProgram ? Theme.program : (isPreview ? Theme.preview : (hovering ? Color.white.opacity(0.25) : Theme.border)),
+              lineWidth: isProgram || isPreview ? 2 : 1)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture(count: 2) { model.cutDirect(info.id) }

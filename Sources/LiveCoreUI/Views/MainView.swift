@@ -12,6 +12,10 @@ struct MainView: View {
     @AppStorage("dock.playlist.minimized") private var playlistMin = false
     @AppStorage("mixer.inputsFolded") private var mixerInputsMin = false
     @AppStorage("welcome.showAtLaunch") private var welcomeAtLaunch = true
+    /// Window size class (0.73.1): the docks take sizes that suit a small laptop window, a normal
+    /// one or a wide external screen. Only the class is kept, so resizing does not redraw each step.
+    @State private var sizeClass = 1
+    private static func sizeClass(for width: CGFloat) -> Int { width < 1060 ? 0 : (width < 1600 ? 1 : 2) }
     /// Animated logo once per launch (0.72.0), not again for a second main window.
     @State private var showSplash = MainView.takeSplash()
     private static var splashTaken = false
@@ -51,15 +55,23 @@ struct MainView: View {
                         // divider positions otherwise and the remaining panels did not fill the space.
                     dockArea
                         .id(DockKey(appearance: model.appearance, inputsMin: inputsMin, playlistMin: playlistMin,
-                                    mixerInputsMin: mixerInputsMin))
+                                    mixerInputsMin: mixerInputsMin, sizeClass: sizeClass))
                     // Always shown: RECORD, STREAM, EXTERNAL and the four outputs.
                     OutputDockView { tab in settingsTab = tab; showSettings = true }
                 }
-                .padding(6)
+                .padding(sizeClass == 0 ? 4 : 6)
             }
         }
         .background(Backdrop())
         .tint(Theme.accent)
+        .background(GeometryReader { g in
+            Color.clear
+                .onAppear { sizeClass = Self.sizeClass(for: g.size.width) }
+                .onChange(of: g.size.width) { w in
+                    let c = Self.sizeClass(for: w)
+                    if c != sizeClass { sizeClass = c }
+                }
+        })
         .foregroundStyle(Theme.text)
         .sheet(isPresented: $showSettings) { SettingsView(initialTab: settingsTab).environmentObject(model) }
         .onChange(of: showSettings) { shown in if !shown { settingsTab = 6 } }
@@ -106,8 +118,17 @@ extension MainView {
     @ViewBuilder var inputsPanel: some View {
         InputPanelView()
             .dockHandle { inputsMin = true }
-            .frame(minWidth: 180, idealWidth: model.appearance.layout == .compact ? 210 : 260,
-                   maxWidth: model.appearance.layout == .inputsBottom ? .infinity : 360)
+            .frame(minWidth: sizeClass == 0 ? 160 : 180, idealWidth: inputsIdealWidth,
+                   maxWidth: model.appearance.layout == .inputsBottom ? .infinity : (sizeClass == 2 ? 460 : 360))
+    }
+
+    /// Narrow windows give the monitors the room; wide screens show more of each input.
+    var inputsIdealWidth: CGFloat {
+        switch sizeClass {
+        case 0: return 190
+        case 2: return 340
+        default: return model.appearance.layout == .compact ? 210 : 260
+        }
     }
 
     @ViewBuilder var inputsBar: some View {
@@ -131,7 +152,7 @@ extension MainView {
                 } else {
                     PlaylistDockView()
                         .dockHandle { playlistMin = true }
-                        .frame(minWidth: 200, idealWidth: 290, maxWidth: 320)
+                        .frame(minWidth: sizeClass == 0 ? 170 : 200, idealWidth: sizeClass == 0 ? 200 : 290, maxWidth: 320)
                 }
             }
         }
@@ -202,6 +223,7 @@ private struct DockKey: Hashable {
     let inputsMin: Bool
     let playlistMin: Bool
     let mixerInputsMin: Bool
+    let sizeClass: Int
 }
 
 /// Slim bar shown in place of a minimized panel; click to restore it (like vMix's collapsed docks).

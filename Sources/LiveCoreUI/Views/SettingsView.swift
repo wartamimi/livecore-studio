@@ -43,7 +43,7 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            // List on the left (full names, never cut off like tabs were); 0.73.0: glass panes.
+            // List on the left (full names, never cut off like tabs were); 0.73.0: side list and content as panels.
             HStack(spacing: 8) {
                 ScrollView {
                     VStack(spacing: 3) {
@@ -500,7 +500,7 @@ struct OutputBusPicker: View {
         }
     }
 }
-/// One row of the Settings list: icon in a small glass chip, the chosen row filled with the accent.
+/// One row of the Settings list: icon in a small chip, the chosen row filled with the accent.
 struct SettingsSidebarRow: View {
     let title: String
     let icon: String
@@ -522,12 +522,7 @@ struct SettingsSidebarRow: View {
             }
             .padding(.horizontal, 7).padding(.vertical, 5)
             .foregroundStyle(selected ? Color.white : Theme.text)
-            .background(
-                shape.fill(selected ? Theme.accent.opacity(0.85) : Color.white.opacity(hovering ? 0.09 : 0))
-                    .overlay(shape.fill(Theme.sheen).opacity(selected ? 1 : 0))
-                    .shadow(color: selected ? Theme.accent.opacity(0.45) : Color.clear, radius: 6, y: 2)
-            )
-            .overlay(shape.strokeBorder(Color.white.opacity(selected ? 0.35 : 0), lineWidth: 1))
+            .background(shape.fill(selected ? Theme.accent : (hovering ? Theme.panelHover : Color.clear)))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

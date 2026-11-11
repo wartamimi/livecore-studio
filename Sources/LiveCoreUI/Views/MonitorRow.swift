@@ -62,8 +62,6 @@ struct MonitorView: View {
             PixelBufferView(feed: feed)
                 .aspectRatio(model.canvasAspect, contentMode: .fit)   // follows Settings › Canvas
                 .overlay(Rectangle().stroke(color, lineWidth: 2))
-                // 0.73.0: the picture glows in its tally colour (drawn behind it, never over it).
-                .background(Rectangle().fill(color).shadow(color: color.opacity(0.55), radius: 9))
                 .overlay { MonitorGuides() }
                 .overlay(alignment: .top) { if notRecording { NotRecordingBadge().padding(.top, 8) } }
                 .overlay { if let designer { DesignerCanvasIfActive(state: designer) } }
