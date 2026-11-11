@@ -628,6 +628,8 @@ struct CaptureSheet: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     let editing: InputID?
+    /// Only windows or only displays (0.75.0: separate Display Capture and Window Capture inputs).
+    var only: ProjectScreenCapture.Target?
     @State private var windows: [WindowCandidate] = []
     @State private var displays: [DisplayInfo] = []
     @State private var selection: String?       // "w<id>" or "d<id>"
@@ -638,7 +640,7 @@ struct CaptureSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.t("capture.title")).font(.headline)
+            Text(L10n.t(only == .display ? "capture.add_display" : only == .window ? "capture.add_window" : "capture.title")).font(.headline)
             if let error {
                 Text(error).foregroundStyle(Theme.warning).font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
                 Button(L10n.t("capture.open_settings")) {
@@ -646,7 +648,7 @@ struct CaptureSheet: View {
                 }
             }
             List(selection: $selection) {
-                Section(L10n.t("capture.windows")) {
+                if only != .display { Section(L10n.t("capture.windows")) {
                     ForEach(windows, id: \.windowID) { w in
                         VStack(alignment: .leading, spacing: 1) {
                             Text(w.appName).font(.system(size: 12, weight: .semibold))
@@ -654,15 +656,15 @@ struct CaptureSheet: View {
                             if let used = inUse(windowConfig(w)) { usedLabel(used) }
                         }.tag("w\(w.windowID)")
                     }
-                }
-                Section(L10n.t("capture.displays")) {
+                } }
+                if only != .window { Section(L10n.t("capture.displays")) {
                     ForEach(displays, id: \.id) { d in
                         VStack(alignment: .leading, spacing: 1) {
                             Text(d.name)
                             if let used = inUse(displayConfig(d.id)) { usedLabel(used) }
                         }.tag("d\(d.id)")
                     }
-                }
+                } }
             }
             .frame(height: 260)
             Toggle(L10n.t("capture.audio"), isOn: $audio)
@@ -725,7 +727,8 @@ struct CaptureSheet: View {
             switch result {
             case let .success(list):
                 windows = list.windows; displays = list.displays; error = nil
-                if selection == nil, let zoom = windows.first(where: { $0.bundleID == "us.zoom.xos" }) { selection = "w\(zoom.windowID)" }
+                if selection == nil, only != .display, let zoom = windows.first(where: { $0.bundleID == "us.zoom.xos" }) { selection = "w\(zoom.windowID)" }
+                if selection == nil, only == .display, let d = displays.first { selection = "d\(d.id)" }
             case let .failure(e):
                 error = L10n.f("capture.permission", e.localizedDescription)
             }

@@ -7,8 +7,8 @@ import LiveCoreEngine
 /// Sheet opened from an "add input" menu. Shown by the main window (`addInputSheets()`), so the
 /// add menu works the same from the Inputs panel and from ADD INPUT in the bottom bar (0.55.0).
 public enum AddInputSheet: Identifiable, Equatable {
-    case title, timer, frame, qr, virtualSet, flag, pixabay, browser, capture, ndi, srt, decklink, captureCard, slideshow
-    case subtitles(InputID), scene(InputID), liveCall(InputID)
+    case title, timer, frame, qr, virtualSet, flag, pixabay, browser, ndi, srt, decklink, captureCard, slideshow
+    case subtitles(InputID), scene(InputID), liveCall(InputID), capture(ProjectScreenCapture.Target)
 
     public var id: String {
         switch self {
@@ -59,7 +59,8 @@ struct AddInputMenuItems: View {
             }
             Button { model.addInputSheet = .browser } label: { Label(L10n.t("browser.add"), systemImage: "globe") }
             if !model.isOperatorMode {
-                Button { model.addInputSheet = .capture } label: { Label(L10n.t("capture.add"), systemImage: "macwindow") }
+                Button { model.addInputSheet = .capture(.display) } label: { Label(L10n.t("capture.add_display"), systemImage: "display") }
+                Button { model.addInputSheet = .capture(.window) } label: { Label(L10n.t("capture.add_window"), systemImage: "macwindow") }
                 Button { model.addInputSheet = .ndi } label: { Label(L10n.t("ndi.add"), systemImage: "antenna.radiowaves.left.and.right") }
                 Button { model.addInputSheet = .srt } label: { Label(L10n.t("srtin.add"), systemImage: "dot.radiowaves.up.forward") }
                 Button { model.addInputSheet = .decklink } label: { Label(L10n.t("decklink.add"), systemImage: "rectangle.connected.to.line.below") }
@@ -71,6 +72,8 @@ struct AddInputMenuItems: View {
             Button("White") { model.addColor(.white, name: "White") }
             Button("Blue") { model.addColor(NSColor(calibratedRed: 0.05, green: 0.2, blue: 0.55, alpha: 1), name: "Blue") }
             Button("Green screen") { model.addColor(NSColor(calibratedRed: 0, green: 0.7, blue: 0.25, alpha: 1), name: "Green") }
+            Divider()
+            Button(L10n.t("color.custom")) { model.propertiesRequest = model.addColor(.systemOrange, name: L10n.t("inputs.color")) }
         } label: { Label(L10n.t("inputs.color"), systemImage: "paintpalette") }
     }
 }
@@ -96,7 +99,7 @@ private struct AddInputSheetView: View {
         case .flag: FlagSheet()
         case .pixabay: PixabaySheet()
         case .browser: BrowserSheet(editing: nil)
-        case .capture: CaptureSheet(editing: nil)
+        case let .capture(t): CaptureSheet(editing: nil, only: t)
         case .ndi: NDIInputSheet(editing: nil)
         case .srt: SRTInputSheet(editing: nil)
         case .decklink: DeckLinkInputSheet(editing: nil)

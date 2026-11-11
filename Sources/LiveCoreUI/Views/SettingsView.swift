@@ -276,6 +276,8 @@ struct SettingsView: View {
                     Toggle("", isOn: $draft.stream.primaryEnabled).labelsHidden()
                     TextField(L10n.t("stream.dest_name"), text: $draft.stream.primaryName, prompt: Text("YouTube"))
                 }
+                StreamServiceRow(name: $draft.stream.primaryName, server: $draft.stream.serverURL,
+                                 backup: $draft.stream.primaryBackupURL, key: $keyField)
                 TextField(L10n.t("stream.server"), text: $draft.stream.serverURL, prompt: Text("rtmp://a.rtmp.youtube.com/live2"))
                 TextField(L10n.t("stream.backup_server"), text: $draft.stream.primaryBackupURL, prompt: Text("rtmp://b.rtmp.youtube.com/live2?backup=1"))
                 OutputBusPicker(selection: $draft.stream.primaryAudioBus)
@@ -301,6 +303,9 @@ struct SettingsView: View {
                             draft.stream.additional.removeAll { $0.id == id }
                         }
                     }
+                    StreamServiceRow(name: $d.name, server: $d.serverURL,
+                                     backup: Binding(get: { d.backupServerURL ?? "" }, set: { d.backupServerURL = $0.isEmpty ? nil : $0 }),
+                                     key: Binding(get: { destKeys[d.id] ?? "" }, set: { destKeys[d.id] = $0 }))
                     TextField(L10n.t("stream.server"), text: $d.serverURL, prompt: Text("rtmps://live-api-s.facebook.com:443/rtmp/"))
                     TextField(L10n.t("stream.backup_server"), text: Binding(get: { d.backupServerURL ?? "" },
                                                                              set: { d.backupServerURL = $0.isEmpty ? nil : $0 }))

@@ -246,7 +246,6 @@
 "afv.help" = "Audio follow video: channel ini hanya terdengar saat inputnya tampil di Program (atau dalam transisi, layer scene, atau overlay yang aktif).";
 "afv.off" = "AFV mati (selalu terdengar)";
 "afv.following" = "Audio mengikuti video: %@";
-"capture.add" = "Tangkap Jendela / Layar (Zoom, Teams…)…";
 "capture.title" = "Tangkap jendela atau layar";
 "capture.windows" = "Jendela";
 "capture.displays" = "Layar";
@@ -2128,3 +2127,14 @@
 "nametag.role" = "Jabatan";
 "nametag.add" = "Tambah pembicara";
 "nametag.help" = "Saat kamera pembicara masuk Program, nama dan jabatannya tampil di lower third beberapa detik (sekali tiap 2 menit per pembicara).";
+"capture.add_display" = "Tangkap Layar (Display)…";
+"capture.add_window" = "Tangkap Jendela (Zoom, Teams…)…";
+"color.custom" = "Warna kustom…";
+"stream.service_custom" = "Server kustom";
+"stream.get_key" = "Ambil stream key";
+"stream.login" = "Login";
+"stream.login_title" = "Login ke %@";
+"stream.login_console" = "Buka developer console";
+"stream.login_open" = "Buka halaman login";
+"stream.login_help_youtube" = "Memakai OAuth client Google milik Anda sendiri (tipe \"TVs and Limited Input devices\") dengan YouTube Data API v3 aktif. Selama app Google masih Testing, tambahkan akun Anda sebagai test user. Setelah kode disetujui, server dan key stream YouTube Anda terisi; siaran tetap dibuat/dimulai di YouTube Studio.";
+"stream.login_help_twitch" = "Memakai aplikasi Twitch milik Anda sendiri (client type Public) dari Twitch developer console. Setelah kode disetujui, stream key Anda terisi.";

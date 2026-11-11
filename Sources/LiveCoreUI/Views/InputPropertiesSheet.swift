@@ -51,7 +51,7 @@ struct InputPropertiesSheet: View {
         var t: [Tab] = []
         switch kind {
         case .camera: if !operatorMode { t.append(.source) }
-        case .screen, .ndi, .srt, .decklink: t.append(.source)
+        case .screen, .ndi, .srt, .decklink, .color: t.append(.source)
         default: break
         }
         if kind != .scene { t.append(.color) }
@@ -98,9 +98,12 @@ struct InputPropertiesSheet: View {
                     .background(Theme.panel)
                     .overlay(alignment: .trailing) { Rectangle().fill(Theme.border).frame(width: 1) }
                 }
-                page(current)
-                    .environmentObject(model)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                VStack(spacing: 0) {
+                    InputLivePreview(input: input)
+                    page(current)
+                        .environmentObject(model)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
             }
         }
         // The sheet opened at its minimum width while the sidebar (168) + a 500-wide source page
@@ -115,7 +118,8 @@ struct InputPropertiesSheet: View {
             Group {
                 switch kind {
                 case .camera: CaptureCardSheet(editing: input)
-                case .screen: CaptureSheet(editing: input)
+                case .screen: CaptureSheet(editing: input, only: model.captureSource(input)?.config.target)
+                case .color: ColorSourcePage(input: input)
                 case .ndi: NDIInputSheet(editing: input)
                 case .srt: SRTInputSheet(editing: input)
                 case .decklink: DeckLinkInputSheet(editing: input)
@@ -129,6 +133,42 @@ struct InputPropertiesSheet: View {
         case .ai: ScrollView { InputAISheet(input: input).frame(maxWidth: .infinity) }
         case .ptz: ScrollView { PTZSheet(input: input).frame(maxWidth: .infinity) }
         }
+    }
+}
+
+/// The input's live picture above every page (0.75.0), so changes are seen as they are made.
+/// Uses the tile's feed (25–30 fps), so it costs no extra rendering.
+private struct InputLivePreview: View {
+    @EnvironmentObject var model: AppModel
+    let input: InputID
+
+    var body: some View {
+        ZStack {
+            Checkerboard(cell: 8)
+            PixelBufferView(feed: model.feed(for: input), transparent: true)
+        }
+        .aspectRatio(16 / 9, contentMode: .fit)
+        .frame(maxHeight: 200)
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .padding(10)
+        .frame(maxWidth: .infinity)
+        .background(Theme.panel)
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.border).frame(height: 1) }
+    }
+}
+
+/// Properties › Source of a Colour input (0.75.0): system colour picker, applied live.
+private struct ColorSourcePage: View {
+    @EnvironmentObject var model: AppModel
+    let input: InputID
+
+    var body: some View {
+        Form {
+            ColorPicker(L10n.t("inputs.color"), selection: Binding(
+                get: { Color(nsColor: model.colorSource(input)?.color ?? .black) },
+                set: { model.colorSource(input)?.setColor(NSColor($0)); model.objectWillChange.send() }))
+        }
+        .formStyle(.grouped)
     }
 }
 

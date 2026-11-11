@@ -45,7 +45,8 @@ public final class ColorSource: VideoSource {
     public private(set) var status: SourceStatus = .live
     public var onStatusChange: ((SourceStatus) -> Void)?
     public private(set) var color: NSColor
-    private var frame: CVPixelBuffer?
+    /// Thread-safe: the colour can change from Properties (0.75.0) while the render thread reads it.
+    private let frame = FrameSlot()
 
     public init(id: InputID, color: NSColor, name: String? = nil) {
         self.id = id; self.color = color; self.name = name ?? "Colour"
@@ -54,14 +55,15 @@ public final class ColorSource: VideoSource {
     public func setColor(_ c: NSColor) { color = c; render() }
     private func render() {
         let c = color.usingColorSpace(.sRGB) ?? color
-        frame = PixelBufferFactory.draw(width: 160, height: 90) { ctx in
+        let pb = PixelBufferFactory.draw(width: 160, height: 90) { ctx in
             ctx.setFillColor(c.cgColor)
             ctx.fill(CGRect(x: 0, y: 0, width: 160, height: 90))
         }
+        if let pb { frame.put(pb) }
     }
     public func start() {}
     public func stop() {}
-    public func currentFrame() -> CVPixelBuffer? { frame }
+    public func currentFrame() -> CVPixelBuffer? { frame.get() }
 }
 
 /// SMPTE-style colour bars (75 % bars, castellations, -I / white / +Q and a PLUGE), like the

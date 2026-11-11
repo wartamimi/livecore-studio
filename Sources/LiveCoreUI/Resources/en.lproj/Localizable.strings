@@ -246,7 +246,6 @@
 "afv.help" = "Audio follow video: hear this channel only while its input is on Program (or in a transition, scene layer or on-air overlay).";
 "afv.off" = "AFV off (always heard)";
 "afv.following" = "Audio follows video: %@";
-"capture.add" = "Window / Screen Capture (Zoom, Teams…)…";
 "capture.title" = "Window or display capture";
 "capture.windows" = "Windows";
 "capture.displays" = "Displays";
@@ -2128,3 +2127,14 @@
 "nametag.role" = "Role";
 "nametag.add" = "Add speaker";
 "nametag.help" = "When a speaker's camera goes on Program, their name and role are shown on the lower third for a few seconds (once every 2 minutes per speaker).";
+"capture.add_display" = "Display Capture…";
+"capture.add_window" = "Window Capture (Zoom, Teams…)…";
+"color.custom" = "Custom colour…";
+"stream.service_custom" = "Custom server";
+"stream.get_key" = "Get stream key";
+"stream.login" = "Log in";
+"stream.login_title" = "Log in to %@";
+"stream.login_console" = "Open developer console";
+"stream.login_open" = "Open login page";
+"stream.login_help_youtube" = "Uses your own Google OAuth client (type \"TVs and Limited Input devices\") with the YouTube Data API v3 enabled. While the Google app is in Testing, add your account as a test user. After you approve the code, the server and key of your YouTube stream are filled in; you still create or start the broadcast in YouTube Studio.";
+"stream.login_help_twitch" = "Uses your own Twitch application (client type Public) from the Twitch developer console. After you approve the code, your stream key is filled in.";

@@ -172,7 +172,9 @@ extension AppModel {
         objectWillChange.send()
     }
 
-    public func addColor(_ c: NSColor, name: String) { engine?.addColor(c, name: name) }
+    @discardableResult
+    public func addColor(_ c: NSColor, name: String) -> InputID? { engine?.addColor(c, name: name) }
+    public func colorSource(_ id: InputID) -> ColorSource? { engine?.source(id) as? ColorSource }
 
     public func addTitle(_ style: TextSource.Style) { engine?.addTitle(style) }
 
