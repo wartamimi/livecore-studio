@@ -11,14 +11,16 @@ import LiveCoreServices
 /// it takes is listed in the window.
 public final class AIAgentSession: ObservableObject {
     public struct Line: Identifiable, Equatable {
-        public enum Role { case user, assistant, action, error }
+        public enum Role { case user, assistant, action, error, info }
         public let id = UUID()
         public let role: Role
         public let text: String
         /// Ready answers the operator can tap (0.69.1).
         public var suggestions: [String] = []
-        public init(role: Role, text: String, suggestions: [String] = []) {
-            self.role = role; self.text = text; self.suggestions = suggestions
+        /// A file the assistant wrote (0.70.2): the chat offers to show it in Finder.
+        public var file: URL?
+        public init(role: Role, text: String, suggestions: [String] = [], file: URL? = nil) {
+            self.role = role; self.text = text; self.suggestions = suggestions; self.file = file
         }
     }
 
@@ -95,6 +97,7 @@ public final class AIAgentSession: ObservableObject {
         stop()
         lines = []
         messages = []
+        totalUsage = AIUsage()
         lastCommand = nil
     }
 
@@ -146,21 +149,25 @@ public final class AIAgentSession: ObservableObject {
         }
         // A conversation cannot move between providers (different message formats).
         if p != messagesProvider { messages = []; messagesProvider = p }
-        // Keep the conversation short: the last few commands are enough context for a live show.
-        if messages.count > 24 { messages = [] }
+        // Finished commands are kept as short pairs; only the last few (0.70.3).
+        messages = AIAgent.trimmedHistory(messages)
         if !again {
             lastCommand = text
             messagesBeforeLast = messages
             linesBeforeLast = lines.count + 1
             lines.append(Line(role: .user, text: shown ?? text))
         }
-        // The show as it is now rides along, so the model knows the inputs without asking.
-        let state = p.supportsTools ? model.map { AIAgent.withState(text, stateJSON: $0.makeRemoteState().json) } : nil
+        // The show as it is now rides along (short text), so the model knows the inputs without asking.
+        let state = p.supportsTools ? model.map { AIAgent.withState(text, stateJSON: AIAgent.compactState($0.makeRemoteState())) } : nil
+        let base = messages
+        let firstLine = lines.count
         messages += AIAgent.userTurn(state ?? text, p)
+        commandUsage = AIUsage()
         busy = true
         let modelID = self.modelID, allow = allowOutputs
         task = Task { @MainActor [weak self] in
             await self?.loop(provider: p, key: key, modelID: modelID, allowOutputs: allow)
+            self?.finishCommand(text, base: base, firstLine: firstLine, provider: p)
             self?.busy = false
             self?.task = nil
         }
@@ -222,6 +229,7 @@ public final class AIAgentSession: ObservableObject {
                 }
                 return
             }
+            commandUsage = commandUsage + reply.usage
             messages += AIAgent.assistantTurn(reply, p)
             let split = AIAgent.splitSuggestions(reply.text)
             let shown = AIAgent.plainText(split.text)
@@ -246,6 +254,25 @@ public final class AIAgentSession: ObservableObject {
         lines.append(Line(role: .error, text: "Stopped after \(AIAgent.maxRounds) steps with the model."))
     }
 
+    private var commandUsage = AIUsage()
+
+    /// After a command: keep it as one short user / assistant pair (no tool calls, results or
+    /// show state), and show what it cost in tokens.
+    @MainActor
+    private func finishCommand(_ text: String, base: [[String: Any]], firstLine: Int, provider p: AIProvider) {
+        let new = firstLine < lines.count ? Array(lines[firstLine...]) : []
+        if !messages.isEmpty {   // empty = the command failed and the conversation was reset
+            messages = AIAgent.trimmedHistory(base + AIAgent.compactTurn(
+                command: text, answers: new.filter { $0.role == .assistant }.map(\.text),
+                actions: new.filter { $0.role == .action }.map(\.text), p))
+        }
+        if commandUsage.total > 0 { lines.append(Line(role: .info, text: commandUsage.label)) }
+        totalUsage = totalUsage + commandUsage
+    }
+
+    /// Tokens used since the panel was cleared.
+    @Published public private(set) var totalUsage = AIUsage()
+
     /// The failed turn is dropped so the next command starts from a valid conversation.
     @MainActor
     private func fail(_ text: String) {
@@ -258,7 +285,7 @@ public final class AIAgentSession: ObservableObject {
         guard let model else { return (use.id, "The app is closing.", true) }
         switch use.name {
         case "get_state":
-            return (use.id, model.makeRemoteState().json, false)
+            return (use.id, AIAgent.compactState(model.makeRemoteState()), false)
         case "run_macro":
             let n = AIAgent.intValue(use.input["number"]) ?? 0
             guard let m = model.macroBook.macro(number: n) else {
@@ -342,6 +369,58 @@ public final class AIAgentSession: ObservableObject {
                 lines.append(Line(role: .action, text: "new macro \(n) \"\(m.name)\" (\(m.steps.count) steps)"))
                 return (use.id, n <= MacroBook.maxNumber ? "Saved as macro \(n)." : "Saved (macro \(n); only 1-\(MacroBook.maxNumber) can be run by number).", false)
             }
+        case "save_file":
+            switch AIAgent.fileRequest(from: use.input) {
+            case let .failure(e): return (use.id, e.message, true)
+            case let .success(r):
+                do {
+                    let url = try Self.writeAIFile(r.fileName, r.content)
+                    lines.append(Line(role: .action, text: "saved \(url.lastPathComponent)", file: url))
+                    return (use.id, "Saved as \(url.path).", false)
+                } catch { return (use.id, "Could not save the file: \(error.localizedDescription)", true) }
+            }
+        case "create_graphic":
+            switch AIAgent.graphicRequest(from: use.input) {
+            case let .failure(e): return (use.id, e.message, true)
+            case let .success(r):
+                guard let engine = model.engine else { return (use.id, "No engine.", true) }
+                let url: URL
+                do { url = try Self.writeAIFile(r.fileName, r.content, folder: "Graphics") }
+                catch { return (use.id, "Could not save the graphic: \(error.localizedDescription)", true) }
+                let id: InputID
+                switch r.kind {
+                case .svg: id = engine.addImage(url: url)
+                case .html:
+                    var b = ProjectBrowser(url: url.absoluteString, width: 1920, height: 1080, fps: 30, transparent: true)
+                    b.muted = true
+                    id = engine.addBrowser(b)
+                }
+                lines.append(Line(role: .action, text: "graphic file \(url.lastPathComponent)", file: url))
+                return await finishCreated(use, id, name: r.name, overlay: r.overlay, model,
+                                           what: r.kind == .svg ? "graphic \"\(r.name)\"" : "animated graphic \"\(r.name)\"")
+            }
+        case "save_title_template":
+            let name = (use.input["name"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard let n = show(model).inputNumber(use.input["input"]),
+                  let i = model.inputs.first(where: { $0.number == n }) else {
+                return (use.id, "There is no such input; inputs are \(show(model).inputList).", true)
+            }
+            let package: TitlePackage
+            if let t = model.engine?.source(i.id) as? TextSource {
+                let st = t.style
+                package = TitlePackage(name: name.isEmpty ? i.name : name, title: st.title, subtitle: st.subtitle, design: st.design ?? TitleDesign.fromClassic(
+                    layout: st.layout.rawValue, showBar: st.showBar, textColor: ProjectColor(st.textColor),
+                    barColor: ProjectColor(st.barColor), titleSize: Double(st.titleSize), subtitleSize: Double(st.subtitleSize)))
+            } else if let tk = model.tickerSource(i.id) {
+                package = TitlePackage(name: name.isEmpty ? i.name : name, ticker: tk.config)
+            } else {
+                return (use.id, "Input \(n) is not a title or running text.", true)
+            }
+            do {
+                let url = try TitleTemplateLibrary.save(package)
+                lines.append(Line(role: .action, text: "template \"\(package.name)\" → My Templates", file: url))
+                return (use.id, "Saved in My Templates as \(url.lastPathComponent).", false)
+            } catch { return (use.id, "Could not save the template: \(error)", true) }
         case "get_app_details":
             return (use.id, model.aiAppDetails(), false)
         case "app_action":
@@ -400,6 +479,19 @@ public final class AIAgentSession: ObservableObject {
         lines.append(Line(role: .action, text: "new \(what)" + (number.map { " → input \($0)" } ?? "")
                           + (overlay.map { ", overlay \($0)" } ?? "")))
         return (use.id, "Created" + (number.map { " as input \($0)" } ?? "") + (overlay.map { ", loaded on overlay \($0) (not shown yet)" } ?? "") + ".", false)
+    }
+
+    /// Documents › LiveCore Studio › AI (› sub-folder); never overwrites an existing file.
+    static func writeAIFile(_ fileName: String, _ content: String, folder: String? = nil) throws -> URL {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Documents")
+        var dir = docs.appendingPathComponent("LiveCore Studio", isDirectory: true).appendingPathComponent("AI", isDirectory: true)
+        if let folder { dir = dir.appendingPathComponent(folder, isDirectory: true) }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let existing = Set((try? FileManager.default.contentsOfDirectory(atPath: dir.path)) ?? [])
+        let url = dir.appendingPathComponent(AIAgent.freeName(fileName, existing: existing))
+        try Data(content.utf8).write(to: url, options: .atomic)
+        return url
     }
 
     /// Steps run on the main thread one after another; wait for them (at most 2 minutes).

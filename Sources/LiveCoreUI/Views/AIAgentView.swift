@@ -1,4 +1,5 @@
 #if os(macOS)
+import AppKit
 import LiveCoreCore
 import LiveCoreEngine
 import SwiftUI
@@ -61,7 +62,7 @@ struct AIAgentWindow: View {
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text(L10n.t("ai.title")).font(.system(size: 14, weight: .bold))
-                Text("\(provider.displayName) · \(modelID.isEmpty ? provider.defaultModel : modelID)")
+                Text("\(provider.displayName) · \(modelID.isEmpty ? provider.defaultModel : modelID)" + (session.totalUsage.total > 0 ? " · Σ \(session.totalUsage.label)" : ""))
                     .font(.system(size: 11)).foregroundStyle(Theme.textDim).lineLimit(1).truncationMode(.middle)
             }
             Spacer(minLength: 8)
@@ -262,10 +263,27 @@ struct AIAgentWindow: View {
             HStack(spacing: 6) {
                 Image(systemName: "bolt.fill").font(.system(size: 10)).foregroundStyle(.yellow)
                 Text(line.text).font(.system(size: 11, design: .monospaced)).lineLimit(3).textSelection(.enabled)
+                if let url = line.file {
+                    Button { NSWorkspace.shared.activateFileViewerSelecting([url]) } label: {
+                        Label(L10n.t("ai.show_in_finder"), systemImage: "folder").font(.system(size: 10, weight: .semibold))
+                    }
+                    .buttonStyle(.plain).foregroundStyle(Theme.accent)
+                    Button { NSWorkspace.shared.open(url) } label: {
+                        Label(L10n.t("ai.open_file"), systemImage: "arrow.up.forward.square").font(.system(size: 10, weight: .semibold))
+                    }
+                    .buttonStyle(.plain).foregroundStyle(Theme.accent)
+                }
             }
             .padding(.horizontal, 10).padding(.vertical, 5)
             .background(Capsule().fill(Theme.preview.opacity(0.15)))
             .overlay(Capsule().stroke(Theme.preview.opacity(0.35), lineWidth: 1))
+            .padding(.leading, 32)
+        case .info:
+            HStack(spacing: 4) {
+                Image(systemName: "gauge.with.dots.needle.33percent").font(.system(size: 9))
+                Text(line.text).font(.system(size: 10, design: .monospaced))
+            }
+            .foregroundStyle(Theme.textDim)
             .padding(.leading, 32)
         case .error:
             HStack(alignment: .top, spacing: 8) {

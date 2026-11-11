@@ -4,7 +4,7 @@ import Foundation
 /// Gemini and Ollama (a model running on this Mac) use the OpenAI-style Chat Completions format
 /// with function tools. The tools and the checks on every step are the same for all of them.
 public enum AIProvider: String, CaseIterable, Codable, Sendable {
-    case anthropic, openAI, gemini, groq, openRouter, exa, ollama
+    case anthropic, openAI, gemini, groq, openRouter, tokenMurah, exa, ollama
 
     public var displayName: String {
         switch self {
@@ -13,6 +13,7 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         case .gemini: return "Google Gemini"
         case .groq: return "Groq (free tier)"
         case .openRouter: return "OpenRouter (free models)"
+        case .tokenMurah: return "TokenMurah (bayar Rupiah)"
         case .exa: return "Exa (web answers)"
         case .ollama: return "Ollama (local, on this Mac)"
         }
@@ -26,6 +27,7 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         case .gemini: return "gemini-api-key"
         case .groq: return "groq-api-key"
         case .openRouter: return "openrouter-api-key"
+        case .tokenMurah: return "tokenmurah-api-key"
         case .exa: return AIAgent.exaKeychainAccount
         case .ollama: return nil
         }
@@ -38,6 +40,7 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         case .gemini: return "AIza…  (aistudio.google.com)"
         case .groq: return "gsk_…  (console.groq.com)"
         case .openRouter: return "sk-or-…  (openrouter.ai/keys)"
+        case .tokenMurah: return "sk-tm-… atau sk-tp-…  (tokenmurah.net/dashboard)"
         case .exa: return "Exa key  (dashboard.exa.ai)"
         case .ollama: return ""
         }
@@ -55,6 +58,11 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         // ":free" models cost nothing (daily limits); "Check models" lists the current free ones.
         case .openRouter: return [("meta-llama/llama-3.3-70b-instruct:free", "Llama 3.3 70B (free)"),
                                   ("openrouter/auto", "Auto (OpenRouter picks, paid)")]
+        // One gateway for Claude, GPT, Gemini, DeepSeek, Kimi, GLM (paid in rupiah). "Check models"
+        // lists exactly what the key's catalogue holds (sk-tm- pay as you go, sk-tp- token package).
+        case .tokenMurah: return [("claude-sonnet-5.5", "Claude Sonnet 5.5"), ("claude-opus-5.5", "Claude Opus 5.5"),
+                                  ("gpt-5.6-terra", "GPT-5.6 Terra"), ("gpt-5.6-luna", "GPT-5.6 Luna (cheap)"),
+                                  ("deepseek-3.2", "DeepSeek 3.2"), ("kimi-k3", "Kimi K3"), ("glm-5", "GLM-5")]
         // Exa answers questions from the web; it has no tools, so it cannot control the app.
         case .exa: return [("exa", "Exa answer (web search)")]
         case .ollama: return [("qwen2.5:7b", "Qwen 2.5 7B"), ("llama3.1:8b", "Llama 3.1 8B"), ("mistral-nemo", "Mistral Nemo")]
@@ -76,6 +84,7 @@ public enum AIProvider: String, CaseIterable, Codable, Sendable {
         case .gemini: return URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions")
         case .groq: return URL(string: "https://api.groq.com/openai/v1/chat/completions")
         case .openRouter: return URL(string: "https://openrouter.ai/api/v1/chat/completions")
+        case .tokenMurah: return URL(string: "https://tokenmurah.net/v1/chat/completions")
         case .exa: return URL(string: "https://api.exa.ai/chat/completions")
         case .ollama:
             var b = ollamaBase.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -145,7 +154,9 @@ extension AIAgent {
         else if finish == "content_filter" { stop = "refusal" }
         else { stop = "end_turn" }
         let text = (msg["content"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        return Reply(content: [back], text: text, toolUses: uses, stopReason: stop)
+        var r = Reply(content: [back], text: text, toolUses: uses, stopReason: stop)
+        r.usage = AIUsage(openAI: o["usage"] as? [String: Any])
+        return r
     }
 
     /// Error text of an OpenAI-style error answer (`error.message`, or Gemini's list form).
@@ -185,6 +196,7 @@ extension AIProvider {
         case .gemini: return URL(string: "https://generativelanguage.googleapis.com/v1beta/openai/models")
         case .groq: return URL(string: "https://api.groq.com/openai/v1/models")
         case .openRouter: return URL(string: "https://openrouter.ai/api/v1/models?supported_parameters=tools")
+        case .tokenMurah: return URL(string: "https://tokenmurah.net/v1/models")
         case .exa: return nil
         case .ollama:
             guard let chat = endpoint(ollamaBase: ollamaBase)?.absoluteString else { return nil }
@@ -224,6 +236,8 @@ extension AIProvider {
             }
         case .groq:
             ids = ids.filter { id in !["whisper", "tts", "guard", "playai", "orpheus", "distil"].contains { id.contains($0) } }
+        case .tokenMurah:
+            ids = ids.filter { id in !["embedding", "image", "video", "tts", "whisper", "veo", "sora", "dall-e", "imagen"].contains { id.lowercased().contains($0) } }
         case .openRouter, .exa, .ollama: break
         }
         return Array(Set(ids)).sorted { $0.localizedStandardCompare($1) == .orderedDescending }

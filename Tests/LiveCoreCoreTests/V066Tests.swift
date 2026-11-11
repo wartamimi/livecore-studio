@@ -45,7 +45,7 @@ final class V066Tests: XCTestCase {
         let o = try XCTUnwrap(try JSONSerialization.jsonObject(with: body) as? [String: Any])
         XCTAssertEqual(o["model"] as? String, "claude-opus-5-5")
         XCTAssertEqual(o["fallbacks"] as? String, "default")
-        XCTAssertEqual((o["tools"] as? [Any])?.count, 16)
+        XCTAssertEqual((o["tools"] as? [Any])?.count, 19)
         XCTAssertNil(o["temperature"])
         let haiku = try XCTUnwrap(try JSONSerialization.jsonObject(with: AIAgent.requestBody(model: "claude-haiku-5-5", messages: [], allowOutputs: true)) as? [String: Any])
         XCTAssertNil(haiku["fallbacks"])
@@ -76,7 +76,7 @@ final class V0661Tests: XCTestCase {
         XCTAssertEqual(msgs.first?["role"] as? String, "system")
         XCTAssertEqual(msgs.last?["content"] as? String, "cut")
         let tools = try XCTUnwrap(o["tools"] as? [[String: Any]])
-        XCTAssertEqual(tools.count, 16)
+        XCTAssertEqual(tools.count, 19)
         XCTAssertEqual((tools[1]["function"] as? [String: Any])?["name"] as? String, "run_steps")
 
         let answer = #"{"choices":[{"finish_reason":"tool_calls","message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"run_steps","arguments":"{\"steps\":[{\"kind\":\"preview\",\"input\":2}]}"}}]}}]}"#
@@ -115,8 +115,8 @@ final class V067Tests: XCTestCase {
 
     func testToolsListed() {
         XCTAssertEqual(AIAgent.tools.compactMap { $0["name"] as? String },
-                       ["get_state", "run_steps", "run_macro", "create_title", "create_input", "update_title", "create_ticker", "create_macro", "get_input_settings", "set_input_settings", "set_audio", "set_transition", "delete_input", "get_app_details", "app_action", "web_search"])
-        XCTAssertEqual(AIAgent.openAITools.count, 16)
+                       ["get_state", "run_steps", "run_macro", "create_title", "create_input", "update_title", "create_ticker", "create_macro", "get_input_settings", "set_input_settings", "set_audio", "set_transition", "delete_input", "get_app_details", "app_action", "web_search", "save_file", "create_graphic", "save_title_template"])
+        XCTAssertEqual(AIAgent.openAITools.count, 19)
     }
 
     func testTitleRequest() throws {
@@ -260,5 +260,67 @@ final class V070Tests: XCTestCase {
         let body = String(data: AIAgent.openAIRequestBody(model: "m", messages: [], allowOutputs: false, provider: .groq), encoding: .utf8)!
         XCTAssertTrue(body.contains("LIVECORE STUDIO MANUAL"))
         XCTAssertTrue(AIAgent.tools.contains { $0["name"] as? String == "get_app_details" })
+    }
+}
+
+final class V0701Tests: XCTestCase {
+    func testTokenMurah() {
+        XCTAssertEqual(AIProvider.tokenMurah.endpoint()?.absoluteString, "https://tokenmurah.net/v1/chat/completions")
+        XCTAssertEqual(AIProvider.tokenMurah.modelsURL()?.absoluteString, "https://tokenmurah.net/v1/models")
+        let m = #"{"data":[{"id":"claude-sonnet-5.5"},{"id":"text-embedding-3-small"},{"id":"veo-3"},{"id":"deepseek-3.2"}]}"#
+        XCTAssertEqual(AIProvider.tokenMurah.parseModels(Data(m.utf8)), ["deepseek-3.2", "claude-sonnet-5.5"])
+        XCTAssertTrue(AIProvider.tokenMurah.supportsTools)
+    }
+}
+
+final class V072Tests: XCTestCase {
+    func testFileRequest() {
+        let r = try? AIAgent.fileRequest(from: ["name": "../Rundown: Nikah.csv", "format": "csv", "content": "a,b"]).get()
+        XCTAssertEqual(r?.fileName, "Rundown Nikah.csv")
+        if case .success = AIAgent.fileRequest(from: ["name": "x", "format": "exe", "content": "a"]) { XCTFail() }
+        if case .success = AIAgent.fileRequest(from: ["name": "x", "format": "txt", "content": ""]) { XCTFail() }
+        XCTAssertEqual(AIAgent.freeName("A.srt", existing: ["A.srt", "A 2.srt"]), "A 3.srt")
+    }
+
+    func testGraphicRequest() {
+        let svg = try? AIAgent.graphicRequest(from: ["name": "Skor", "svg": "<svg viewBox=\"0 0 1920 1080\"><rect/></svg>", "overlay": 2]).get()
+        XCTAssertEqual(svg?.kind, .svg)
+        XCTAssertEqual(svg?.fileName, "Skor.svg")
+        XCTAssertEqual(svg?.overlay, 2)
+        XCTAssertTrue(svg?.content.contains("xmlns=\"http://www.w3.org/2000/svg\"") ?? false)
+        let html = try? AIAgent.graphicRequest(from: ["name": "Lower", "html": "<div class=lt>Budi</div>"]).get()
+        XCTAssertEqual(html?.kind, .html)
+        XCTAssertTrue(html?.content.contains("background:transparent") ?? false)
+        if case .success = AIAgent.graphicRequest(from: ["name": "x"]) { XCTFail() }
+        if case .success = AIAgent.graphicRequest(from: ["name": "x", "svg": "<svg>", "overlay": 9]) { XCTFail() }
+        XCTAssertTrue(AIAgent.systemPrompt(allowOutputs: false).contains("create_graphic"))
+    }
+}
+
+final class V0703Tests: XCTestCase {
+    func testUsageAndCompactHistory() {
+        let a = AIUsage(anthropic: ["input_tokens": 100, "cache_read_input_tokens": 4000, "cache_creation_input_tokens": 0, "output_tokens": 50])
+        XCTAssertEqual(a, AIUsage(input: 4100, output: 50, cached: 4000))
+        let o = AIUsage(openAI: ["prompt_tokens": 3000, "completion_tokens": 200, "prompt_tokens_details": ["cached_tokens": 2048]])
+        XCTAssertEqual((a + o).total, 7350)
+        XCTAssertEqual(AIUsage(input: 3900, output: 310, cached: 2800).label, "4.2k tokens (in 3.9k, 2.8k cached; out 310)")
+        let turn = AIAgent.compactTurn(command: "cut ke 2", answers: ["Sudah."], actions: ["program input 2"], .openAI)
+        XCTAssertEqual(turn.count, 2)
+        XCTAssertEqual(turn[1]["content"] as? String, "Sudah.\n[done: program input 2]")
+        let long = (0..<30).flatMap { _ in turn }
+        XCTAssertEqual(AIAgent.trimmedHistory(long).count, AIAgent.historyCommands * 2)
+        let body = String(data: AIAgent.requestBody(model: "claude-opus-5-5", messages: [], allowOutputs: false), encoding: .utf8)!
+        XCTAssertEqual(body.components(separatedBy: "cache_control").count - 1, 2)   // system + last tool
+    }
+
+    func testCompactState() {
+        var s = RemoteState()
+        s.program = 2; s.preview = 1
+        s.inputs = [RemoteState.Input(number: 1, name: "Cam", kind: "camera", ptz: true, data: false),
+                    RemoteState.Input(number: 2, name: "Logo", kind: "image", ptz: false, data: false)]
+        let t = AIAgent.compactState(s)
+        XCTAssertTrue(t.contains("Program: 2 · Preview: 1"))
+        XCTAssertTrue(t.contains("1 Cam [camera, PTZ]; 2 Logo [image]"))
+        XCTAssertLessThan(t.count, s.json.count)
     }
 }

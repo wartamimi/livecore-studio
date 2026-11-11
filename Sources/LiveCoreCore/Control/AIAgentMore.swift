@@ -256,7 +256,7 @@ extension AIAgent {
 
     /// The show as it is now, attached to each command so the model does not have to ask.
     public static func withState(_ command: String, stateJSON: String) -> String {
-        let state = stateJSON.count > 12000 ? String(stateJSON.prefix(12000)) + "…" : stateJSON
+        let state = stateJSON.count > 6000 ? String(stateJSON.prefix(6000)) + "…" : stateJSON
         return command + "\n\n<app_state>\n" + state + "\n</app_state>"
     }
 }

@@ -137,7 +137,7 @@ public enum AIAgent {
                     "additionalProperties": false,
                 ] as [String: Any],
             ],
-        ] + createTools + settingsTools + extraTools
+        ] + createTools + settingsTools + extraTools + fileTools
     }
 
     /// The JSON body for one Messages API call. `messages` is the whole conversation so far, with the
@@ -145,10 +145,10 @@ public enum AIAgent {
     public static func requestBody(model: String, messages: [[String: Any]], allowOutputs: Bool) -> Data {
         var body: [String: Any] = [
             "model": model,
-            "max_tokens": 8000,
+            "max_tokens": 16000,
             "system": [["type": "text", "text": systemPrompt(allowOutputs: allowOutputs),
                         "cache_control": ["type": "ephemeral"]]],
-            "tools": tools,
+            "tools": cachedTools,
             "messages": messages,
             // Live commands: answer quickly.
             "output_config": ["effort": "low"],
@@ -176,6 +176,8 @@ public enum AIAgent {
         public let text: String
         public let toolUses: [ToolUse]
         public let stopReason: String
+        /// Tokens this call used (0.70.3).
+        public var usage = AIUsage()
     }
 
     public static func parse(_ data: Data) -> Reply? {
@@ -194,8 +196,10 @@ public enum AIAgent {
             default: break
             }
         }
-        return Reply(content: content, text: text.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines),
-                     toolUses: uses, stopReason: o["stop_reason"] as? String ?? "")
+        var r = Reply(content: content, text: text.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines),
+                      toolUses: uses, stopReason: o["stop_reason"] as? String ?? "")
+        r.usage = AIUsage(anthropic: o["usage"] as? [String: Any])
+        return r
     }
 
     /// The `error.message` of an API error answer, else the raw text (shortened).

@@ -76,7 +76,11 @@ extension AIAgent {
     (title design, colours, chroma key, crop, layers, animation, timer, QR, virtual set…). \
     set_audio: faders, gain, pan, EQ, compressor, gate, buses. set_transition: kind and duration. \
     delete_input. app_action: next / previous preview, overlay on Preview, replay, T-bar, PTZ, data \
-    rows, QR items, slides, full screen, open windows. web_search: facts from the web (Exa).
+    rows, QR items, slides, full screen, open windows. web_search: facts from the web (Exa). \
+    save_file: save what you wrote as a file (script, rundown .csv, subtitles .srt, captions). \
+    create_graphic: design your own graphic as SVG (still) or HTML (animated) and add it as an input; \
+    use it when no title template fits (logos, scoreboards, posters, frames, animated lower thirds). \
+    save_title_template: keep a title / running-text look in My Templates.
 
     BEYOND THE BUTTONS: BE A PRODUCER
     • When the operator asks for ideas, a plan or "what should I do", act as an experienced live \
