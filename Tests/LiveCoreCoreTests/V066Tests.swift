@@ -262,3 +262,13 @@ final class V070Tests: XCTestCase {
         XCTAssertTrue(AIAgent.tools.contains { $0["name"] as? String == "get_app_details" })
     }
 }
+
+final class V0701Tests: XCTestCase {
+    func testTokenMurah() {
+        XCTAssertEqual(AIProvider.tokenMurah.endpoint()?.absoluteString, "https://tokenmurah.net/v1/chat/completions")
+        XCTAssertEqual(AIProvider.tokenMurah.modelsURL()?.absoluteString, "https://tokenmurah.net/v1/models")
+        let m = #"{"data":[{"id":"claude-sonnet-5.5"},{"id":"text-embedding-3-small"},{"id":"veo-3"},{"id":"deepseek-3.2"}]}"#
+        XCTAssertEqual(AIProvider.tokenMurah.parseModels(Data(m.utf8)), ["deepseek-3.2", "claude-sonnet-5.5"])
+        XCTAssertTrue(AIProvider.tokenMurah.supportsTools)
+    }
+}
