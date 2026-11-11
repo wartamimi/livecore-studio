@@ -73,7 +73,7 @@ struct MainView: View {
                 }
         })
         .foregroundStyle(Theme.text)
-        .sheet(isPresented: $showSettings) { SettingsView(initialTab: settingsTab).environmentObject(model) }
+        .dialog(isPresented: $showSettings, model) { SettingsView(initialTab: settingsTab) }
         .onChange(of: showSettings) { shown in if !shown { settingsTab = 6 } }
         .background(KeyboardShortcuts())
         // Pre-flight lives in Settings (0.38.0); the menu command opens that tab.
@@ -89,9 +89,9 @@ struct MainView: View {
             showSettings = true
         }
         .addInputSheets(model)
-        .sheet(isPresented: $model.showOutputsPanel) { OutputsPanelSheet().environmentObject(model) }
-        .sheet(isPresented: $model.showTemplates) { TemplatesSheet().environmentObject(model) }
-        .sheet(item: $model.propertiesRequest) { id in InputPropertiesSheet(input: id).environmentObject(model) }
+        .dialog(isPresented: $model.showOutputsPanel, model) { OutputsPanelSheet() }
+        .dialog(isPresented: $model.showTemplates, model) { TemplatesSheet() }
+        .dialog(item: $model.propertiesRequest, model) { id in InputPropertiesSheet(input: id) }
         .onAppear {
             // Welcome screen with the templates on an empty start (not over the recovery question).
             // After the splash, when it shows.

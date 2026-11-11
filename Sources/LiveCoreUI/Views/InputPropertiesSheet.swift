@@ -35,7 +35,15 @@ struct InputPropertiesSheet: View {
         _tab = State(initialValue: tab)
     }
 
-    private var kind: InputKind? { model.inputs.first { $0.id == input }?.kind }
+    private var info: ProductionEngine.InputInfo? { model.inputs.first { $0.id == input } }
+    private var kind: InputKind? { info?.kind }
+
+    /// Header colour and text follow the input's tally state.
+    private var tally: (color: Color, label: String) {
+        if model.switcher.program == input { return (Theme.program, L10n.t("monitor.program")) }
+        if model.switcher.preview == input { return (Theme.preview, L10n.t("monitor.preview")) }
+        return (Theme.accent, info?.status.label ?? "")
+    }
 
     /// Pages that apply to this kind of input, in order.
     static func tabs(for kind: InputKind?, operatorMode: Bool) -> [Tab] {
@@ -64,41 +72,31 @@ struct InputPropertiesSheet: View {
         let tabs = Self.tabs(for: kind, operatorMode: model.isOperatorMode)
         let current = tabs.contains(tab) ? tab : (tabs.first ?? .color)
         let s = Self.size
+        let state = tally
         VStack(spacing: 0) {
-            HStack(spacing: 10) {
-                Text(L10n.f("props.title", model.inputs.first { $0.id == input }?.name ?? ""))
-                    .font(.headline).lineLimit(1).truncationMode(.tail)
-                Spacer(minLength: 8)
+            DialogHeader(icon: kind?.symbol ?? "slider.horizontal.3",
+                         title: L10n.f("props.title", info?.name ?? ""),
+                         subtitle: info.map { "\($0.number) · \(state.label)" },
+                         color: state.color, close: { dismiss() }) {
                 if tabs.count > 1 && s.width < 700 {
                     Picker("", selection: $tab) {
                         ForEach(tabs) { Label(L10n.t("props.tab.\($0.rawValue)"), systemImage: $0.icon).tag($0) }
                     }
                     .labelsHidden().fixedSize()
                 }
-                Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.cancelAction)
             }
-            .padding(.horizontal, 14).padding(.vertical, 10)
-            Divider()
             HStack(spacing: 0) {
                 if tabs.count > 1 && s.width >= 700 {
-                    VStack(alignment: .leading, spacing: 2) {
+                    VStack(spacing: 3) {
                         ForEach(tabs) { t in
-                            Button { tab = t } label: {
-                                Label(L10n.t("props.tab.\(t.rawValue)"), systemImage: t.icon)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.horizontal, 10).padding(.vertical, 6)
-                                    .background(current == t ? Theme.accent.opacity(0.35) : Color.clear)
-                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
+                            SidebarRow(title: L10n.t("props.tab.\(t.rawValue)"), icon: t.icon, selected: current == t) { tab = t }
                         }
                         Spacer()
                     }
                     .padding(8)
-                    .frame(width: 168)
+                    .frame(width: 180)
                     .background(Theme.panel)
-                    Divider()
+                    .overlay(alignment: .trailing) { Rectangle().fill(Theme.border).frame(width: 1) }
                 }
                 page(current)
                     .environmentObject(model)

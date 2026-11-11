@@ -48,7 +48,7 @@ struct SettingsView: View {
                 ScrollView {
                     VStack(spacing: 3) {
                         ForEach(Self.sections, id: \.tag) { s in
-                            SettingsSidebarRow(title: s.title, icon: s.icon, selected: tab == s.tag) { tab = s.tag }
+                            SidebarRow(title: s.title, icon: s.icon, selected: tab == s.tag) { tab = s.tag }
                         }
                     }
                     .padding(8)
@@ -498,37 +498,6 @@ struct OutputBusPicker: View {
         Picker(L10n.t("bus.output"), selection: $selection) {
             ForEach(OutputBus.allCases, id: \.self) { Text($0.displayName).tag($0) }
         }
-    }
-}
-/// One row of the Settings list: icon in a small chip, the chosen row filled with the accent.
-struct SettingsSidebarRow: View {
-    let title: String
-    let icon: String
-    let selected: Bool
-    let action: () -> Void
-    @State private var hovering = false
-
-    var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
-        Button(action: action) {
-            HStack(spacing: 9) {
-                Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .frame(width: 24, height: 24)
-                    .background(Color.white.opacity(selected ? 0.22 : 0.08))
-                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
-                Text(title).font(.system(size: 13, weight: selected ? .semibold : .regular)).lineLimit(1).minimumScaleFactor(0.8)
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 7).padding(.vertical, 5)
-            .foregroundStyle(selected ? Color.white : Theme.text)
-            .background(shape.fill(selected ? Theme.accent : (hovering ? Theme.panelHover : Color.clear)))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .animation(.easeOut(duration: 0.15), value: hovering)
-        .animation(.spring(response: 0.3, dampingFraction: 0.75), value: selected)
     }
 }
 #endif

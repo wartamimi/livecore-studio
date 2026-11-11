@@ -77,8 +77,8 @@ struct AddInputMenuItems: View {
 extension View {
     /// Presents the sheets the add-input menus ask for.
     func addInputSheets(_ model: AppModel) -> some View {
-        sheet(item: Binding(get: { model.addInputSheet }, set: { model.addInputSheet = $0 })) { s in
-            AddInputSheetView(sheet: s).environmentObject(model)
+        dialog(item: Binding(get: { model.addInputSheet }, set: { model.addInputSheet = $0 }), model) { s in
+            AddInputSheetView(sheet: s)
         }
     }
 }
