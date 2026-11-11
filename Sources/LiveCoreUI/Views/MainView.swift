@@ -43,11 +43,7 @@ struct MainView: View {
                     Text(err).foregroundStyle(Theme.textDim)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if model.appearance.style == .studio {
-                // New Studio UI (0.72.0); Settings › Appearance › Interface switches back.
-                StudioShell(showSettings: $showSettings, settingsTab: $settingsTab)
             } else {
-                // Classic UI (0.71.0), unchanged.
                 VStack(spacing: 6) {
                     TopBarView(showSettings: $showSettings)
                     ErrorBanner()
@@ -86,7 +82,7 @@ struct MainView: View {
         .onAppear {
             // Welcome screen with the templates on an empty start (not over the recovery question).
             // After the splash, when it shows.
-            DispatchQueue.main.asyncAfter(deadline: .now() + (showSplash ? 3.3 : 1.2)) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + (showSplash ? 4.7 : 1.2)) {
                 if welcomeAtLaunch, !model.recoveryPending, model.inputs.isEmpty, model.projectURL == nil, model.startupError == nil {
                     model.showTemplates = true
                 }

@@ -36,16 +36,12 @@ public struct AppearanceSettings: Codable, Equatable, Hashable {
     public enum AccentChoice: String, Codable, CaseIterable { case theme, blue, purple, pink, orange, teal, green }
     public enum TallyChoice: String, Codable, CaseIterable { case classic, colorSafe }
     public enum DockLayout: String, Codable, CaseIterable { case classic, inputsRight, inputsBottom, mixerRight, stage, compact }
-    /// Main window design (0.72.0): the new Studio workspace UI, or the Classic UI of 0.71.0
-    /// (unchanged, with its six dock layouts) for operators who prefer it.
-    public enum UIStyle: String, Codable, CaseIterable { case studio, classic }
 
     public var theme: ThemeChoice = .studio
     public var accent: AccentChoice = .theme
     public var tally: TallyChoice = .classic
     public var layout: DockLayout = .classic
     public var roundedPanels = true
-    public var style: UIStyle = .studio
     /// Animated logo when the app opens (0.72.0).
     public var splash = true
 
@@ -70,7 +66,6 @@ public struct AppearanceSettings: Codable, Equatable, Hashable {
         tally = (try? c.decode(TallyChoice.self, forKey: .tally)) ?? .classic
         layout = (try? c.decode(DockLayout.self, forKey: .layout)) ?? .classic
         roundedPanels = (try? c.decode(Bool.self, forKey: .roundedPanels)) ?? true
-        style = (try? c.decode(UIStyle.self, forKey: .style)) ?? .studio
         splash = (try? c.decode(Bool.self, forKey: .splash)) ?? true
     }
 }

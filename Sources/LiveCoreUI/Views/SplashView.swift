@@ -17,7 +17,7 @@ struct SplashView: View {
     @State private var leaving = false
     @State private var finished = false
 
-    private static let total: Double = 2.6
+    private static let total: Double = 3.8
 
     init(onFinish: @escaping () -> Void) { self.onFinish = onFinish }
 
@@ -80,10 +80,10 @@ struct SplashView: View {
     }
 
     private func run() {
-        let steps: [(Double, Int)] = reduceMotion ? [(0, 4)] : [(0.05, 1), (0.45, 2), (0.9, 3), (1.3, 4)]
+        let steps: [(Double, Int)] = reduceMotion ? [(0, 4)] : [(0.1, 1), (0.7, 2), (1.4, 3), (2.0, 4)]
         for (t, p) in steps {
             DispatchQueue.main.asyncAfter(deadline: .now() + t) {
-                withAnimation(reduceMotion ? .easeIn(duration: 0.3) : .spring(response: 0.55, dampingFraction: 0.72)) { phase = p }
+                withAnimation(reduceMotion ? .easeIn(duration: 0.3) : .spring(response: 0.8, dampingFraction: 0.75)) { phase = p }
                 if p == 2 { pulse = true }
                 if p == 4 { withAnimation(.easeInOut(duration: Self.total - t - 0.35)) { sweep = 1 } }
             }
@@ -94,8 +94,8 @@ struct SplashView: View {
     private func finish() {
         guard !finished else { return }
         finished = true
-        withAnimation(.easeInOut(duration: 0.45)) { leaving = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.47) { onFinish() }
+        withAnimation(.easeInOut(duration: 0.6)) { leaving = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.62) { onFinish() }
     }
 }
 
