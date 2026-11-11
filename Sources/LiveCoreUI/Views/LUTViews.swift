@@ -86,7 +86,7 @@ struct LUTGeneratorSheet: View {
                         Text(p.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
                             .frame(maxWidth: .infinity).padding(.vertical, 6)
                             .background(presetID == p.id ? Theme.accent.opacity(0.35) : Theme.panelRaised)
-                            .clipShape(RoundedRectangle(cornerRadius: 5))
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }

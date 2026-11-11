@@ -91,6 +91,9 @@ public final class RemoteServer: @unchecked Sendable {
     }
 
     public func update(state json: String) { lock.sync { stateJSON = json } }
+    /// Teleprompter script as {"rev":n,"text":"..."} (0.71.0).
+    private var prompterJSON = "{\"rev\":0,\"text\":\"\"}"
+    public func update(prompter json: String) { lock.sync { prompterJSON = json } }
 
     /// Latest JPEG for "program" or "preview" (served at /api/frame?bus=...).
     public func setFrame(_ jpeg: [UInt8], bus: String) { lock.sync { frames[bus] = jpeg; frameSeq[bus, default: 0] += 1 } }
@@ -430,6 +433,8 @@ public final class RemoteServer: @unchecked Sendable {
             return .json(lock.sync { stateJSON })
         case .ping:
             return .json("{\"ok\":true}")
+        case .prompterText:
+            return .json(lock.sync { prompterJSON })
         case let .frame(bus):
             // ?since=<seq>: 204 while the picture is unchanged (0.54.1), so a page never downloads
             // the same JPEG twice; the new sequence number comes back in X-Frame-Seq.

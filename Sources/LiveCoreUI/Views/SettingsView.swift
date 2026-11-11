@@ -42,17 +42,19 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // OBS-style list on the left: full names, never cut off like tabs were.
-            HStack(spacing: 0) {
-                List(selection: Binding(get: { tab }, set: { if let t = $0 { tab = t } })) {
-                    ForEach(Self.sections, id: \.tag) { s in
-                        Label(s.title, systemImage: s.icon).tag(s.tag)
+        VStack(spacing: 8) {
+            // List on the left (full names, never cut off like tabs were); 0.73.0: side list and content as panels.
+            HStack(spacing: 8) {
+                ScrollView {
+                    VStack(spacing: 3) {
+                        ForEach(Self.sections, id: \.tag) { s in
+                            SidebarRow(title: s.title, icon: s.icon, selected: tab == s.tag) { tab = s.tag }
+                        }
                     }
+                    .padding(8)
                 }
-                .listStyle(.sidebar)
-                .frame(width: 170)
-                Divider()
+                .frame(width: 190)
+                .panel()
                 Group {
                     switch tab {
                     case 6: canvasTab
@@ -72,19 +74,25 @@ struct SettingsView: View {
                 }
                 .padding()
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .panel()
             }
             if !errors.isEmpty {
                 VStack(alignment: .leading) { ForEach(errors, id: \.self) { Text($0).foregroundStyle(Theme.warning) } }
                     .padding(.horizontal)
             }
-            HStack {
+            HStack(spacing: 8) {
                 Spacer()
                 Button(L10n.t("settings.cancel")) { dismiss() }.keyboardShortcut(.cancelAction)
+                    .buttonStyle(StudioButtonStyle()).frame(width: 110)
                 Button(L10n.t("settings.apply")) { apply() }.keyboardShortcut(.defaultAction)
+                    .buttonStyle(StudioButtonStyle(color: Theme.accent, active: true)).frame(width: 130)
             }
-            .padding()
         }
-        .frame(width: 820, height: 600)
+        .padding(10)
+        .frame(width: 880, height: 630)
+        .background(Backdrop())
+        .foregroundStyle(Theme.text)
+        .tint(Theme.accent)
         .onAppear {
             draft = model.settings
             loadCanvas()
@@ -269,10 +277,12 @@ struct SettingsView: View {
                     TextField(L10n.t("stream.dest_name"), text: $draft.stream.primaryName, prompt: Text("YouTube"))
                 }
                 TextField(L10n.t("stream.server"), text: $draft.stream.serverURL, prompt: Text("rtmp://a.rtmp.youtube.com/live2"))
+                TextField(L10n.t("stream.backup_server"), text: $draft.stream.primaryBackupURL, prompt: Text("rtmp://b.rtmp.youtube.com/live2?backup=1"))
                 OutputBusPicker(selection: $draft.stream.primaryAudioBus)
                 SecureField(L10n.t("stream.key"), text: $keyField,
                             prompt: Text(model.hasStreamKey ? "•••••••• (\(L10n.t("stream.key_saved")))" : ""))
                 Text(L10n.t("stream.srt_hint")).font(.caption).foregroundStyle(Theme.textDim)
+                Text(L10n.t("stream.backup_hint")).font(.caption).foregroundStyle(Theme.textDim)
                 if model.hasStreamKey {
                     Button(L10n.t("stream.delete_key"), role: .destructive) { model.saveStreamKey("") }
                 }
@@ -292,6 +302,8 @@ struct SettingsView: View {
                         }
                     }
                     TextField(L10n.t("stream.server"), text: $d.serverURL, prompt: Text("rtmps://live-api-s.facebook.com:443/rtmp/"))
+                    TextField(L10n.t("stream.backup_server"), text: Binding(get: { d.backupServerURL ?? "" },
+                                                                             set: { d.backupServerURL = $0.isEmpty ? nil : $0 }))
                     OutputBusPicker(selection: Binding(get: { d.bus }, set: { d.audioBus = $0 }))
                     SecureField(L10n.t("stream.key"), text: Binding(get: { destKeys[d.id] ?? "" }, set: { destKeys[d.id] = $0 }),
                                 prompt: Text(model.hasKey(account: d.keychainAccount) ? "•••••••• (\(L10n.t("stream.key_saved")))" : ""))
@@ -318,6 +330,9 @@ struct SettingsView: View {
     private var recordTab: some View {
         Form {
             RecordingProfileForm(settings: $draft.recording, output: draft.output)
+            Toggle(L10n.t("recprofile.multitrack"), isOn: Binding(get: { draft.recording.multitrackAudio == true },
+                                                                   set: { draft.recording.multitrackAudio = $0 ? true : nil }))
+                .help(L10n.t("recprofile.multitrack_help"))
             Text(L10n.t("bus.note")).font(.caption).foregroundStyle(Theme.textDim)
         }
         .formStyle(.grouped)

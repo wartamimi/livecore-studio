@@ -28,6 +28,8 @@ enum Theme {
     static let labelAll = Color(red: 0.44, green: 0.45, blue: 0.48)
     /// Panel corner radius (Appearance › Corners).
     static var corner: CGFloat { palette.corner }
+    /// Corner of raised items inside a panel (tiles, mixer strips, buttons).
+    static var cardCorner: CGFloat { palette.corner > 4 ? 6 : 2 }
 }
 
 /// Settings › Appearance (0.62.0), kept in user preferences (not in projects).
@@ -42,6 +44,8 @@ public struct AppearanceSettings: Codable, Equatable, Hashable {
     public var tally: TallyChoice = .classic
     public var layout: DockLayout = .classic
     public var roundedPanels = true
+    /// Animated logo when the app opens (0.72.0).
+    public var splash = true
 
     public init() {}
 
@@ -64,6 +68,7 @@ public struct AppearanceSettings: Codable, Equatable, Hashable {
         tally = (try? c.decode(TallyChoice.self, forKey: .tally)) ?? .classic
         layout = (try? c.decode(DockLayout.self, forKey: .layout)) ?? .classic
         roundedPanels = (try? c.decode(Bool.self, forKey: .roundedPanels)) ?? true
+        splash = (try? c.decode(Bool.self, forKey: .splash)) ?? true
     }
 }
 
@@ -102,21 +107,46 @@ struct ThemePalette {
         // to many people with colour-vision deficiency).
         program = a.tally == .colorSafe ? rgb(0.95, 0.35, 0.10) : rgb(0.90, 0.16, 0.16)
         preview = a.tally == .colorSafe ? rgb(0.20, 0.55, 1.0) : rgb(0.16, 0.75, 0.35)
-        corner = a.roundedPanels ? 6 : 1
+        corner = a.roundedPanels ? 8 : 2
     }
 }
 
+/// Docked panel: flat fill with a hairline border (0.73.1: flat again, the glass look is gone).
 struct PanelStyle: ViewModifier {
     func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.corner, style: .continuous)
         content
             .background(Theme.panel)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.corner))
-            .overlay(RoundedRectangle(cornerRadius: Theme.corner).stroke(Theme.border))
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(Theme.border, lineWidth: 1))
+    }
+}
+
+/// Raised item inside a panel (input tile, mixer strip): flat fill, one border that carries the
+/// state (tally colour, hover).
+struct CardStyle: ViewModifier {
+    var stroke: Color
+    var lineWidth: CGFloat
+
+    func body(content: Content) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous)
+        content
+            .background(Theme.panelRaised)
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(stroke, lineWidth: lineWidth))
     }
 }
 
 extension View {
     func panel() -> some View { modifier(PanelStyle()) }
+    func card(stroke: Color = Theme.border, lineWidth: CGFloat = 1) -> some View {
+        modifier(CardStyle(stroke: stroke, lineWidth: lineWidth))
+    }
+}
+
+/// Window background: the theme's flat background colour.
+struct Backdrop: View {
+    var body: some View { Theme.background.ignoresSafeArea() }
 }
 
 struct SectionHeader: View {
@@ -140,7 +170,8 @@ struct StudioButtonStyle: ButtonStyle {
     }
 }
 
-/// Body of `StudioButtonStyle`, with a hover highlight (0.55.1).
+/// Body of `StudioButtonStyle`: flat key with clear states (hover lighter, pressed dips a
+/// little, active filled with its colour).
 private struct StudioButtonBody: View {
     let configuration: ButtonStyleConfiguration
     let color: Color
@@ -149,6 +180,11 @@ private struct StudioButtonBody: View {
     @Environment(\.isEnabled) private var enabled
 
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous)
+        let pressed = configuration.isPressed
+        let lit = hovering && enabled
+        let fill: Color = active ? color : (pressed ? color.opacity(0.7) : (lit ? Theme.panelHover : Theme.panelRaised))
+        let edge: Color = active ? color : (lit ? Color.white.opacity(0.25) : Theme.border)
         configuration.label
             .font(.system(size: 13, weight: .bold))
             // Always one line ("FULLSCREEN" must not wrap); shrinks a little instead.
@@ -157,9 +193,12 @@ private struct StudioButtonBody: View {
             .foregroundStyle(Theme.text)
             .padding(.vertical, 8).padding(.horizontal, 12)
             .frame(maxWidth: .infinity)
-            .background(active ? color : (configuration.isPressed ? color.opacity(0.7) : (hovering && enabled ? Theme.panelHover : Theme.panelRaised)))
-            .clipShape(RoundedRectangle(cornerRadius: 5))
-            .overlay(RoundedRectangle(cornerRadius: 5).stroke(active ? color : (hovering && enabled ? Color.white.opacity(0.25) : Theme.border), lineWidth: active ? 2 : 1))
+            .background(fill)
+            .clipShape(shape)
+            .overlay(shape.strokeBorder(edge, lineWidth: active ? 2 : 1))
+            .scaleEffect(pressed ? 0.98 : 1)
+            .animation(.easeOut(duration: 0.12), value: pressed)
+            .animation(.easeOut(duration: 0.12), value: hovering)
             .contentShape(Rectangle())
             .onHover { hovering = $0 }
     }

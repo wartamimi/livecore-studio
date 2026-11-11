@@ -52,6 +52,8 @@ public enum LiveCoreScenes {
                 WindowCommand(title: L10n.t("rundown.create_menu"), id: "rundown", key: "r", modifiers: [.command, .shift])
                 WindowCommand(title: L10n.t("macro.menu"), id: "macros", key: "k", modifiers: [.command, .option])
                 WindowCommand(title: L10n.t("ai.menu"), id: "ai-assistant", key: "j", modifiers: [.command, .option])
+                WindowCommand(title: L10n.t("automation.menu"), id: "automation", key: "a", modifiers: [.command, .option])
+                WindowCommand(title: L10n.t("prompter.menu"), id: "teleprompter", key: "p", modifiers: [.command, .option])
                 Divider()
                 Button(L10n.t("transition.cut")) { model.cut() }
                 Button(L10n.t("transition.auto")) { model.auto() }
@@ -85,11 +87,11 @@ public enum LiveCoreScenes {
 
         // Help and About (0.48.0).
         Window(L10n.t("help.title"), id: "help") {
-            HelpView().preferredColorScheme(.dark)
+            HelpView().background(Backdrop()).tint(Theme.accent).preferredColorScheme(.dark)
         }
         .defaultSize(width: 900, height: 640)
         Window(L10n.t("about.menu"), id: "about") {
-            AboutView().preferredColorScheme(.dark)
+            AboutView().background(Backdrop()).tint(Theme.accent).preferredColorScheme(.dark)
         }
         .windowResizability(.contentSize)
 
@@ -97,29 +99,44 @@ public enum LiveCoreScenes {
             AIAgentWindow(session: model.aiAgent)
                 .environmentObject(model)
                 .frame(minWidth: 380, idealWidth: 520, minHeight: 420, idealHeight: 640)
-                .preferredColorScheme(.dark)
+                .background(Backdrop()).tint(Theme.accent).preferredColorScheme(.dark)
         }
 
         Window(L10n.t("macro.title"), id: "macros") {
             MacrosWindow()
                 .environmentObject(model)
                 .frame(minWidth: 820, minHeight: 460)
-                .preferredColorScheme(.dark)
+                .background(Backdrop()).tint(Theme.accent).preferredColorScheme(.dark)
         }
         .defaultSize(width: 960, height: 600)
+
+        Window(L10n.t("automation.title"), id: "automation") {
+            ShowAutomationWindow()
+                .environmentObject(model)
+                .frame(minWidth: 560, minHeight: 480)
+                .background(Backdrop()).tint(Theme.accent).preferredColorScheme(.dark)
+        }
+        .defaultSize(width: 640, height: 720)
+
+        Window(L10n.t("prompter.title"), id: "teleprompter") {
+            TeleprompterWindow()
+                .environmentObject(model)
+                .frame(minWidth: 480, minHeight: 320)
+        }
+        .defaultSize(width: 900, height: 600)
 
         Window(L10n.t("multiview.title"), id: "multiview") {
             MultiviewView()
                 .environmentObject(model)
                 .frame(minWidth: 640, minHeight: 400)
-                .preferredColorScheme(.dark)
+                .background(Backdrop()).tint(Theme.accent).preferredColorScheme(.dark)
         }
 
         Window(L10n.t("viewer.title"), id: "source-viewer") {
             SourceViewerWindow()
                 .environmentObject(model)
                 .frame(minWidth: 480, minHeight: 300)
-                .preferredColorScheme(.dark)
+                .background(Backdrop()).tint(Theme.accent).preferredColorScheme(.dark)
         }
 
         // Running transcript of a Realtime Transcription input, selectable and copyable (0.57.0).
@@ -127,7 +144,7 @@ public enum LiveCoreScenes {
             TranscriptWindow()
                 .environmentObject(model)
                 .frame(minWidth: 380, minHeight: 260)
-                .preferredColorScheme(.dark)
+                .background(Backdrop()).tint(Theme.accent).preferredColorScheme(.dark)
         }
         .defaultSize(width: 520, height: 600)
 
@@ -136,20 +153,20 @@ public enum LiveCoreScenes {
             HighlightsWindow()
                 .environmentObject(model)
                 .frame(minWidth: 560, minHeight: 420)
-                .preferredColorScheme(.dark)
+                .background(Backdrop()).tint(Theme.accent).preferredColorScheme(.dark)
         }
         .defaultSize(width: 640, height: 560)
 
         Window(L10n.t("rundown.title"), id: "rundown") {
             RundownView()
                 .environmentObject(model)
-                .preferredColorScheme(.dark)
+                .background(Backdrop()).tint(Theme.accent).preferredColorScheme(.dark)
         }
 
         Window("Program Output", id: "program-output") {
             ProgramOutputWindow()
                 .environmentObject(model)
-                .preferredColorScheme(.dark)
+                .background(Backdrop()).tint(Theme.accent).preferredColorScheme(.dark)
         }
         .windowStyle(.hiddenTitleBar)
 
@@ -157,7 +174,7 @@ public enum LiveCoreScenes {
         WindowGroup(L10n.t("output.section"), id: "output", for: Int.self) { $index in
             OutputWindowView(index: index ?? 1)
                 .environmentObject(model)
-                .preferredColorScheme(.dark)
+                .background(Backdrop()).tint(Theme.accent).preferredColorScheme(.dark)
         }
     }
 }

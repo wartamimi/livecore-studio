@@ -132,8 +132,8 @@ struct PixabaySheet: View {
             Text("\(h.width)×\(h.height) · \(h.user)").font(.system(size: 9)).foregroundStyle(Theme.textDim).lineLimit(1)
         }
         .padding(4)
-        .background(RoundedRectangle(cornerRadius: 6).fill(isOn ? Theme.preview.opacity(0.25) : Color.clear))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(isOn ? Theme.preview : Theme.border, lineWidth: isOn ? 2 : 1))
+        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(isOn ? Theme.preview.opacity(0.25) : Color.clear))
+        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).stroke(isOn ? Theme.preview : Theme.border, lineWidth: isOn ? 2 : 1))
         .contentShape(Rectangle())
         .onTapGesture {
             if let i = selected.firstIndex(of: h.id) { selected.remove(at: i) } else { selected.append(h.id) }

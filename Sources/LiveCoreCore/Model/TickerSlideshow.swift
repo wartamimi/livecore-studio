@@ -51,6 +51,13 @@ public struct TickerConfig: Codable, Equatable, Sendable {
     public var textWeight: TitleWeight { weight ?? .semibold }
 
     public var scrollDirection: TickerDirection { direction ?? .rightToLeft }
+    /// End credits (0.74.0): the lines roll up over the whole picture.
+    public var isCredits: Bool { scrollDirection == .bottomToTop }
+    /// Credit lines as rolled (empty lines kept as gaps).
+    public var creditLines: [String] {
+        let lines = text.split(omittingEmptySubsequences: false, whereSeparator: { $0.isNewline }).map { Self.trim(String($0)) }
+        return (uppercase ?? false) ? lines.map { $0.uppercased() } : lines
+    }
     public var feedRefreshSeconds: Double { min(max(feedRefreshMinutes ?? 5, 1), 120) * 60 }
 
     public init(text: String, speed: Double = 120, fontSize: Double = 44,
@@ -76,6 +83,7 @@ public struct TickerConfig: Codable, Equatable, Sendable {
 
     /// Normalised layer rectangle of the band (near the bottom unless `bandY` says otherwise).
     public var layerRect: NormRect {
+        if isCredits { return .full }
         let c = clamped
         return NormRect(x: 0, y: c.bandY ?? (1 - c.bandHeight - 0.04), width: 1, height: c.bandHeight)
     }
@@ -102,6 +110,8 @@ public enum TickerTemplate: String, Codable, Sendable, CaseIterable {
     case weddingGold, weddingBlush
     // 0.59.0: 3D bands
     case chrome3D, gold3D, neon3D, newsCube3D
+    // 0.74.0: end credits rolling up
+    case endCredits
 
     public func config(text: String) -> TickerConfig {
         func rgb(_ r: Double, _ g: Double, _ b: Double, _ a: Double = 1) -> ProjectColor { ProjectColor(r: r, g: g, b: b, a: a) }
@@ -228,6 +238,14 @@ public enum TickerTemplate: String, Codable, Sendable, CaseIterable {
             c.uppercase = true
             c.separatorColor = rgb(0.95, 0.75, 0.1)
             c.bandHeight = 0.09
+        case .endCredits:
+            c.direction = .bottomToTop
+            c.showBar = false
+            c.shadow = true
+            c.weight = .medium
+            c.fontSize = 46
+            c.speed = 60
+            c.animation = .fade
         }
         return c
     }
@@ -235,6 +253,8 @@ public enum TickerTemplate: String, Codable, Sendable, CaseIterable {
 
 public enum TickerDirection: String, Codable, Sendable, CaseIterable {
     case rightToLeft, leftToRight
+    /// End credits (0.74.0).
+    case bottomToTop
 }
 
 public enum TickerMath {
@@ -248,6 +268,16 @@ public enum TickerMath {
         var d = (elapsed * speed).truncatingRemainder(dividingBy: cycle)
         if d < 0 { d += cycle }
         return direction == .rightToLeft ? viewWidth - d : d - stripWidth
+    }
+
+    /// End credits: bottom edge of the text block (pixels, y up) at `elapsed` seconds. The block
+    /// enters from below, rolls up and out of the top, then starts again.
+    public static func creditsY(elapsed: Double, speed: Double, textHeight: Double, viewHeight: Double) -> Double {
+        let cycle = textHeight + viewHeight
+        guard cycle > 0, speed > 0 else { return -textHeight }
+        var d = (elapsed * speed).truncatingRemainder(dividingBy: cycle)
+        if d < 0 { d += cycle }
+        return d - textHeight
     }
 }
 

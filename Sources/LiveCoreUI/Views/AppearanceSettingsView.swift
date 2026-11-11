@@ -33,6 +33,7 @@ struct AppearanceSettingsView: View {
                                                                          set: { a.wrappedValue.tally = $0 ? .colorSafe : .classic }))
                     Text(L10n.t("appearance.tally_safe_help")).font(.caption).foregroundStyle(Theme.textDim)
                     Toggle(L10n.t("appearance.rounded"), isOn: a.roundedPanels)
+                    Toggle(L10n.t("appearance.splash"), isOn: a.splash)
                 }
                 HStack {
                     Spacer()
@@ -75,7 +76,7 @@ struct AppearanceSettingsView: View {
                     .padding(5)
                 }
                 .frame(height: 64)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 Text(L10n.t("appearance.theme.\(t.rawValue)")).font(.caption).lineLimit(1)
             }
             .padding(6)
@@ -160,7 +161,7 @@ private struct LayoutSketch: View {
         }
         .padding(3)
         .background(Theme.background)
-        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 #endif

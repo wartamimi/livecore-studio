@@ -212,7 +212,7 @@ struct ShortcutSettingsView: View {
                     .frame(minWidth: 110)
                     .padding(.vertical, 3)
                     .background(recording == a ? Theme.accent.opacity(0.35) : Theme.panelRaised)
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
             Button { map.clear(a) } label: { Image(systemName: "xmark.circle.fill") }

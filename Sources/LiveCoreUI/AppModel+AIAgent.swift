@@ -134,7 +134,8 @@ public final class AIAgentSession: ObservableObject {
                      names: Dictionary(model.inputs.map { ($0.number, $0.name) }, uniquingKeysWith: { a, _ in a }))
     }
 
-    public func send(_ command: String, again: Bool = false) {
+    /// `shown` replaces the command in the chat (a long transcript is not shown in full).
+    public func send(_ command: String, again: Bool = false, shown: String? = nil) {
         let text = command.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !busy else { return }
         let p = provider
@@ -154,7 +155,7 @@ public final class AIAgentSession: ObservableObject {
             lastCommand = text
             messagesBeforeLast = messages
             linesBeforeLast = lines.count + 1
-            lines.append(Line(role: .user, text: text))
+            lines.append(Line(role: .user, text: shown ?? text))
         }
         // The show as it is now rides along (short text), so the model knows the inputs without asking.
         let state = p.supportsTools ? model.map { AIAgent.withState(text, stateJSON: AIAgent.compactState($0.makeRemoteState())) } : nil

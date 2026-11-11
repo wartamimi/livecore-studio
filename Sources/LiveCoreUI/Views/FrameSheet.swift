@@ -36,8 +36,8 @@ struct FrameSheet: View {
                         }
                         .padding(4)
                         .background(design.template == t ? Theme.accent.opacity(0.25) : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(design.template == t ? Theme.accent : Theme.border,
+                        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).stroke(design.template == t ? Theme.accent : Theme.border,
                                                                           lineWidth: design.template == t ? 2 : 1))
                     }
                     .buttonStyle(.plain)

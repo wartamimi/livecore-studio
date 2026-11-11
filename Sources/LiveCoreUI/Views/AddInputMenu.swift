@@ -44,6 +44,7 @@ struct AddInputMenuItems: View {
         Section(L10n.t("inputs.graphics_group")) {
             // Titles, lower thirds and running text are all made in the Title Designer.
             Button { model.addInputSheet = .title } label: { Label(L10n.t("inputs.title_menu"), systemImage: "textformat") }
+            Button { model.addLogoBug() } label: { Label(L10n.t("logobug.add"), systemImage: "seal") }
             Button { model.addInputSheet = .timer } label: { Label(L10n.t("timer.add"), systemImage: "timer") }
             Button { model.addInputSheet = .frame } label: { Label(L10n.t("frame.add"), systemImage: "person.crop.rectangle") }
             Button { model.addInputSheet = .virtualSet } label: { Label(L10n.t("vset.add"), systemImage: "person.and.background.dotted") }
@@ -77,8 +78,8 @@ struct AddInputMenuItems: View {
 extension View {
     /// Presents the sheets the add-input menus ask for.
     func addInputSheets(_ model: AppModel) -> some View {
-        sheet(item: Binding(get: { model.addInputSheet }, set: { model.addInputSheet = $0 })) { s in
-            AddInputSheetView(sheet: s).environmentObject(model)
+        dialog(item: Binding(get: { model.addInputSheet }, set: { model.addInputSheet = $0 }), model) { s in
+            AddInputSheetView(sheet: s)
         }
     }
 }

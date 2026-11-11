@@ -118,6 +118,8 @@ public struct StreamDestination: Codable, Equatable, Sendable, Identifiable {
     /// Added in 0.9.0; nil (older settings) = Master.
     public var audioBus: OutputBus?
     public var bus: OutputBus { audioBus ?? .master }
+    /// Backup ingest server (0.71.0), used with the same stream key when the main server fails.
+    public var backupServerURL: String?
     public init(id: String, name: String, serverURL: String = "", enabled: Bool = true) {
         self.id = id; self.name = name; self.serverURL = serverURL
         self.keychainAccount = "dest-\(id)"; self.enabled = enabled
@@ -141,11 +143,13 @@ public struct StreamSettings: Codable, Equatable, Sendable {
     public var qualitySource: StreamQualitySource = .output
     public var customVideoKbps: Int = 6000
     public var customAudioKbps: Int = 160
+    /// Backup ingest server of the primary destination (0.71.0); empty = none.
+    public var primaryBackupURL: String = ""
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
         case serverURL, keychainAccount, primaryName, primaryEnabled, autoReconnect, reconnect, additional, primaryAudioBus
-        case qualitySource, customVideoKbps, customAudioKbps
+        case qualitySource, customVideoKbps, customAudioKbps, primaryBackupURL
     }
 
     // Tolerant decoding: settings saved by older versions lack the newer keys.
@@ -163,6 +167,7 @@ public struct StreamSettings: Codable, Equatable, Sendable {
         qualitySource = try c.decodeIfPresent(StreamQualitySource.self, forKey: .qualitySource) ?? .output
         customVideoKbps = try c.decodeIfPresent(Int.self, forKey: .customVideoKbps) ?? d.customVideoKbps
         customAudioKbps = try c.decodeIfPresent(Int.self, forKey: .customAudioKbps) ?? d.customAudioKbps
+        primaryBackupURL = try c.decodeIfPresent(String.self, forKey: .primaryBackupURL) ?? ""
     }
 
     /// Problems with the destination list (empty = OK). Keys are checked by the app (Keychain).
@@ -233,6 +238,8 @@ public struct RecordingSettings: Codable, Equatable, Sendable {
     public var audioBitrateKbps: Int?
     /// Uncompressed 24-bit PCM audio (MOV only) instead of AAC.
     public var pcmAudio: Bool?
+    /// 0.71.0: every mixer channel also to its own WAV file (main recorder only).
+    public var multitrackAudio: Bool?
     public init() {}
 
     public var videoCodec: RecordingCodec { codec ?? .h264 }

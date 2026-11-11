@@ -82,7 +82,7 @@ struct AudioMixerView: View {
         }
         .padding(8)
         .panel()
-        .sheet(isPresented: $showRadio) { RadioSearchSheet().environmentObject(model) }
+        .dialog(isPresented: $showRadio, model) { RadioSearchSheet() }
     }
 }
 
@@ -133,8 +133,7 @@ struct ChannelStripView: View {
             if !compact { details }
         }
         .padding(4)
-        .background(Theme.panelRaised)
-        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .card(stroke: hovering ? Color.white.opacity(0.2) : Theme.border)
         .onHover { hovering = $0 }
         .alert(L10n.f("audio.close_confirm", vm.name), isPresented: $confirmClose) {
             Button(L10n.t("audio.close"), role: .destructive) { model.closeAudioChannel(vm.id) }
@@ -161,8 +160,8 @@ struct ChannelStripView: View {
             }
                 .buttonStyle(.borderless).font(.system(size: 10))
                 .help(L10n.t("audio.properties"))
-                .sheet(isPresented: $showDSP) {
-                    AudioPropertiesSheet(vm: vm, meter: model.meters.meter(vm.id)).environmentObject(model).environmentObject(model.meters)
+                .dialog(isPresented: $showDSP, model) {
+                    AudioPropertiesSheet(vm: vm, meter: model.meters.meter(vm.id)).environmentObject(model.meters)
                 }
                 .contextMenu {
                     Button(L10n.t("audio.properties")) { showDSP = true }
@@ -565,7 +564,7 @@ struct MasterStripView: View {
         .frame(width: 110)
         // Master inserts: right-click the master strip (the per-channel ones live in Audio Properties).
         .contextMenu { Button(L10n.t("plugins.master_menu")) { showFX = true } }
-        .sheet(isPresented: $showFX) {
+        .dialog(isPresented: $showFX, model) {
             if let engine = model.engine {
                 PluginChainSheet(chain: engine.mixer.masterInserts, host: engine.plugins, title: L10n.t("audio.master"))
             }

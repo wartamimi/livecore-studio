@@ -16,6 +16,10 @@ public enum MacroStepKind: String, Codable, CaseIterable, Sendable {
     case wait
     case streamStart, streamStop, recordStart, recordStop
     case snapshot, highlight
+    /// 0.71.0: run another macro's steps here (nested, at most `MacroBook.maxNesting` deep).
+    case runMacro
+    /// 0.71.0: move a mixer channel's fader to `level` dB over `seconds` (does not wait).
+    case audioFade
 
     public var needsInput: Bool {
         switch self {
@@ -24,7 +28,7 @@ public enum MacroStepKind: String, Codable, CaseIterable, Sendable {
         }
     }
     public var needsOverlay: Bool { self == .overlayOn || self == .overlayOff || self == .overlayToggle }
-    public var needsChannel: Bool { self == .audioOn || self == .audioOff }
+    public var needsChannel: Bool { self == .audioOn || self == .audioOff || self == .audioFade }
     /// Steps that start a transition: the next step waits until it has finished.
     public var runsTransition: Bool { self == .auto || self == .transition }
 }
@@ -38,12 +42,34 @@ public struct MacroStep: Codable, Equatable, Identifiable, Sendable {
     public var overlay: Int?
     /// Mixer channel id.
     public var channel: String?
-    /// Wait length.
+    /// Wait length, or the fade time of an audio fade.
     public var seconds: Double?
+    /// Macro number (1...) of a "run macro" step (0.71.0).
+    public var macro: Int?
+    /// Target fader level in dB of an audio fade (0.71.0); -90 or lower = fade out.
+    public var level: Double?
+    /// The step only runs when this holds (0.71.0); nil = always.
+    public var condition: MacroCondition?
 
     public init(_ kind: MacroStepKind, input: InputID? = nil, overlay: Int? = nil, channel: String? = nil,
-                seconds: Double? = nil, id: String = MacroBook.newID()) {
+                seconds: Double? = nil, macro: Int? = nil, level: Double? = nil, condition: MacroCondition? = nil,
+                id: String = MacroBook.newID()) {
         self.id = id; self.kind = kind; self.input = input; self.overlay = overlay; self.channel = channel; self.seconds = seconds
+        self.macro = macro; self.level = level; self.condition = condition
+    }
+
+    public static let maxFade: Double = 60
+
+    /// Fade time clamped to 0...60 s.
+    public var fadeSeconds: Double {
+        guard kind == .audioFade, let s = seconds, s.isFinite else { return 0 }
+        return min(max(s, 0), Self.maxFade)
+    }
+
+    /// Fade target clamped to -90...+10 dB (default 0 dB).
+    public var fadeLevelDB: Double {
+        guard let l = level, l.isFinite else { return 0 }
+        return min(max(l, -90), 10)
     }
 
     public static let maxWait: Double = 3600
@@ -62,7 +88,32 @@ public struct MacroStep: Codable, Equatable, Identifiable, Sendable {
         if kind.needsInput && input == nil { return false }
         if kind.needsOverlay && overlayIndex == nil { return false }
         if kind.needsChannel && (channel ?? "").isEmpty { return false }
+        if kind == .runMacro && !(1...MacroBook.maxNumber).contains(macro ?? 0) { return false }
+        if let c = condition, c.kind.needsInput && c.input == nil { return false }
         return true
+    }
+}
+
+/// A step's condition (0.71.0): checked when the step is reached.
+public struct MacroCondition: Codable, Equatable, Sendable {
+    public enum Kind: String, Codable, CaseIterable, Sendable {
+        case programIs, programIsNot, previewIs, streaming, notStreaming, recording, notRecording
+        public var needsInput: Bool { self == .programIs || self == .programIsNot || self == .previewIs }
+    }
+    public var kind: Kind
+    public var input: InputID?
+    public init(_ kind: Kind, input: InputID? = nil) { self.kind = kind; self.input = input }
+
+    public func holds(program: InputID?, preview: InputID?, streaming: Bool, recording: Bool) -> Bool {
+        switch kind {
+        case .programIs: return input != nil && program == input
+        case .programIsNot: return input != nil && program != input
+        case .previewIs: return input != nil && preview == input
+        case .streaming: return streaming
+        case .notStreaming: return !streaming
+        case .recording: return recording
+        case .notRecording: return !recording
+        }
     }
 }
 
@@ -73,6 +124,8 @@ public enum MacroTriggerEvent: String, Codable, CaseIterable, Sendable {
     case previewIn        // an input is put on Preview
     case videoEnded       // a video input's clip plays to its end
     case streamStarted, streamStopped, recordStarted, recordStopped
+    /// 0.71.0: every day at the trigger's `time` ("HH:mm", local time) while the app runs.
+    case timeOfDay
 
     /// Events that belong to an input (the trigger can name one, or nil = any input).
     public var hasInput: Bool {
@@ -89,13 +142,27 @@ public struct MacroTrigger: Codable, Equatable, Identifiable, Sendable {
     /// The input the event must be about; nil = any input.
     public var input: InputID?
     public var enabled: Bool
+    /// "HH:mm" of a time-of-day trigger (0.71.0).
+    public var time: String?
 
-    public init(_ event: MacroTriggerEvent, input: InputID? = nil, enabled: Bool = true, id: String = MacroBook.newID()) {
-        self.id = id; self.event = event; self.input = input; self.enabled = enabled
+    public init(_ event: MacroTriggerEvent, input: InputID? = nil, enabled: Bool = true, time: String? = nil,
+                id: String = MacroBook.newID()) {
+        self.id = id; self.event = event; self.input = input; self.enabled = enabled; self.time = time
+    }
+
+    /// "7:5", "07:05" and "0705" all become "07:05"; nil when it is not a time of day.
+    public static func normalizedTime(_ s: String?) -> String? {
+        guard let s = s?.trimmed, !s.isEmpty else { return nil }
+        let parts: [Substring]
+        if s.contains(":") || s.contains(".") { parts = s.split(whereSeparator: { $0 == ":" || $0 == "." }) }
+        else if s.count == 4 { parts = [s.prefix(2), s.suffix(2)] } else { return nil }
+        guard parts.count == 2, let h = Int(parts[0]), let m = Int(parts[1]), (0...23).contains(h), (0...59).contains(m) else { return nil }
+        return (h < 10 ? "0" : "") + String(h) + ":" + (m < 10 ? "0" : "") + String(m)
     }
 
     public func matches(_ e: MacroEvent) -> Bool {
         guard enabled, e.kind == event else { return false }
+        if event == .timeOfDay { return Self.normalizedTime(time).map { $0 == e.time } ?? false }
         guard event.hasInput, let want = input else { return true }
         return e.input == want
     }
@@ -105,7 +172,11 @@ public struct MacroTrigger: Codable, Equatable, Identifiable, Sendable {
 public struct MacroEvent: Equatable, Sendable {
     public var kind: MacroTriggerEvent
     public var input: InputID?
-    public init(_ kind: MacroTriggerEvent, input: InputID? = nil) { self.kind = kind; self.input = input }
+    /// "HH:mm" for `.timeOfDay`.
+    public var time: String?
+    public init(_ kind: MacroTriggerEvent, input: InputID? = nil, time: String? = nil) {
+        self.kind = kind; self.input = input; self.time = time
+    }
 
     /// Events of a Program / Preview change (nil = nothing on the bus).
     public static func switching(oldProgram: InputID?, newProgram: InputID?, oldPreview: InputID?, newPreview: InputID?) -> [MacroEvent] {
@@ -152,6 +223,30 @@ public struct MacroBook: Codable, Equatable, Sendable {
     public init(_ macros: [Macro] = []) { self.macros = macros }
 
     public static let maxNumber = 16
+    /// Macros inside macros go at most this deep (and never into themselves).
+    public static let maxNesting = 4
+
+    /// The steps of a macro with every "run macro" step replaced by that macro's steps
+    /// (recursively). A condition on a "run macro" step is given to each step it brings in that
+    /// has no condition of its own. Loops and nesting past `maxNesting` are dropped.
+    public func expandedSteps(_ steps: [MacroStep], visiting: Set<Int> = [], depth: Int = 0) -> [MacroStep] {
+        var out: [MacroStep] = []
+        for s in steps {
+            guard s.kind == .runMacro else { out.append(s); continue }
+            guard let n = s.macro, let m = macro(number: n), !visiting.contains(n), depth < Self.maxNesting else { continue }
+            var inner = expandedSteps(m.steps, visiting: visiting.union([n]), depth: depth + 1)
+            if let c = s.condition {
+                for k in inner.indices where inner[k].condition == nil { inner[k].condition = c }
+            }
+            out += inner
+        }
+        return out
+    }
+
+    /// `expandedSteps` for a whole macro (it cannot run itself).
+    public func expandedSteps(of m: Macro) -> [MacroStep] {
+        expandedSteps(m.steps, visiting: number(of: m.id).map { [$0] } ?? [])
+    }
 
     public static func newID() -> String { String(UInt64.random(in: 1 ... UInt64.max), radix: 36) }
 
@@ -170,6 +265,9 @@ public struct MacroBook: Codable, Equatable, Sendable {
         for m in b.macros.indices {
             for s in b.macros[m].steps.indices where b.macros[m].steps[s].input.map({ !inputs.contains($0) }) ?? false {
                 b.macros[m].steps[s].input = nil
+            }
+            for s in b.macros[m].steps.indices where b.macros[m].steps[s].condition?.input.map({ !inputs.contains($0) }) ?? false {
+                b.macros[m].steps[s].condition?.input = nil
             }
             for t in b.macros[m].triggers.indices where b.macros[m].triggers[t].input.map({ !inputs.contains($0) }) ?? false {
                 b.macros[m].triggers[t].input = nil

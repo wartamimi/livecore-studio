@@ -139,7 +139,7 @@ private struct SnapshotConfirmation: View {
                     }
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .background(.black.opacity(0.8))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .help(L10n.t("snapshot.show_in_finder"))

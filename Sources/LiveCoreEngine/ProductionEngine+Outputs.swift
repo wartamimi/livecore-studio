@@ -68,8 +68,10 @@ extension ProductionEngine {
         public var name: String
         public var endpoint: Endpoint
         public var audioBus: OutputBus
-        public init(id: String, name: String, url: RTMPURL, audioBus: OutputBus = .master) {
-            self.id = id; self.name = name; self.endpoint = .rtmp(url); self.audioBus = audioBus
+        /// RTMP backup ingest server (0.71.0).
+        public var backup: RTMPURL?
+        public init(id: String, name: String, url: RTMPURL, backup: RTMPURL? = nil, audioBus: OutputBus = .master) {
+            self.id = id; self.name = name; self.endpoint = .rtmp(url); self.audioBus = audioBus; self.backup = backup
         }
         public init(id: String, name: String, srt: SRTURL, audioBus: OutputBus = .master) {
             self.id = id; self.name = name; self.endpoint = .srt(srt); self.audioBus = audioBus
@@ -138,7 +140,7 @@ extension ProductionEngine {
         for (s, t) in zip(engines, targets) {
             let asc = aacByBus[t.audioBus]!.audioSpecificConfig
             switch t.endpoint {
-            case let .rtmp(url): (s as? StreamingEngine)?.start(url: url, settings: settings, audioSpecificConfig: asc)
+            case let .rtmp(url): (s as? StreamingEngine)?.start(url: url, backup: t.backup, settings: settings, audioSpecificConfig: asc)
             case let .srt(url): (s as? SRTStreamingEngine)?.start(url: url, settings: settings, audioSpecificConfig: asc)
             }
         }
@@ -185,6 +187,28 @@ extension ProductionEngine {
         let bus = settings.recording.bus
         audioPump.addSink("record") { [weak recorder] chunk in recorder?.append(audio: chunk.bus(bus)) }
         recordingStartDate = Date()
+        if settings.recording.multitrackAudio == true { startMultitrack(date: recordingStartDate ?? Date()) }
+    }
+
+    /// Multitrack audio next to the recording: "<recording name> Tracks/NN <channel>.wav" (0.71.0).
+    private func startMultitrack(date: Date) {
+        let r = settings.recording
+        let base = r.folderPath.isEmpty ? RecordingEngine.defaultFolder() : URL(fileURLWithPath: r.folderPath, isDirectory: true)
+        let c = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+        let name = FileNaming.fileName(pattern: r.fileNamePattern, year: c.year ?? 0, month: c.month ?? 0, day: c.day ?? 0,
+                                       hour: c.hour ?? 0, minute: c.minute ?? 0, second: c.second ?? 0, counter: 1, ext: "x")
+        let stem = name.hasSuffix(".x") ? String(name.dropLast(2)) : name
+        var folder = base.appendingPathComponent(stem + " Tracks", isDirectory: true)
+        var n = 2
+        while FileManager.default.fileExists(atPath: folder.path) {
+            folder = base.appendingPathComponent(stem + " Tracks (\(n))", isDirectory: true); n += 1
+        }
+        do {
+            let count = try multitrack.start(folder: folder)
+            if count == 0 { multitrack.onError?("Multitrack: there are no audio channels to record.") }
+        } catch {
+            multitrack.onError?("Multitrack: cannot create \(folder.path): \(error.localizedDescription)")
+        }
     }
 
     public func stopRecording() {
@@ -192,6 +216,7 @@ extension ProductionEngine {
         recorder.stop()
         outputs.mutate { $0.recording = false }
         audioPump.removeSink("record")
+        multitrack.stop()
     }
 
     // MARK: MultiCorder

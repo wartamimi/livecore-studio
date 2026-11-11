@@ -36,6 +36,13 @@ public final class MixerChannel: @unchecked Sendable {
     public let mixMinusEnabled = AtomicBool(false)
     public let minusL: SPSCFloatRingBuffer
     public let minusR: SPSCFloatRingBuffer
+    /// Multitrack recording (0.71.0): while armed and the mixer's `tracksOn` is set, every block
+    /// of this channel's input (before EQ, dynamics and fader; silence while it has no audio)
+    /// goes into `trackL`/`trackR` for the multitrack writer. One reader only.
+    public let trackArmed = AtomicBool(false)
+    public let trackL: SPSCFloatRingBuffer
+    public let trackR: SPSCFloatRingBuffer
+    public let trackOverruns = AtomicCounter()
     // Render-thread-only: this channel's contribution to the program bus in the current block.
     let selfL: UnsafeMutablePointer<Float>
     let selfR: UnsafeMutablePointer<Float>
@@ -52,6 +59,8 @@ public final class MixerChannel: @unchecked Sendable {
         dsp.inserts = inserts
         minusL = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))
         minusR = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))
+        trackL = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))
+        trackR = SPSCFloatRingBuffer(minimumCapacity: Int(sampleRate))
         selfL = .allocate(capacity: AudioMixerEngine.maxFrames); selfL.initialize(repeating: 0, count: AudioMixerEngine.maxFrames)
         selfR = .allocate(capacity: AudioMixerEngine.maxFrames); selfR.initialize(repeating: 0, count: AudioMixerEngine.maxFrames)
     }
@@ -278,6 +287,7 @@ public final class AudioMixerEngine {
         duckFrom = duckTo
         duckTo = duckNext
         triggerPeak = 0
+        tapThisBlock = tracksOn.value
         _ = graphLock.withTryLock { () -> Bool in
             for ch in channels { mixChannel(ch, frames: frames) }
             updateAutoMix(frames: frames)
@@ -388,6 +398,19 @@ public final class AudioMixerEngine {
     }
 
     @inline(__always)
+    /// Multitrack recording on (0.71.0): set after every recorded channel is armed, so all tracks
+    /// start on the same block.
+    public let tracksOn = AtomicBool(false)
+    private var tapThisBlock = false
+
+    @inline(__always)
+    private func writeTrack(_ ch: MixerChannel, frames: Int) {
+        guard tapThisBlock, ch.trackArmed.value else { return }
+        guard min(ch.trackL.availableToWrite, ch.trackR.availableToWrite) >= frames else { ch.trackOverruns.add(); return }
+        _ = ch.trackL.write(chL, count: frames)
+        _ = ch.trackR.write(chR, count: frames)
+    }
+
     private func mixChannel(_ ch: MixerChannel, frames: Int) {
         // Jitter buffer: wait for `primeFrames` before the first read; bound latency at `maxBufferedFrames`.
         // Drift correction then keeps the fill near 1.5 × primeFrames by resampling ±0.5 %.
@@ -395,7 +418,13 @@ public final class AudioMixerEngine {
         if minus { ch.selfL.update(repeating: 0, count: frames); ch.selfR.update(repeating: 0, count: frames) }
         let avail = min(ch.ringL.availableToRead, ch.ringR.availableToRead)
         if !ch.primed {
-            if avail >= ch.primeFrames { ch.primed = true; ch.drift.reset() } else { return }
+            if avail >= ch.primeFrames { ch.primed = true; ch.drift.reset() } else {
+                if tapThisBlock, ch.trackArmed.value {
+                    chL.update(repeating: 0, count: frames); chR.update(repeating: 0, count: frames)
+                    writeTrack(ch, frames: frames)
+                }
+                return
+            }
         }
         if avail > ch.maxBufferedFrames {
             // Safety net only (e.g. a stalled render thread); drift correction normally prevents it.
@@ -407,6 +436,7 @@ public final class AudioMixerEngine {
             ch.primed = false
         }
         ch.driftPPM.value = Float((ch.drift.ratio - 1) * 1_000_000)
+        writeTrack(ch, frames: frames)
         ch.dsp.process(left: chL, right: chR, frames: frames)
         if ch.controls.duckTrigger.value {
             triggerPeak = max(triggerPeak, AudioMath.peak(chL, count: frames), AudioMath.peak(chR, count: frames))

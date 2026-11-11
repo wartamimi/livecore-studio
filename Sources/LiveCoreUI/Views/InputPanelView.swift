@@ -96,27 +96,27 @@ struct InputPanelView: View {
         }
         .padding(8)
         .panel()
-        .sheet(item: $editingTitle) { id in TitleSheet(editing: id).environmentObject(model) }
-        .sheet(item: $properties) { id in InputPropertiesSheet(input: id).environmentObject(model) }
-        .sheet(item: $editingAI) { id in InputAISheet(input: id).environmentObject(model) }
-        .sheet(item: $keying) { id in ChromaKeySheet(input: id).environmentObject(model) }
-        .sheet(item: $editingScene) { id in SceneEditorSheet(input: id).environmentObject(model) }
-        .sheet(item: $editingBrowser) { id in BrowserSheet(editing: id).environmentObject(model) }
-        .sheet(item: $editingTimer) { id in TimerSheet(editing: id).environmentObject(model) }
-        .sheet(item: $editingCapture) { id in CaptureSheet(editing: id).environmentObject(model) }
-        .sheet(item: $editingFrame) { id in FrameSheet(editing: id).environmentObject(model) }
-        .sheet(item: $editingQR) { id in QRCodeSheet(editing: id).environmentObject(model) }
-        .sheet(item: $editingVirtualSet) { id in VirtualSetSheet(editing: id).environmentObject(model) }
-        .sheet(item: $editingSubtitles) { id in SubtitleSheet(input: id).environmentObject(model) }
-        .sheet(item: $editingLiveCall) { id in LiveCallSheet(input: id).environmentObject(model) }
-        .sheet(item: $editingNDI) { id in NDIInputSheet(editing: id).environmentObject(model) }
-        .sheet(item: $editingCaptureCard) { id in CaptureCardSheet(editing: id).environmentObject(model) }
-        .sheet(item: $adjusting) { id in InputAdjustSheet(input: id).environmentObject(model) }
-        .sheet(item: $editingTicker) { id in TitleSheet(editing: id).environmentObject(model) }
-        .sheet(item: $editingSlideshow) { id in SlideshowSheet(editing: id).environmentObject(model) }
-        .sheet(item: $editingData) { id in DataSourceSheet(input: id).environmentObject(model) }
-        .sheet(item: $editingPTZ) { id in PTZSheet(input: id).environmentObject(model) }
-        .sheet(item: $labeling) { id in ColorLabelSheet(input: id).environmentObject(model) }
+        .dialog(item: $editingTitle, model) { id in TitleSheet(editing: id) }
+        .dialog(item: $properties, model) { id in InputPropertiesSheet(input: id) }
+        .dialog(item: $editingAI, model) { id in InputAISheet(input: id) }
+        .dialog(item: $keying, model) { id in ChromaKeySheet(input: id) }
+        .dialog(item: $editingScene, model) { id in SceneEditorSheet(input: id) }
+        .dialog(item: $editingBrowser, model) { id in BrowserSheet(editing: id) }
+        .dialog(item: $editingTimer, model) { id in TimerSheet(editing: id) }
+        .dialog(item: $editingCapture, model) { id in CaptureSheet(editing: id) }
+        .dialog(item: $editingFrame, model) { id in FrameSheet(editing: id) }
+        .dialog(item: $editingQR, model) { id in QRCodeSheet(editing: id) }
+        .dialog(item: $editingVirtualSet, model) { id in VirtualSetSheet(editing: id) }
+        .dialog(item: $editingSubtitles, model) { id in SubtitleSheet(input: id) }
+        .dialog(item: $editingLiveCall, model) { id in LiveCallSheet(input: id) }
+        .dialog(item: $editingNDI, model) { id in NDIInputSheet(editing: id) }
+        .dialog(item: $editingCaptureCard, model) { id in CaptureCardSheet(editing: id) }
+        .dialog(item: $adjusting, model) { id in InputAdjustSheet(input: id) }
+        .dialog(item: $editingTicker, model) { id in TitleSheet(editing: id) }
+        .dialog(item: $editingSlideshow, model) { id in SlideshowSheet(editing: id) }
+        .dialog(item: $editingData, model) { id in DataSourceSheet(input: id) }
+        .dialog(item: $editingPTZ, model) { id in PTZSheet(input: id) }
+        .dialog(item: $labeling, model) { id in ColorLabelSheet(input: id) }
         .alert(L10n.f("inputs.close_confirm", model.inputs.first { $0.id == closing }?.name ?? ""),
                isPresented: Binding(get: { closing != nil }, set: { if !$0 { closing = nil } })) {
             Button(L10n.t("inputs.close"), role: .destructive) { if let id = closing { model.remove(id) }; closing = nil }
@@ -376,41 +376,24 @@ struct InputTile: View {
     private var isPreview: Bool { model.switcher.preview == info.id }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            ZStack(alignment: .topLeading) {
-                ZStack {
-                    Checkerboard(cell: 6)
-                    PixelBufferView(feed: model.feed(for: info.id), transparent: true)
-                }
-                .aspectRatio(16 / 9, contentMode: .fit)
-                Text("\(info.number)")
-                    .font(.system(size: 11, weight: .heavy))
-                    .padding(.horizontal, 5).padding(.vertical, 1)
-                    .background(isProgram ? Theme.program : (isPreview ? Theme.preview : Color.black.opacity(0.6)))
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
-                    .padding(4)
-                if hovering {
-                    HStack(spacing: 4) {
-                        if info.kind == .browser {
-                            tileButton("hand.point.up.left.fill", L10n.t("browser.interact")) { model.editBrowserPage(info.id) }
-                        }
-                        Spacer()
-                        tileButton("arrow.up.left.and.arrow.down.right.circle.fill", L10n.t("viewer.open")) {
-                            model.openViewer(info.id)
-                            openWindow(id: "source-viewer")
-                        }
-                        // Minimize sits between full screen and close (vMix layout).
-                        tileButton("minus.circle.fill", L10n.t("groups.minimize")) { model.toggleMinimized(info.id) }
-                        if !info.locked { tileButton("xmark.circle.fill", L10n.t("inputs.close"), action: onClose) }
-                    }
-                    .padding(4)
-                }
+        VStack(alignment: .leading, spacing: 5) {
+            // 0.73.2: picture with rounded corners, tally number badge, hover actions on a dark
+            // strip along the bottom so they never cover the badge.
+            ZStack {
+                Checkerboard(cell: 6)
+                PixelBufferView(feed: model.feed(for: info.id), transparent: true)
             }
-            HStack(spacing: 4) {
+            .aspectRatio(16 / 9, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            .overlay(alignment: .topLeading) {
+                TallyBadge(number: info.number, color: isProgram ? Theme.program : (isPreview ? Theme.preview : nil)).padding(4)
+            }
+            .overlay(alignment: .bottom) { if hovering { hoverActions } }
+            HStack(spacing: 5) {
                 Circle().fill(statusColor).frame(width: 7, height: 7).help(info.status.label)
                 // Input type icon before the name (0.55.0).
                 Image(systemName: info.kind.symbol).font(.system(size: 10)).foregroundStyle(Theme.textDim)
-                Text(info.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
+                Text(info.name).font(.system(size: 11, weight: .semibold)).lineLimit(1)
                 Spacer(minLength: 0)
                 Button { model.toggleLock(info.id) } label: {
                     Image(systemName: info.locked ? "lock.fill" : "lock.open")
@@ -433,19 +416,37 @@ struct InputTile: View {
                 Text(info.status.label).font(.system(size: 9)).foregroundStyle(Theme.warning).lineLimit(2)
             }
         }
-        .padding(4)
+        .padding(5)
         .padding(.top, model.inputTags[info.id] == nil ? 0 : 2)
-        .background(Theme.panelRaised)
         .overlay(alignment: .top) {
             if let t = model.inputTags[info.id] { Rectangle().fill(t.color).frame(height: 4) }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 5))
-        .overlay(RoundedRectangle(cornerRadius: 5).stroke(isProgram ? Theme.program : (isPreview ? Theme.preview : Theme.border), lineWidth: isProgram || isPreview ? 2 : 1))
+        .card(stroke: isProgram ? Theme.program : (isPreview ? Theme.preview : (hovering ? Color.white.opacity(0.25) : Theme.border)),
+              lineWidth: isProgram || isPreview ? 2 : 1)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture(count: 2) { model.cutDirect(info.id) }
         .onTapGesture { model.preview(info.id) }
         .help("Click: Preview · Double-click: Cut to Program")
+    }
+
+    private var hoverActions: some View {
+        HStack(spacing: 6) {
+            if info.kind == .browser {
+                tileButton("hand.point.up.left.fill", L10n.t("browser.interact")) { model.editBrowserPage(info.id) }
+            }
+            Spacer()
+            tileButton("arrow.up.left.and.arrow.down.right.circle.fill", L10n.t("viewer.open")) {
+                model.openViewer(info.id)
+                openWindow(id: "source-viewer")
+            }
+            // Minimize sits between full screen and close (vMix layout).
+            tileButton("minus.circle.fill", L10n.t("groups.minimize")) { model.toggleMinimized(info.id) }
+            if !info.locked { tileButton("xmark.circle.fill", L10n.t("inputs.close"), action: onClose) }
+        }
+        .padding(.horizontal, 5).padding(.vertical, 4)
+        .background(LinearGradient(colors: [Color.clear, Color.black.opacity(0.7)], startPoint: .top, endPoint: .bottom))
+        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
     }
 
     private func tileButton(_ symbol: String, _ help: String, action: @escaping () -> Void) -> some View {

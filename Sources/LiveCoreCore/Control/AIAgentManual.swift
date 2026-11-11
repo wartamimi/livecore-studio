@@ -28,7 +28,13 @@ extension AIAgent {
     OUTPUTS (external displays / projector, NDI out), Fullscreen, padlock (locks Record and Stream), \
     and the readings CPU, GPU, RAM, FPS, dropped frames, stream bitrate and record time.
     • Production menu: Macros & triggers, Rundown, Highlights (★ marks → highlight video), \
-    Realtime Transcription (subtitles), AI Assistant, Multiview. Settings: Appearance, Output \
+    Realtime Transcription (subtitles), AI Assistant, Multiview, Show Automation (safe slate when \
+    the Program camera loses its signal; auto-director that cuts to the camera of the microphone \
+    that is talking), Teleprompter (scrolling script, also on phones via the Web Controller). \
+    Macros can run other macros (runMacro), fade a fader (audioFade: level dB over seconds), \
+    have per-step conditions, and start at a time of day. Transcript window: AI summary, minutes, \
+    YouTube chapters. Stream settings: backup server per destination. Record settings: multitrack \
+    audio (one WAV per mixer channel). Settings: Appearance, Output \
     (resolution / frame rate), Stream, Record, Audio, Keyboard shortcuts, MIDI, Web Controller \
     (phone / tablet remote with Program and Preview pictures), Security, Pre-flight check.
 

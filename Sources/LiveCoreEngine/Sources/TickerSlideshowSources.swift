@@ -187,6 +187,14 @@ public final class TickerSource: VideoSource {
 
     private func rebuild() {
         let config = cfg
+        if config.isCredits {
+            canvas = PixelSize(width: max(16, outputSize.width), height: max(16, outputSize.height))
+            pool = PixelBufferFactory.makePool(width: canvas.width, height: canvas.height, minimumCount: 6)
+            tiles = TickerRenderer.creditsImage(config, scale: scale, width: canvas.width).map { [$0] } ?? []
+            labelImage = nil
+            tilePad = 0
+            return
+        }
         let h = max(8, Int((Double(outputSize.height) * config.bandHeight).rounded()))
         canvas = PixelSize(width: max(16, outputSize.width), height: h)
         pool = PixelBufferFactory.makePool(width: canvas.width, height: canvas.height, minimumCount: 6)
@@ -246,7 +254,9 @@ public final class TickerSource: VideoSource {
                 if (t >= 1 && on) || (!on && since > dur + 0.5) { motionIn = nil }
                 shade = TickerRenderer.applyPose(pose, ctx, width: w, height: h)
             }
-            if shade >= 0 {
+            if cfg.isCredits {
+                TickerRenderer.drawCredits(ctx, cfg, image: tiles.first, height: h, scale: scale, elapsed: elapsed)
+            } else if shade >= 0 {
                 TickerRenderer.drawBand(ctx, cfg, width: w, height: h, scale: scale, tiles: tiles, stripWidth: stripWidth,
                                         label: labelImage, elapsed: elapsed, tilePad: tilePad)
                 if shade > 0.01 {
@@ -389,9 +399,61 @@ public enum TickerRenderer {
         }
     }
 
+    /// End credits (0.74.0): every line centred, empty lines kept as gaps, at most 16 384 px tall.
+    public static func creditsImage(_ c: TickerConfig, scale: Double, width: Int) -> CGImage? {
+        let font = TitleRenderer.font(family: c.fontFamily, size: c.fontSize * scale, weight: c.textWeight, italic: c.italic ?? false)
+        let para = NSMutableParagraphStyle()
+        para.alignment = .center
+        para.lineSpacing = c.fontSize * scale * 0.3
+        var attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: c.textColor.nsColor, .paragraphStyle: para]
+        if c.shadow == true {
+            let sh = NSShadow()
+            sh.shadowColor = NSColor.black.withAlphaComponent(0.8)
+            sh.shadowBlurRadius = 6 * scale
+            sh.shadowOffset = NSSize(width: 2 * scale, height: -2 * scale)
+            attrs[.shadow] = sh
+        }
+        let s = NSAttributedString(string: c.creditLines.joined(separator: "\n"), attributes: attrs)
+        let box = s.boundingRect(with: NSSize(width: Double(width) * 0.9, height: 100_000), options: [.usesLineFragmentOrigin])
+        let h = min(16_384, max(2, Int(box.height.rounded(.up)) + 4))
+        guard let ctx = CGContext(data: nil, width: width, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
+        else { return nil }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: false)
+        s.draw(with: NSRect(x: Double(width) * 0.05, y: 2, width: Double(width) * 0.9, height: Double(h) - 4), options: [.usesLineFragmentOrigin])
+        NSGraphicsContext.restoreGraphicsState()
+        return ctx.makeImage()
+    }
+
+    /// One frame of end credits: optional backdrop, then the text block rolled up.
+    public static func drawCredits(_ ctx: CGContext, _ c: TickerConfig, image: CGImage?, height h: Int, scale: Double, elapsed: Double) {
+        if c.showBar {
+            ctx.setFillColor(c.barColor.nsColor.cgColor)
+            ctx.fill(CGRect(x: 0, y: 0, width: ctx.width, height: h))
+        }
+        guard let image else { return }
+        let y = TickerMath.creditsY(elapsed: elapsed, speed: c.speed * scale, textHeight: Double(image.height), viewHeight: Double(h))
+        ctx.draw(image, in: CGRect(x: 0, y: y, width: Double(image.width), height: Double(image.height)))
+    }
+
     /// Whole-picture preview (transparent, band at its position) for the Title Designer.
     public static func preview(_ c0: TickerConfig, width W: Int, height H: Int, elapsed: Double? = nil) -> CGImage? {
         let c = c0.clamped
+        if c.isCredits {
+            guard let ctx = CGContext(data: nil, width: W, height: H, bitsPerComponent: 8, bytesPerRow: 0,
+                                      space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue)
+            else { return nil }
+            ctx.clear(CGRect(x: 0, y: 0, width: W, height: H))
+            let scale = Double(H) / 1080
+            let img = creditsImage(c, scale: scale, width: W)
+            // Default: the first lines are in the middle of the picture.
+            let t = elapsed ?? (Double(H) * 0.55 / max(c.speed * scale, 1))
+            drawCredits(ctx, c, image: img, height: H, scale: scale, elapsed: t)
+            return ctx.makeImage()
+        }
         let scale = Double(H) / 1080
         let bandH = max(4, Int((Double(H) * c.bandHeight).rounded()))
         guard let ctx = CGContext(data: nil, width: W, height: H, bitsPerComponent: 8, bytesPerRow: 0,
