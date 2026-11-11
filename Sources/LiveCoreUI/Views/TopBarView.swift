@@ -23,7 +23,7 @@ struct TopBarView: View {
                 Text(L10n.t("app.name")).font(.system(size: 15, weight: .heavy))
                 Text("\(model.settings.output.label)").font(.system(size: 11)).foregroundStyle(Theme.textDim)
             }
-            fileMenu(compact: compact)
+            ProjectFileMenu(compact: compact)
             Spacer(minLength: 0)
             // Rundown lives in Production › Create Rundown… (0.55.1). Multiview and Settings are
             // real buttons with a hover, like the padlock in the bottom dock.
@@ -42,8 +42,15 @@ struct TopBarView: View {
         .padding(.horizontal, 10).padding(.vertical, 6)
         .panel()
     }
+}
 
-    /// Project / template menu in the window itself (0.63.0), same items as the menu bar's File.
+/// Project / template menu (0.63.0), shared by the Classic top bar and the Studio header (0.72.0).
+struct ProjectFileMenu: View {
+    @EnvironmentObject var model: AppModel
+    let compact: Bool
+
+    var body: some View { fileMenu(compact: compact) }
+
     private func fileMenu(compact: Bool) -> some View {
         Menu {
             Button(L10n.t("project.new")) { model.newProject() }

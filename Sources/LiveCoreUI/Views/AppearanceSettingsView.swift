@@ -12,6 +12,19 @@ struct AppearanceSettingsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                // 0.72.0: the new Studio UI or the Classic UI of 0.71.0, and the launch animation.
+                section(L10n.t("appearance.interface")) {
+                    Picker("", selection: a.style) {
+                        Text(L10n.t("appearance.interface.studio")).tag(AppearanceSettings.UIStyle.studio)
+                        Text(L10n.t("appearance.interface.classic")).tag(AppearanceSettings.UIStyle.classic)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(maxWidth: 360)
+                    Text(L10n.t(model.appearance.style == .studio ? "appearance.interface.studio_help" : "appearance.interface.classic_help"))
+                        .font(.caption).foregroundStyle(Theme.textDim)
+                    Toggle(L10n.t("appearance.splash"), isOn: a.splash)
+                }
                 section(L10n.t("appearance.theme")) {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: 10)], spacing: 10) {
                         ForEach(AppearanceSettings.ThemeChoice.allCases, id: \.self) { t in themeCard(t) }
@@ -24,6 +37,9 @@ struct AppearanceSettingsView: View {
                     .padding(.horizontal, 5).padding(.vertical, 5)
                 }
                 section(L10n.t("appearance.layout")) {
+                    if model.appearance.style == .studio {
+                        Text(L10n.t("appearance.layout_classic_only")).font(.caption).foregroundStyle(Theme.textDim)
+                    }
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 10)], spacing: 10) {
                         ForEach(AppearanceSettings.DockLayout.allCases, id: \.self) { l in layoutCard(l) }
                     }

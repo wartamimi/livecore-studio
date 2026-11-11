@@ -12,6 +12,14 @@ struct MainView: View {
     @AppStorage("dock.playlist.minimized") private var playlistMin = false
     @AppStorage("mixer.inputsFolded") private var mixerInputsMin = false
     @AppStorage("welcome.showAtLaunch") private var welcomeAtLaunch = true
+    /// Animated logo once per launch (0.72.0), not again for a second main window.
+    @State private var showSplash = MainView.takeSplash()
+    private static var splashTaken = false
+    private static func takeSplash() -> Bool {
+        guard !splashTaken else { return false }
+        splashTaken = true
+        return AppearanceSettings.load().splash
+    }
 
     /// The Playlist dock appears once a music playlist or a video (playlist) input exists.
     /// Only for real playlists (0.55.1): a single file from Add Media does not open it.
@@ -19,6 +27,11 @@ struct MainView: View {
 
     var body: some View {
         mainContent.background(MainWindowQuitHook())
+            .overlay {
+                if showSplash {
+                    SplashView { showSplash = false }
+                }
+            }
     }
 
     @ViewBuilder private var mainContent: some View {
@@ -30,7 +43,11 @@ struct MainView: View {
                     Text(err).foregroundStyle(Theme.textDim)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if model.appearance.style == .studio {
+                // New Studio UI (0.72.0); Settings › Appearance › Interface switches back.
+                StudioShell(showSettings: $showSettings, settingsTab: $settingsTab)
             } else {
+                // Classic UI (0.71.0), unchanged.
                 VStack(spacing: 6) {
                     TopBarView(showSettings: $showSettings)
                     ErrorBanner()
@@ -68,7 +85,8 @@ struct MainView: View {
         .sheet(item: $model.propertiesRequest) { id in InputPropertiesSheet(input: id).environmentObject(model) }
         .onAppear {
             // Welcome screen with the templates on an empty start (not over the recovery question).
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            // After the splash, when it shows.
+            DispatchQueue.main.asyncAfter(deadline: .now() + (showSplash ? 3.3 : 1.2)) {
                 if welcomeAtLaunch, !model.recoveryPending, model.inputs.isEmpty, model.projectURL == nil, model.startupError == nil {
                     model.showTemplates = true
                 }
