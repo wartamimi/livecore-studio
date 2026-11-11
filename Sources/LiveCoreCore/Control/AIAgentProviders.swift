@@ -154,7 +154,9 @@ extension AIAgent {
         else if finish == "content_filter" { stop = "refusal" }
         else { stop = "end_turn" }
         let text = (msg["content"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        return Reply(content: [back], text: text, toolUses: uses, stopReason: stop)
+        var r = Reply(content: [back], text: text, toolUses: uses, stopReason: stop)
+        r.usage = AIUsage(openAI: o["usage"] as? [String: Any])
+        return r
     }
 
     /// Error text of an OpenAI-style error answer (`error.message`, or Gemini's list form).

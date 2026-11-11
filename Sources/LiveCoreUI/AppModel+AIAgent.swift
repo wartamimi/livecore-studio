@@ -11,7 +11,7 @@ import LiveCoreServices
 /// it takes is listed in the window.
 public final class AIAgentSession: ObservableObject {
     public struct Line: Identifiable, Equatable {
-        public enum Role { case user, assistant, action, error }
+        public enum Role { case user, assistant, action, error, info }
         public let id = UUID()
         public let role: Role
         public let text: String
@@ -97,6 +97,7 @@ public final class AIAgentSession: ObservableObject {
         stop()
         lines = []
         messages = []
+        totalUsage = AIUsage()
         lastCommand = nil
     }
 
@@ -147,21 +148,25 @@ public final class AIAgentSession: ObservableObject {
         }
         // A conversation cannot move between providers (different message formats).
         if p != messagesProvider { messages = []; messagesProvider = p }
-        // Keep the conversation short: the last few commands are enough context for a live show.
-        if messages.count > 24 { messages = [] }
+        // Finished commands are kept as short pairs; only the last few (0.70.3).
+        messages = AIAgent.trimmedHistory(messages)
         if !again {
             lastCommand = text
             messagesBeforeLast = messages
             linesBeforeLast = lines.count + 1
             lines.append(Line(role: .user, text: text))
         }
-        // The show as it is now rides along, so the model knows the inputs without asking.
-        let state = p.supportsTools ? model.map { AIAgent.withState(text, stateJSON: $0.makeRemoteState().json) } : nil
+        // The show as it is now rides along (short text), so the model knows the inputs without asking.
+        let state = p.supportsTools ? model.map { AIAgent.withState(text, stateJSON: AIAgent.compactState($0.makeRemoteState())) } : nil
+        let base = messages
+        let firstLine = lines.count
         messages += AIAgent.userTurn(state ?? text, p)
+        commandUsage = AIUsage()
         busy = true
         let modelID = self.modelID, allow = allowOutputs
         task = Task { @MainActor [weak self] in
             await self?.loop(provider: p, key: key, modelID: modelID, allowOutputs: allow)
+            self?.finishCommand(text, base: base, firstLine: firstLine, provider: p)
             self?.busy = false
             self?.task = nil
         }
@@ -223,6 +228,7 @@ public final class AIAgentSession: ObservableObject {
                 }
                 return
             }
+            commandUsage = commandUsage + reply.usage
             messages += AIAgent.assistantTurn(reply, p)
             let split = AIAgent.splitSuggestions(reply.text)
             let shown = AIAgent.plainText(split.text)
@@ -247,6 +253,25 @@ public final class AIAgentSession: ObservableObject {
         lines.append(Line(role: .error, text: "Stopped after \(AIAgent.maxRounds) steps with the model."))
     }
 
+    private var commandUsage = AIUsage()
+
+    /// After a command: keep it as one short user / assistant pair (no tool calls, results or
+    /// show state), and show what it cost in tokens.
+    @MainActor
+    private func finishCommand(_ text: String, base: [[String: Any]], firstLine: Int, provider p: AIProvider) {
+        let new = firstLine < lines.count ? Array(lines[firstLine...]) : []
+        if !messages.isEmpty {   // empty = the command failed and the conversation was reset
+            messages = AIAgent.trimmedHistory(base + AIAgent.compactTurn(
+                command: text, answers: new.filter { $0.role == .assistant }.map(\.text),
+                actions: new.filter { $0.role == .action }.map(\.text), p))
+        }
+        if commandUsage.total > 0 { lines.append(Line(role: .info, text: commandUsage.label)) }
+        totalUsage = totalUsage + commandUsage
+    }
+
+    /// Tokens used since the panel was cleared.
+    @Published public private(set) var totalUsage = AIUsage()
+
     /// The failed turn is dropped so the next command starts from a valid conversation.
     @MainActor
     private func fail(_ text: String) {
@@ -259,7 +284,7 @@ public final class AIAgentSession: ObservableObject {
         guard let model else { return (use.id, "The app is closing.", true) }
         switch use.name {
         case "get_state":
-            return (use.id, model.makeRemoteState().json, false)
+            return (use.id, AIAgent.compactState(model.makeRemoteState()), false)
         case "run_macro":
             let n = AIAgent.intValue(use.input["number"]) ?? 0
             guard let m = model.macroBook.macro(number: n) else {

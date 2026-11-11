@@ -62,7 +62,7 @@ struct AIAgentWindow: View {
             }
             VStack(alignment: .leading, spacing: 1) {
                 Text(L10n.t("ai.title")).font(.system(size: 14, weight: .bold))
-                Text("\(provider.displayName) · \(modelID.isEmpty ? provider.defaultModel : modelID)")
+                Text("\(provider.displayName) · \(modelID.isEmpty ? provider.defaultModel : modelID)" + (session.totalUsage.total > 0 ? " · Σ \(session.totalUsage.label)" : ""))
                     .font(.system(size: 11)).foregroundStyle(Theme.textDim).lineLimit(1).truncationMode(.middle)
             }
             Spacer(minLength: 8)
@@ -277,6 +277,13 @@ struct AIAgentWindow: View {
             .padding(.horizontal, 10).padding(.vertical, 5)
             .background(Capsule().fill(Theme.preview.opacity(0.15)))
             .overlay(Capsule().stroke(Theme.preview.opacity(0.35), lineWidth: 1))
+            .padding(.leading, 32)
+        case .info:
+            HStack(spacing: 4) {
+                Image(systemName: "gauge.with.dots.needle.33percent").font(.system(size: 9))
+                Text(line.text).font(.system(size: 10, design: .monospaced))
+            }
+            .foregroundStyle(Theme.textDim)
             .padding(.leading, 32)
         case .error:
             HStack(alignment: .top, spacing: 8) {

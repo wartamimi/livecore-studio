@@ -296,3 +296,31 @@ final class V072Tests: XCTestCase {
         XCTAssertTrue(AIAgent.systemPrompt(allowOutputs: false).contains("create_graphic"))
     }
 }
+
+final class V0703Tests: XCTestCase {
+    func testUsageAndCompactHistory() {
+        let a = AIUsage(anthropic: ["input_tokens": 100, "cache_read_input_tokens": 4000, "cache_creation_input_tokens": 0, "output_tokens": 50])
+        XCTAssertEqual(a, AIUsage(input: 4100, output: 50, cached: 4000))
+        let o = AIUsage(openAI: ["prompt_tokens": 3000, "completion_tokens": 200, "prompt_tokens_details": ["cached_tokens": 2048]])
+        XCTAssertEqual((a + o).total, 7350)
+        XCTAssertEqual(AIUsage(input: 3900, output: 310, cached: 2800).label, "4.2k tokens (in 3.9k, 2.8k cached; out 310)")
+        let turn = AIAgent.compactTurn(command: "cut ke 2", answers: ["Sudah."], actions: ["program input 2"], .openAI)
+        XCTAssertEqual(turn.count, 2)
+        XCTAssertEqual(turn[1]["content"] as? String, "Sudah.\n[done: program input 2]")
+        let long = (0..<30).flatMap { _ in turn }
+        XCTAssertEqual(AIAgent.trimmedHistory(long).count, AIAgent.historyCommands * 2)
+        let body = String(data: AIAgent.requestBody(model: "claude-opus-5-5", messages: [], allowOutputs: false), encoding: .utf8)!
+        XCTAssertEqual(body.components(separatedBy: "cache_control").count - 1, 2)   // system + last tool
+    }
+
+    func testCompactState() {
+        var s = RemoteState()
+        s.program = 2; s.preview = 1
+        s.inputs = [RemoteState.Input(number: 1, name: "Cam", kind: "camera", ptz: true, data: false),
+                    RemoteState.Input(number: 2, name: "Logo", kind: "image", ptz: false, data: false)]
+        let t = AIAgent.compactState(s)
+        XCTAssertTrue(t.contains("Program: 2 · Preview: 1"))
+        XCTAssertTrue(t.contains("1 Cam [camera, PTZ]; 2 Logo [image]"))
+        XCTAssertLessThan(t.count, s.json.count)
+    }
+}
