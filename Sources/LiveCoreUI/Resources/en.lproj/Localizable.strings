@@ -2109,7 +2109,8 @@
 "appearance.interface" = "Interface";
 "appearance.interface.studio" = "Studio (new)";
 "appearance.interface.classic" = "Classic (0.71)";
-"appearance.interface.studio_help" = "Workspaces on the left rail (Live, Inputs, Audio, Show ⌘1–⌘4), inspector for the Preview input, ⌘K to find any action. The Classic interface is one click away.";
+"appearance.interface.studio_help" = "Workspaces Live, Audio and Show (⌘1–⌘3), a layout that follows the window size, ⌘K to find any action. The Classic interface is one click away.";
+"studio.live.mixer" = "Mixer";
 "appearance.interface.classic_help" = "The interface of 0.71.0 with its six dock layouts, unchanged.";
 "appearance.splash" = "Animated logo when the app opens";
 "appearance.layout_classic_only" = "Dock layouts apply to the Classic interface. The Studio interface uses workspaces instead.";
@@ -2121,16 +2122,8 @@
 "studio.on_air" = "ON AIR";
 "studio.search" = "Search actions, inputs, windows…";
 "studio.search_help" = "Find and run any action, input, window or setting (⌘K)";
-"studio.inspector_toggle" = "Show / hide the inspector (⌥⌘I)";
 "studio.classic" = "Classic";
 "studio.classic_help" = "Switch back to the Classic interface (Settings › Appearance switches again)";
-"studio.overlay_program" = "Overlay (click: Preview, right-click: Program)";
-"studio.properties" = "Properties…";
-"studio.no_preview" = "No input on Preview";
-"studio.overlays" = "Overlays";
-"studio.input" = "Input";
-"studio.on" = "On";
-"studio.off" = "Off";
 "studio.tool.ai" = "AI Assistant";
 "studio.tool.ai_help" = "Type a command; the assistant runs the show for you.";
 "studio.tool.macros" = "Macros";

@@ -3,35 +3,49 @@ import SwiftUI
 import LiveCoreCore
 import LiveCoreEngine
 
-/// Workspaces of the Studio UI (0.72.0). Each one arranges the same live panels for one job;
-/// switching never stops anything (inputs, stream and recording keep running).
+/// Workspaces of the Studio UI. Each one arranges the same live panels for one job; switching
+/// never stops anything (inputs, stream and recording keep running).
+/// 0.72.1: three workspaces (the separate Inputs one repeated Live), each with its own colour.
 enum StudioWorkspace: String, CaseIterable, Identifiable {
-    case live, inputs, audio, show
+    case live, audio, show
     var id: String { rawValue }
 
     var icon: String {
         switch self {
         case .live: return "dot.radiowaves.left.and.right"
-        case .inputs: return "square.grid.2x2"
         case .audio: return "slider.vertical.3"
         case .show: return "wand.and.stars"
         }
     }
+    var color: Color {
+        switch self {
+        case .live: return Color(red: 1.0, green: 0.38, blue: 0.36)
+        case .audio: return Color(red: 0.16, green: 0.78, blue: 0.62)
+        case .show: return Color(red: 0.66, green: 0.48, blue: 1.0)
+        }
+    }
     var title: String { L10n.t("studio.ws.\(rawValue)") }
-    /// ⌘1 … ⌘4.
-    var key: KeyEquivalent { KeyEquivalent(Character("\((StudioWorkspace.allCases.firstIndex(of: self) ?? 0) + 1)")) }
+    var number: Int { (StudioWorkspace.allCases.firstIndex(of: self) ?? 0) + 1 }
+    /// ⌘1 … ⌘3.
+    var key: KeyEquivalent { KeyEquivalent(Character("\(number)")) }
 }
 
-/// The Studio main window (Settings › Appearance › Interface = Studio): header with status,
-/// a workspace rail on the left, the workspace, and the output dock (RECORD / STREAM / OUTPUTS).
-/// The Classic UI of 0.71.0 is untouched in `MainView` and one click away on the rail.
+/// The Studio main window (Settings › Appearance › Interface = Studio).
+///
+/// 0.72.1 redesign: the layout follows the window size (wide: workspace rail on the left and
+/// inputs beside the mixer; narrow: workspace tabs in the header and Inputs / Mixer as tabs),
+/// springy colourful controls, and nothing that repeats another control (the inspector, the
+/// clock, the Inputs workspace and the rail's tool shortcuts are gone).
+/// The Classic UI of 0.71.0 is untouched in `MainView`.
 struct StudioShell: View {
     @EnvironmentObject var model: AppModel
     @Binding var showSettings: Bool
     @Binding var settingsTab: Int
     @AppStorage("studio.workspace") private var workspaceRaw = StudioWorkspace.live.rawValue
-    @AppStorage("studio.inspector") private var showInspector = true
     @State private var showPalette = false
+
+    /// Below this window width the rail folds into the header and the Live panels become tabs.
+    static let narrowWidth: CGFloat = 1120
 
     init(showSettings: Binding<Bool>, settingsTab: Binding<Int>) {
         _showSettings = showSettings
@@ -43,17 +57,23 @@ struct StudioShell: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
-            StudioHeader(showPalette: $showPalette, showInspector: $showInspector) { openSettings($0) }
-            ErrorBanner()
-            HStack(spacing: 6) {
-                StudioRail(workspace: workspace) { openSettings($0) }
-                StudioWorkspaceView(workspace: workspace.wrappedValue, showInspector: showInspector)
-                    .id(workspace.wrappedValue)
+        GeometryReader { geo in
+            let narrow = geo.size.width < Self.narrowWidth
+            VStack(spacing: 6) {
+                StudioHeader(workspace: workspace, narrow: narrow, showPalette: $showPalette) { openSettings($0) }
+                ErrorBanner()
+                HStack(spacing: 6) {
+                    if !narrow { StudioRail(workspace: workspace) }
+                    // Rebuilt when the workspace or the size class changes, so split views start
+                    // from their ideal sizes (they keep old divider positions otherwise).
+                    StudioWorkspaceView(workspace: workspace.wrappedValue, narrow: narrow)
+                        .id("\(workspace.wrappedValue.rawValue)-\(narrow)")
+                }
+                OutputDockView { openSettings($0) }
             }
-            OutputDockView { openSettings($0) }
+            .padding(6)
+            .frame(width: geo.size.width, height: geo.size.height)
         }
-        .padding(6)
         .sheet(isPresented: $showPalette) {
             CommandPalette(workspace: workspace, openSettings: { openSettings($0) })
                 .environmentObject(model)
@@ -66,14 +86,13 @@ struct StudioShell: View {
         showSettings = true
     }
 
-    /// ⌘K opens the command palette, ⌘1–⌘4 switch workspaces, ⌥⌘I shows / hides the inspector.
+    /// ⌘K opens the command palette, ⌘1–⌘3 switch workspaces.
     private var shortcuts: some View {
         ZStack {
             Button("") { showPalette = true }.keyboardShortcut("k", modifiers: [.command])
             ForEach(StudioWorkspace.allCases) { w in
                 Button("") { workspace.wrappedValue = w }.keyboardShortcut(w.key, modifiers: [.command])
             }
-            Button("") { showInspector.toggle() }.keyboardShortcut("i", modifiers: [.command, .option])
         }
         .opacity(0)
         .frame(width: 0, height: 0)
@@ -81,56 +100,54 @@ struct StudioShell: View {
     }
 }
 
+/// Press feedback of the Studio controls: they dip and spring back.
+struct BouncyButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.92 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.55), value: configuration.isPressed)
+    }
+}
+
 // MARK: Header
 
-/// Top strip: logo, project and output format, File menu, search, ON AIR / REC, clock and the
-/// AI / Multiview / Settings buttons.
+/// Top strip: logo and show name, File menu, (narrow windows) the workspace tabs, search,
+/// ON AIR / REC lamps and the AI / Multiview / Settings buttons.
 private struct StudioHeader: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.openWindow) private var openWindow
+    @Binding var workspace: StudioWorkspace
+    let narrow: Bool
     @Binding var showPalette: Bool
-    @Binding var showInspector: Bool
     let openSettings: (Int) -> Void
-
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            bar(compact: false)
-            bar(compact: true)
-        }
-    }
+    @State private var spin = 0.0
 
     private var projectName: String {
         model.projectURL?.deletingPathExtension().lastPathComponent ?? L10n.t("studio.untitled")
     }
 
-    private func bar(compact: Bool) -> some View {
-        HStack(spacing: compact ? 8 : 12) {
-            LiveCoreLogo().frame(width: 22, height: 22)
-            if !compact {
+    var body: some View {
+        HStack(spacing: narrow ? 8 : 12) {
+            // The logo takes a spin when clicked (just for fun).
+            LiveCoreLogo().frame(width: 24, height: 24)
+                .rotationEffect(.degrees(spin))
+                .onTapGesture { withAnimation(.spring(response: 0.7, dampingFraction: 0.55)) { spin += 360 } }
+            if !narrow {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(projectName).font(.system(size: 13, weight: .bold)).lineLimit(1)
+                    Text(projectName).font(.system(size: 13, weight: .bold, design: .rounded)).lineLimit(1)
                     Text(model.settings.output.label).font(.system(size: 10)).foregroundStyle(Theme.textDim)
                 }
-                .frame(maxWidth: 220, alignment: .leading)
+                .frame(maxWidth: 200, alignment: .leading)
             }
-            ProjectFileMenu(compact: compact)
+            ProjectFileMenu(compact: narrow)
+            if narrow { WorkspaceSwitcher(workspace: $workspace, axis: .horizontal) }
             Spacer(minLength: 0)
-            searchButton(compact: compact)
+            searchButton
             Spacer(minLength: 0)
-            StatePill(title: L10n.t("studio.on_air"), icon: "antenna.radiowaves.left.and.right", on: model.isStreamingActive)
-            StatePill(title: "REC", icon: "record.circle", on: model.isRecording)
-            if !compact {
-                TimelineView(.periodic(from: .now, by: 1)) { ctx in
-                    Text(ctx.date, format: .dateTime.hour().minute().second())
-                        .font(.system(size: 13, weight: .semibold, design: .monospaced))
-                        .foregroundStyle(Theme.textDim)
-                }
-            }
+            StatePill(title: L10n.t("studio.on_air"), icon: "antenna.radiowaves.left.and.right", on: model.isStreamingActive, labelled: !narrow)
+            StatePill(title: "REC", icon: "record.circle", on: model.isRecording, labelled: !narrow)
             AIAssistantButton { openWindow(id: "ai-assistant") }
             iconButton("square.grid.3x2", help: L10n.t("multiview.open")) { openWindow(id: "multiview") }
-            iconButton(showInspector ? "sidebar.right" : "sidebar.squares.right", help: L10n.t("studio.inspector_toggle")) {
-                showInspector.toggle()
-            }
             if !model.isOperatorMode {
                 iconButton("gearshape", help: L10n.t("settings.title")) { openSettings(6) }
             }
@@ -139,11 +156,11 @@ private struct StudioHeader: View {
         .panel()
     }
 
-    private func searchButton(compact: Bool) -> some View {
+    private var searchButton: some View {
         Button { showPalette = true } label: {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass")
-                if !compact { Text(L10n.t("studio.search")).lineLimit(1) }
+                if !narrow { Text(L10n.t("studio.search")).lineLimit(1) }
                 Spacer(minLength: 0)
                 Text("⌘K").font(.system(size: 11, weight: .semibold, design: .rounded))
                     .padding(.horizontal, 5).padding(.vertical, 1)
@@ -151,14 +168,14 @@ private struct StudioHeader: View {
             }
             .font(.system(size: 12))
             .foregroundStyle(Theme.textDim)
-            .padding(.horizontal, 10).padding(.vertical, 6)
-            .frame(width: compact ? 90 : 300)
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .frame(width: narrow ? 92 : 300)
             .background(Theme.panelRaised)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(Theme.border))
-            .contentShape(Rectangle())
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Theme.border))
+            .contentShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(BouncyButtonStyle())
         .help(L10n.t("studio.search_help"))
     }
 
@@ -170,23 +187,26 @@ private struct StudioHeader: View {
     }
 }
 
-/// ON AIR / REC lamp: grey when off, red and pulsing while live.
+/// ON AIR / REC lamp: grey when off, red, glowing and pulsing while live.
 private struct StatePill: View {
     let title: String
     let icon: String
     let on: Bool
+    let labelled: Bool
     @State private var blink = false
 
     var body: some View {
         HStack(spacing: 5) {
             Image(systemName: icon).font(.system(size: 10, weight: .bold))
-            Text(title).font(.system(size: 11, weight: .heavy)).tracking(0.6)
+            if labelled || on { Text(title).font(.system(size: 11, weight: .heavy, design: .rounded)).tracking(0.6) }
         }
         .padding(.horizontal, 9).padding(.vertical, 4)
         .foregroundStyle(on ? Color.white : Theme.textDim)
         .background(on ? Theme.program.opacity(blink ? 0.75 : 1) : Theme.panelRaised)
         .clipShape(Capsule())
         .overlay(Capsule().stroke(on ? Theme.program : Theme.border))
+        .shadow(color: on ? Theme.program.opacity(blink ? 0.7 : 0.25) : .clear, radius: blink ? 8 : 3)
+        .help(title)
         .onAppear { updateBlink(on) }
         .onChange(of: on) { updateBlink($0) }
     }
@@ -200,65 +220,99 @@ private struct StatePill: View {
     }
 }
 
-// MARK: Rail
+// MARK: Workspace switcher
 
-/// Left rail: the four workspaces, the show tools that are used most, and the way back to the
-/// Classic UI.
+/// Left rail of wide windows: the workspaces, and the way back to the Classic UI.
 private struct StudioRail: View {
     @EnvironmentObject var model: AppModel
-    @Environment(\.openWindow) private var openWindow
     @Binding var workspace: StudioWorkspace
-    let openSettings: (Int) -> Void
+    @State private var hoverClassic = false
 
     var body: some View {
-        VStack(spacing: 4) {
-            ForEach(StudioWorkspace.allCases) { w in
-                railButton(w.title, icon: w.icon, selected: workspace == w,
-                           help: "\(w.title)  ⌘\((StudioWorkspace.allCases.firstIndex(of: w) ?? 0) + 1)") { workspace = w }
-            }
-            Divider().padding(.vertical, 4)
-            railButton(L10n.t("studio.tool.macros"), icon: "bolt.fill", selected: false, help: L10n.t("macro.menu")) { openWindow(id: "macros") }
-            railButton(L10n.t("studio.tool.automation"), icon: "gearshape.2", selected: false, help: L10n.t("automation.menu")) { openWindow(id: "automation") }
-            railButton(L10n.t("studio.tool.prompter"), icon: "text.alignleft", selected: false, help: L10n.t("prompter.menu")) { openWindow(id: "teleprompter") }
+        VStack(spacing: 6) {
+            WorkspaceSwitcher(workspace: $workspace, axis: .vertical)
             Spacer(minLength: 4)
-            railButton(L10n.t("studio.classic"), icon: "rectangle.3.group", selected: false, help: L10n.t("studio.classic_help")) {
-                model.appearance.style = .classic
+            Button { model.appearance.style = .classic } label: {
+                VStack(spacing: 3) {
+                    Image(systemName: "arrow.uturn.backward.circle").font(.system(size: 15, weight: .semibold))
+                    Text(L10n.t("studio.classic")).font(.system(size: 9, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                }
+                .frame(maxWidth: .infinity).padding(.vertical, 7)
+                .foregroundStyle(hoverClassic ? Theme.text : Theme.textDim)
+                .background(hoverClassic ? Theme.panelHover : Color.clear)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .contentShape(Rectangle())
             }
+            .buttonStyle(BouncyButtonStyle())
+            .onHover { hoverClassic = $0 }
+            .help(L10n.t("studio.classic_help"))
         }
-        .padding(.vertical, 8).padding(.horizontal, 4)
-        .frame(width: 68)
+        .padding(.vertical, 8).padding(.horizontal, 5)
+        .frame(width: 72)
         .frame(maxHeight: .infinity)
         .panel()
     }
+}
 
-    private func railButton(_ title: String, icon: String, selected: Bool, help: String,
-                            action: @escaping () -> Void) -> some View {
-        RailButton(title: title, icon: icon, selected: selected, action: action).help(help)
+/// The workspace buttons, as a column (rail) or a row of icons (header of narrow windows). The
+/// coloured pill slides to the chosen workspace.
+private struct WorkspaceSwitcher: View {
+    @Binding var workspace: StudioWorkspace
+    let axis: Axis
+    @Namespace private var pill
+
+    var body: some View {
+        let layout = axis == .vertical ? AnyLayout(VStackLayout(spacing: 6)) : AnyLayout(HStackLayout(spacing: 4))
+        layout {
+            ForEach(StudioWorkspace.allCases) { w in
+                WorkspaceButton(workspace: w, selected: workspace == w, compact: axis == .horizontal, pill: pill) {
+                    workspace = w
+                }
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: workspace)
     }
 }
 
-private struct RailButton: View {
-    let title: String
-    let icon: String
+private struct WorkspaceButton: View {
+    let workspace: StudioWorkspace
     let selected: Bool
+    let compact: Bool
+    let pill: Namespace.ID
     let action: () -> Void
     @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             VStack(spacing: 3) {
-                Image(systemName: icon).font(.system(size: 16, weight: .semibold)).frame(height: 20)
-                Text(title).font(.system(size: 9, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                Image(systemName: workspace.icon)
+                    .font(.system(size: compact ? 13 : 17, weight: .bold))
+                    .scaleEffect(hovering ? 1.18 : 1)
+                    .rotationEffect(.degrees(hovering && !selected ? -8 : 0))
+                if !compact {
+                    Text(workspace.title).font(.system(size: 10, weight: .bold, design: .rounded)).lineLimit(1).minimumScaleFactor(0.7)
+                }
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 7)
-            .foregroundStyle(selected ? Color.white : (hovering ? Theme.text : Theme.textDim))
-            .background(selected ? Theme.accent.opacity(0.85) : (hovering ? Theme.panelHover : Color.clear))
-            .clipShape(RoundedRectangle(cornerRadius: 7))
+            .frame(width: compact ? 42 : nil, height: compact ? 28 : nil)
+            .frame(maxWidth: compact ? nil : .infinity)
+            .padding(.vertical, compact ? 0 : 9)
+            .foregroundStyle(selected ? Color.white : (hovering ? workspace.color : Theme.textDim))
+            .background {
+                if selected {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(LinearGradient(colors: [workspace.color, workspace.color.opacity(0.7)],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .shadow(color: workspace.color.opacity(0.5), radius: 6, y: 2)
+                        .matchedGeometryEffect(id: "pill", in: pill)
+                } else if hovering {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous).fill(workspace.color.opacity(0.14))
+                }
+            }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
+        .buttonStyle(BouncyButtonStyle())
+        .onHover { h in withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { hovering = h } }
+        .help("\(workspace.title)  ⌘\(workspace.number)")
     }
 }
 
@@ -267,25 +321,29 @@ private struct RailButton: View {
 private struct StudioWorkspaceView: View {
     @EnvironmentObject var model: AppModel
     let workspace: StudioWorkspace
-    let showInspector: Bool
+    let narrow: Bool
+    /// Narrow windows: which panel shows under the monitors in Live.
+    @AppStorage("studio.live.panel") private var livePanel = "inputs"
 
     var body: some View {
         switch workspace {
         case .live:
-            // Monitors large on top, inputs and mixer side by side underneath.
             VSplitView {
-                withInspector(MonitorRow()).frame(minHeight: 220, idealHeight: 430)
-                HSplitView {
-                    InputPanelView().frame(minWidth: 260, idealWidth: 560)
-                    mixer.frame(minWidth: 320)
+                MonitorRow().frame(minHeight: 200, idealHeight: 430)
+                if narrow {
+                    // One panel at a time, each with the full width.
+                    VStack(spacing: 5) {
+                        panelTabs
+                        if livePanel == "mixer" { mixer } else { InputPanelView() }
+                    }
+                    .frame(minHeight: 280, idealHeight: 320, alignment: .top)
+                } else {
+                    HSplitView {
+                        InputPanelView().frame(minWidth: 260, idealWidth: 560)
+                        mixer.frame(minWidth: 320)
+                    }
+                    .frame(minHeight: 250, idealHeight: 300, alignment: .top)
                 }
-                .frame(minHeight: 250, idealHeight: 300, alignment: .top)
-            }
-        case .inputs:
-            // Building the show: a big input wall with the inspector, small monitors on top.
-            VSplitView {
-                MonitorRow().frame(minHeight: 170, idealHeight: 240)
-                withInspector(InputPanelView()).frame(minHeight: 260)
             }
         case .audio:
             // Mixing: the full mixer with small monitors.
@@ -295,10 +353,32 @@ private struct StudioWorkspaceView: View {
             }
         case .show:
             VSplitView {
-                withInspector(MonitorRow()).frame(minHeight: 200, idealHeight: 320)
+                MonitorRow().frame(minHeight: 200, idealHeight: 320)
                 StudioToolsView().frame(minHeight: 220)
             }
         }
+    }
+
+    private var panelTabs: some View {
+        HStack(spacing: 4) {
+            panelTab("inputs", L10n.t("studio.ws.inputs"), icon: "square.grid.2x2", color: StudioWorkspace.live.color)
+            panelTab("mixer", L10n.t("studio.live.mixer"), icon: "slider.vertical.3", color: StudioWorkspace.audio.color)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func panelTab(_ id: String, _ title: String, icon: String, color: Color) -> some View {
+        let on = livePanel == id || (id == "inputs" && livePanel != "mixer")
+        return Button { livePanel = id } label: {
+            Label(title, systemImage: icon)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .padding(.horizontal, 12).padding(.vertical, 5)
+                .foregroundStyle(on ? Color.white : Theme.textDim)
+                .background(on ? color : Theme.panelRaised)
+                .clipShape(Capsule())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(BouncyButtonStyle())
     }
 
     @ViewBuilder private var mixer: some View {
@@ -308,108 +388,6 @@ private struct StudioWorkspaceView: View {
                 PlaylistDockView().frame(minWidth: 200, idealWidth: 290, maxWidth: 320)
             }
         }
-    }
-
-    private func withInspector<V: View>(_ content: V) -> some View {
-        HStack(spacing: 6) {
-            content
-            if showInspector { StudioInspector().frame(width: 250) }
-        }
-    }
-}
-
-// MARK: Inspector
-
-/// Right panel: the input on Preview with one-click actions, what is on Program, and the four
-/// overlay channels with their state.
-struct StudioInspector: View {
-    @EnvironmentObject var model: AppModel
-
-    private func info(_ id: InputID?) -> ProductionEngine.InputInfo? {
-        guard let id else { return nil }
-        return model.inputs.first { $0.id == id }
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                SectionHeader(title: L10n.t("monitor.preview"))
-                if let p = info(model.switcher.preview) {
-                    inputCard(p, color: Theme.preview)
-                    HStack(spacing: 6) {
-                        Button("CUT") { model.cut() }.buttonStyle(StudioButtonStyle(color: Theme.program, active: false))
-                        Button("AUTO") { model.auto() }.buttonStyle(StudioButtonStyle(color: Theme.accent, active: false))
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(L10n.t("studio.overlay_program")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
-                        OverlayNumbers(input: p.id)
-                    }
-                    Button { model.propertiesRequest = p.id } label: {
-                        Label(L10n.t("studio.properties"), systemImage: "slider.horizontal.3")
-                    }
-                    .buttonStyle(StudioButtonStyle())
-                    .disabled(p.locked)
-                } else {
-                    empty(L10n.t("studio.no_preview"))
-                }
-
-                Divider()
-                SectionHeader(title: L10n.t("monitor.program"))
-                if let p = info(model.switcher.program) { inputCard(p, color: Theme.program) } else { empty(L10n.t("monitor.no_input")) }
-
-                Divider()
-                SectionHeader(title: L10n.t("studio.overlays"))
-                ForEach(model.overlays, id: \.index) { ch in overlayRow(ch) }
-            }
-            .padding(10)
-        }
-        .frame(maxHeight: .infinity)
-        .panel()
-    }
-
-    private func inputCard(_ i: ProductionEngine.InputInfo, color: Color) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: i.kind.symbol)
-                .font(.system(size: 14, weight: .semibold))
-                .frame(width: 30, height: 30)
-                .background(color.opacity(0.18))
-                .foregroundStyle(color)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-            VStack(alignment: .leading, spacing: 1) {
-                Text(i.name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
-                Text("\(L10n.t("studio.input")) \(i.number)").font(.system(size: 10)).foregroundStyle(Theme.textDim)
-            }
-            Spacer(minLength: 0)
-            if i.locked { Image(systemName: "lock.fill").font(.system(size: 10)).foregroundStyle(Theme.textDim) }
-        }
-        .padding(6)
-        .background(Theme.panelRaised)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(color.opacity(0.6)))
-    }
-
-    private func overlayRow(_ ch: OverlayChannel) -> some View {
-        let name = info(ch.source)?.name ?? "—"
-        let state = ch.isOn ? Theme.overlayProgram : (ch.onPreview ? Theme.overlayPreview : Theme.panelHover)
-        return HStack(spacing: 8) {
-            Text("\(ch.index)")
-                .font(.system(size: 11, weight: .heavy))
-                .frame(width: 20, height: 20)
-                .background(state)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-            Text(name).font(.system(size: 12)).lineLimit(1).foregroundStyle(ch.source == nil ? Theme.textDim : Theme.text)
-            Spacer(minLength: 0)
-            Button(ch.isOn ? L10n.t("studio.off") : L10n.t("studio.on")) { model.toggleOverlay(ch.index) }
-                .controlSize(.small)
-                .disabled(ch.source == nil)
-        }
-    }
-
-    private func empty(_ text: String) -> some View {
-        Text(text).font(.system(size: 12)).foregroundStyle(Theme.textDim)
-            .frame(maxWidth: .infinity, minHeight: 40)
-            .background(Theme.panelRaised.opacity(0.5))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 
@@ -436,6 +414,12 @@ struct StudioTool: Identifiable {
         StudioTool(id: "transcript", titleKey: "studio.tool.transcript", icon: "captions.bubble", shortcut: ""),
         StudioTool(id: "program-output", titleKey: "studio.tool.program_output", icon: "tv", shortcut: ""),
     ]
+
+    /// Card colours, in turn.
+    static let colors: [Color] = [
+        Color(red: 0.66, green: 0.48, blue: 1.0), Color(red: 1.0, green: 0.62, blue: 0.20), Color(red: 0.16, green: 0.78, blue: 0.62),
+        Color(red: 0.30, green: 0.62, blue: 1.0), Color(red: 1.0, green: 0.42, blue: 0.62), Color(red: 0.95, green: 0.80, blue: 0.22),
+    ]
 }
 
 private struct StudioToolsView: View {
@@ -443,33 +427,32 @@ private struct StudioToolsView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
+        let n = StudioTool.all.count
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 8)], spacing: 8) {
-                ForEach(StudioTool.all) { t in
-                    card(t.title, help: t.help, icon: t.icon, shortcut: t.shortcut) { openWindow(id: t.id) }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 190), spacing: 8)], spacing: 8) {
+                ForEach(Array(StudioTool.all.enumerated()), id: \.element.id) { i, t in
+                    ToolCard(title: t.title, help: t.help, icon: t.icon, shortcut: t.shortcut, color: color(i)) { openWindow(id: t.id) }
                 }
-                card(L10n.t("studio.tool.outputs"), help: L10n.t("studio.tool.outputs_help"), icon: "square.stack.3d.up", shortcut: "") {
-                    model.showOutputsPanel = true
-                }
-                card(L10n.t("studio.tool.preflight"), help: L10n.t("studio.tool.preflight_help"), icon: "checklist", shortcut: "") {
-                    model.showPreflight = true
-                }
+                ToolCard(title: L10n.t("studio.tool.outputs"), help: L10n.t("studio.tool.outputs_help"), icon: "square.stack.3d.up",
+                         shortcut: "", color: color(n)) { model.showOutputsPanel = true }
+                ToolCard(title: L10n.t("studio.tool.preflight"), help: L10n.t("studio.tool.preflight_help"), icon: "checklist",
+                         shortcut: "", color: color(n + 1)) { model.showPreflight = true }
             }
             .padding(8)
         }
         .panel()
     }
 
-    private func card(_ title: String, help: String, icon: String, shortcut: String, action: @escaping () -> Void) -> some View {
-        ToolCard(title: title, help: help, icon: icon, shortcut: shortcut, action: action)
-    }
+    private func color(_ i: Int) -> Color { StudioTool.colors[i % StudioTool.colors.count] }
 }
 
+/// A show tool: lifts and its icon tilts under the pointer.
 private struct ToolCard: View {
     let title: String
     let help: String
     let icon: String
     let shortcut: String
+    let color: Color
     let action: () -> Void
     @State private var hovering = false
 
@@ -477,14 +460,16 @@ private struct ToolCard: View {
         Button(action: action) {
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .frame(width: 34, height: 34)
-                    .background(Theme.accent.opacity(0.18))
-                    .foregroundStyle(Theme.accent)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .font(.system(size: 16, weight: .bold))
+                    .frame(width: 36, height: 36)
+                    .background(color.opacity(hovering ? 1 : 0.18))
+                    .foregroundStyle(hovering ? Color.white : color)
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    .rotationEffect(.degrees(hovering ? -8 : 0))
+                    .scaleEffect(hovering ? 1.08 : 1)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack {
-                        Text(title).font(.system(size: 13, weight: .semibold)).lineLimit(1)
+                        Text(title).font(.system(size: 13, weight: .bold, design: .rounded)).lineLimit(1)
                         Spacer(minLength: 0)
                         if !shortcut.isEmpty {
                             Text(shortcut).font(.system(size: 10, weight: .medium, design: .rounded)).foregroundStyle(Theme.textDim)
@@ -496,13 +481,15 @@ private struct ToolCard: View {
             }
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(hovering ? Theme.panelHover : Theme.panelRaised)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Theme.border))
+            .background(Theme.panelRaised)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(hovering ? color.opacity(0.8) : Theme.border))
+            .shadow(color: hovering ? color.opacity(0.3) : .clear, radius: 8, y: 3)
+            .offset(y: hovering ? -2 : 0)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
+        .buttonStyle(BouncyButtonStyle())
+        .onHover { h in withAnimation(.spring(response: 0.3, dampingFraction: 0.55)) { hovering = h } }
     }
 }
 

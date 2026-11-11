@@ -2109,7 +2109,8 @@
 "appearance.interface" = "Antarmuka";
 "appearance.interface.studio" = "Studio (baru)";
 "appearance.interface.classic" = "Klasik (0.71)";
-"appearance.interface.studio_help" = "Workspace di rail kiri (Live, Input, Audio, Show ⌘1–⌘4), inspector untuk input di Preview, ⌘K untuk mencari aksi apa pun. Antarmuka Klasik tinggal satu klik.";
+"appearance.interface.studio_help" = "Workspace Live, Audio dan Show (⌘1–⌘3), susunan mengikuti ukuran jendela, ⌘K untuk mencari aksi apa pun. Antarmuka Klasik tinggal satu klik.";
+"studio.live.mixer" = "Mixer";
 "appearance.interface.classic_help" = "Antarmuka 0.71.0 dengan enam susunan dock, tanpa perubahan.";
 "appearance.splash" = "Logo animasi saat aplikasi dibuka";
 "appearance.layout_classic_only" = "Susunan dock berlaku untuk antarmuka Klasik. Antarmuka Studio memakai workspace.";
@@ -2121,16 +2122,8 @@
 "studio.on_air" = "ON AIR";
 "studio.search" = "Cari aksi, input, jendela…";
 "studio.search_help" = "Cari dan jalankan aksi, input, jendela atau pengaturan apa pun (⌘K)";
-"studio.inspector_toggle" = "Tampilkan / sembunyikan inspector (⌥⌘I)";
 "studio.classic" = "Klasik";
 "studio.classic_help" = "Kembali ke antarmuka Klasik (Pengaturan › Tampilan untuk pindah lagi)";
-"studio.overlay_program" = "Overlay (klik: Preview, klik kanan: Program)";
-"studio.properties" = "Properti…";
-"studio.no_preview" = "Belum ada input di Preview";
-"studio.overlays" = "Overlay";
-"studio.input" = "Input";
-"studio.on" = "Nyala";
-"studio.off" = "Mati";
 "studio.tool.ai" = "Asisten AI";
 "studio.tool.ai_help" = "Ketik perintah, asisten menjalankan acara untuk Anda.";
 "studio.tool.macros" = "Makro";
