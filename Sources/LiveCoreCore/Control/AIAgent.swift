@@ -135,7 +135,7 @@ public enum AIAgent {
                     "additionalProperties": false,
                 ] as [String: Any],
             ],
-        ] + createTools + settingsTools + extraTools
+        ] + createTools + settingsTools + extraTools + fileTools
     }
 
     /// The JSON body for one Messages API call. `messages` is the whole conversation so far, with the
@@ -143,7 +143,7 @@ public enum AIAgent {
     public static func requestBody(model: String, messages: [[String: Any]], allowOutputs: Bool) -> Data {
         var body: [String: Any] = [
             "model": model,
-            "max_tokens": 8000,
+            "max_tokens": 16000,
             "system": [["type": "text", "text": systemPrompt(allowOutputs: allowOutputs),
                         "cache_control": ["type": "ephemeral"]]],
             "tools": tools,

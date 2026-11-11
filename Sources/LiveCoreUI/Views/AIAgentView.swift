@@ -1,4 +1,5 @@
 #if os(macOS)
+import AppKit
 import LiveCoreCore
 import LiveCoreEngine
 import SwiftUI
@@ -262,6 +263,16 @@ struct AIAgentWindow: View {
             HStack(spacing: 6) {
                 Image(systemName: "bolt.fill").font(.system(size: 10)).foregroundStyle(.yellow)
                 Text(line.text).font(.system(size: 11, design: .monospaced)).lineLimit(3).textSelection(.enabled)
+                if let url = line.file {
+                    Button { NSWorkspace.shared.activateFileViewerSelecting([url]) } label: {
+                        Label(L10n.t("ai.show_in_finder"), systemImage: "folder").font(.system(size: 10, weight: .semibold))
+                    }
+                    .buttonStyle(.plain).foregroundStyle(Theme.accent)
+                    Button { NSWorkspace.shared.open(url) } label: {
+                        Label(L10n.t("ai.open_file"), systemImage: "arrow.up.forward.square").font(.system(size: 10, weight: .semibold))
+                    }
+                    .buttonStyle(.plain).foregroundStyle(Theme.accent)
+                }
             }
             .padding(.horizontal, 10).padding(.vertical, 5)
             .background(Capsule().fill(Theme.preview.opacity(0.15)))

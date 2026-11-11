@@ -45,7 +45,7 @@ final class V066Tests: XCTestCase {
         let o = try XCTUnwrap(try JSONSerialization.jsonObject(with: body) as? [String: Any])
         XCTAssertEqual(o["model"] as? String, "claude-opus-5-5")
         XCTAssertEqual(o["fallbacks"] as? String, "default")
-        XCTAssertEqual((o["tools"] as? [Any])?.count, 16)
+        XCTAssertEqual((o["tools"] as? [Any])?.count, 19)
         XCTAssertNil(o["temperature"])
         let haiku = try XCTUnwrap(try JSONSerialization.jsonObject(with: AIAgent.requestBody(model: "claude-haiku-5-5", messages: [], allowOutputs: true)) as? [String: Any])
         XCTAssertNil(haiku["fallbacks"])
@@ -76,7 +76,7 @@ final class V0661Tests: XCTestCase {
         XCTAssertEqual(msgs.first?["role"] as? String, "system")
         XCTAssertEqual(msgs.last?["content"] as? String, "cut")
         let tools = try XCTUnwrap(o["tools"] as? [[String: Any]])
-        XCTAssertEqual(tools.count, 16)
+        XCTAssertEqual(tools.count, 19)
         XCTAssertEqual((tools[1]["function"] as? [String: Any])?["name"] as? String, "run_steps")
 
         let answer = #"{"choices":[{"finish_reason":"tool_calls","message":{"role":"assistant","content":null,"tool_calls":[{"id":"call_1","type":"function","function":{"name":"run_steps","arguments":"{\"steps\":[{\"kind\":\"preview\",\"input\":2}]}"}}]}}]}"#
@@ -115,8 +115,8 @@ final class V067Tests: XCTestCase {
 
     func testToolsListed() {
         XCTAssertEqual(AIAgent.tools.compactMap { $0["name"] as? String },
-                       ["get_state", "run_steps", "run_macro", "create_title", "create_input", "update_title", "create_ticker", "create_macro", "get_input_settings", "set_input_settings", "set_audio", "set_transition", "delete_input", "get_app_details", "app_action", "web_search"])
-        XCTAssertEqual(AIAgent.openAITools.count, 16)
+                       ["get_state", "run_steps", "run_macro", "create_title", "create_input", "update_title", "create_ticker", "create_macro", "get_input_settings", "set_input_settings", "set_audio", "set_transition", "delete_input", "get_app_details", "app_action", "web_search", "save_file", "create_graphic", "save_title_template"])
+        XCTAssertEqual(AIAgent.openAITools.count, 19)
     }
 
     func testTitleRequest() throws {
@@ -270,5 +270,29 @@ final class V0701Tests: XCTestCase {
         let m = #"{"data":[{"id":"claude-sonnet-5.5"},{"id":"text-embedding-3-small"},{"id":"veo-3"},{"id":"deepseek-3.2"}]}"#
         XCTAssertEqual(AIProvider.tokenMurah.parseModels(Data(m.utf8)), ["deepseek-3.2", "claude-sonnet-5.5"])
         XCTAssertTrue(AIProvider.tokenMurah.supportsTools)
+    }
+}
+
+final class V072Tests: XCTestCase {
+    func testFileRequest() {
+        let r = try? AIAgent.fileRequest(from: ["name": "../Rundown: Nikah.csv", "format": "csv", "content": "a,b"]).get()
+        XCTAssertEqual(r?.fileName, "Rundown Nikah.csv")
+        if case .success = AIAgent.fileRequest(from: ["name": "x", "format": "exe", "content": "a"]) { XCTFail() }
+        if case .success = AIAgent.fileRequest(from: ["name": "x", "format": "txt", "content": ""]) { XCTFail() }
+        XCTAssertEqual(AIAgent.freeName("A.srt", existing: ["A.srt", "A 2.srt"]), "A 3.srt")
+    }
+
+    func testGraphicRequest() {
+        let svg = try? AIAgent.graphicRequest(from: ["name": "Skor", "svg": "<svg viewBox=\"0 0 1920 1080\"><rect/></svg>", "overlay": 2]).get()
+        XCTAssertEqual(svg?.kind, .svg)
+        XCTAssertEqual(svg?.fileName, "Skor.svg")
+        XCTAssertEqual(svg?.overlay, 2)
+        XCTAssertTrue(svg?.content.contains("xmlns=\"http://www.w3.org/2000/svg\"") ?? false)
+        let html = try? AIAgent.graphicRequest(from: ["name": "Lower", "html": "<div class=lt>Budi</div>"]).get()
+        XCTAssertEqual(html?.kind, .html)
+        XCTAssertTrue(html?.content.contains("background:transparent") ?? false)
+        if case .success = AIAgent.graphicRequest(from: ["name": "x"]) { XCTFail() }
+        if case .success = AIAgent.graphicRequest(from: ["name": "x", "svg": "<svg>", "overlay": 9]) { XCTFail() }
+        XCTAssertTrue(AIAgent.systemPrompt(allowOutputs: false).contains("create_graphic"))
     }
 }

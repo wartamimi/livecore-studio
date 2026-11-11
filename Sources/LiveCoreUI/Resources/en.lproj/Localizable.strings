@@ -2031,6 +2031,8 @@
 "ai.regenerate" = "Regenerate";
 "ai.regenerate_help" = "Ask again for the last command (its actions run again)";
 "ai.suggest_help" = "Send this answer";
+"ai.show_in_finder" = "Show in Finder";
+"ai.open_file" = "Open";
 "ai.models" = "Models";
 "ai.ollama_url" = "Ollama address";
 "ai.note_local" = "Ollama runs the model on this Mac (ollama.com, free, no internet needed after the model is downloaded: ollama pull qwen2.5:7b). Use a model that supports tools. The assistant can only do what a macro can: switch inputs, transitions, overlays, mute / unmute, play videos, run your macros.";
