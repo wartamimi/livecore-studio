@@ -39,7 +39,7 @@ struct AIAgentWindow: View {
             chips
             inputBar
         }
-        .background(Theme.background)
+        .background(Backdrop())
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: showSettings)
         .onAppear {
             session.openWindow = { id in openWindow(id: id) }

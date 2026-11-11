@@ -58,7 +58,8 @@ struct MainView: View {
                 .padding(6)
             }
         }
-        .background(Theme.background)
+        .background(Backdrop())
+        .tint(Theme.accent)
         .foregroundStyle(Theme.text)
         .sheet(isPresented: $showSettings) { SettingsView(initialTab: settingsTab).environmentObject(model) }
         .onChange(of: showSettings) { shown in if !shown { settingsTab = 6 } }
@@ -238,7 +239,7 @@ struct DockBar: View {
             }
             .foregroundStyle(Theme.textDim)
             .background(Theme.panel)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -290,7 +291,7 @@ struct ErrorBanner: View {
                     }
                     .padding(8)
                     .background(Theme.warning.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
             }
         }

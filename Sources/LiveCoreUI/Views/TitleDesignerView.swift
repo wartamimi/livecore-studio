@@ -234,7 +234,7 @@ struct TitleSheet: View {
                     Button { galleryTab = tab } label: {
                         Text(name).font(.system(size: 11, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity).padding(.vertical, 4)
-                            .background(RoundedRectangle(cornerRadius: 5)
+                            .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
                                 .fill(galleryTab == tab ? Theme.accent : Color.white.opacity(0.07)))
                             .contentShape(Rectangle())
                     }
@@ -302,8 +302,8 @@ struct TitleSheet: View {
             }
             .padding(4)
             .background(on ? Theme.accent.opacity(0.25) : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(RoundedRectangle(cornerRadius: 6).stroke(on ? Theme.accent : Theme.border, lineWidth: on ? 2 : 1))
+            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).stroke(on ? Theme.accent : Theme.border, lineWidth: on ? 2 : 1))
         }
         .buttonStyle(.plain)
     }

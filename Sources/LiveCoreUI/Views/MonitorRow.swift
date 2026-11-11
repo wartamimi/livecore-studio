@@ -62,6 +62,8 @@ struct MonitorView: View {
             PixelBufferView(feed: feed)
                 .aspectRatio(model.canvasAspect, contentMode: .fit)   // follows Settings › Canvas
                 .overlay(Rectangle().stroke(color, lineWidth: 2))
+                // 0.73.0: the picture glows in its tally colour (drawn behind it, never over it).
+                .background(Rectangle().fill(color).shadow(color: color.opacity(0.55), radius: 9))
                 .overlay { MonitorGuides() }
                 .overlay(alignment: .top) { if notRecording { NotRecordingBadge().padding(.top, 8) } }
                 .overlay { if let designer { DesignerCanvasIfActive(state: designer) } }
@@ -139,7 +141,7 @@ private struct SnapshotConfirmation: View {
                     }
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .background(.black.opacity(0.8))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .help(L10n.t("snapshot.show_in_finder"))

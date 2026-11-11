@@ -99,7 +99,7 @@ struct FlagSheet: View {
                         }
                         .padding(4)
                         .frame(maxWidth: .infinity)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(selected == f ? Color.accentColor.opacity(0.35) : Color.clear))
+                        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(selected == f ? Color.accentColor.opacity(0.35) : Color.clear))
                         .contentShape(Rectangle())
                         .onTapGesture(count: 2) { selected = f; add() }
                         .onTapGesture { selected = f }

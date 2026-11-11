@@ -182,7 +182,7 @@ struct PluginChainSheet: View {
         .buttonStyle(.borderless)
         .padding(6)
         .background(Theme.panelRaised)
-        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func badge(_ s: String) -> some View {

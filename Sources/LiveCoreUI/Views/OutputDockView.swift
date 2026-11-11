@@ -51,8 +51,8 @@ struct OutputDockView: View {
                 .fixedSize()
                 .padding(.vertical, 6).padding(.horizontal, 12)
                 .background(Theme.panelRaised)
-                .clipShape(RoundedRectangle(cornerRadius: 5))
-                .overlay(RoundedRectangle(cornerRadius: 5).stroke(Theme.border, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Theme.border, lineWidth: 1))
                 .help(L10n.t("inputs.add"))
             }
             // One padlock for the whole dock: while locked RECORD and STREAM cannot start or stop.

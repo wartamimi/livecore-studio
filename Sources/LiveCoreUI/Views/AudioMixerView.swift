@@ -133,8 +133,7 @@ struct ChannelStripView: View {
             if !compact { details }
         }
         .padding(4)
-        .background(Theme.panelRaised)
-        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .card(stroke: Color.white.opacity(hovering ? 0.34 : 0.14))
         .onHover { hovering = $0 }
         .alert(L10n.f("audio.close_confirm", vm.name), isPresented: $confirmClose) {
             Button(L10n.t("audio.close"), role: .destructive) { model.closeAudioChannel(vm.id) }

@@ -88,7 +88,7 @@ struct InputPropertiesSheet: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .padding(.horizontal, 10).padding(.vertical, 6)
                                     .background(current == t ? Theme.accent.opacity(0.35) : Color.clear)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                                     .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)

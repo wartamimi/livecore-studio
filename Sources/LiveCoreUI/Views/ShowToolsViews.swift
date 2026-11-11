@@ -187,7 +187,7 @@ struct OutputsPanelSheet: View {
         }
         .padding(10)
         .background(Theme.panel)
-        .clipShape(RoundedRectangle(cornerRadius: 6))
+        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
     }
 
     static func stateText(_ s: StreamingEngine.State) -> String {
@@ -240,7 +240,7 @@ struct TemplatesSheet: View {
                             Button { dismiss(); DispatchQueue.main.async { model.openProject(at: u, asTemplate: true) } } label: {
                                 Label(u.deletingPathExtension().lastPathComponent, systemImage: "square.stack.3d.up")
                                     .lineLimit(1).padding(.horizontal, 10).padding(.vertical, 7)
-                                    .background(Theme.panelRaised).clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .background(Theme.panelRaised).clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
                             }
                             .buttonStyle(.plain)
                             .contextMenu { Button(L10n.t("template.delete"), role: .destructive) { model.deleteUserTemplate(u) } }
@@ -660,7 +660,7 @@ private struct PTZHoldButton: View {
         Image(systemName: symbol)
             .frame(width: 34, height: 34)
             .background(pressed ? Theme.accent : Theme.panelRaised)
-            .clipShape(RoundedRectangle(cornerRadius: 5))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { _ in if !pressed { pressed = true; onChange(true) } }
                 .onEnded { _ in pressed = false; onChange(false) })
