@@ -382,7 +382,9 @@ public final class AIAgentSession: ObservableObject {
             let package: TitlePackage
             if let t = model.engine?.source(i.id) as? TextSource {
                 let st = t.style
-                package = TitlePackage(name: name.isEmpty ? i.name : name, title: st.title, subtitle: st.subtitle, design: st.design)
+                package = TitlePackage(name: name.isEmpty ? i.name : name, title: st.title, subtitle: st.subtitle, design: st.design ?? TitleDesign.fromClassic(
+                    layout: st.layout.rawValue, showBar: st.showBar, textColor: ProjectColor(st.textColor),
+                    barColor: ProjectColor(st.barColor), titleSize: Double(st.titleSize), subtitleSize: Double(st.subtitleSize)))
             } else if let tk = model.tickerSource(i.id) {
                 package = TitlePackage(name: name.isEmpty ? i.name : name, ticker: tk.config)
             } else {
