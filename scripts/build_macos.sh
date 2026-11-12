@@ -53,6 +53,24 @@ for fw in $(otool -L "$APP/Contents/MacOS/LiveCoreStudio" | awk '/@rpath\/.*\.fr
   [ -d "$APP/Contents/Frameworks/$fw" ] || { echo "ERROR: $fw is linked but not embedded in the app"; exit 1; }
   echo "embedded: $fw"
 done
+# Stable signature (optional). An ad-hoc signature changes with every build, so macOS treats each
+# update as a new app and its Screen Recording / camera permission no longer counts. With a
+# certificate in LC_SIGN_P12 (base64 .p12) and LC_SIGN_P12_PASSWORD, every build keeps one identity.
+if [ -n "${LC_SIGN_P12:-}" ]; then
+  KC="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/livecore-sign.keychain-db"
+  security delete-keychain "$KC" 2>/dev/null || true
+  security create-keychain -p livecore "$KC"
+  security unlock-keychain -p livecore "$KC"
+  echo "$LC_SIGN_P12" | base64 --decode > "$KC.p12"
+  security import "$KC.p12" -k "$KC" -P "${LC_SIGN_P12_PASSWORD:-}" -T /usr/bin/codesign
+  rm -f "$KC.p12"
+  security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k livecore "$KC" >/dev/null
+  IDENTITY=$(security find-identity -p codesigning "$KC" | awk '/^ *1\)/{print $2; exit}')
+  codesign --force --deep --options runtime --entitlements Config/LiveCoreStudio.entitlements \
+    --keychain "$KC" --sign "$IDENTITY" "$APP"
+  security delete-keychain "$KC"
+  echo "signed with stable certificate $IDENTITY"
+fi
 scripts/check_app_loadable.sh "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP" || true
 # The NDI runtime is signed by NDI, so the hardened-runtime app must allow other signers' libraries.

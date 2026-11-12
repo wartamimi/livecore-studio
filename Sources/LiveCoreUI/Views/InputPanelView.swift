@@ -643,8 +643,12 @@ struct CaptureSheet: View {
             DialogTitle(only == .display ? "display" : "macwindow", L10n.t(only == .display ? "capture.add_display" : only == .window ? "capture.add_window" : "capture.title"))
             if let error {
                 Text(error).foregroundStyle(Theme.warning).font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
-                Button(L10n.t("capture.open_settings")) {
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+                HStack {
+                    Button(L10n.t("capture.open_settings")) {
+                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")!)
+                    }
+                    Button(L10n.t("capture.reset_permission")) { ScreenCapturePermission.reset() }
+                        .help(L10n.t("capture.reset_permission_help"))
                 }
             }
             List(selection: $selection) {
