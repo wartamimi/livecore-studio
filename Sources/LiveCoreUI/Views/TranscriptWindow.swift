@@ -33,13 +33,13 @@ struct TranscriptWindow: View {
                 Toggle(L10n.t("transcript.timestamps"), isOn: $timestamps)
                 Toggle(L10n.t("transcript.follow"), isOn: $follow)
                 Spacer()
-                Text(L10n.f("transcript.count", "\(lines.count)")).font(.caption).foregroundStyle(.secondary)
+                Text(L10n.f("transcript.count", "\(lines.count)")).font(.caption).foregroundStyle(Theme.textDim)
             }
             TranscriptTextView(text: text, follow: follow)
                 .overlay {
                     if lines.isEmpty {
                         Text(current == nil ? L10n.t("transcript.no_input") : L10n.t("transcript.empty"))
-                            .foregroundStyle(.secondary).multilineTextAlignment(.center).padding()
+                            .foregroundStyle(Theme.textDim).multilineTextAlignment(.center).padding()
                     }
                 }
             HStack {
@@ -49,7 +49,7 @@ struct TranscriptWindow: View {
                 }
                 .disabled(lines.isEmpty)
                 Spacer()
-                if copied { Text(L10n.t("transcript.copied")).font(.caption).foregroundStyle(.secondary) }
+                if copied { Text(L10n.t("transcript.copied")).font(.caption).foregroundStyle(Theme.textDim) }
                 // 0.71.0: summary, minutes and YouTube chapters by the AI Assistant's provider.
                 Menu(L10n.t("transcript.ai")) {
                     ForEach(AIAgent.SummaryKind.allCases, id: \.self) { k in
@@ -115,7 +115,7 @@ private struct TranscriptTextView: NSViewRepresentable {
             tv.isRichText = false
             tv.font = .systemFont(ofSize: 14)
             tv.textContainerInset = NSSize(width: 6, height: 6)
-            tv.backgroundColor = NSColor(white: 0.1, alpha: 1)
+            tv.backgroundColor = NSColor(Theme.panel)
             tv.textColor = .white
         }
         return scroll

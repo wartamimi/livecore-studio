@@ -20,7 +20,7 @@ struct SubtitleSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.t("transcription.title")).font(.headline)
+            DialogTitle("captions.bubble", L10n.t("transcription.title"))
             Form {
                 // Model: Apple speech recognition (on this Mac / Apple servers) or ElevenLabs (0.50.4).
                 Picker(L10n.t("transcription.engine"), selection: $style.provider) {
@@ -52,9 +52,9 @@ struct SubtitleSheet: View {
             }
             .frame(maxHeight: showAdvanced ? 560 : .infinity)
             if let s = model.subtitleSource(input) {
-                Text(statusLine(s)).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(statusLine(s)).font(.caption).foregroundStyle(Theme.textDim).fixedSize(horizontal: false, vertical: true)
             }
-            Text(noteText).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Text(noteText).font(.caption).foregroundStyle(Theme.textDim).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Button(L10n.t("transcript.open")) { model.transcriptInput = input; openWindow(id: "transcript") }
                 Spacer()
@@ -127,7 +127,7 @@ struct SubtitleSheet: View {
                         Text("Confirmation (yes/no)").tag(TranscriptionAdvanced.TaskHint.confirmation)
                     }
                     Toggle("Automatic punctuation", isOn: $adv.applePunctuation)
-                    Text("Apple uses the vocabulary as preferred words (free).").font(.caption).foregroundStyle(.secondary)
+                    Text("Apple uses the vocabulary as preferred words (free).").font(.caption).foregroundStyle(Theme.textDim)
                 } else {
                     Toggle("Send vocabulary as keyterms (max 50, ElevenLabs charges +20%)", isOn: $adv.elevenKeyterms)
                     Picker("Sentence end", selection: $adv.commitStrategy) {
@@ -143,7 +143,7 @@ struct SubtitleSheet: View {
                     TextField("Other languages expected (codes, e.g. en, ar)",
                               text: Binding(get: { adv.secondaryLanguages.joined(separator: ", ") },
                                             set: { adv.secondaryLanguages = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) } }))
-                    Text("Unchecked values use ElevenLabs' defaults. Changes reconnect the transcription.").font(.caption).foregroundStyle(.secondary)
+                    Text("Unchecked values use ElevenLabs' defaults. Changes reconnect the transcription.").font(.caption).foregroundStyle(Theme.textDim)
                 }
             }
         }

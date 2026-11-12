@@ -21,7 +21,7 @@ struct VirtualSetSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.t(editing == nil ? "vset.add_title" : "vset.edit_title")).font(.headline)
+            DialogTitle("person.and.background.dotted", L10n.t(editing == nil ? "vset.add_title" : "vset.edit_title"))
             ScrollView {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
                     ForEach(VirtualSetTemplate.allCases, id: \.self) { t in tile(t) }

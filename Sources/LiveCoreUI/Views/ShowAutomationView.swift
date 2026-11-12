@@ -46,7 +46,7 @@ public struct ShowAutomationWindow: View {
                         TimelineView(.periodic(from: .now, by: 0.2)) { _ in
                             let lv = model.meters.levels[p.channel]
                             let db = lv.map { Double(max($0.l, $0.r)) } ?? -120
-                            Circle().fill(db >= model.autoDirector.thresholdDB ? Color.green : Color.gray.opacity(0.4))
+                            Circle().fill(db >= model.autoDirector.thresholdDB ? Theme.meterGreen : Theme.labelAll.opacity(0.5))
                                 .frame(width: 9, height: 9).help(String(format: "%.0f dB", db))
                         }
                         Spacer()

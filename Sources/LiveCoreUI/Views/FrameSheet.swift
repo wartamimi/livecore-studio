@@ -21,7 +21,7 @@ struct FrameSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.t(editing == nil ? "frame.add_title" : "frame.edit_title")).font(.headline)
+            DialogTitle("person.crop.rectangle", L10n.t(editing == nil ? "frame.add_title" : "frame.edit_title"))
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 4), spacing: 8) {
                 ForEach(FrameTemplate.allCases, id: \.self) { t in
                     Button { choose(t) } label: {

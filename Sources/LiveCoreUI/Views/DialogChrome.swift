@@ -42,12 +42,7 @@ struct DialogHeader<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(color)
-                .frame(width: 30, height: 30)
-                .background(color.opacity(0.16))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            IconChip(icon: icon, color: color)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(.headline).lineLimit(1).truncationMode(.tail)
                 if let subtitle { Text(subtitle).font(.caption).foregroundStyle(Theme.textDim).lineLimit(1) }
@@ -65,6 +60,38 @@ struct DialogHeader<Trailing: View>: View {
 extension DialogHeader where Trailing == EmptyView {
     init(icon: String, title: String, subtitle: String? = nil, color: Color = Theme.accent, close: @escaping () -> Void) {
         self.init(icon: icon, title: title, subtitle: subtitle, color: color, close: close) { EmptyView() }
+    }
+}
+
+/// Icon on a soft tile of its colour (dialog headers and titles).
+struct IconChip: View {
+    let icon: String
+    var color: Color = Theme.accent
+
+    var body: some View {
+        Image(systemName: icon)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(color)
+            .frame(width: 30, height: 30)
+            .background(color.opacity(0.16))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+/// Title line of a small dialog (add-input sheets): the input type's icon chip and the title,
+/// the same icon as in the Add Input menu so the dialog is recognised at a glance (0.75.1).
+struct DialogTitle: View {
+    let icon: String
+    let title: String
+
+    init(_ icon: String, _ title: String) { self.icon = icon; self.title = title }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            IconChip(icon: icon)
+            Text(title).font(.headline).lineLimit(1)
+        }
+        .padding(.bottom, 2)
     }
 }
 

@@ -86,7 +86,7 @@ struct FlagSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Flags of the world").font(.headline)
+            DialogTitle("flag", "Flags of the world")
             TextField("Search country or code (e.g. Indonesia, ID)", text: $query).textFieldStyle(.roundedBorder)
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 8)], spacing: 8) {

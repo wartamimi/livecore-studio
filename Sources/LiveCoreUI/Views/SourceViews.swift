@@ -62,7 +62,7 @@ struct CaptureCardSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(editing == nil ? L10n.t("capturecard.add_title") : L10n.t("capturecard.edit_title")).font(.headline)
+            DialogTitle("video", editing == nil ? L10n.t("capturecard.add_title") : L10n.t("capturecard.edit_title"))
             Form {
                 Picker(L10n.t("capturecard.device"), selection: $deviceID) {
                     if model.videoDevices.isEmpty { Text(L10n.t("inputs.no_cameras")).tag("") }
@@ -310,7 +310,7 @@ struct SlideshowSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.t("slideshow.title")).font(.headline)
+            DialogTitle("photo.stack", L10n.t("slideshow.title"))
             HStack {
                 Button(L10n.t("slideshow.pick_folder")) { if let f = model.pickFolder() { folder = f; urls = SlideshowSource.images(inFolder: f) } }
                 Button(L10n.t("slideshow.pick_images")) { let u = model.pickImages(); if !u.isEmpty { urls = u; folder = nil } }

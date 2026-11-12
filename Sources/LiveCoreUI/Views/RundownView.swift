@@ -68,7 +68,7 @@ struct RundownView: View {
             }
             .keyboardShortcut("h", modifiers: [.command, .shift])
             .help(L10n.t("package.highlight_help"))
-            if let p = model.packageProgress { Text(p).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
+            if let p = model.packageProgress { Text(p).font(.caption).foregroundStyle(Theme.textDim).lineLimit(1) }
             Spacer()
             if let i = model.rundownIndex, segments.indices.contains(i) {
                 Text(L10n.f("rundown.now", segments[i].title)).font(.callout.bold()).lineLimit(1)
@@ -85,14 +85,14 @@ struct RundownView: View {
             ForEach(Array(segments.enumerated()), id: \.element.id) { i, s in
                 HStack(spacing: 8) {
                     Text("\(i + 1)").font(.system(.body, design: .monospaced)).frame(width: 24)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.textDim)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(s.title).font(.body.weight(model.rundownIndex == i ? .bold : .regular))
-                        Text(summary(s)).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        Text(summary(s)).font(.caption).foregroundStyle(Theme.textDim).lineLimit(1)
                         if !s.notes.isEmpty { Text(s.notes).font(.caption).italic().lineLimit(2) }
                     }
                     Spacer()
-                    if s.minutes > 0 { Text(L10n.f("rundown.minutes", fmt(s.minutes))).font(.caption).foregroundStyle(.secondary) }
+                    if s.minutes > 0 { Text(L10n.f("rundown.minutes", fmt(s.minutes))).font(.caption).foregroundStyle(Theme.textDim) }
                     Button(L10n.t("rundown.go")) { model.goToSegment(i) }
                         .buttonStyle(.bordered)
                         .tint(model.rundownIndex == i ? .red : nil)
@@ -108,7 +108,7 @@ struct RundownView: View {
             }
         }
         .overlay {
-            if segments.isEmpty { Text(L10n.t("rundown.empty")).foregroundStyle(.secondary).padding() }
+            if segments.isEmpty { Text(L10n.t("rundown.empty")).foregroundStyle(Theme.textDim).padding() }
         }
     }
 
@@ -222,7 +222,7 @@ struct RundownView: View {
                             ForEach(model.musicInputs, id: \.id) { Text($0.name).tag(String?.some($0.id)) }
                         }
                         if model.musicInputs.isEmpty {
-                            Text(L10n.t("rundown.no_music")).font(.caption).foregroundStyle(.secondary)
+                            Text(L10n.t("rundown.no_music")).font(.caption).foregroundStyle(Theme.textDim)
                         }
                     }
                 }.padding(4)
@@ -239,7 +239,7 @@ struct RundownView: View {
                 }.padding(4)
             }
             Text(L10n.t("rundown.notes")).font(.caption)
-            TextEditor(text: seg(i, \.notes)).frame(height: 60).border(Color.gray.opacity(0.3))
+            TextEditor(text: seg(i, \.notes)).frame(height: 60).border(Theme.border)
             HStack {
                 Button(L10n.t("rundown.go_now")) { model.goToSegment(i) }
                 Spacer()

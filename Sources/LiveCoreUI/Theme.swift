@@ -34,7 +34,7 @@ enum Theme {
 
 /// Settings › Appearance (0.62.0), kept in user preferences (not in projects).
 public struct AppearanceSettings: Codable, Equatable, Hashable {
-    public enum ThemeChoice: String, Codable, CaseIterable { case studio, midnight, oled, graphite, ember, forest, contrast }
+    public enum ThemeChoice: String, Codable, CaseIterable { case studio, slate, midnight, oled, graphite, ember, forest, contrast }
     public enum AccentChoice: String, Codable, CaseIterable { case theme, blue, purple, pink, orange, teal, green }
     public enum TallyChoice: String, Codable, CaseIterable { case classic, colorSafe }
     public enum DockLayout: String, Codable, CaseIterable { case classic, inputsRight, inputsBottom, mixerRight, stage, compact }
@@ -82,7 +82,10 @@ struct ThemePalette {
         // background, panel, raised, hover, theme accent
         let base: (Color, Color, Color, Color, Color)
         switch a.theme {
-        case .studio: base = (rgb(0.07, 0.075, 0.085), rgb(0.11, 0.115, 0.13), rgb(0.15, 0.155, 0.175), rgb(0.21, 0.215, 0.24), rgb(0.25, 0.55, 1.0))
+        // Studio Black (0.76.0, the default): black, neutral greys, LiveCore orange accent.
+        case .studio: base = (rgb(0.02, 0.02, 0.022), rgb(0.065, 0.065, 0.07), rgb(0.105, 0.105, 0.11), rgb(0.155, 0.155, 0.165), rgb(0.96, 0.42, 0.08))
+        // Slate: the blue-grey Studio theme up to 0.75.0.
+        case .slate: base = (rgb(0.07, 0.075, 0.085), rgb(0.11, 0.115, 0.13), rgb(0.15, 0.155, 0.175), rgb(0.21, 0.215, 0.24), rgb(0.25, 0.55, 1.0))
         case .midnight: base = (rgb(0.04, 0.06, 0.11), rgb(0.07, 0.10, 0.17), rgb(0.10, 0.14, 0.23), rgb(0.15, 0.20, 0.31), rgb(0.35, 0.62, 1.0))
         case .oled: base = (rgb(0, 0, 0), rgb(0.05, 0.05, 0.055), rgb(0.10, 0.10, 0.11), rgb(0.16, 0.16, 0.17), rgb(0.30, 0.58, 1.0))
         case .graphite: base = (rgb(0.13, 0.13, 0.135), rgb(0.18, 0.18, 0.185), rgb(0.23, 0.23, 0.235), rgb(0.29, 0.29, 0.30), rgb(0.55, 0.60, 0.70))
@@ -91,9 +94,9 @@ struct ThemePalette {
         case .contrast: base = (rgb(0, 0, 0), rgb(0.08, 0.08, 0.08), rgb(0.16, 0.16, 0.16), rgb(0.26, 0.26, 0.26), rgb(1.0, 0.85, 0.0))
         }
         background = base.0; panel = base.1; panelRaised = base.2; panelHover = base.3
-        border = Color.white.opacity(a.theme == .contrast ? 0.35 : (a.theme == .oled ? 0.12 : 0.08))
-        text = Color.white.opacity(a.theme == .contrast ? 1 : 0.92)
-        textDim = Color.white.opacity(a.theme == .contrast ? 0.78 : 0.55)
+        border = Color.white.opacity(a.theme == .contrast ? 0.35 : (a.theme == .oled || a.theme == .studio ? 0.10 : 0.08))
+        text = Color.white.opacity(a.theme == .contrast ? 1 : 0.93)
+        textDim = Color.white.opacity(a.theme == .contrast ? 0.78 : 0.58)
         switch a.accent {
         case .theme: accent = base.4
         case .blue: accent = rgb(0.25, 0.55, 1.0)
@@ -153,9 +156,9 @@ struct SectionHeader: View {
     let title: String
     var body: some View {
         Text(title.uppercased())
-            .font(.system(size: 10, weight: .semibold))
+            .font(.system(size: 10, weight: .bold))
             .foregroundStyle(Theme.textDim)
-            .tracking(0.8)
+            .tracking(1.1)
     }
 }
 

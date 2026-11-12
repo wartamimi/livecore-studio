@@ -35,7 +35,7 @@ struct HelpView: View {
                         paragraph(line)
                     }
                     Divider().padding(.top, 8)
-                    Text(L10n.t("help.footer")).font(.system(size: 11)).foregroundStyle(.secondary)
+                    Text(L10n.t("help.footer")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
                 }
                 .padding(24)
                 .frame(maxWidth: 720, alignment: .leading)
@@ -82,14 +82,14 @@ struct AboutView: View {
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable().frame(width: 96, height: 96)
             Text(L10n.t("app.name")).font(.system(size: 22, weight: .heavy))
-            Text(L10n.f("about.version", version)).font(.system(size: 12)).foregroundStyle(.secondary)
+            Text(L10n.f("about.version", version)).font(.system(size: 12)).foregroundStyle(Theme.textDim)
             Text(L10n.t("about.text"))
                 .font(.system(size: 13))
                 .multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             Divider()
             Text(L10n.t("about.made_by")).font(.system(size: 13, weight: .semibold))
-            Text("© 2026 Munawar Tamimi").font(.system(size: 11)).foregroundStyle(.secondary)
+            Text("© 2026 Munawar Tamimi").font(.system(size: 11)).foregroundStyle(Theme.textDim)
         }
         .padding(28)
         .frame(width: 420)

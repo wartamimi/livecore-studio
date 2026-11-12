@@ -48,7 +48,8 @@ struct MonitorView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text(title).font(.system(size: 11, weight: .heavy)).foregroundStyle(color)
+                Circle().fill(color).frame(width: 7, height: 7)
+                Text(title.uppercased()).font(.system(size: 12, weight: .heavy)).tracking(0.6).foregroundStyle(color)
                 Text(inputName).font(.system(size: 11)).foregroundStyle(Theme.textDim).lineLimit(1)
                 Spacer()
                 if let designer { DesignerToggle(state: designer) }
@@ -58,10 +59,11 @@ struct MonitorView: View {
                         .background(Theme.program).clipShape(RoundedRectangle(cornerRadius: 3))
                 }
             }
-            .padding(.horizontal, 8).padding(.vertical, 4)
+            .padding(.horizontal, 8).padding(.vertical, 6)
             PixelBufferView(feed: feed)
                 .aspectRatio(model.canvasAspect, contentMode: .fit)   // follows Settings › Canvas
-                .overlay(Rectangle().stroke(color, lineWidth: 2))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous).strokeBorder(color, lineWidth: 2))
                 .overlay { MonitorGuides() }
                 .overlay(alignment: .top) { if notRecording { NotRecordingBadge().padding(.top, 8) } }
                 .overlay { if let designer { DesignerCanvasIfActive(state: designer) } }
@@ -75,7 +77,7 @@ struct MonitorView: View {
             if let designer { PreviewTransportIfIdle(state: designer) }
             // Screenshot / Grab as Still: right-click (two-finger click) on Program (0.49.0).
         }
-        .padding(4)
+        .padding(6)
         .panel()
     }
 }

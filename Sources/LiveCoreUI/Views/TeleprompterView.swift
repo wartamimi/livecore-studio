@@ -114,7 +114,7 @@ private struct TeleprompterBody: View {
             Toggle(L10n.t("prompter.mirror"), isOn: $p.script.mirror).toggleStyle(.button)
             Divider().frame(height: 18)
             Button(L10n.t("prompter.edit")) { p.running = false; editing = true }
-            Text(String(format: "%.0f%%", p.position * 100)).monospacedDigit().foregroundStyle(.secondary)
+            Text(String(format: "%.0f%%", p.position * 100)).monospacedDigit().foregroundStyle(Theme.textDim)
         }
         .padding(.horizontal, 12).padding(.vertical, 6)
         .background(.ultraThinMaterial, in: Capsule())
@@ -127,7 +127,7 @@ private struct TeleprompterBody: View {
             TextEditor(text: $p.script.text).font(.system(size: 14)).frame(minWidth: 560, minHeight: 360)
             HStack {
                 Text(L10n.f("prompter.words", p.script.wordCount, Int((p.script.readingSeconds / 60).rounded(.up))))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.textDim)
                 Spacer()
                 Button(L10n.t("prompter.done")) { editing = false }.keyboardShortcut(.defaultAction)
             }

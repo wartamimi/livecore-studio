@@ -1884,7 +1884,8 @@
 "appearance.tally_safe_help" = "Merah dan hijau terlihat mirip bagi banyak orang. Ini mengubah bingkai monitor, tally input dan tombol overlay.";
 "appearance.rounded" = "Panel membulat";
 "appearance.reset" = "Reset tampilan";
-"appearance.theme.studio" = "Studio";
+"appearance.theme.studio" = "Studio Black";
+"appearance.theme.slate" = "Slate";
 "appearance.theme.midnight" = "Midnight";
 "appearance.theme.oled" = "Hitam OLED";
 "appearance.theme.graphite" = "Grafit";

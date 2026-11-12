@@ -1884,7 +1884,8 @@
 "appearance.tally_safe_help" = "Red and green look alike to many people. This changes the monitor borders, input tallies and overlay buttons.";
 "appearance.rounded" = "Rounded panels";
 "appearance.reset" = "Reset appearance";
-"appearance.theme.studio" = "Studio";
+"appearance.theme.studio" = "Studio Black";
+"appearance.theme.slate" = "Slate";
 "appearance.theme.midnight" = "Midnight";
 "appearance.theme.oled" = "OLED Black";
 "appearance.theme.graphite" = "Graphite";

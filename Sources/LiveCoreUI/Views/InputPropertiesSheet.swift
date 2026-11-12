@@ -149,7 +149,8 @@ private struct InputLivePreview: View {
         }
         .aspectRatio(16 / 9, contentMode: .fit)
         .frame(maxHeight: 200)
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.cardCorner, style: .continuous).strokeBorder(Theme.border))
         .padding(10)
         .frame(maxWidth: .infinity)
         .background(Theme.panel)

@@ -28,7 +28,7 @@ struct QRCodeSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(L10n.t(editing == nil ? "qr.add_title" : "qr.edit_title")).font(.headline)
+                DialogTitle("qrcode", L10n.t(editing == nil ? "qr.add_title" : "qr.edit_title"))
                 Spacer()
                 if editing == nil {
                     Menu(L10n.t("qr.template")) {

@@ -18,16 +18,20 @@ struct StreamServiceRow: View {
 
     var body: some View {
         HStack {
-            Menu(service?.name ?? L10n.t("stream.service_custom")) {
+            Menu {
                 ForEach(StreamService.all) { s in Button(s.name) { apply(s) } }
                 Divider()
                 Button(L10n.t("stream.service_custom")) { server = ""; backup = "" }
+            } label: {
+                Label(service?.name ?? L10n.t("stream.service_custom"), systemImage: "dot.radiowaves.left.and.right")
             }
             .fixedSize()
             Spacer()
             if let s = service ?? StreamService.all.first(where: { $0.name == name }) {
-                Button(L10n.t("stream.get_key")) { open(s.keyPage) }
-                if let l = s.login { Button(L10n.t("stream.login")) { login = l } }
+                Button { open(s.keyPage) } label: { Label(L10n.t("stream.get_key"), systemImage: "key") }
+                if let l = s.login {
+                    Button { login = l } label: { Label(L10n.t("stream.login"), systemImage: "person.badge.key") }
+                }
             }
         }
         .dialog(item: $login, model) { l in
@@ -63,7 +67,7 @@ private struct StreamLoginSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.f("stream.login_title", login == .youtube ? "YouTube" : "Twitch")).font(.headline)
+            DialogTitle("person.badge.key", L10n.f("stream.login_title", login == .youtube ? "YouTube" : "Twitch"))
             Text(L10n.t("stream.login_help_\(login.rawValue)")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
             Button(L10n.t("stream.login_console")) { open(api.consolePage) }

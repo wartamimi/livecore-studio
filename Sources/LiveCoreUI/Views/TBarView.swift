@@ -38,7 +38,7 @@ struct TBarControl: View {
             ZStack(alignment: .leading) {
                 // Recessed track
                 RoundedRectangle(cornerRadius: 9, style: .continuous)
-                    .fill(LinearGradient(colors: [Color.black.opacity(0.65), Color(white: 0.11)], startPoint: .top, endPoint: .bottom))
+                    .fill(LinearGradient(colors: [Color.black.opacity(0.65), Theme.panel], startPoint: .top, endPoint: .bottom))
                     .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).stroke(Color.white.opacity(0.10), lineWidth: 1))
                 // Tick marks (every 10 %, longer at 0 / 50 / 100), above and below the slot
                 ForEach(0...10, id: \.self) { i in

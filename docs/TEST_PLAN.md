@@ -181,3 +181,4 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-368 | Service streaming (0.75.0) | Settings › Stream: pilih YouTube, lalu Twitch di menu service; klik Ambil stream key | Nama dan server terisi; halaman key platform terbuka |
 | T-369 | Login YouTube/Twitch (0.75.0) | Buat OAuth client (Google: TV & Limited Input + YouTube Data API v3; Twitch: Public), Login, masukkan kode di browser | Server dan stream key terisi; Apply menyimpan key; stream jalan |
 | T-370 | Preview di Properties (0.75.0) | Buka Properties kamera, ubah Colour/Key | Preview di atas halaman bergerak live dan menampilkan perubahan |
+| T-371 | Studio Black (0.76.0) | Buka app (tema default), lihat jendela utama, mixer, Settings, dialog Add Input, Properties | Latar hampir hitam, panel abu-abu gelap netral, aksen oranye, tidak ada area abu-abu sistem; Settings › Appearance › Slate mengembalikan tampilan lama |

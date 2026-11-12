@@ -16,7 +16,7 @@ struct SRTInputSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(editing == nil ? L10n.t("srtin.add_title") : L10n.t("srtin.edit_title")).font(.headline)
+            DialogTitle("dot.radiowaves.up.forward", editing == nil ? L10n.t("srtin.add_title") : L10n.t("srtin.edit_title"))
             Form {
                 Section {
                     Picker(L10n.t("srtin.mode"), selection: $c.mode) {
@@ -129,7 +129,7 @@ struct DeckLinkInputSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(editing == nil ? L10n.t("decklink.add_title") : L10n.t("decklink.edit_title")).font(.headline)
+            DialogTitle("rectangle.connected.to.line.below", editing == nil ? L10n.t("decklink.add_title") : L10n.t("decklink.edit_title"))
             if !available {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(L10n.t("decklink.no_driver")).foregroundStyle(Theme.warning)

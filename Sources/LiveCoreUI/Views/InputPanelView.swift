@@ -640,7 +640,7 @@ struct CaptureSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.t(only == .display ? "capture.add_display" : only == .window ? "capture.add_window" : "capture.title")).font(.headline)
+            DialogTitle(only == .display ? "display" : "macwindow", L10n.t(only == .display ? "capture.add_display" : only == .window ? "capture.add_window" : "capture.title"))
             if let error {
                 Text(error).foregroundStyle(Theme.warning).font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
                 Button(L10n.t("capture.open_settings")) {
@@ -747,7 +747,7 @@ struct BrowserSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.t("browser.title")).font(.headline)
+            DialogTitle("globe", L10n.t("browser.title"))
             HStack {
                 TextField("https://…", text: $config.url)
                 Button(L10n.t("browser.file")) {
@@ -819,7 +819,7 @@ struct TimerSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.t("timer.title")).font(.headline)
+            DialogTitle("timer", L10n.t("timer.title"))
             Picker(L10n.t("timer.mode"), selection: $config.mode) {
                 Text(L10n.t("timer.mode.countdown")).tag(TimerConfig.Mode.countdown)
                 Text(L10n.t("timer.mode.until")).tag(TimerConfig.Mode.untilTime)
@@ -1142,7 +1142,7 @@ struct InputAISheet: View {
                 }
                 .disabled(!ai.autoFrame)
             } else {
-                Text(L10n.t("ai.needs_apple_silicon")).foregroundStyle(.secondary)
+                Text(L10n.t("ai.needs_apple_silicon")).foregroundStyle(Theme.textDim)
             }
             HStack { Spacer(); Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.defaultAction) }
         }

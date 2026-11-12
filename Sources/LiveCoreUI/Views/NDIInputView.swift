@@ -18,7 +18,7 @@ struct NDIInputSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(editing == nil ? L10n.t("ndi.add_title") : L10n.t("ndi.edit_title")).font(.headline)
+            DialogTitle("antenna.radiowaves.left.and.right", editing == nil ? L10n.t("ndi.add_title") : L10n.t("ndi.edit_title"))
             if !NDIRuntime.isAvailable {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(L10n.t("ndi.no_runtime")).foregroundStyle(Theme.warning)

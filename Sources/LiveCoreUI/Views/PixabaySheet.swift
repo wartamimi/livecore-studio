@@ -40,7 +40,7 @@ struct PixabaySheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.t("pixabay.title")).font(.headline)
+            DialogTitle("photo.on.rectangle.angled", L10n.t("pixabay.title"))
             keyRow
             HStack {
                 Picker("", selection: $kindRaw) {
