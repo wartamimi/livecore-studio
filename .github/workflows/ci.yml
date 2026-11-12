@@ -50,6 +50,8 @@ jobs:
       - run: scripts/ci_run.sh macos-app-build scripts/build_macos.sh release
         env:
           LIVECORE_SKIP_TESTS: "1"
+          LC_SIGN_P12: ${{ secrets.LC_SIGN_P12 }}
+          LC_SIGN_P12_PASSWORD: ${{ secrets.LC_SIGN_P12_PASSWORD }}
       - run: scripts/ci_run.sh macos-dmg scripts/make_dmg.sh
       - uses: actions/upload-artifact@v4
         with:

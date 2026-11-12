@@ -181,3 +181,4 @@ Format pencatatan hasil per tes: `ID | Passed/Failed/Not tested | perangkat | ca
 | T-368 | Service streaming (0.75.0) | Settings › Stream: pilih YouTube, lalu Twitch di menu service; klik Ambil stream key | Nama dan server terisi; halaman key platform terbuka |
 | T-369 | Login YouTube/Twitch (0.75.0) | Buat OAuth client (Google: TV & Limited Input + YouTube Data API v3; Twitch: Public), Login, masukkan kode di browser | Server dan stream key terisi; Apply menyimpan key; stream jalan |
 | T-370 | Preview di Properties (0.75.0) | Buka Properties kamera, ubah Colour/Key | Preview di atas halaman bergerak live dan menampilkan perubahan |
+| T-371 | Izin Screen Recording (0.76.1) | Buka build baru, Add Input › Tangkap Layar; izinkan sekali, tutup dan buka ulang app; tambah lagi Tangkap Jendela | macOS hanya bertanya sekali per peluncuran; setelah buka ulang daftar layar/jendela muncul. Bila izin lama tidak berlaku: tombol "Minta izin ulang" lalu buka ulang app |

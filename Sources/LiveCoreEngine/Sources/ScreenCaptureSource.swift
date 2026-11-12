@@ -5,6 +5,35 @@ import CoreVideo
 import ScreenCaptureKit
 import LiveCoreCore
 
+/// Screen Recording permission (0.76.1). Every ScreenCaptureKit call made while it is denied shows
+/// macOS's prompt again, so the prompt is asked for once per launch and nothing else runs until
+/// it is allowed. macOS only applies a new "Allow" after the app is reopened, and it ties the
+/// permission to the app's signature, so an old entry can stay switched on yet not count.
+public enum ScreenCapturePermission {
+    private static var asked = false
+    public static let error = NSError(domain: "LiveCore", code: 1, userInfo: [NSLocalizedDescriptionKey:
+        "Screen Recording is not allowed yet: switch LiveCore Studio on in System Settings › Privacy & Security › Screen Recording, then quit and reopen LiveCore Studio."])
+
+    /// True when allowed; otherwise asks macOS (once per launch) and returns false.
+    @discardableResult
+    public static func ensure() -> Bool {
+        if CGPreflightScreenCaptureAccess() { return true }
+        if !asked { asked = true; CGRequestScreenCaptureAccess() }
+        return false
+    }
+
+    /// Clears the saved decision (e.g. one left from an older build) so macOS asks again.
+    public static func reset() {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+        p.arguments = ["reset", "ScreenCapture", Bundle.main.bundleIdentifier ?? ""]
+        try? p.run()
+        p.waitUntilExit()
+        asked = false
+        ensure()
+    }
+}
+
 /// Captures a window (Zoom, Teams, Meet, Keynote...) or a whole display with ScreenCaptureKit,
 /// optionally with that app's audio (window) or the system audio (display) into a mixer
 /// channel. Needs the Screen Recording permission (System Settings › Privacy & Security).
@@ -41,6 +70,7 @@ public final class ScreenCaptureSource: NSObject, VideoSource, SCStreamOutput, S
 
     /// Capturable windows and displays. Fails without the Screen Recording permission.
     public static func shareable(completion: @escaping (Result<(windows: [WindowCandidate], displays: [DisplayInfo]), Error>) -> Void) {
+        guard ScreenCapturePermission.ensure() else { completion(.failure(ScreenCapturePermission.error)); return }
         SCShareableContent.getExcludingDesktopWindows(true, onScreenWindowsOnly: true) { content, error in
             DispatchQueue.main.async {
                 guard let content else { return completion(.failure(error ?? NSError(domain: "LiveCore", code: 40))) }
@@ -63,6 +93,7 @@ public final class ScreenCaptureSource: NSObject, VideoSource, SCStreamOutput, S
     public func start() {
         stopped = false
         status = .starting
+        guard ScreenCapturePermission.ensure() else { status = .error(ScreenCapturePermission.error.localizedDescription); return }
         SCShareableContent.getExcludingDesktopWindows(true, onScreenWindowsOnly: false) { [weak self] content, error in
             DispatchQueue.main.async { self?.begin(content: content, error: error) }
         }

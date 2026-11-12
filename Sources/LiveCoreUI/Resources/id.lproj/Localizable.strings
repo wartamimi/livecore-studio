@@ -2138,3 +2138,5 @@
 "stream.login_open" = "Buka halaman login";
 "stream.login_help_youtube" = "Memakai OAuth client Google milik Anda sendiri (tipe \"TVs and Limited Input devices\") dengan YouTube Data API v3 aktif. Selama app Google masih Testing, tambahkan akun Anda sebagai test user. Setelah kode disetujui, server dan key stream YouTube Anda terisi; siaran tetap dibuat/dimulai di YouTube Studio.";
 "stream.login_help_twitch" = "Memakai aplikasi Twitch milik Anda sendiri (client type Public) dari Twitch developer console. Setelah kode disetujui, stream key Anda terisi.";
+"capture.reset_permission" = "Minta izin ulang";
+"capture.reset_permission_help" = "Menghapus izin Screen Recording lama (misalnya dari build sebelumnya) lalu meminta lagi. Izinkan, lalu tutup dan buka ulang LiveCore Studio.";

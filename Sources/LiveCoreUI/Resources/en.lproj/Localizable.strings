@@ -2138,3 +2138,5 @@
 "stream.login_open" = "Open login page";
 "stream.login_help_youtube" = "Uses your own Google OAuth client (type \"TVs and Limited Input devices\") with the YouTube Data API v3 enabled. While the Google app is in Testing, add your account as a test user. After you approve the code, the server and key of your YouTube stream are filled in; you still create or start the broadcast in YouTube Studio.";
 "stream.login_help_twitch" = "Uses your own Twitch application (client type Public) from the Twitch developer console. After you approve the code, your stream key is filled in.";
+"capture.reset_permission" = "Ask again";
+"capture.reset_permission_help" = "Clears an old Screen Recording entry (e.g. from a previous build) and asks again. Allow it, then quit and reopen LiveCore Studio.";
