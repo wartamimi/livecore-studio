@@ -24,6 +24,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let model = AppModel()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Every theme is dark: system controls, menus and sheets follow (no white pop-ups).
+        NSApp.appearance = NSAppearance(named: .darkAqua)
         model.start()
     }
 

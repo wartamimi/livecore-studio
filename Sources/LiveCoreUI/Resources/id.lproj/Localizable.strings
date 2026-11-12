@@ -1335,7 +1335,6 @@
 "remote.online_start" = "Mulai akses online";
 "remote.online_stop" = "Hentikan akses online";
 "remote.online_starting" = "Menghubungkan…";
-"remote.online_tailscale" = "Alternatif: dengan Tailscale di Mac dan HP, buka alamat 100.x milik Mac yang tampil di atas.";
 "remote.online_confirm_title" = "Buka controller ke internet?";
 "remote.online_confirm_message" = "Siapa pun yang punya alamat dan PIN bisa mengendalikan acara. Bagikan hanya ke kru dan hentikan akses online setelah acara.";
 "settings.language" = "Bahasa";
@@ -1778,15 +1777,6 @@
 "plugins.show_in_finder" = "Buka di Finder";
 "plugins.folders_note" = "Pasang plugin VST3 (.vst3) dan Audio Unit (.component) ke folder ini, lalu tekan Rescan. Plugin AUv3 (berbentuk aplikasi) otomatis terdeteksi setelah aplikasinya dibuka sekali.";
 
-/* 0.61.0 Tailscale */
-"remote.method" = "Metode";
-"remote.method_tailscale" = "Tailscale (privat)";
-"remote.method_funnel" = "Tailscale Funnel (publik)";
-"remote.tailscale_about" = "Tailscale Serve memberi alamat https://<mac>.<tailnet>.ts.net yang hanya bisa dibuka perangkat yang login ke jaringan Tailscale Anda (pasang Tailscale juga di HP/tablet). Tidak ada yang terbuka ke internet. PIN tetap diperlukan.";
-"remote.funnel_about" = "Tailscale Funnel membuat alamat https://<mac>.<tailnet>.ts.net bisa dibuka dari perangkat mana pun di internet, tanpa Tailscale di HP. PIN tetap diperlukan.";
-"remote.tailscale_install" = "Perlu Tailscale di Mac ini: pasang aplikasinya dari tailscale.com/download (atau brew install tailscale) lalu login.";
-"remote.tailscale_enable" = "Tailscale perlu persetujuan sekali untuk Mac ini. Buka link ini, setujui, lalu tunggu di sini (alamat muncul sendiri):";
-"remote.tailnet_direct" = "Alamat tailnet langsung:";
 
 /* 0.61.0 Pixabay */
 "pixabay.menu" = "Online Library by Pixabay…";

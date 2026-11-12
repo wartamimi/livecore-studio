@@ -2,7 +2,7 @@
 enum LiveCallPages {
     static let closed = """
     <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>LCS Live</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0e1116;color:#cfd6e2;font:16px -apple-system,Segoe UI,Roboto,sans-serif;text-align:center;padding:24px;box-sizing:border-box}</style></head>
+    <title>LCS Live</title><style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#050505;color:#d9d9db;font:16px -apple-system,Segoe UI,Roboto,sans-serif;text-align:center;padding:24px;box-sizing:border-box}</style></head>
     <body><div><h2>LCS Live</h2><p>This call link is not open (any more).<br>Link panggilan ini tidak aktif.</p></div></body></html>
     """
 
@@ -13,8 +13,8 @@ enum LiveCallPages {
     <!doctype html><html><head><meta charset="utf-8"><title>LCS Live host</title>
     <style>html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}
     video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
-    #idle{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#d8dee9;font:600 5vh -apple-system,Helvetica,sans-serif;text-align:center;background:radial-gradient(circle at 50% 40%,#1b2433,#05070a)}
-    #idle small{display:block;font-weight:400;font-size:2.8vh;color:#8d97a8;margin-top:1.4vh}</style></head>
+    #idle{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#d8dee9;font:600 5vh -apple-system,Helvetica,sans-serif;text-align:center;background:radial-gradient(circle at 50% 40%,#1a1a1c,#020202)}
+    #idle small{display:block;font-weight:400;font-size:2.8vh;color:#8e8e93;margin-top:1.4vh}</style></head>
     <body><video id="v" autoplay playsinline muted></video><div id="idle"><div id="it">LCS Live</div><small id="is">Waiting for guest…</small></div>
     <script>
     (()=>{
@@ -110,32 +110,47 @@ enum LiveCallPages {
     <!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <title>LCS Live</title>
     <style>
-    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:#0e1116;color:#e6eaf2;font:15px -apple-system,Segoe UI,Roboto,sans-serif}
-    header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #222a36}
-    header b{background:#d92d3a;color:#fff;border-radius:5px;padding:2px 7px;font-size:12px;letter-spacing:.5px}
-    header span{font-weight:600}
-    main{max-width:980px;margin:0 auto;padding:16px}
-    .stage{position:relative;background:#000;border-radius:10px;overflow:hidden;aspect-ratio:16/9}
+    /* Studio Black (0.76.1): the app's colours — black, neutral greys, LiveCore orange, tally red. */
+    :root{--bg:#050505;--panel:#111113;--raised:#1b1b1e;--hover:#26262a;--line:#ffffff1a;--text:#ededee;--dim:#8e8e93;--accent:#f56b14;--live:#e5292b;--ok:#29bf59}
+    *{box-sizing:border-box}html{background:var(--bg)}
+    body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px -apple-system,Segoe UI,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+    header{position:sticky;top:0;z-index:2;display:flex;align-items:center;gap:10px;padding:12px max(16px,env(safe-area-inset-left));background:#050505e6;backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+    header .logo{width:26px;height:26px;border-radius:7px;background:#000;border:1px solid var(--line);display:grid;place-items:center}
+    header .logo i{width:9px;height:14px;border-left:4px solid var(--accent);border-bottom:4px solid var(--accent);border-radius:0 0 0 2px}
+    header span{font-weight:700;letter-spacing:.2px}
+    header b{margin-left:auto;display:flex;align-items:center;gap:6px;background:var(--raised);border:1px solid var(--line);color:var(--dim);border-radius:999px;padding:4px 10px;font-size:11px;letter-spacing:1px}
+    header b::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+    body.on header b{color:#fff;background:var(--live);border-color:var(--live)}
+    main{max-width:1040px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-left)) 32px}
+    .stage{position:relative;background:#000;border-radius:12px;overflow:hidden;aspect-ratio:16/9;border:1px solid var(--line)}
+    body.on .stage{border-color:var(--live);box-shadow:0 0 0 1px var(--live)}
     .stage video{width:100%;height:100%;object-fit:contain;background:#000}
-    #me{position:absolute;right:10px;bottom:10px;width:28%;max-width:240px;aspect-ratio:16/9;border-radius:8px;border:2px solid #fff3;background:#111;object-fit:cover;transform:scaleX(-1)}
-    #msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:#aab3c3;pointer-events:none}
-    .row{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0;align-items:center}
-    input,select{background:#161b23;color:inherit;border:1px solid #2c3442;border-radius:8px;padding:10px;font:inherit;min-width:0}
+    #me{position:absolute;right:12px;bottom:12px;width:28%;height:auto;max-width:240px;aspect-ratio:16/9;border-radius:10px;border:1px solid #ffffff40;background:var(--panel);object-fit:cover;transform:scaleX(-1);box-shadow:0 6px 20px #0009}
+    #msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--dim);pointer-events:none}
+    .card{margin-top:14px;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+    .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}.row+.row{margin-top:10px}
+    input,select{background:var(--raised);color:inherit;border:1px solid var(--line);border-radius:9px;padding:11px 12px;font:inherit;min-width:0;outline:none}
+    input:focus,select:focus{border-color:var(--accent)}
     input{flex:1 1 200px}select{flex:1 1 180px}
-    button{border:0;border-radius:8px;padding:11px 16px;font:600 15px inherit;font-family:inherit;color:#fff;background:#2a3140;cursor:pointer}
-    button.go{background:#1f8f4e}button.end{background:#c62f3b}button.off{background:#6b2a2a}
-    #status{color:#9aa4b5;font-size:13px}.note{color:#7f899b;font-size:12px;line-height:1.5}
+    button{border:1px solid var(--line);border-radius:9px;padding:11px 18px;font:600 15px inherit;font-family:inherit;color:var(--text);background:var(--raised);cursor:pointer;transition:background .12s,transform .08s}
+    button:hover{background:var(--hover)}button:active{transform:scale(.98)}
+    button.go{background:var(--accent);border-color:var(--accent);color:#fff}
+    button.end{background:var(--live);border-color:var(--live);color:#fff}
+    button.off{background:#3a1416;border-color:#7a2a2d;color:#ffb3b5}
+    #incall .row{justify-content:center}#incall button{min-width:132px}
+    #status{margin-top:12px;color:var(--dim);font-size:13px;text-align:center}.note{margin:12px 0 0;color:var(--dim);font-size:12px;line-height:1.5}
     .hide{display:none!important}
+    @media (max-width:560px){#incall button{flex:1 1 0;min-width:0;padding:12px 8px;font-size:14px}}
     </style></head><body>
-    <header><b>LIVE</b><span id="title">LCS Live</span></header>
+    <header><div class="logo"><i></i></div><span id="title">LCS Live</span><b>LIVE</b></header>
     <main>
       <div class="stage"><video id="ret" autoplay playsinline></video><video id="me" autoplay playsinline muted></video><div id="msg"></div></div>
-      <div id="join">
+      <div id="join" class="card">
         <div class="row"><input id="name" maxlength="40" autocomplete="name"><button id="go" class="go"></button></div>
         <div class="row"><select id="cam"></select><select id="mic"></select></div>
         <p class="note" id="tip"></p>
       </div>
-      <div id="incall" class="hide">
+      <div id="incall" class="card hide">
         <div class="row"><button id="bmic"></button><button id="bcam"></button><button id="bend" class="end"></button></div>
       </div>
       <div id="status"></div>
@@ -173,15 +188,15 @@ enum LiveCallPages {
     async function connect(){
       clearTimeout(retry);if(ended)return;
       if(pc){try{pc.close()}catch(e){}}
-      live=false;status(T.connecting);
+      live=false;document.body.classList.remove('on');status(T.connecting);
       const p=new RTCPeerConnection({iceServers:(info&&info.ice)||[{urls:'stun:stun.l.google.com:19302'}]});pc=p;
       local.getTracks().forEach(t=>p.addTrack(t,local));
       if(!local.getVideoTracks().length)p.addTransceiver('video',{direction:'recvonly'});
       p.ontrack=e=>{const r=$('ret');if(!r.srcObject)r.srcObject=new MediaStream();r.srcObject.getTracks().filter(t=>t.kind===e.track.kind).forEach(t=>r.srcObject.removeTrack(t));r.srcObject.addTrack(e.track);r.play().catch(()=>{});$('msg').textContent=''};
       p.onconnectionstatechange=p.oniceconnectionstatechange=()=>{
         if(p!==pc)return;const s=p.connectionState||p.iceConnectionState;
-        if(s==='connected'||s==='completed'){live=true;lostAt=0;status(T.live);tune(p)}
-        else if(s==='failed'){live=false;status(T.lost);retry=setTimeout(connect,2000)}
+        if(s==='connected'||s==='completed'){live=true;document.body.classList.add('on');lostAt=0;status(T.live);tune(p)}
+        else if(s==='failed'){live=false;document.body.classList.remove('on');status(T.lost);retry=setTimeout(connect,2000)}
         else if(s==='disconnected'){status(T.lost);lostAt=Date.now();setTimeout(()=>{if(p===pc&&lostAt&&Date.now()-lostAt>=6000)connect()},6500)}
       };
       try{
@@ -211,7 +226,7 @@ enum LiveCallPages {
       if(pc){try{pc.close()}catch(e){}pc=null}
       if(local)local.getTracks().forEach(t=>t.stop());
       $('me').srcObject=null;$('ret').srcObject=null;
-      $('incall').classList.add('hide');$('join').classList.remove('hide');
+      document.body.classList.remove('on');$('incall').classList.add('hide');$('join').classList.remove('hide');
       if(tell)status(T.ended);
     }
     $('go').onclick=async()=>{

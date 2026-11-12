@@ -31,8 +31,7 @@ final class PixabayTests: XCTestCase {
         XCTAssertThrowsError(try Pixabay.parse(Data("[]".utf8), video: true))
     }
 
-    func testTailscaleHostsAllowed() {
-        XCTAssertTrue(RemoteAuth.hostAllowed("studio.tail1a2b.ts.net"))
-        XCTAssertFalse(RemoteAuth.hostAllowed(".tail1a2b.ts.net"))
+    func testTailscaleHostsRefused() {
+        XCTAssertFalse(RemoteAuth.hostAllowed("studio.tail1a2b.ts.net"))
     }
 }

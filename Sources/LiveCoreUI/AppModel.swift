@@ -141,7 +141,7 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var remoteClients = 0
     @Published public internal(set) var remoteAddresses: [String] = []
     /// Online access through a Cloudflare quick tunnel (0.45.0).
-    let remoteTunnel = RemoteTunnel(persistKey: "remote.tunnelMethod")
+    let remoteTunnel = RemoteTunnel()
     var remoteServer: RemoteServer?
 
     // Errors

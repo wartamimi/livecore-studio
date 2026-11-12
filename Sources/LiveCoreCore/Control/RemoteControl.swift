@@ -421,9 +421,6 @@ public enum RemoteAuth {
             h = String(h[..<colon])
         }
         if h == "localhost" || h.hasSuffix(".local") { return !h.hasPrefix(".") }
-        // Tailscale MagicDNS / Serve / Funnel names (0.61.0): <machine>.<tailnet>.ts.net. Those
-        // names are issued by Tailscale for this Mac, so a third party cannot point one at it.
-        if h.hasSuffix(".ts.net") { return !h.hasPrefix(".") && h.split(separator: ".").count >= 4 }
         let parts = h.split(separator: ".", omittingEmptySubsequences: false)
         return parts.count == 4 && parts.allSatisfy { p in
             !p.isEmpty && p.count <= 3 && p.allSatisfy(\.isNumber) && Int(p)! <= 255
