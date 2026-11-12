@@ -84,10 +84,10 @@ final class M30Tests: XCTestCase {
     }
 
     func testHostCheck() {
-        for ok in ["192.168.1.20:8088", "10.0.0.5", "localhost:8088", "studio-mac.local:8088", "[fe80::1]:8088", "studio-mac.tail1234.ts.net"] {
+        for ok in ["192.168.1.20:8088", "10.0.0.5", "localhost:8088", "studio-mac.local:8088", "[fe80::1]:8088"] {
             XCTAssertTrue(RemoteAuth.hostAllowed(ok), ok)
         }
-        for bad in [nil, "", "evil.example.com", "evil.example.com:8088", "192.168.1.300", "1.2.3", "a.b.c.d", "x:abc", "ts.net", "evil.ts.net"] as [String?] {
+        for bad in [nil, "", "evil.example.com", "evil.example.com:8088", "192.168.1.300", "1.2.3", "a.b.c.d", "x:abc", "ts.net", "evil.ts.net", "studio-mac.tail1234.ts.net"] as [String?] {
             XCTAssertFalse(RemoteAuth.hostAllowed(bad), bad ?? "nil")
         }
     }
