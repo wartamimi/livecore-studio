@@ -11,11 +11,12 @@ import LiveCoreEngine
 /// Animation page.
 struct InputPropertiesSheet: View {
     enum Tab: String, CaseIterable, Identifiable {
-        case source, color, key, animation, ai, ptz
+        case source, audio, color, key, animation, ai, ptz
         var id: String { rawValue }
         var icon: String {
             switch self {
             case .source: return "video"
+            case .audio: return "mic"
             case .color: return "paintpalette"
             case .key: return "wand.and.rays"
             case .animation: return "sparkles"
@@ -54,7 +55,7 @@ struct InputPropertiesSheet: View {
         case .screen, .ndi, .srt, .decklink, .color: t.append(.source)
         default: break
         }
-        if kind != .scene { t.append(.color) }
+        if kind != .scene { t.append(contentsOf: [.audio, .color]) }
         if [.camera, .videoFile, .image, .ndi, .srt, .decklink].contains(kind) { t.append(.key) }
         if kind != .scene { t.append(.animation) }
         if [.camera, .ndi, .videoFile, .screen, .srt, .decklink].contains(kind) { t.append(.ai) }
@@ -127,6 +128,7 @@ struct InputPropertiesSheet: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .top)
+        case .audio: InputAudioPage(input: input)
         case .color: InputAdjustSheet(input: input, embedded: true)
         case .key: ScrollView { ChromaKeySheet(input: input).frame(maxWidth: .infinity) }
         case .animation: InputAnimationPage(input: input)
@@ -170,6 +172,48 @@ private struct ColorSourcePage: View {
                 set: { model.colorSource(input)?.setColor(NSColor($0)); model.objectWillChange.send() }))
         }
         .formStyle(.grouped)
+    }
+}
+
+/// Properties › Audio (0.77.0, vMix-style): combines a separate audio device (microphone, audio
+/// interface) with this input, so they switch and mix as one input.
+private struct InputAudioPage: View {
+    @EnvironmentObject var model: AppModel
+    let input: InputID
+
+    var body: some View {
+        Form {
+            Picker(L10n.t("pair.source"), selection: Binding(
+                get: { model.pairedChannel(of: input)?.id },
+                set: { model.pairAudio(input, deviceUID: $0) })) {
+                Text(L10n.t("pair.none")).tag(String?.none)
+                ForEach(model.audioDevices) { d in Text(d.name).tag(String?.some(d.id)) }
+            }
+            if let vm = model.pairedChannel(of: input) { PairedAudioControls(vm: vm, input: input) }
+            Text(L10n.t("pair.help")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+        }
+        .formStyle(.grouped)
+    }
+}
+
+/// Level, AFV and lip-sync delay of the paired channel (the same controls as its mixer strip).
+private struct PairedAudioControls: View {
+    @EnvironmentObject var model: AppModel
+    @ObservedObject var vm: ChannelVM
+    let input: InputID
+
+    var body: some View {
+        LabeledContent(L10n.t("pair.level")) {
+            InputTileMeter(channelID: vm.id).environmentObject(model.meters)
+            Slider(value: $vm.fader, in: 0...1)
+        }
+        Toggle(L10n.t("audio.mute"), isOn: $vm.muted)
+        Toggle(L10n.t("pair.follow"), isOn: Binding(get: { model.afvLink(vm.id) == input },
+                                                    set: { model.setAFV(vm.id, input: $0 ? input : nil) }))
+        LabeledContent(L10n.t("pair.delay")) {
+            Slider(value: $vm.delayMs, in: 0...Double(ChannelStripDSP.maxDelayMs), step: 5)
+            Text(String(format: "%.0f ms", vm.delayMs)).monospacedDigit().frame(width: 60, alignment: .trailing)
+        }
     }
 }
 

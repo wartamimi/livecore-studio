@@ -103,6 +103,9 @@ struct ChannelStripView: View {
                 if vm.isRadioChannel { Image(systemName: "antenna.radiowaves.left.and.right").font(.system(size: 8)).help(L10n.t("radio.title")) }
                 if model.tone(vm.id) != nil { Image(systemName: "waveform").font(.system(size: 8)).help(L10n.t("tone.name")) }
                 Text(vm.name).font(.system(size: 10, weight: .semibold)).lineLimit(1)
+                if let i = model.pairedInput(of: vm.id), let name = model.inputs.first(where: { $0.id == i })?.name {
+                    Image(systemName: "link").font(.system(size: 8)).foregroundStyle(Theme.accent).help(L10n.f("pair.with", name))
+                }
                 Spacer(minLength: 0)
                 Button { vm.locked.toggle() } label: {
                     Image(systemName: vm.locked ? "lock.fill" : "lock.open").font(.system(size: 8))

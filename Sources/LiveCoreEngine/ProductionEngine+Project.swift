@@ -104,6 +104,7 @@ extension ProductionEngine {
             let owner = Self.inputOfChannel(ch.id)
             var pc = Self.projectChannel(ch, deviceUniqueID: owner == nil ? ch.id : nil, inputID: owner)
             pc.afvInput = afvLinks[ch.id]
+            pc.pairedInput = audioPairs[ch.id]
             doc.audio.channels.append(pc)
         }
         doc.audio.music = musicPlayers.isEmpty ? nil : musicPlayers.map { m in
@@ -131,6 +132,7 @@ extension ProductionEngine {
         for uid in Array(audioInputs.keys) { removeAudioInput(uniqueID: uid) }
         pendingFileChannelSettings = [:]
         afvLinks = [:]
+        audioPairs = [:]
 
         warnings += apply(doc.settings)
 
@@ -333,6 +335,7 @@ extension ProductionEngine {
         if !p.name.isEmpty { ch.name = p.name }
         plugins.restore(p.plugins, into: ch.inserts)
         afvLinks[ch.id] = p.afvInput.flatMap { source($0) != nil ? $0 : nil }
+        audioPairs[ch.id] = p.pairedInput.flatMap { source($0) != nil ? $0 : nil }
         applyAFV()
     }
 

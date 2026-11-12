@@ -549,6 +549,8 @@ public struct ProjectAudioChannel: Codable, Equatable, Sendable {
     public var eq: ProjectEQ?
     /// Audio follow video: the input this channel follows (added in 0.10.0).
     public var afvInput: InputID?
+    /// Video input this separate audio is paired with (added in 0.77.0).
+    public var pairedInput: InputID?
     /// Added in 0.15.0 (audio properties); absent = defaults.
     public var gateRangeDB: Float?
     public var compMakeupDB: Float?
