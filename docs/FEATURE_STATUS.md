@@ -623,5 +623,6 @@ Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; k
 | Service streaming (0.75.0): preset YouTube, Facebook, Twitch, Kick, TikTok, Instagram, X, LinkedIn, Vimeo, Trovo; tombol "Ambil stream key" membuka halaman platform | Implemented, belum dites di Mac | unit test (deteksi service) | T-368 |
 | Desain Studio Black (0.76.0): tema default hampir hitam dengan aksen oranye, tema lama jadi Slate, judul dialog dengan ikon | Implemented, belum dites di Mac | belum dites | T-371 |
 | Kontrol sistem selalu gelap, Tailscale dihapus, halaman tamu LCS Live bergaya Studio Black (0.76.1) | Implemented, belum dites di Mac | halaman tamu dicek di Chromium (desktop dan HP) | T-373 |
+| Audio Properties responsif, Web Controller bergaya Studio Black (0.76.2) | Implemented, belum dites di Mac | Web Controller dicek di Chromium (desktop, tablet, HP) | T-374 |
 | Login akun untuk stream key (0.75.0): YouTube dan Twitch lewat OAuth device login. Butuh Client ID milik pengguna sendiri (LiveCore belum punya client terverifikasi); Facebook/TikTok/Kick dll. tidak punya API publik untuk key → hanya tautan | Partially implemented | unit test (request/parse) | T-369 |
 | Preview langsung di Properties input (0.75.0): gambar input 25–30 fps di atas setiap halaman | Implemented, belum dites di Mac | belum dites | T-370 |

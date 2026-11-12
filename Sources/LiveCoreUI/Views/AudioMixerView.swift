@@ -293,38 +293,93 @@ struct AudioPropertiesSheet: View {
         }
     }
 
-    var body: some View {
-        let level: MeterModel.Level? = meter.level
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                Text(L10n.t("audio.properties")).font(.headline)
-                Text(vm.name).foregroundStyle(Theme.textDim)
-                Spacer()
-                HStack(spacing: 3) {
-                    MeterView(levelDB: level?.l ?? -120, holdDB: level?.holdL ?? -120)
-                    MeterView(levelDB: level?.r ?? -120, holdDB: level?.holdR ?? -120)
-                }
-                .frame(height: 40)
-            }
-            TabView {
-                general.tabItem { Text(L10n.t("audio.tab.general")) }
-                eqTab.tabItem { Text(L10n.t("audio.eq")) }
-                gateTab(level).tabItem { Text(L10n.t("audio.gate")) }
-                compTab(level).tabItem { Text(L10n.t("audio.compressor")) }
-                limiterTab(level).tabItem { Text(L10n.t("audio.limiter")) }
-                routing.tabItem { Text(L10n.t("audio.tab.routing")) }
-                autoMixTab.tabItem { Text(L10n.t("automix.tab")) }
-                pluginsTab.tabItem { Text(L10n.t("plugins.tab")) }
-            }
-            .frame(height: 400)
-            HStack {
-                Button(L10n.t("audio.reset_dsp")) { resetDSP() }
-                Spacer()
-                Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.defaultAction)
+    /// Pages of the sheet (0.76.2: side list like Settings and input Properties, no cut-off tabs).
+    private enum Page: String, CaseIterable, Identifiable {
+        case general, eq, gate, compressor, limiter, routing, autoMix, plugins
+        var id: String { rawValue }
+        var title: String {
+            switch self {
+            case .general: return L10n.t("audio.tab.general")
+            case .eq: return L10n.t("audio.eq")
+            case .gate: return L10n.t("audio.gate")
+            case .compressor: return L10n.t("audio.compressor")
+            case .limiter: return L10n.t("audio.limiter")
+            case .routing: return L10n.t("audio.tab.routing")
+            case .autoMix: return L10n.t("automix.tab")
+            case .plugins: return L10n.t("plugins.tab")
             }
         }
-        .padding(16)
-        .frame(width: 640)
+        var icon: String {
+            switch self {
+            case .general: return "slider.horizontal.3"
+            case .eq: return "slider.vertical.3"
+            case .gate: return "door.left.hand.closed"
+            case .compressor: return "arrow.down.right.and.arrow.up.left"
+            case .limiter: return "line.horizontal.3.decrease"
+            case .routing: return "arrow.triangle.branch"
+            case .autoMix: return "person.wave.2"
+            case .plugins: return "puzzlepiece.extension"
+            }
+        }
+    }
+    @State private var page: Page = .general
+
+    var body: some View {
+        let level: MeterModel.Level? = meter.level
+        GeometryReader { g in
+            let wide = g.size.width >= 620
+            VStack(spacing: 0) {
+                DialogHeader(icon: "waveform", title: L10n.t("audio.properties"), subtitle: vm.name, close: { dismiss() }) {
+                    if !wide {
+                        Picker("", selection: $page) { ForEach(Page.allCases) { Text($0.title).tag($0) } }
+                            .labelsHidden().fixedSize()
+                    }
+                    HStack(spacing: 3) {
+                        MeterView(levelDB: level?.l ?? -120, holdDB: level?.holdL ?? -120)
+                        MeterView(levelDB: level?.r ?? -120, holdDB: level?.holdR ?? -120)
+                    }
+                    .frame(height: 30)
+                }
+                HStack(spacing: 0) {
+                    if wide {
+                        ScrollView {
+                            VStack(spacing: 2) {
+                                ForEach(Page.allCases) { p in SidebarRow(title: p.title, icon: p.icon, selected: page == p) { page = p } }
+                            }
+                            .padding(8)
+                        }
+                        .frame(width: 180)
+                        .background(Theme.panel)
+                        .overlay(alignment: .trailing) { Rectangle().fill(Theme.border).frame(width: 1) }
+                    }
+                    content(level).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
+                HStack {
+                    Button(L10n.t("audio.reset_dsp")) { resetDSP() }
+                    Spacer()
+                    Button(L10n.t("common.close")) { dismiss() }
+                        .buttonStyle(StudioButtonStyle(color: Theme.accent, active: true)).frame(width: 110)
+                        .keyboardShortcut(.defaultAction)
+                }
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(Theme.panel)
+                .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 1) }
+            }
+        }
+        .frame(minWidth: 460, idealWidth: 780, maxWidth: 1100, minHeight: 440, idealHeight: 560, maxHeight: 900)
+    }
+
+    @ViewBuilder private func content(_ level: MeterModel.Level?) -> some View {
+        switch page {
+        case .general: general
+        case .eq: eqTab
+        case .gate: gateTab(level)
+        case .compressor: compTab(level)
+        case .limiter: limiterTab(level)
+        case .routing: routing
+        case .autoMix: autoMixTab
+        case .plugins: pluginsTab
+        }
     }
 
     /// Auto mixer (0.65.0): gain sharing between all channels with Auto Mix on.
