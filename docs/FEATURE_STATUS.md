@@ -76,7 +76,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Mute | Implemented | L + M | |
 | Solo (ke bus monitor) | Implemented | M | |
 | Routing ke Program on/off | Implemented | M | |
-| Peak meter + peak hold | Implemented | L + U | |
+| Peak meter + peak hold | Implemented | L + U | 0.76.3: skala dBFS (0, -6, -12, -18, -30, -45) dan angka peak dB di atas meter tiap strip (channel, bus A/B, master). |
 | Compressor per kanal | Implemented | L + M | Feed-forward, stereo-linked |
 | Limiter master | Implemented | L + M | Tanpa look-ahead (lihat known issues) |
 | Noise gate | Implemented (M2) | L + M | Per kanal: threshold, range, hysteresis 4 dB, hold 60 ms |

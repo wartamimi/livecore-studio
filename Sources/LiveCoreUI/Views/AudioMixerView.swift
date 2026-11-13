@@ -656,11 +656,37 @@ struct StereoMeterBars: View {
                 Text(String(format: "GR %.1f dB", level.gr)).font(.system(size: 9)).foregroundStyle(Theme.warning)
             }
         } else {
-            HStack(spacing: 4) {
-                MeterView(levelDB: level.l, holdDB: level.holdL)
-                MeterView(levelDB: level.r, holdDB: level.holdR)
+            let peak = max(level.holdL, level.holdR)
+            VStack(spacing: 2) {
+                Text(peak > MeterView.floor ? String(format: "%.0f", peak) : "-∞")
+                    .font(.system(size: 8, weight: .semibold).monospacedDigit())
+                    .foregroundStyle(peak > -6 ? Theme.meterRed : Theme.textDim)
+                    .help("Peak hold (dBFS)")
+                HStack(spacing: 2) {
+                    MeterScale()
+                    MeterView(levelDB: level.l, holdDB: level.holdL)
+                    MeterView(levelDB: level.r, holdDB: level.holdR)
+                }
             }
         }
+    }
+}
+
+/// dBFS marks beside a meter, placed with the same mapping as `MeterView`.
+struct MeterScale: View {
+    static let marks: [Float] = [0, -6, -12, -18, -30, -45]
+
+    var body: some View {
+        GeometryReader { geo in
+            ForEach(Self.marks, id: \.self) { db in
+                Text("\(Int(db))")
+                    .font(.system(size: 7).monospacedDigit())
+                    .foregroundStyle(Theme.textDim)
+                    .position(x: geo.size.width / 2,
+                              y: min(max(geo.size.height * (1 - MeterView.fraction(db)), 4), geo.size.height - 4))
+            }
+        }
+        .frame(width: 14)
     }
 }
 
