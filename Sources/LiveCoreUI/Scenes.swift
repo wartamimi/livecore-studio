@@ -76,7 +76,6 @@ public enum LiveCoreScenes {
             CommandGroup(replacing: .appSettings) {
                 Button(L10n.t("settings.menu")) { model.openSettingsRequest = true }
                     .keyboardShortcut(",", modifiers: [.command])
-                    .disabled(model.isOperatorMode)
             }
             CommandGroup(before: .toolbar) {
                 WindowCommand(title: L10n.t("multiview.menu"), id: "multiview", key: "m", modifiers: [.command, .option])

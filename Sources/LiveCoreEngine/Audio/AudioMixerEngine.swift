@@ -242,9 +242,6 @@ public final class AudioMixerEngine {
         }
     }
 
-    /// Underruns of an aux output (its device asked for audio faster than the mixer produced it).
-    public func auxUnderruns(_ index: Int) -> UInt64 { auxOutputs.indices.contains(index) ? auxOutputs[index]?.underruns.value ?? 0 : 0 }
-
     /// Adds a channel. Live devices use the default ~21 ms jitter buffer; sources that deliver
     /// audio in large bursts (AVPlayer taps hand over up to ~90 ms at once) pass larger values.
     public func addChannel(id: String, name: String, primeFrames: Int = 1024, maxBufferedFrames: Int = 4800) -> MixerChannel {

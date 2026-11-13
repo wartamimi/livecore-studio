@@ -10,9 +10,7 @@ import LiveCoreServices
 /// Studio/Fonts and registered for this app only (no admin rights, nothing changes system-wide).
 public enum FontInstaller {
     public static var folder: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        return base.appendingPathComponent("LiveCore Studio/Fonts", isDirectory: true)
+        AppSupport.folder("Fonts")
     }
 
     /// Registers every font saved earlier; call once at launch.

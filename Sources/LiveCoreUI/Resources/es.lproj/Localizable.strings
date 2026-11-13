@@ -1,12 +1,9 @@
 /* es: main screens (0.45.0). Missing keys fall back to English. */
-"top.stream" = "EMITIR";
 "top.record" = "GRAB";
 "top.dropped" = "Perdidos";
 "inputs.title" = "Entradas";
 "inputs.add" = "Añadir entrada";
-"inputs.camera" = "Cámara / capturadora";
 "inputs.image" = "Imagen…";
-"inputs.video" = "Archivo de vídeo…";
 "inputs.color" = "Color";
 "inputs.title_generator" = "Título / Rótulo…";
 "inputs.remove" = "Quitar";
@@ -60,7 +57,6 @@
 "common.ok" = "OK";
 "common.dismiss" = "Descartar";
 "common.close" = "Cerrar";
-"dock.monitors" = "Previo / Programa";
 "dock.record" = "GRABAR";
 "dock.stream" = "EMITIR";
 "dock.external" = "EXTERNO";

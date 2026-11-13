@@ -33,9 +33,7 @@ struct PixabaySheet: View {
     }
 
     static var downloadFolder: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        return base.appendingPathComponent("LiveCore Studio/Pixabay", isDirectory: true)
+        AppSupport.folder("Pixabay")
     }
 
     var body: some View {

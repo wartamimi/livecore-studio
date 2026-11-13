@@ -80,8 +80,6 @@ public final class LiveCallSource: NSObject, VideoSource, WKNavigationDelegate {
         super.init()
     }
 
-    public var guestLink: String { "/live/\(config.key)" }
-
     // MARK: Lifecycle (main thread)
 
     public func start() {

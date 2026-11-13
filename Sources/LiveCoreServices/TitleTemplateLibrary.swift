@@ -19,9 +19,7 @@ public enum TitleTemplateLibrary {
     }
 
     public static var folder: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        return base.appendingPathComponent("LiveCore Studio/Templates", isDirectory: true)
+        AppSupport.folder("Templates")
     }
 
     /// Templates in My Templates, by name.

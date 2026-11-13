@@ -16,7 +16,6 @@ struct OutputDockView: View {
     let openSettings: (Int) -> Void
     @State private var showRecord = false
     @State private var showStream = false
-    @State private var showExternal = false
     @State private var showMultiCorder = false
 
     init(openSettings: @escaping (Int) -> Void) { self.openSettings = openSettings }
@@ -75,8 +74,6 @@ struct OutputDockView: View {
                     .padding(12).frame(width: 340)
                 }
             }
-            // Operator mode keeps the dock to RECORD and STREAM unless the others are running.
-            if !model.isOperatorMode || model.isMultiCorderRunning {
             group {
                 mainButton("MULTICORDER", icon: model.isMultiCorderRunning ? "stop.circle.fill" : "square.grid.2x2",
                            status: L10n.t("multicorder.button_help") + "\n" + multiCorderStatus,
@@ -91,7 +88,6 @@ struct OutputDockView: View {
                     }
                     .padding(12).frame(width: 440)
                 }
-            }
             }
             group {
                 mainButton(L10n.t("dock.stream"), icon: "dot.radiowaves.left.and.right",
@@ -174,74 +170,6 @@ struct OutputDockView: View {
         }
     }
 
-    private var externalStatus: String {
-        guard model.externalActive else { return L10n.t("dock.external_off") }
-        let ndi = model.ndiStatus.count
-        guard ndi > 0 else { return L10n.t("dock.external_nothing") }
-        var parts: [String] = []
-        parts.append(L10n.f("dock.external_ndi", ndi))
-        let connected = model.ndiStatus.values.reduce(0, +)
-        if connected > 0 { parts.append(L10n.f("dock.external_clients", connected)) }
-        return parts.joined(separator: " · ")
-    }
-}
-
-/// Output 1–4 buttons: click opens the output's window, the menu picks its picture.
-struct OutputChips: View {
-    @EnvironmentObject var model: AppModel
-    @Environment(\.openWindow) private var openWindow
-    /// false in a narrow window: only "OUT n", the source name is in the tooltip.
-    var showNames = true
-
-    var body: some View {
-        HStack(spacing: 4) {
-            ForEach(1...OutputRouting.count, id: \.self) { i in
-                let slot = model.outputRouting.slot(i)
-                Menu {
-                    Button(L10n.t("output.window")) { openWindow(id: "output", value: i) }
-                    if let fs = model.outputFullscreens[i] {
-                        Button(fs.isActive ? L10n.t("output.fullscreen_close") : L10n.t("output.fullscreen")) { fs.toggle() }
-                    }
-                    Divider()
-                    OutputSourcePicker(index: i)
-                } label: {
-                    VStack(spacing: 0) {
-                        Text(L10n.f("output.short", i)).font(.system(size: 9, weight: .heavy))
-                        if showNames {
-                            Text(model.outputSourceName(slot.source)).font(.system(size: 9)).lineLimit(1).truncationMode(.middle)
-                        }
-                    }
-                    .frame(width: showNames ? 62 : 38)
-                } primaryAction: {
-                    openWindow(id: "output", value: i)
-                }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .padding(.horizontal, 4).padding(.vertical, 2)
-                .background((slot.ndi) && model.externalActive ? Theme.accent.opacity(0.35) : Theme.panelRaised)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                .help(L10n.f("output.help", i) + " · " + model.outputSourceName(slot.source))
-            }
-        }
-    }
-}
-
-/// Program / Preview / one input, as menu items with a check mark.
-struct OutputSourcePicker: View {
-    @EnvironmentObject var model: AppModel
-    let index: Int
-
-    var body: some View {
-        let current = model.outputRouting.slot(index).source
-        item(.program, current)
-        item(.preview, current)
-        Divider()
-        ForEach(model.inputs) { i in item(.input(i.id), current) }
-    }
-
-    private func item(_ s: OutputSource, _ current: OutputSource) -> some View {
-        Button((s == current ? "✓ " : "") + model.outputSourceName(s)) { model.setOutputSource(index, s) }
-    }
 }
 
 /// EXTERNAL ⚙: the four outputs (picture, window, full screen, NDI).

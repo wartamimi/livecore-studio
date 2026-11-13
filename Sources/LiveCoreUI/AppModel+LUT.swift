@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import LiveCoreServices
 import UniformTypeIdentifiers
 import LiveCoreCore
 import LiveCoreEngine
@@ -8,9 +9,7 @@ import LiveCoreEngine
 /// project keeps working when the original file is moved.
 extension AppModel {
     public static var lutFolder: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        return base.appendingPathComponent("LiveCore Studio/LUTs", isDirectory: true)
+        AppSupport.folder("LUTs")
     }
 
     /// The .cube files in the library, by name.
@@ -72,13 +71,6 @@ extension AppModel {
         } catch {
             report(L10n.f("lut.save_failed", error.localizedDescription))
         }
-    }
-
-    public func setLUT(_ id: InputID, path: String?, strength: Double? = nil) {
-        var a = adjust(of: id)
-        a.lut = path
-        if let strength { a.lutStrength = strength }
-        setAdjust(id, a)
     }
 
     static func lutFileName(_ name: String) -> String {

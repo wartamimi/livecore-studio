@@ -63,8 +63,6 @@ public final class VideoFileSource: NSObject, VideoSource {
     /// mixer channel the audio is delivered to.
     public var audioChannelProvider: (() -> MixerChannel)?
     public private(set) var audioChannel: MixerChannel?
-    /// Sample rate / channel count reported by the tap (0 until the tap is prepared).
-    public var audioFormatDescription: String { tapContext?.formatDescription ?? "" }
 
     private let player = AVPlayer()
     private let output: AVPlayerItemVideoOutput
@@ -275,12 +273,6 @@ public final class VideoFileSource: NSObject, VideoSource {
         guard !new.isEmpty else { return }
         urls += new
         onClipChange?()
-    }
-
-    public func setURLs(_ new: [URL]) {
-        guard !new.isEmpty else { return }
-        urls = new
-        load(min(index, new.count - 1), play: isPlaying)
     }
 
     /// Jumps to `seconds` in the current clip (frame-accurate when paused, for scrubbing).

@@ -31,8 +31,6 @@ extension ProductionEngine {
         mixer.removeChannel(id: uniqueID)
     }
 
-    public func audioInputStatus(_ uniqueID: String) -> SourceStatus? { audioInputs[uniqueID]?.status }
-
     // MARK: Settings
 
     public var isOutputActive: Bool {

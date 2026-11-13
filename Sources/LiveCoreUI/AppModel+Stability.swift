@@ -211,8 +211,6 @@ extension AppModel {
         }
     }
 
-    public var canUndoInputs: Bool { !undoSteps.isEmpty }
-    public var canRedoInputs: Bool { !redoSteps.isEmpty }
 
     public func undoInputs() {
         guard let step = undoSteps.popLast() else { NSSound.beep(); return }

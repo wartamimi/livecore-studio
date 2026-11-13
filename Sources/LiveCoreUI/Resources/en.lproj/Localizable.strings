@@ -1,6 +1,5 @@
 /* LiveCore Studio — English */
 "app.name" = "LiveCore Studio";
-"top.stream" = "STREAM";
 "top.record" = "REC";
 "top.cpu" = "CPU";
 "top.gpu" = "GPU";
@@ -9,9 +8,7 @@
 "top.dropped" = "Dropped";
 "inputs.title" = "Inputs";
 "inputs.add" = "Add Input";
-"inputs.camera" = "Camera / Capture Device";
 "inputs.image" = "Image…";
-"inputs.video" = "Video File…";
 "inputs.color" = "Colour";
 "inputs.title_generator" = "Title / Lower Third…";
 "inputs.remove" = "Remove";
@@ -36,7 +33,6 @@
 "audio.monitor" = "Monitor";
 "audio.monitor_device" = "Monitor output";
 "audio.limiter" = "Limiter";
-"audio.comp" = "Comp";
 "audio.pgm" = "PGM";
 "audio.sync" = "A/V sync offset (ms)";
 "audio.none" = "No audio inputs. Add a microphone or interface.";
@@ -71,7 +67,6 @@
 "record.reveal" = "Show in Finder";
 "settings.title" = "Settings";
 "settings.output" = "Output";
-"settings.resolution" = "Resolution & frame rate";
 "settings.video_bitrate" = "Video bitrate (kbps)";
 "settings.audio_bitrate" = "Audio bitrate (kbps)";
 "settings.keyframe" = "Keyframe interval (s)";
@@ -79,26 +74,18 @@
 "settings.hardware" = "Prefer hardware encoder";
 "settings.reconnect" = "Reconnect automatically";
 "settings.container" = "Container";
-"settings.record_bitrate" = "Recording bitrate (kbps)";
 "settings.filename" = "File name pattern";
 "settings.shortcuts" = "Keyboard shortcuts";
 "settings.apply" = "Apply";
 "settings.cancel" = "Cancel";
 "settings.locked" = "Stop streaming and recording to change output format.";
-"shortcut.cut" = "Cut";
-"shortcut.auto" = "Auto";
-"shortcut.stream" = "Start/stop stream (⌘)";
-"shortcut.record" = "Start/stop recording (⌘)";
-"shortcut.inputs" = "Preview input 1–9: number keys";
 "title.title" = "Title";
 "title.subtitle" = "Subtitle";
-"title.bar" = "Show background bar";
 "title.add" = "Add Title";
 "common.ok" = "OK";
 "common.dismiss" = "Dismiss";
 "quit.live" = "Streaming or recording is active. Quit anyway?";
 "quit.confirm" = "Quit";
-"perm.camera_denied" = "Camera access is denied. Open System Settings › Privacy & Security › Camera.";
 
 /* Milestone 2 */
 "multiview.title" = "Multiview";
@@ -109,9 +96,7 @@
 "project.save_as" = "Save Project As…";
 "project.new_confirm" = "Remove all inputs and mixer channels and start a new project?";
 "project.warnings" = "Project opened with warnings";
-"project.saved" = "Project saved";
 "key.title" = "Chroma Key";
-"key.menu" = "Chroma Key…";
 "key.enable" = "Enable chroma key";
 "key.color" = "Key colour";
 "key.green" = "Green screen";
@@ -135,18 +120,11 @@
 "scene.opacity" = "Opacity";
 "scene.lock" = "Lock aspect ratio while resizing";
 "scene.fit_source" = "Match box to source aspect";
-"title.layout" = "Layout";
-"title.layout.bar" = "Box behind text";
-"title.layout.full" = "Full-width bar";
-"title.layout.centered" = "Centred caption";
 "title.size" = "Title size";
 "title.subsize" = "Subtitle size";
-"title.text_color" = "Text";
-"title.bar_color" = "Bar";
 "audio.eq" = "EQ";
 "audio.hpf" = "High-pass filter";
 "audio.eq_enable" = "3-band EQ";
-"audio.clock" = "Clock";
 "audio.drift" = "Drift correction";
 "audio.underruns" = "Buffer underruns";
 
@@ -196,7 +174,6 @@
 "timer.pause" = "Pause timer";
 "timer.reset" = "Reset timer";
 "timer.edit" = "Edit timer…";
-"snapshot.help" = "Save the current Program frame as PNG in the recording folder";
 "snapshot.saved" = "Saved %@";
 
 "midi.stream" = "Start/stop stream";
@@ -210,20 +187,15 @@
 "midi.learn" = "Learn";
 "midi.hint" = "Buttons trigger on press (note or CC ≥ 64). Bind a fader or knob (CC) to T-bar. Mappings are saved on this Mac.";
 
-"music.add" = "Music (audio files)…";
 "music.title" = "Music";
 "music.add_tracks" = "Add tracks…";
 "music.loop" = "Repeat playlist";
 "music.shuffle" = "Shuffle";
 "music.tracks" = "Tracks";
-"music.remove" = "Remove music input";
 
-"dock.monitors" = "Preview / Program";
-"dock.controls" = "Controls";
 "dock.minimize" = "Minimize this panel (click the bar to restore it)";
 "dock.restore" = "Restore %@";
 
-"playlist.add" = "Video playlist (several clips)…";
 "playlist.next" = "Next clip";
 "playlist.previous" = "Previous clip";
 "playlist.clips" = "Clips";
@@ -253,7 +225,6 @@
 "capture.cursor" = "Show mouse pointer";
 "capture.note" = "For Zoom: pick the meeting window and use Speaker View or a pinned participant. The audio goes to its own mixer channel; send a mix-minus Aux bus to a virtual device (e.g. BlackHole) and choose it as Zoom's microphone for return audio. Requires the Screen Recording permission.";
 "capture.refresh" = "Refresh";
-"capture.edit" = "Change Window / Display…";
 "capture.retry" = "Retry Capture";
 "capture.permission" = "Cannot list windows. Allow LiveCore Studio in System Settings › Privacy & Security › Screen Recording, then reopen the app. (%@)";
 "capture.open_settings" = "Open Screen Recording settings";
@@ -295,8 +266,6 @@
 "lock.lock_all" = "Lock all sources";
 "lock.unlock_all" = "Unlock all sources";
 "lock.input_locked" = "This source is locked. Unlock it (padlock) first.";
-"lock.stream_help" = "Lock streaming: while locked, Start/Stop Streaming does nothing (button, menu and shortcut).";
-"lock.record_help" = "Lock recording: while locked, Start/Stop Recording does nothing (button, menu and shortcut).";
 "lock.stream_locked" = "Streaming is locked. Unlock it (padlock next to the button) first.";
 "lock.record_locked" = "Recording is locked. Unlock it (padlock next to the button) first.";
 "stream.stop_confirm" = "Stop streaming?";
@@ -322,8 +291,6 @@
 "viewer.open" = "View this source large / full screen";
 "viewer.none" = "No source selected";
 "viewer.fullscreen_help" = "Full screen (Esc or ⌃⌘F to leave)";
-"capturecard.add_menu" = "Camera / Capture Card with settings…";
-"capturecard.edit_menu" = "Capture Settings…";
 "capturecard.add_title" = "Add Video Capture Device";
 "capturecard.edit_title" = "Capture Settings";
 "capturecard.device" = "Device";
@@ -355,7 +322,6 @@
 "audio.state" = "State";
 "audio.gain_reduction" = "Gain reduction";
 "audio.route_program" = "To Program (stream / recording)";
-"adjust.menu" = "Colour, Orientation & Mask…";
 "adjust.title" = "Colour, Orientation & Mask";
 "adjust.brightness" = "Brightness";
 "adjust.contrast" = "Contrast";
@@ -371,8 +337,6 @@
 "tone.level" = "Level";
 
 "adjust.rotation" = "Rotate";
-"ticker.add" = "Running text (ticker)…";
-"ticker.title" = "Running text (ticker)";
 "ticker.text_hint" = "Several lines are shown one after another, separated by •.";
 "ticker.speed" = "Speed";
 "ticker.size" = "Text size";
@@ -447,13 +411,9 @@
 "dock.external" = "EXTERNAL";
 "dock.record_settings" = "Recording settings";
 "dock.stream_settings" = "Streaming settings";
-"dock.external_settings" = "Outputs and NDI";
 "dock.more_settings" = "More settings…";
 "dock.record_off" = "Not recording";
 "dock.stream_ready" = "Off · %d destination(s) ready";
-"dock.external_off" = "Off";
-"dock.external_nothing" = "On · nothing selected (see ⚙)";
-"dock.external_help" = "Send the outputs to other apps over NDI (NDI Virtual Camera for Zoom / Meet, OBS, vMix…)";
 "record.not_recording" = "NOT RECORDING";
 "record.reminder" = "NOT RECORDING reminder";
 "record.reminder.off" = "Off";
@@ -462,22 +422,15 @@
 "record.reminder_help" = "Blinks NOT RECORDING over the Program monitor (not on the output itself)";
 "output.section" = "Outputs";
 "output.title" = "Output %d";
-"output.short" = "OUT %d";
-"output.help" = "Output %d: click to open its window; the menu picks its picture and full screen";
 "output.window" = "Open window";
-"output.fullscreen" = "Full screen on a display";
-"output.fullscreen_close" = "Close full screen";
 "output.obs_hint" = "OBS: add an \"NDI Source\" (needs the DistroAV plugin) and pick LiveCore Output N.";
 
 /* 0.23.0 */
 "lock.dock_help" = "Lock RECORD and STREAM: while locked they cannot start or stop";
-"dock.external_clients" = "%d app(s) receiving";
 "output.external_off_hint" = "EXTERNAL is off: press EXTERNAL in the bottom dock to start sending the NDI outputs.";
 "overlay.tile_help" = "Overlay %d with this input (fade, full screen). Click: Preview · Right / two-finger click: Program";
-"snapshot.button" = "Program photo";
 
 /* 0.24.0: NDI output */
-"dock.external_ndi" = "NDI: %d output(s)";
 "output.ndi" = "NDI";
 "output.ndi_help" = "While EXTERNAL is on, this output is an NDI source \"<this Mac> (%@)\": NDI Virtual Camera (Zoom, Meet, Teams), OBS, vMix and other computers on the network can receive it";
 "output.ndi_connected" = "NDI: %d receiver(s)";
@@ -492,15 +445,12 @@
 
 /* 0.25.0: FULLSCREEN, photo button, Layer Designer */
 "fullscreen.big" = "FULLSCREEN";
-"fullscreen.big_help" = "Open the ticked outputs full screen on their displays (2nd, 3rd screen…), or close them all. ⚙ picks the display and the picture";
-"fullscreen.settings" = "Fullscreen settings: display and picture of each output";
 "fullscreen.col_display" = "DISPLAY";
 "fullscreen.col_source" = "PICTURE";
 "fullscreen.main" = "this screen";
 "fullscreen.use_help" = "Ticked: the FULLSCREEN button opens this output";
 "fullscreen.one_display" = "Only one display is connected: fullscreen would cover this screen (Esc closes it). Connect a second or third display, TV or projector.";
 "fullscreen.settings_hint" = "Each output can go to its own display: e.g. Output 1 = Program on the projector, Output 2 = one camera on a TV. The button on the right opens or closes a single output.";
-"snapshot.button_big" = "PHOTO";
 "designer.button" = "LAYERS";
 "designer.help" = "Layer Designer: move, resize and crop the layers of the Preview input right on the picture. Program shows the changes after the next transition (CUT, AUTO, T-bar)";
 "designer.close" = "Close the Layer Designer";
@@ -551,9 +501,6 @@
 "canvas.quick" = "Quick:";
 "canvas.frame_rate" = "Frame rate";
 "canvas.custom_help" = "Width and height: %d–%d px, rounded to an even number.";
-"canvas.help_horizontal" = "Standard for YouTube, Facebook, Zoom (NDI) and TVs.";
-"canvas.help_portrait" = "For Shorts, Reels, TikTok and phone viewing. Monitors, recording, stream and NDI use 9:16.";
-"canvas.help_custom" = "Any size, e.g. square 1:1 or 4:5 feed posts. Monitors follow the shape.";
 
 /* 0.27.0 — playlist */
 "playlist.repeat_help" = "Repeat: off → whole playlist (ON) → this item (1)";
@@ -585,7 +532,6 @@
 
 /* 0.29.0 — NDI inputs */
 "ndi.add" = "NDI® source…";
-"ndi.edit" = "NDI settings…";
 "ndi.add_title" = "Add NDI® source";
 "lcslive.edit" = "LCS Live…";
 "lcslive.about" = "A remote guest joins from a web browser (phone or computer) with camera and microphone. Their picture and sound become this input and its own mixer channel. The guest sees the Program and hears a mix-minus (the show without their own voice). Media goes peer to peer over WebRTC.";
@@ -642,11 +588,8 @@
 "remote.security" = "The connection is plain HTTP (not encrypted): use it only on a network you trust. Anyone who knows the PIN can switch your show. After 5 wrong PINs a device is locked out for a while.";
 
 /* MultiCorder (0.32.0) */
-"multicorder.enable" = "Record chosen inputs to their own files with RECORD";
 "multicorder.no_inputs" = "Add inputs first.";
 "multicorder.help" = "Up to %d inputs. Each ISO file holds that input only (full size, with its layers) plus the selected audio bus, using the MultiCorder profile, named after the profile pattern plus \" - ISO <number> <name>\".";
-"multicorder.next_time" = "Changes apply the next time you start recording.";
-"multicorder.count" = "%d input(s)";
 "multicorder.full" = "MultiCorder records up to %d inputs.";
 
 /* 0.33.0 MultiCorder, recorder profile, input groups */
@@ -720,7 +663,6 @@
 "titletpl.liveBadge" = "LIVE badge";
 "titled.reset" = "Reset to template";
 "titled.reset_help" = "Back to the template's colours, fonts and position (the text stays).";
-"titled.animation_hint" = "In/out animation: set it on the overlay (1–4).";
 "titled.tag" = "Tag";
 "titled.tab.text" = "Text";
 "titled.tab.box" = "Box";
@@ -888,13 +830,7 @@
 "diagnostics.menu" = "Export Logs & Diagnostics…";
 "diagnostics.reveal_log" = "Show Log Folder";
 "diagnostics.failed" = "Could not export diagnostics: %@";
-"mode.operator" = "Operator";
-"mode.advanced" = "Advanced";
-"mode.help" = "Operator mode hides set-up tools (CPU/GPU stats, settings, ISO, external outputs, capture cards, NDI) so only the show controls remain.";
-"mode.switch_operator" = "Switch to Operator Mode";
-"mode.switch_advanced" = "Switch to Advanced Mode";
 "preflight.button" = "PRE-FLIGHT";
-"preflight.help" = "Check everything before going live: inputs, audio, permissions, disk, stream servers.";
 "preflight.menu" = "Pre-flight Check…";
 "preflight.title" = "Pre-flight Check";
 "preflight.intro" = "Listens to the master for 3 seconds and tests a connection to each stream server. Nothing is sent live.";
@@ -946,9 +882,6 @@
 "outputs.off" = "Off";
 "outputs.turn_on" = "Turn On";
 "outputs.turn_off" = "Turn Off";
-"outputs.finishing" = "Finishing the file…";
-"outputs.iso_running" = "Recording %d ISO files";
-"multicorder.start" = "Start ISO";
 "template.menu" = "New from Template…";
 "template.title" = "Start a production";
 "template.intro" = "A template adds the connected cameras and microphones, titles and audio settings. Change anything afterwards.";
@@ -1016,7 +949,6 @@
 "data.reload" = "Reload Data";
 "data.load_failed" = "Could not read the table: %@";
 "data.not_public" = "The sheet is not shared publicly (Share › Anyone with the link).";
-"ptz.menu" = "PTZ Control…";
 "ptz.title" = "PTZ Camera";
 "ptz.intro" = "Controls a network PTZ camera with VISCA (PTZOptics, Sony, Avonic, Lumens, BirdDog and most others). The video still comes in as a camera, NDI or capture input.";
 "ptz.address" = "IP address";
@@ -1059,64 +991,8 @@
 "radio.stop" = "Stop the station";
 
 /* 0.39.0: vMix GT title import */
-"gt.add" = "vMix GT title (.gtzip)…";
-"gt.edit" = "Edit GT title…";
-"gt.edit_title" = "vMix GT title";
-"gt.note" = "Boxes, gradients, skew, texts, pictures and the Reveal / Expand / Zoom in-animations are drawn. 3D text is drawn flat; fonts that are not installed on this Mac fall back to the system font.";
-"gt.missing" = "This GT title is no longer available.";
-"gt.empty" = "This .gtzip has no elements LiveCore can draw.";
-"gt.failed" = "Could not import the GT title: %@";
 
 /* 0.40.0: GT editor */
-"gt.reset_all" = "Reset all";
-"gt.note_short" = "3D text is drawn flat; missing fonts use the system font.";
-"gt.visible" = "Visible";
-"gt.play" = "Play animation";
-"gt.speed" = "Speed";
-"gt.duration" = "In-animation: %@ s";
-"gt.reset_element" = "Reset";
-"gt.text" = "Text";
-"gt.font" = "Font";
-"gt.font_missing" = "This font is not installed on this Mac; the system font is used.";
-"gt.font_size" = "Size";
-"gt.bold" = "Bold";
-"gt.italic" = "Italic";
-"gt.color" = "Colour";
-"gt.align" = "Align";
-"gt.valign" = "Vertical";
-"gt.top" = "Top";
-"gt.middle" = "Middle";
-"gt.bottom" = "Bottom";
-"gt.shape" = "Shape";
-"gt.fill" = "Fill";
-"gt.gradient_note" = "Gradient from the template; choosing a fill colour makes it solid.";
-"gt.stroke" = "Border";
-"gt.stroke_width" = "Border width";
-"gt.radius" = "Corner radius";
-"gt.picture" = "Picture";
-"gt.replace_image" = "Replace picture…";
-"gt.original_image" = "Original picture";
-"gt.position" = "Position & size";
-"gt.width" = "Width";
-"gt.height" = "Height";
-"gt.skew" = "Skew (°)";
-"gt.opacity" = "Opacity";
-"gt.drag_hint" = "Tip: drag the dashed box in the preview to move the element.";
-"gt.select" = "Select an element on the left.";
-"gt.animation" = "In-animation";
-"gt.anim_type" = "Type";
-"gt.anim.reveal" = "Reveal (wipe)";
-"gt.anim.expand" = "Expand";
-"gt.anim.zoom" = "Zoom";
-"gt.anim.fade" = "Fade";
-"gt.anim.none" = "None";
-"gt.direction" = "Direction";
-"gt.dir.left" = "From left";
-"gt.dir.right" = "From right";
-"gt.dir.top" = "From top";
-"gt.dir.bottom" = "From bottom";
-"gt.delay" = "Delay (s)";
-"gt.anim_duration" = "Duration (s)";
 "gt.fonts_missing_title" = "Fonts not installed";
 "gt.fonts_missing_body" = "This title uses fonts that are not on this Mac: %@. Download them automatically from Google Fonts (free)? Fonts that are not on Google Fonts must be installed by hand (GT editor › Install font file…).";
 "gt.fonts_download" = "Download fonts";
@@ -1124,20 +1000,16 @@
 "gt.fonts_installed" = "Fonts installed: %@.";
 "gt.fonts_not_found" = "Not on Google Fonts (install the font file by hand): %@.";
 "gt.fonts_failed" = "Download failed (check the internet connection): %@.";
-"gt.fonts_banner" = "Fonts not installed: %@ (the system font is used meanwhile).";
 "gt.fonts_file" = "Install fonts from folder…";
 
 /* 0.41.0 */
 "gt.fonts_pick_message" = "Choose a folder of fonts (sub-folders are searched too) or font files. Fonts already installed are skipped.";
 "gt.fonts_install" = "Install";
 "gt.fonts_folder_result" = "Fonts: %@ installed, %@ already installed (skipped).";
-"gt.play_out" = "Play out";
-"gt.out_duration" = "out: %@ s";
 "overlay.anim.hold" = "Title's own animation";
 
 /* 0.42.0: vertical output, rundown */
 "rundown.title" = "Event rundown";
-"rundown.button" = "RUNDOWN";
 "rundown.templates" = "Templates";
 "rundown.tpl.wedding" = "Wedding (akad, sambutan, resepsi…)";
 "rundown.tpl.seminar" = "Seminar";
@@ -1181,9 +1053,7 @@
 "rundown.delete" = "Delete";
 
 /* 0.43.0: AI, subtitles, client package */
-"subtitles.add" = "Live subtitles (AI)";
 "subtitles.edit" = "Subtitle settings…";
-"subtitles.title" = "Live subtitles";
 "subtitles.language" = "Language";
 "subtitles.allow_server" = "Allow Apple's servers when this Mac has no on-device model (needs internet)";
 "subtitles.font" = "Text size %@";
@@ -1229,9 +1099,6 @@
 "output.rc_standard" = "Standard (peaks up to 1.5×)";
 "output.rate_control_help" = "CBR keeps the upload steady (weak connections); VBR allows peaks for fast motion.";
 "output.preset" = "Encoder preset";
-"output.preset_speed" = "Speed (lowest load)";
-"output.preset_balanced" = "Balanced";
-"output.preset_quality" = "Quality";
 "output.sample_rate" = "Audio sample rate";
 "stream.quality" = "Stream quality";
 "stream.quality_source" = "Bitrate";
@@ -1393,8 +1260,6 @@
 "props.tab.key" = "Key";
 "props.tab.ai" = "AI";
 "props.tab.ptz" = "PTZ";
-"tools.menu" = "Tools";
-"tools.help" = "Rundown, vertical 9:16 output and multiview";
 
 /* 0.48.0 */
 "aux.add" = "Add AUX / BUS";
@@ -1544,7 +1409,6 @@
 "transport.previous" = "Previous clip";
 "transport.play_pause" = "Play / Pause";
 "transport.next" = "Next clip";
-"transport.none" = "No playback controls for this input";
 
 "transcript.title" = "Transcript";
 "transcript.open" = "Open Transcript Window";
@@ -1748,8 +1612,6 @@
 
 /* Audio plug-ins (0.60.0) */
 "plugins.title" = "Plug-ins";
-"plugins.fx" = "FX";
-"plugins.help" = "Audio Unit and VST3 effect plug-ins on this channel (before the fader)";
 "plugins.latency" = "Plug-in latency %.1f ms";
 "plugins.latency_help" = "These plug-ins delay this channel; LiveCore does not compensate it. Use Audio Properties › Delay on other channels if lip-sync matters.";
 "plugins.safe_mode" = "Safe mode: LiveCore Studio did not close normally last time while plug-ins ran inside it. Restored plug-ins start bypassed.";
@@ -1864,7 +1726,6 @@
 "template.refresh" = "Refresh List";
 "template.mine" = "My templates";
 "template.delete" = "Move to Trash";
-"settings.appearance" = "Appearance";
 "appearance.title" = "Appearance";
 "appearance.theme" = "Theme";
 "appearance.accent" = "Accent colour";
@@ -2011,7 +1872,6 @@
 "ai.save_key" = "Save";
 "ai.allow_outputs" = "Allow the assistant to start / stop streaming and recording";
 "ai.note" = "Commands are sent over the internet to the chosen provider with your own API key (billed per use by that provider). The assistant can only do what a macro can: switch inputs, transitions, overlays, mute / unmute, play videos, run your macros.";
-"ai.hint" = "Examples: \"put camera 2 on air with the transition\", \"make a gold wedding lower third for Budi & Ani on overlay 1\", \"make a running text welcoming the guests\", \"create a macro for the opening\", \"write a 2-minute MC opening script\", \"mute the music\".";
 "ai.placeholder" = "Type a command…";
 "ai.send" = "Send";
 "ai.stop" = "Stop";
@@ -2127,7 +1987,5 @@
 "stream.login_title" = "Log in to %@";
 "stream.login_console" = "Open developer console";
 "stream.login_open" = "Open login page";
-"stream.login_help_youtube" = "Uses your own Google OAuth client (type \"TVs and Limited Input devices\") with the YouTube Data API v3 enabled. While the Google app is in Testing, add your account as a test user. After you approve the code, the server and key of your YouTube stream are filled in; you still create or start the broadcast in YouTube Studio.";
-"stream.login_help_twitch" = "Uses your own Twitch application (client type Public) from the Twitch developer console. After you approve the code, your stream key is filled in.";
 "capture.reset_permission" = "Ask again";
 "capture.reset_permission_help" = "Clears an old Screen Recording entry (e.g. from a previous build) and asks again. Allow it, then quit and reopen LiveCore Studio.";

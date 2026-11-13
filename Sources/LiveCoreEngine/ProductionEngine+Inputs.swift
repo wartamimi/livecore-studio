@@ -627,21 +627,8 @@ extension ProductionEngine {
         control.mutate { $0.extraInputs = inputs; $0.fullPreview = fullPreview }
     }
 
-    public func isInputLocked(_ id: InputID) -> Bool { control.read { $0.locked.contains(id) } }
-
     public func renameInput(_ id: InputID, to name: String) {
         control.read { $0.sources[id] }?.name = name
-        publishInputs()
-    }
-
-    public func moveInput(from: IndexSet, to: Int) {
-        control.mutate { st in
-            let moving = from.map { st.order[$0] }
-            var rest = st.order.enumerated().filter { !from.contains($0.offset) }.map(\.element)
-            let insertAt = min(to - from.filter { $0 < to }.count, rest.count)
-            rest.insert(contentsOf: moving, at: insertAt)
-            st.order = rest
-        }
         publishInputs()
     }
 
@@ -696,15 +683,6 @@ extension ProductionEngine {
         // Rotated 90° / 270° inputs are composited with width and height swapped.
         let r = adjust(of: id).outputSize(width: CVPixelBufferGetWidth(pb), height: CVPixelBufferGetHeight(pb))
         return PixelSize(width: r.width, height: r.height)
-    }
-
-    public func removeLayer(from id: InputID, at index: Int) {
-        control.mutate { st in
-            guard var l = st.layers[id], index > 0, index < l.count else { return } // layer 0 = the input itself
-            let removed = l.remove(at: index)
-            st.layers[id] = l
-            if let i = st.drafts[id]?.firstIndex(where: { $0.source == removed.source }), i > 0 { st.drafts[id]?.remove(at: i) }
-        }
     }
 
     // MARK: Chroma key

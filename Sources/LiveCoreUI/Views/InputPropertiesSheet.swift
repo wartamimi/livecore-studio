@@ -46,12 +46,11 @@ struct InputPropertiesSheet: View {
     }
 
     /// Pages that apply to this kind of input, in order.
-    static func tabs(for kind: InputKind?, operatorMode: Bool) -> [Tab] {
+    static func tabs(for kind: InputKind?) -> [Tab] {
         guard let kind else { return [] }
         var t: [Tab] = []
         switch kind {
-        case .camera: if !operatorMode { t.append(.source) }
-        case .screen, .ndi, .srt, .decklink, .color: t.append(.source)
+        case .camera, .screen, .ndi, .srt, .decklink, .color: t.append(.source)
         default: break
         }
         if kind != .scene { t.append(.color) }
@@ -69,7 +68,7 @@ struct InputPropertiesSheet: View {
     }
 
     var body: some View {
-        let tabs = Self.tabs(for: kind, operatorMode: model.isOperatorMode)
+        let tabs = Self.tabs(for: kind)
         let current = tabs.contains(tab) ? tab : (tabs.first ?? .color)
         let s = Self.size
         let state = tally

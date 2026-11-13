@@ -58,14 +58,12 @@ struct AddInputMenuItems: View {
                 Label("LCS Live", systemImage: "person.wave.2")
             }
             Button { model.addInputSheet = .browser } label: { Label(L10n.t("browser.add"), systemImage: "globe") }
-            if !model.isOperatorMode {
-                Button { model.addInputSheet = .capture(.display) } label: { Label(L10n.t("capture.add_display"), systemImage: "display") }
-                Button { model.addInputSheet = .capture(.window) } label: { Label(L10n.t("capture.add_window"), systemImage: "macwindow") }
-                Button { model.addInputSheet = .ndi } label: { Label(L10n.t("ndi.add"), systemImage: "antenna.radiowaves.left.and.right") }
-                Button { model.addInputSheet = .srt } label: { Label(L10n.t("srtin.add"), systemImage: "dot.radiowaves.up.forward") }
-                Button { model.addInputSheet = .decklink } label: { Label(L10n.t("decklink.add"), systemImage: "rectangle.connected.to.line.below") }
-                Button { model.addColorBars() } label: { Label(L10n.t("inputs.colorbars"), systemImage: "chart.bar.fill") }
-            }
+            Button { model.addInputSheet = .capture(.display) } label: { Label(L10n.t("capture.add_display"), systemImage: "display") }
+            Button { model.addInputSheet = .capture(.window) } label: { Label(L10n.t("capture.add_window"), systemImage: "macwindow") }
+            Button { model.addInputSheet = .ndi } label: { Label(L10n.t("ndi.add"), systemImage: "antenna.radiowaves.left.and.right") }
+            Button { model.addInputSheet = .srt } label: { Label(L10n.t("srtin.add"), systemImage: "dot.radiowaves.up.forward") }
+            Button { model.addInputSheet = .decklink } label: { Label(L10n.t("decklink.add"), systemImage: "rectangle.connected.to.line.below") }
+            Button { model.addColorBars() } label: { Label(L10n.t("inputs.colorbars"), systemImage: "chart.bar.fill") }
         }
         Menu {
             Button("Black") { model.addColor(.black, name: "Black") }

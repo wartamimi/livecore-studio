@@ -32,9 +32,7 @@ public final class AutosaveStore {
 
     /// ~/Library/Application Support/LiveCore Studio/Autosave
     public static func defaultDirectory() -> URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        return base.appendingPathComponent("LiveCore Studio/Autosave", isDirectory: true)
+        AppSupport.folder("Autosave")
     }
 
     private var sessionURL: URL { directory.appendingPathComponent("session.json") }

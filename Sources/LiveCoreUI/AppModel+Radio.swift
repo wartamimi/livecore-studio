@@ -7,7 +7,6 @@ import LiveCoreServices
 /// Online radio (0.38.0): search the free Radio Browser directory and play a station into its own
 /// mixer channel.
 extension AppModel {
-    public var radioInputs: [RadioInput] { engine?.radios ?? [] }
     public func radio(_ channelID: String) -> RadioInput? { engine?.radio(channelID: channelID) }
 
     /// Searches the directory, trying the mirrors in turn. Completion on the main thread.

@@ -1,5 +1,6 @@
 #if os(macOS)
 import Foundation
+import LiveCoreServices
 import LiveCoreCore
 
 /// Custom transition shaders: the built-in examples plus `.metal` files in
@@ -12,9 +13,7 @@ public enum CustomTransitionLibrary {
     }
 
     public static var folder: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        return base.appendingPathComponent("LiveCore Studio/Transitions", isDirectory: true)
+        AppSupport.folder("Transitions")
     }
 
     /// Built-ins first, then user files sorted by name.

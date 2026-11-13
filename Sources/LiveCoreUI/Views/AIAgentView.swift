@@ -374,7 +374,7 @@ private struct ChipStyle: ButtonStyle {
 /// Three dots bouncing while the model thinks.
 private struct ThinkingDots: View {
     var body: some View {
-        TimelineView(.animation) { tl in
+        TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
             let t = tl.date.timeIntervalSinceReferenceDate
             HStack(spacing: 5) {
                 ForEach(0..<3) { k in

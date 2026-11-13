@@ -455,8 +455,6 @@ public final class AppModel: ObservableObject {
     var knownInputs: Set<InputID> = []
     /// The open editor's undo (Layer Designer), used by Edit › Undo.
     public var editorUndo: EditorUndo?
-    /// Operator (show) or Advanced (set-up) screen.
-    @Published public internal(set) var uiMode: UIMode = AppModel.loadUIMode()
     /// Title data sources: loaded tables, load errors and link refresh timers, per title input.
     @Published public internal(set) var dataTables: [InputID: CSVTable] = [:]
     @Published public internal(set) var dataErrors: [InputID: String] = [:]

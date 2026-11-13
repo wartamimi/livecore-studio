@@ -1,12 +1,9 @@
 /* ms: main screens (0.45.0). Missing keys fall back to English. */
-"top.stream" = "STRIM";
 "top.record" = "REK";
 "top.dropped" = "Tercicir";
 "inputs.title" = "Input";
 "inputs.add" = "Tambah Input";
-"inputs.camera" = "Kamera / Peranti Tangkapan";
 "inputs.image" = "Imej…";
-"inputs.video" = "Fail Video…";
 "inputs.color" = "Warna";
 "inputs.title_generator" = "Tajuk / Lower Third…";
 "inputs.remove" = "Buang";
@@ -60,7 +57,6 @@
 "common.ok" = "OK";
 "common.dismiss" = "Tutup";
 "common.close" = "Tutup";
-"dock.monitors" = "Preview / Program";
 "dock.record" = "RAKAM";
 "dock.stream" = "STRIM";
 "dock.external" = "LUARAN";

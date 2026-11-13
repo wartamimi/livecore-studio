@@ -1,5 +1,6 @@
 #if os(macOS)
 import AVFoundation
+import LiveCoreServices
 import AudioToolbox
 import CVST3
 import Foundation
@@ -8,9 +9,7 @@ import LiveCoreCore
 /// Where LiveCore keeps plug-in files (scan cache, crash guard).
 enum PluginFiles {
     static var directory: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        let dir = base.appendingPathComponent("LiveCore Studio/Plugins", isDirectory: true)
+        let dir = AppSupport.folder("Plugins")
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
@@ -404,14 +403,6 @@ public final class AudioPluginHost {
     func untrack(_ slot: PluginSlot) {
         guard guardState.running.removeValue(forKey: slot.id.uuidString) != nil else { return }
         writeGuard()
-    }
-
-    /// Forgets slots that are no longer in any chain (call after removing plug-ins).
-    public func pruneGuard() {
-        let live = Set(chains.compactMap { $0.chain }.flatMap { $0.slots }.map { $0.id.uuidString })
-        let before = guardState.running.count
-        guardState.running = guardState.running.filter { live.contains($0.key) }
-        if guardState.running.count != before { writeGuard() }
     }
 
     private func writeGuard() {

@@ -219,7 +219,7 @@ struct InputPanelView: View {
             }
         }
         // Device, colour, key, AI and PTZ in one window (0.47.0).
-        if !InputPropertiesSheet.tabs(for: info.kind, operatorMode: model.isOperatorMode).isEmpty {
+        if !InputPropertiesSheet.tabs(for: info.kind).isEmpty {
             Button(L10n.t("props.menu")) { properties = info.id }
         }
         if info.kind == .text {
@@ -945,68 +945,6 @@ struct TimerSheet: View {
         var light = TimerStyle(); light.plate = .pill; light.plateHex = "#FFFFFF"; light.plateOpacity = 0.9; light.textHex = "#111111"
         return [("broadcast", broadcast), ("stage", stage), ("sport", sport), ("ring", ring), ("progress", progress), ("light", light)]
     }()
-}
-
-/// Transport of a video input: seekbar (drag to scrub), position / length, previous, play/pause,
-/// next (clips of a playlist; for a single clip previous goes back to the start).
-struct MediaClock: View {
-    @EnvironmentObject var model: AppModel
-    let video: VideoFileSource
-    @State private var scrub: Double?
-
-    var body: some View {
-        TimelineView(.periodic(from: .now, by: 0.25)) { _ in
-            VStack(spacing: 2) {
-                if let d = video.duration {
-                    Slider(value: Binding(get: { scrub ?? min(video.position, d) },
-                                          set: { scrub = $0; video.seek(to: $0) }),
-                           in: 0...d, onEditingChanged: { editing in if !editing { scrub = nil } })
-                        .controlSize(.mini)
-                }
-                HStack(spacing: 6) {
-                    Button { video.previousClip() } label: { Image(systemName: "backward.end.fill") }
-                    Button { video.isPlaying ? video.pause() : video.play() } label: {
-                        Image(systemName: video.isPlaying ? "pause.fill" : "play.fill")
-                    }
-                    Button { video.nextClip() } label: { Image(systemName: "forward.end.fill") }
-                        .disabled(!video.isPlaylist)
-                    Text("\(TimerMath.duration(scrub ?? video.position)) / \(video.duration.map { TimerMath.duration($0) } ?? "--:--")")
-                    if video.isPlaylist { Text("\(video.index + 1)/\(video.urls.count)") }
-                    Spacer(minLength: 0)
-                    // vMix-style toggles: AUTO = play on Program / pause off it; ↺ = restart.
-                    toggle("AUTO", on: video.autoPlayEnabled, help: L10n.t("media.auto_help")) {
-                        model.setAutoPlayEnabled(!video.autoPlayEnabled, for: video.id)
-                    }
-                    Button { model.setAutoRestart(!video.autoRestart, for: video.id) } label: {
-                        Image(systemName: "arrow.counterclockwise")
-                            .font(.system(size: 9, weight: .bold))
-                            .frame(width: 18, height: 13)
-                            .background(video.autoRestart ? Theme.accent : Theme.panel)
-                            .foregroundStyle(video.autoRestart ? Color.white : Theme.textDim)
-                            .clipShape(RoundedRectangle(cornerRadius: 3))
-                    }
-                    .help(L10n.t(video.autoRestart ? "media.restart_on_help" : "media.restart_off_help"))
-                }
-                .buttonStyle(.borderless)
-                .font(.system(size: 9).monospacedDigit())
-                .foregroundStyle(Theme.textDim)
-                .lineLimit(1)
-            }
-        }
-    }
-
-    private func toggle(_ label: String, on: Bool, help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(.system(size: 8, weight: .heavy))
-                .frame(height: 13)
-                .padding(.horizontal, 6)
-                .background(on ? Theme.accent : Theme.panel)
-                .foregroundStyle(on ? Color.white : Theme.textDim)
-                .clipShape(RoundedRectangle(cornerRadius: 3))
-        }
-        .help(help)
-    }
 }
 
 /// Presentation tile bar: first / previous / next and "slide n / total" (vMix PowerPoint input).

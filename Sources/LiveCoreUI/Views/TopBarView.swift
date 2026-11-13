@@ -32,12 +32,10 @@ struct TopBarView: View {
                 .help(L10n.t("multiview.open"))
                 .buttonStyle(StudioButtonStyle())
                 .frame(width: 36)
-            if !model.isOperatorMode {
-                Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                    .help(L10n.t("settings.title"))
-                    .buttonStyle(StudioButtonStyle())
-                    .frame(width: 36)
-            }
+            Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                .help(L10n.t("settings.title"))
+                .buttonStyle(StudioButtonStyle())
+                .frame(width: 36)
         }
         .padding(.horizontal, 10).padding(.vertical, 6)
         .panel()
@@ -102,7 +100,7 @@ struct PerformanceReadouts: View {
 
     @ViewBuilder
     private func liveStats(compact: Bool) -> some View {
-        if !model.isOperatorMode && !compact { machineStats }
+        if !compact { machineStats }
             stat(L10n.t("top.fps"), String(format: "%.1f", model.performance.renderFPS),
                  warn: model.performance.renderFPS < Double(model.settings.output.frameRate) * 0.95 && model.performance.renderFPS > 0)
             if !compact {
@@ -164,31 +162,6 @@ struct PerformanceReadouts: View {
 
     private var recordText: String {
         model.isRecording ? "\(L10n.t("top.record")) \(formatDuration(model.recordStats.duration))" : L10n.t("top.record")
-    }
-}
-
-/// vMix FULLSCREEN in the top bar: the button opens the chosen outputs full screen on their
-/// displays (2nd, 3rd... screen) or closes them; ⚙ picks, per output, the display and the picture.
-struct FullscreenGroup: View {
-    @EnvironmentObject var model: AppModel
-    @State private var showSettings = false
-
-    var body: some View {
-        HStack(spacing: 6) {
-            Button { model.toggleFullscreen() } label: {
-                Label(L10n.t("fullscreen.big"), systemImage: "display")
-            }
-            .buttonStyle(StudioButtonStyle(color: Theme.program, active: model.isFullscreenActive))
-            .frame(width: StudioButtonStyle.mainWidth)
-            .help(L10n.t("fullscreen.big_help"))
-            Button { showSettings.toggle() } label: { Image(systemName: "gearshape.fill") }
-                .buttonStyle(StudioButtonStyle())
-                .frame(width: 36)
-                .help(L10n.t("fullscreen.settings"))
-                .popover(isPresented: $showSettings, arrowEdge: .bottom) {
-                    FullscreenSettingsView().environmentObject(model).padding(12).frame(width: 560)
-                }
-        }
     }
 }
 

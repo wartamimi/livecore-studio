@@ -118,10 +118,6 @@ final class LiveCallService: ObservableObject {
     // MARK: Links
 
     func localLink(_ src: LiveCallSource) -> String? { port.map { "http://localhost:\($0)/live/\(src.config.key)" } }
-    func lanLinks(_ src: LiveCallSource) -> [String] {
-        guard let port else { return [] }
-        return RemoteServer.lanAddresses().map { "http://\($0):\(port)/live/\(src.config.key)" }
-    }
     func onlineLink(_ src: LiveCallSource) -> String? { tunnel.url.map { "\($0)/live/\(src.config.key)" } }
     func startOnline() { if let port { tunnel.start(port: port) } }
 }

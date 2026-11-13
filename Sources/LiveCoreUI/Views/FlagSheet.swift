@@ -1,5 +1,6 @@
 #if os(macOS)
 import AppKit
+import LiveCoreServices
 import ImageIO
 import SwiftUI
 import UniformTypeIdentifiers
@@ -40,9 +41,7 @@ enum FlagLibrary {
     /// Copies the flag to Application Support so the input keeps working when the app moves.
     static func stableCopy(_ code: String) -> URL? {
         guard let src = imageURL(code) else { return nil }
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-            .appendingPathComponent("LiveCore Studio/Flags", isDirectory: true)
-        guard let dir = base else { return src }
+        let dir = AppSupport.folder("Flags")
         let dst = dir.appendingPathComponent("\(code).png")
         if FileManager.default.fileExists(atPath: dst.path) { return dst }
         do {

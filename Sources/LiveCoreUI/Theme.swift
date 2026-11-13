@@ -164,8 +164,6 @@ struct SectionHeader: View {
 
 /// Big console-style button.
 struct StudioButtonStyle: ButtonStyle {
-    /// Width shared by the big labelled buttons (RECORD, STREAM, EXTERNAL, FULLSCREEN, PHOTO).
-    static let mainWidth: CGFloat = 148
     var color: Color = Theme.panelRaised
     var active = false
     func makeBody(configuration: Configuration) -> some View {

@@ -20,7 +20,6 @@ public struct CaptureConfig: Codable, Equatable, Sendable {
         self.width = width; self.height = height; self.frameRate = frameRate; self.mirror = mirror
         self.codec = codec; self.bufferFrames = bufferFrames; self.audioDevice = audioDevice
     }
-    public var isAutomatic: Bool { width == nil || height == nil }
 }
 
 /// Names of the video formats capture devices report (FourCC media subtypes).

@@ -30,12 +30,6 @@ public enum ImageFormats {
         return e
     }()
 
-    public static func isImage(_ url: URL) -> Bool {
-        if extensions.contains(url.pathExtension.lowercased()) { return true }
-        guard let t = UTType(filenameExtension: url.pathExtension) else { return false }
-        return t.conforms(to: .image) || t.conforms(to: .pdf)
-    }
-
     /// Decodes the first frame / page, at most `maxSide` pixels on the long side.
     public static func decode(_ url: URL, maxSide: Int = 3840) -> CGImage? {
         if let src = CGImageSourceCreateWithURL(url as CFURL, nil), CGImageSourceGetCount(src) > 0 {

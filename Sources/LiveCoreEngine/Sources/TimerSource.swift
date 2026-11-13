@@ -156,11 +156,13 @@ public final class TimerSource: VideoSource {
 
     private var lastKey = ""
 
-    private func dateLine() -> String {
+    private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .full; f.timeStyle = .none
-        return f.string(from: Date())
-    }
+        return f
+    }()
+
+    private func dateLine() -> String { Self.dateFormatter.string(from: Date()) }
 
     static func font(_ f: TimerStyle.Font, size: CGFloat) -> NSFont {
         switch f {

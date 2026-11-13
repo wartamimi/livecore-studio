@@ -1,5 +1,6 @@
 #if os(macOS)
 import Foundation
+import LiveCoreServices
 import Security
 
 /// Stores secrets (stream keys, remote PIN, API keys). Never written to UserDefaults,
@@ -111,9 +112,7 @@ public enum KeychainStore {
     }
 
     static var fileURL: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory() + "/Library/Application Support")
-        return base.appendingPathComponent("LiveCore Studio", isDirectory: true).appendingPathComponent("secrets.json")
+        AppSupport.root.appendingPathComponent("secrets.json")
     }
 
     private static func readVault(mode: Mode) throws -> [String: String] {

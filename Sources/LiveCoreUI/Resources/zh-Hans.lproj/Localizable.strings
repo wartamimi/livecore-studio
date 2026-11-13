@@ -1,12 +1,9 @@
 /* zh-Hans: main screens (0.45.0). Missing keys fall back to English. */
-"top.stream" = "直播";
 "top.record" = "录制";
 "top.dropped" = "丢帧";
 "inputs.title" = "输入";
 "inputs.add" = "添加输入";
-"inputs.camera" = "摄像头 / 采集设备";
 "inputs.image" = "图片…";
-"inputs.video" = "视频文件…";
 "inputs.color" = "颜色";
 "inputs.title_generator" = "标题 / 下三分之一字幕…";
 "inputs.remove" = "移除";
@@ -60,7 +57,6 @@
 "common.ok" = "好";
 "common.dismiss" = "关闭";
 "common.close" = "关闭";
-"dock.monitors" = "预览 / 节目";
 "dock.record" = "录制";
 "dock.stream" = "直播";
 "dock.external" = "外部";

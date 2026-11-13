@@ -55,8 +55,6 @@ public final class LiveCallHub: @unchecked Sendable {
 
     public func close(key: String) { lock.sync { _ = rooms.removeValue(forKey: key) } }
 
-    public var openKeys: [String] { lock.sync { Array(rooms.keys) } }
-
     /// The host's answer for offer `seq` (ignored when a newer offer arrived meanwhile).
     public func setAnswer(key: String, seq: Int, sdp: String) {
         lock.sync { if rooms[key]?.seq == seq { rooms[key]?.answer = (seq, sdp) } }

@@ -143,9 +143,7 @@ extension AppModel {
     // MARK: My templates (0.62.0): the whole production saved for reuse
 
     public static var userTemplateFolder: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Library/Application Support")
-        return base.appendingPathComponent("LiveCore Studio/Templates", isDirectory: true)
+        AppSupport.folder("Templates")
     }
 
     static func listUserTemplates() -> [URL] {

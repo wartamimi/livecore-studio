@@ -143,13 +143,6 @@ public final class RTMPPublishSession {
         return events
     }
 
-    /// Transport-level failure (socket closed, TLS error...). Moves the session to `.failed`.
-    public func transportFailed(_ reason: String) -> [Event] {
-        if case .closed = state { return [] }
-        if case .failed = state { return [] }
-        return transition(.failed(scrub(reason)))
-    }
-
     // MARK: Private
 
     private func onHandshakeComplete() -> [Event] {
