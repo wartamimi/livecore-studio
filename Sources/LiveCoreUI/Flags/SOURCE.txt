@@ -1,0 +1,4 @@
+Country flags: SVGs from the "svg-country-flags" package (hjnilsson/country-flags, v1.2.10),
+taken from Wikipedia/Wikimedia Commons, where national flags are public domain.
+Rendered to 1920 px wide PNG (256-colour palette) for LiveCore Studio 0.51.0.
+Use of some flags may be restricted by national law (e.g. protocol rules), not by copyright.
