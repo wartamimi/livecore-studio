@@ -300,7 +300,7 @@ Permintaan pengguna: animasi GT sehalus vMix, animasi keluar mengikuti template,
 |---|---|---|---|
 | Animasi GT 60 fps, tiap elemen dirender sekali (sprite), easing in-out | Implemented, belum dites | L (kurva) + M | Sebelumnya 30 fps dan seluruh title digambar ulang tiap frame. Kehalusan di Program juga bergantung pada frame rate output |
 | Animasi keluar | Implemented, belum dites | L (parser + fase) | Storyboard "Out" dari template bila ada; bila tidak, animasi masuk diputar terbalik (seperti vMix). Diputar saat overlay title dimatikan; CUT langsung dari Program tetap memotong tanpa animasi keluar |
-| Pasang font dari folder (sub-folder ikut), font yang sudah terpasang dilewati | Implemented, belum dites | M | Juga ditawarkan saat impor; unduhan Google Fonts juga melewati font yang sudah ada |
+| Font yang dibawa template dipasang saat impor, font yang sudah terpasang dilewati | Implemented, belum dites | M | 0.76.4: pemilih folder font dan unduhan Google Fonts dihapus (tidak punya tombol lagi di UI). |
 
 Belum diketahui pasti: nama elemen XML untuk storyboard "Out" di vMix GT (sampel tidak memilikinya). Parser mengenali storyboard yang nama/atributnya memuat "Out"; bila template Anda punya animasi keluar tapi tidak terbaca, kirim contohnya.
 
@@ -312,7 +312,7 @@ Editor title GT lanjutan dan font otomatis. Verifikasi: L = unit test Linux, M =
 | Editor GT: daftar elemen, tampil/sembunyi, pratinjau dengan kotak pilihan yang bisa diseret | Implemented, belum dites | M | Klik kanan input › Editor title GT |
 | Properti per elemen: teks, font, ukuran, tebal/miring, rata, warna, garis tepi, sudut, posisi/ukuran, kemiringan, opasitas, ganti gambar | Implemented, belum dites | L (override) + M | Disimpan di proyek sebagai perubahan atas template; file .gtzip tidak diubah. Memilih warna isi mengganti gradasi menjadi warna polos |
 | Animasi per elemen (jenis, arah, jeda, durasi) + kecepatan semua animasi + tombol Putar animasi | Implemented, belum dites | L + M | Hanya animasi masuk |
-| Font tidak terpasang: ditanyakan saat impor, unduh otomatis dari Google Fonts | Implemented, belum dites | L (URL/CSS) + M | Hanya font yang ada di Google Fonts (gratis). Font berbayar/pribadi (mis. "Motion Picture Personal Use", "SerpentineEF") tidak bisa diunduh otomatis: pasang lewat "Pasang file font…" |
+| Font tidak terpasang: unduh otomatis dari Google Fonts | Removed (0.76.4) | — | Tidak punya pemicu di UI sejak editor GT dirombak; dihapus atas keputusan user. |
 | Font dipasang hanya untuk LiveCore | Implemented | M | Disimpan di Application Support/LiveCore Studio/Fonts, tanpa hak admin |
 
 ## Fitur 0.39.0

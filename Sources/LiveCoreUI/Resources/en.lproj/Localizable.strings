@@ -993,19 +993,8 @@
 /* 0.39.0: vMix GT title import */
 
 /* 0.40.0: GT editor */
-"gt.fonts_missing_title" = "Fonts not installed";
-"gt.fonts_missing_body" = "This title uses fonts that are not on this Mac: %@. Download them automatically from Google Fonts (free)? Fonts that are not on Google Fonts must be installed by hand (GT editor › Install font file…).";
-"gt.fonts_download" = "Download fonts";
-"gt.fonts_skip" = "Skip";
-"gt.fonts_installed" = "Fonts installed: %@.";
-"gt.fonts_not_found" = "Not on Google Fonts (install the font file by hand): %@.";
-"gt.fonts_failed" = "Download failed (check the internet connection): %@.";
-"gt.fonts_file" = "Install fonts from folder…";
 
 /* 0.41.0 */
-"gt.fonts_pick_message" = "Choose a folder of fonts (sub-folders are searched too) or font files. Fonts already installed are skipped.";
-"gt.fonts_install" = "Install";
-"gt.fonts_folder_result" = "Fonts: %@ installed, %@ already installed (skipped).";
 "overlay.anim.hold" = "Title's own animation";
 
 /* 0.42.0: vertical output, rundown */

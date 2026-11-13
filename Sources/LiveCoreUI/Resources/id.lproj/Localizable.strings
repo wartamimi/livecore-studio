@@ -993,19 +993,8 @@
 /* 0.39.0: impor title vMix GT */
 
 /* 0.40.0: GT editor */
-"gt.fonts_missing_title" = "Font belum terpasang";
-"gt.fonts_missing_body" = "Title ini memakai font yang tidak ada di Mac ini: %@. Unduh otomatis dari Google Fonts (gratis)? Font yang tidak ada di Google Fonts harus dipasang manual (editor GT › Pasang file font…).";
-"gt.fonts_download" = "Unduh font";
-"gt.fonts_skip" = "Lewati";
-"gt.fonts_installed" = "Font terpasang: %@.";
-"gt.fonts_not_found" = "Tidak ada di Google Fonts (pasang file font secara manual): %@.";
-"gt.fonts_failed" = "Gagal mengunduh (cek koneksi internet): %@.";
-"gt.fonts_file" = "Pasang font dari folder…";
 
 /* 0.41.0 */
-"gt.fonts_pick_message" = "Pilih folder font (sub-folder ikut dicari) atau file font. Font yang sudah terpasang dilewati.";
-"gt.fonts_install" = "Pasang";
-"gt.fonts_folder_result" = "Font: %@ dipasang, %@ sudah terpasang (dilewati).";
 "overlay.anim.hold" = "Animasi title sendiri";
 
 /* 0.42.0: vertical output, rundown */
