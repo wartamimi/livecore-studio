@@ -29,7 +29,7 @@ targets:
       properties:
         CFBundleName: LiveCore Studio
         CFBundleDisplayName: LiveCore Studio
-        CFBundleShortVersionString: "0.76.5"
+        CFBundleShortVersionString: "0.76.6"
         CFBundleVersion: "115"
         CFBundleDevelopmentRegion: en
         CFBundleLocalizations: [en, id, ms, es, zh-Hans]
