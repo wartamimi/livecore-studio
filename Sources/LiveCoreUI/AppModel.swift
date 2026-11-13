@@ -391,7 +391,7 @@ public final class AppModel: ObservableObject {
         if prompter.running { prompter.tick() }
         if tickCount % 30 == 0 { checkMacroTimeTriggers() }
         if tickCount % 3 == 0 { meters.updateLoudness(e.mixer) }
-        if tickCount % 30 == 0 { performance = e.samplePerformance(); refreshExternalStatus(); logRenderDrops(e) }
+        if tickCount % 30 == 0 { performance = e.samplePerformance(); refreshExternalStatus(); logRenderDrops(e); e.keepDisplayAwake(streamStats.state == .live || isRecording) }
         if remoteServer != nil, tickCount % 3 == 0 { pushRemoteState(clients: tickCount % 30 == 0) }
         if remoteServer != nil, tickCount % 2 == 0 { pushRemoteFrames() }
     }

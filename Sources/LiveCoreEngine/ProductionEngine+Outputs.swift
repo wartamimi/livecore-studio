@@ -7,6 +7,19 @@ import LiveCoreCore
 
 /// Audio inputs, settings, streaming, recording and the MultiCorder (main thread).
 extension ProductionEngine {
+    /// A stream, recording or MultiCorder is running.
+    var outputsLive: Bool { outputs.read { $0.streamEncoder != nil || $0.recording || !$0.iso.isEmpty } }
+
+    /// While on air the displays must not sleep: display sleep stalls the app and drops frames
+    /// in the stream and the recording (0.76.5).
+    public func keepDisplayAwake(_ on: Bool) {
+        if on, displayActivity == nil {
+            displayActivity = ProcessInfo.processInfo.beginActivity(options: [.idleDisplaySleepDisabled], reason: "Streaming or recording")
+        } else if !on, let a = displayActivity {
+            ProcessInfo.processInfo.endActivity(a); displayActivity = nil
+        }
+    }
+
     // MARK: Audio inputs
 
     public var audioChannels: [MixerChannel] { mixer.channelList }

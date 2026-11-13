@@ -188,8 +188,16 @@ public final class ProductionEngine {
         droppedRenderFrames.reset(); droppedLate.reset(); droppedGPUBusy.reset(); droppedFailed.reset()
     }
 
+    /// True while the Mac's displays sleep (0.76.5). macOS then stalls the whole app for about a
+    /// second every 15 minutes or so; with nothing streamed or recorded those frames reach nobody,
+    /// so they are not counted as Drop.
+    let displayAsleep = AtomicBool()
+    var displayObservers: [NSObjectProtocol] = []
+    /// Keeps the displays awake while streaming or recording, see `keepDisplayAwake`.
+    var displayActivity: NSObjectProtocol?
+
     private func countDrop(_ cause: AtomicCounter, _ n: UInt64 = 1, now: Double) {
-        if now < warmupUntil { droppedWarmup.add(n); return }
+        if now < warmupUntil || (displayAsleep.value && !outputsLive) { droppedWarmup.add(n); return }
         droppedRenderFrames.add(n); cause.add(n)
     }
     let gpuMsAverage = AtomicFloat(0)
@@ -363,6 +371,9 @@ public final class ProductionEngine {
         renderTimer?.cancel()
         renderTimer = nil
         if let a = renderActivity { ProcessInfo.processInfo.endActivity(a); renderActivity = nil }
+        keepDisplayAwake(false)
+        displayObservers.forEach { NSWorkspace.shared.notificationCenter.removeObserver($0) }
+        displayObservers = []
         control.read { $0.sources.values.forEach { $0.stop() } }
         musicPlayers.forEach { $0.stop() }
         radios.forEach { $0.stop() }
@@ -377,6 +388,12 @@ public final class ProductionEngine {
             renderActivity = ProcessInfo.processInfo.beginActivity(
                 options: [.userInitiated, .latencyCritical, .idleSystemSleepDisabled],
                 reason: "Live video rendering")
+        }
+        if displayObservers.isEmpty {
+            let nc = NSWorkspace.shared.notificationCenter
+            displayObservers = [(NSWorkspace.screensDidSleepNotification, true), (NSWorkspace.screensDidWakeNotification, false)].map { name, asleep in
+                nc.addObserver(forName: name, object: nil, queue: nil) { [weak self] _ in self?.displayAsleep.value = asleep }
+            }
         }
         let fps = Double(settings.output.frameRate)
         clockStart = HostClock.now()

@@ -343,6 +343,7 @@ M = dikompilasi/diuji di CI macOS; "belum dites" = belum dicoba pengguna di Mac 
 | Animasi title per huruf di antrean sendiri | Implemented, belum dites | M (kompilasi) | Tidak lagi tersendat saat menu/lembar dibuka (T-184) |
 | 3 frame GPU dalam antrean (sebelumnya 2) | Implemented, belum dites | M (soak check) | Menahan hentakan GPU singkat; latensi maks +1 frame |
 | Log penyebab drop & thread UI macet | Implemented | L (watchdog) + M | Di log (Bantuan › Ekspor Log & Diagnostik): "render drops +N (late tick, GPU busy, failed)" dan "main thread did not answer for X ms" (T-185) |
+| Layar Mac tidur: Drop tidak dihitung bila tidak ada stream/rekaman; layar tetap nyala selama stream/rekam | Implemented, belum dites | M | 0.76.5: dari log pengguna, saat layar mati macOS menahan app ~1 s tiap ~15 menit (+35 late tick). |
 | Meter & statistik tetap jalan saat menu terbuka | Implemented | M (kompilasi) | Timer statistik di run loop mode common |
 | CI lebih cepat | Implemented | M | DMG dibuat paralel dengan cek mesin; DMG terbit setelah build app + unit test |
 | Input Radio Online (Radio Browser) | Implemented, belum dites | L (6 unit test) + M (livecore-radio-check: MP3 mono 44,1 kHz dan AAC stereo, judul lagu ICY) | Gratis tanpa API key. Hanya stasiun HTTPS MP3/AAC (bukan HLS/Ogg). Channel mixer sendiri, play/stop, judul lagu, sambung ulang otomatis (T-186..T-189) |
