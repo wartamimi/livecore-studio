@@ -8,7 +8,6 @@ import QuartzCore
 /// what keeps audio and video aligned in the encoders.
 public enum HostClock {
     @inline(__always) public static func now() -> Double { CACurrentMediaTime() }
-    @inline(__always) public static func nowCMTime() -> CMTime { CMClockGetTime(CMClockGetHostTimeClock()) }
     public static func seconds(fromHostTicks ticks: UInt64) -> Double {
         CMTimeGetSeconds(CMClockMakeHostTimeFromSystemUnits(ticks))
     }

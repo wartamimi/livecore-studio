@@ -9,38 +9,128 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 jobs:
+  # Foundation-free core logic and protocol tests on Linux (fast, about 2 min). It does not block the
+  # DMG: the macos-app job builds and publishes it on its own.
   linux-core:
+    # A pull request from a branch of this repository already runs on push; skip the duplicate run.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: swift-actions/setup-swift@v2
-        with: { swift-version: "6.0" }
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      # Swift from the swift.org tarball: setup-swift's GPG key refresh (keyserver.ubuntu.com) and the
+      # swift Docker image's apt (archive.ubuntu.com) both failed on 2026-11-11; the runner's own apt mirror works.
+      - name: Install Swift 6.0.3
+        run: |
+          curl -fsSL --retry 3 https://download.swift.org/swift-6.0.3-release/ubuntu2404/swift-6.0.3-RELEASE/swift-6.0.3-RELEASE-ubuntu24.04.tar.gz \
+            | tar -xz -C "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/swift-6.0.3-RELEASE-ubuntu24.04/usr/bin" >> "$GITHUB_PATH"
+      # Ubuntu mirrors occasionally stall; bound each attempt and retry instead of eating the job timeout.
+      - name: Install ffmpeg
+        timeout-minutes: 8
+        run: |
+          for i in 1 2 3; do
+            timeout 150 sudo apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 update \
+              && timeout 150 sudo apt-get -o Acquire::Retries=3 install -y --no-install-recommends ffmpeg && exit 0
+            echo "apt attempt $i failed, retrying"; sleep 10
+          done
+          exit 1
       - run: scripts/ci_run.sh linux-validate scripts/validate_linux.sh
+  # The DMG is built and published as soon as the app compiles and the unit tests pass (about
+  # 5 minutes). The longer engine checks (NDI, ISO, RTMP/SRT end to end, soak) run next to it and
+  # report failures as commit comments without holding the DMG back.
   macos-app:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: macos-15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - run: brew install xcodegen ffmpeg
+      - run: brew install xcodegen
       - run: xcodebuild -version && xcodegen --version
-      - run: scripts/ci_run.sh macos-swift-build swift build --build-tests
-      - run: scripts/ci_run.sh macos-swift-test swift test
-      - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
       - run: scripts/ci_run.sh macos-app-build scripts/build_macos.sh release
+        env:
+          LIVECORE_SKIP_TESTS: "1"
+          LC_SIGN_P12: ${{ secrets.LC_SIGN_P12 }}
+          LC_SIGN_P12_PASSWORD: ${{ secrets.LC_SIGN_P12_PASSWORD }}
       - run: scripts/ci_run.sh macos-dmg scripts/make_dmg.sh
       - uses: actions/upload-artifact@v4
         with:
           name: LiveCoreStudio-dmg
-          path: build/LiveCoreStudio-0.1.0-unsigned.dmg
-      - name: Publish DMG as pre-release (main only)
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        run: |
-          TAG="build-${GITHUB_RUN_NUMBER}"
-          gh release create "$TAG" build/LiveCoreStudio-0.1.0-unsigned.dmg \
-            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio M1 build ${GITHUB_RUN_NUMBER} (unsigned)" \
-            --notes "Automated CI build from ${GITHUB_SHA}. Unsigned and not notarized: right-click the app and choose Open the first time. Milestone 1 not yet verified on hardware; see docs/TEST_PLAN.md."
+          path: build/LiveCoreStudio-0.76.5-unsigned.dmg
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: build-logs
+          name: build-logs-app
           path: build/*.log
+  macos-tests:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install ffmpeg
+      - run: scripts/ci_run.sh macos-swift-build swift build --build-tests
+      - run: scripts/ci_run.sh macos-swift-test swift test
+      - run: scripts/ci_run.sh macos-metal-shaders scripts/check_shaders.sh
+      - run: scripts/ci_run.sh macos-title-check swift run livecore-title-check
+      - uses: actions/upload-artifact@v4
+        with:
+          name: title-templates
+          path: build/title-templates.png
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs-tests
+          path: build/*.log
+  macos-engine-checks:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install ffmpeg srt
+      - run: scripts/ci_run.sh macos-checks-build swift build
+      - run: scripts/ci_run.sh macos-ndi-runtime scripts/install_ndi_runtime.sh
+      - run: scripts/ci_run.sh macos-ndi-check swift run livecore-ndi-check
+      - run: scripts/ci_run.sh macos-iso-check swift run livecore-iso-check
+        env:
+          LIVECORE_NDI_REQUIRED: "1"
+      - run: scripts/ci_run.sh macos-replay-check swift run livecore-replay-check
+        timeout-minutes: 5
+      - run: scripts/ci_run.sh macos-plugin-build swift build --product LCTestGainVST3
+      - run: scripts/ci_run.sh macos-plugin-check swift run livecore-plugin-check .build/debug/libLCTestGainVST3.dylib
+        timeout-minutes: 5
+      - run: scripts/ci_run.sh macos-rtmp-e2e scripts/rtmp_e2e_test.sh
+      # SRT input decoded end to end. H.264 through srt-live-transmit on the CI VM still shows
+      # decode errors (HEVC and file decoding pass; the user confirmed SRT works on a real Mac), so
+      # the result is reported without failing the build until that is fixed (user's call, 0.54.0).
+      - run: scripts/ci_run.sh macos-srt-input-check swift run livecore-srt-input-check engine
+        if: false   # switched off for now at the user's request (2026-11-03); remove this line to run it again
+        timeout-minutes: 5
+        continue-on-error: true
+      # Engine run with recording + streaming, a stream drop in the middle and a full disk.
+      # Its disk-full part is known to fail (docs/KNOWN_ISSUES.md); the result is still reported.
+      - run: scripts/ci_run.sh macos-soak-check swift run livecore-soak-check
+        if: false   # switched off for now at the user's request (2026-11-03); remove this line to run it again
+        continue-on-error: true
+        env:
+          SOAK_SECONDS: "90"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: build-logs-checks
+          path: build/*.log
+  publish:
+    needs: [macos-app, macos-tests]
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/claude/'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: build, merge-multiple: true }
+      - name: Publish DMG as pre-release (main and claude/* development branches)
+        run: |
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then TAG="build-${GITHUB_RUN_NUMBER}"; else TAG="dev-build-${GITHUB_RUN_NUMBER}"; fi
+          gh release create "$TAG" build/LiveCoreStudio-0.76.5-unsigned.dmg build/title-templates.png --repo "$GITHUB_REPOSITORY" \
+            --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.76.5 build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
+            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. 0.76.5: no Drop count while the display sleeps; display kept awake while streaming or recording."

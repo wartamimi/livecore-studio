@@ -6,7 +6,7 @@
 |---|---|---|
 | App Shell & UI Layer | `App/LiveCoreStudioApp.swift`, `Sources/LiveCoreUI/*` (SwiftUI) | `AppModel` (ObservableObject), `LiveCoreScenes` |
 | Project & Session Manager | `ProductionSettings` (Codable, `LiveCoreCore/Model`) disimpan di UserDefaults; stream key di Keychain | `AppModel.apply(_:)`, `KeychainStore` |
-| Input Source Manager | `ProductionEngine` (tabel input, urutan, layer scene) | `addCamera/addImage/addVideoFile/addColor/addTitle/removeInput/renameInput/moveInput` |
+| Input Source Manager | `ProductionEngine` (tabel input, urutan, layer scene) | `addCamera/addImage/addVideoFile/addColor/addTitle/removeInput/renameInput` |
 | Video Capture Engine | `CameraSource`, `VideoFileSource`, `ImageSource`, `ColorSource`, `TextSource` | protokol `VideoSource` (`currentFrame()`, `status`, `start/stop`) + `FrameSlot` |
 | Video Compositor & Transition Engine | `MetalCompositor` + `ShaderSource` (Metal) | `render(plan:frames:thumbnailsFor:completion:)` |
 | Preview/Program State Manager | `Switcher` + `FramePlanner` (LiveCoreCore, teruji) | `setPreview/cut/auto/setTBar/update/inputRemoved` → `SwitcherSnapshot`, `FramePlan` |

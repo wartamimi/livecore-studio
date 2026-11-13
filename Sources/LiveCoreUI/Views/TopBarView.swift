@@ -1,5 +1,6 @@
 #if os(macOS)
 import SwiftUI
+import LiveCoreCore
 import LiveCoreEngine
 
 struct TopBarView: View {
@@ -7,34 +8,129 @@ struct TopBarView: View {
     @Binding var showSettings: Bool
     @Environment(\.openWindow) private var openWindow
 
+    /// Full bar when the window is wide; on narrow windows labels become icons and the machine
+    /// stats move to the tooltip (0.43.0).
     var body: some View {
-        HStack(spacing: 14) {
-            Text(L10n.t("app.name")).font(.system(size: 15, weight: .heavy))
-            Text("\(model.settings.output.label)").font(.system(size: 11)).foregroundStyle(Theme.textDim)
-            Spacer()
-            stat(L10n.t("top.cpu"), String(format: "%.0f%%", model.performance.cpuPercentOfMachine),
-                 warn: model.performance.cpuPercentOfMachine > 70)
-            stat(L10n.t("top.gpu"), String(format: "%.1f ms", model.performance.gpuFrameMs),
-                 warn: model.performance.gpuFrameMs > 1000 / Double(max(model.settings.output.frameRate, 1)) * 0.8)
-            stat(L10n.t("top.mem"), String(format: "%.0f MB", model.performance.memoryMB), warn: false)
+        ViewThatFits(in: .horizontal) {
+            bar(compact: false)
+            bar(compact: true)
+        }
+    }
+
+    private func bar(compact: Bool) -> some View {
+        HStack(spacing: compact ? 8 : 14) {
+            if !compact {
+                Text(L10n.t("app.name")).font(.system(size: 15, weight: .heavy))
+                Text("\(model.settings.output.label)").font(.system(size: 11)).foregroundStyle(Theme.textDim)
+            }
+            ProjectFileMenu(compact: compact)
+            Spacer(minLength: 0)
+            // Rundown lives in Production › Create Rundown… (0.55.1). Multiview and Settings are
+            // real buttons with a hover, like the padlock in the bottom dock.
+            AIAssistantButton { openWindow(id: "ai-assistant") }
+            Button { openWindow(id: "multiview") } label: { Image(systemName: "square.grid.3x2") }
+                .help(L10n.t("multiview.open"))
+                .buttonStyle(StudioButtonStyle())
+                .frame(width: 36)
+            Button { showSettings = true } label: { Image(systemName: "gearshape") }
+                .help(L10n.t("settings.title"))
+                .buttonStyle(StudioButtonStyle())
+                .frame(width: 36)
+        }
+        .padding(.horizontal, 10).padding(.vertical, 6)
+        .panel()
+    }
+}
+
+/// Project / template menu (0.63.0), shared by the Classic top bar and the Studio header (0.72.0).
+struct ProjectFileMenu: View {
+    @EnvironmentObject var model: AppModel
+    let compact: Bool
+
+    var body: some View { fileMenu(compact: compact) }
+
+    private func fileMenu(compact: Bool) -> some View {
+        Menu {
+            Button(L10n.t("project.new")) { model.newProject() }
+            Button(L10n.t("project.open")) { model.openProject() }
+            Menu(L10n.t("project.open_recent")) {
+                ForEach(model.recentProjects, id: \.self) { u in
+                    Button(u.deletingPathExtension().lastPathComponent) { model.openRecent(u) }
+                }
+                if model.recentProjects.isEmpty { Text(L10n.t("project.recent_none")) }
+            }
+            Divider()
+            Button(L10n.t("project.save")) { model.saveProject() }
+            Button(L10n.t("project.save_as")) { model.saveProjectAs() }
+            Button(L10n.t("template.save_menu")) { model.saveAsTemplate() }
+            Divider()
+            Button(L10n.t("template.menu")) { model.showTemplates = true }
+            Menu(L10n.t("template.my_menu")) {
+                ForEach(model.userTemplates, id: \.self) { u in
+                    Button(u.deletingPathExtension().lastPathComponent) { model.newFromUserTemplate(u) }
+                }
+                if model.userTemplates.isEmpty { Text(L10n.t("template.my_none")) }
+            }
+        } label: {
+            Label(L10n.t("top.file"), systemImage: "folder")
+                .labelStyle(.titleAndIcon)
+                .font(.system(size: 12, weight: .semibold))
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help(L10n.t("top.file_help"))
+    }
+}
+
+/// CPU / GPU / RAM / FPS / Drop and the stream and recording status. Moved from the top bar to
+/// the bottom-right of the output dock (0.50.0); redrawn on their own via `Live`.
+struct PerformanceReadouts: View {
+    @EnvironmentObject var model: AppModel
+    /// Watched here, not only by the `Live` wrapper around it: SwiftUI skips a child view whose
+    /// inputs did not change, so CPU / RAM and the recording time stood still (fixed 0.70.0).
+    @ObservedObject var live: LiveStats
+    let compact: Bool
+
+    var body: some View {
+        // A one-second clock as well, so the readings move even if no new sample was signalled.
+        TimelineView(.periodic(from: .now, by: 1)) { _ in
+            HStack(spacing: compact ? 8 : 12) { liveStats(compact: compact) }
+        }
+    }
+
+    @ViewBuilder
+    private func liveStats(compact: Bool) -> some View {
+        if !compact { machineStats }
             stat(L10n.t("top.fps"), String(format: "%.1f", model.performance.renderFPS),
                  warn: model.performance.renderFPS < Double(model.settings.output.frameRate) * 0.95 && model.performance.renderFPS > 0)
-            stat(L10n.t("top.dropped"), "\(model.performance.droppedRenderFrames)", warn: false)
+            if !compact {
+                // Click to set it back to 0 (0.49.0).
+                Button { model.resetDropCounter() } label: {
+                    stat(L10n.t("top.dropped"), "\(model.performance.droppedRenderFrames)", warn: false)
+                }
+                .buttonStyle(.plain)
+                .help(L10n.t("top.dropped_reset"))
+            }
             if model.performance.thermalState == .serious || model.performance.thermalState == .critical {
                 Label("Thermal", systemImage: "thermometer.high").foregroundStyle(Theme.warning).font(.system(size: 11, weight: .bold))
             }
             Divider().frame(height: 18)
-            StatusPill(text: streamText, color: streamColor, systemImage: "dot.radiowaves.left.and.right")
-            StatusPill(text: recordText, color: model.isRecording ? Theme.program : Theme.panelRaised, systemImage: "record.circle")
-            Button { openWindow(id: "program-output") } label: { Image(systemName: "rectangle.on.rectangle") }
-                .help("Open Program output window (drag to an external display)")
-                .buttonStyle(.borderless)
-            Button { showSettings = true } label: { Image(systemName: "gearshape") }
-                .help(L10n.t("settings.title"))
-                .buttonStyle(.borderless)
-        }
-        .padding(.horizontal, 10).padding(.vertical, 6)
-        .panel()
+            // Narrow window: idle pills become icons (the full text is in the tooltip).
+            StatusPill(text: streamText, color: streamColor, systemImage: "dot.radiowaves.left.and.right",
+                       iconOnly: compact && !model.isStreamingActive)
+                .help(streamText)
+            StatusPill(text: recordText, color: model.isRecording ? Theme.program : Theme.panelRaised, systemImage: "record.circle",
+                       iconOnly: compact && !model.isRecording)
+                .help(recordText)
+    }
+
+    @ViewBuilder
+    private var machineStats: some View {
+        stat(L10n.t("top.cpu"), String(format: "%.0f%%", model.performance.cpuPercentOfMachine),
+             warn: model.performance.cpuPercentOfMachine > 70)
+        stat(L10n.t("top.gpu"), String(format: "%.1f ms", model.performance.gpuFrameMs),
+             warn: model.performance.gpuFrameMs > 1000 / Double(max(model.settings.output.frameRate, 1)) * 0.8)
+        stat(L10n.t("top.mem"), String(format: "%.0f MB", model.performance.memoryMB), warn: false)
     }
 
     private func stat(_ label: String, _ value: String, warn: Bool) -> some View {
@@ -69,13 +165,117 @@ struct TopBarView: View {
     }
 }
 
+/// FULLSCREEN ⚙: for each output, whether the button opens it, on which display, with which picture.
+struct FullscreenSettingsView: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: L10n.t("fullscreen.big"))
+            Grid(alignment: .leading, horizontalSpacing: 8, verticalSpacing: 6) {
+                GridRow {
+                    Text("")
+                    Text(L10n.t("fullscreen.col_display")).font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.textDim)
+                    Text(L10n.t("fullscreen.col_source")).font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.textDim)
+                    Text("")
+                }
+                ForEach(1...OutputRouting.count, id: \.self) { i in
+                    if let fs = model.outputFullscreens[i] { FullscreenRow(index: i, output: fs) }
+                }
+            }
+            if (model.outputFullscreens[1]?.displays.count ?? 0) < 2 {
+                Label(L10n.t("fullscreen.one_display"), systemImage: "info.circle")
+                    .font(.system(size: 11)).foregroundStyle(Theme.textDim)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Text(L10n.t("fullscreen.settings_hint")).font(.system(size: 10)).foregroundStyle(Theme.textDim)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .onAppear { model.outputFullscreens.values.forEach { $0.reloadDisplays() } }
+    }
+}
+
+private struct FullscreenRow: View {
+    @EnvironmentObject var model: AppModel
+    let index: Int
+    @ObservedObject var output: FullscreenOutput
+
+    var body: some View {
+        GridRow {
+            Toggle(L10n.f("output.title", index), isOn: Binding(get: { model.fullscreenOutputs.contains(index) },
+                                                                set: { model.setFullscreenUse(index, $0) }))
+                .toggleStyle(.checkbox).font(.system(size: 11, weight: .bold))
+                .help(L10n.t("fullscreen.use_help"))
+            Picker("", selection: Binding(get: { output.target?.id ?? 0 }, set: { id in
+                if let d = output.displays.first(where: { $0.id == id }) { output.select(d) }
+            })) {
+                if output.displays.isEmpty { Text(L10n.t("fullscreen.none")).tag(UInt32(0)) }
+                ForEach(output.displays, id: \.id) { d in
+                    Text(d.isMain ? d.name + " · " + L10n.t("fullscreen.main") : d.name).tag(d.id)
+                }
+            }
+            .labelsHidden().frame(width: 220)
+            Picker("", selection: Binding(get: { model.outputRouting.slot(index).source },
+                                          set: { model.setOutputSource(index, $0) })) {
+                Text(L10n.t("monitor.program")).tag(OutputSource.program)
+                Text(L10n.t("monitor.preview")).tag(OutputSource.preview)
+                Divider()
+                ForEach(model.inputs) { inp in Text("\(inp.number) \(inp.name)").tag(OutputSource.input(inp.id)) }
+            }
+            .labelsHidden().frame(width: 170)
+            FullscreenButton(output: output, compact: true)
+        }
+    }
+}
+
+/// vMix-style Fullscreen button: click toggles, the menu picks the display.
+struct FullscreenButton: View {
+    @ObservedObject var output: FullscreenOutput
+    /// Icon only (output rows under EXTERNAL ⚙).
+    var compact = false
+    var body: some View {
+        Button { output.toggle() } label: {
+            Label(L10n.t("fullscreen.button"), systemImage: output.isActive ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right")
+                .labelStyle(AdaptiveLabelStyle(iconOnly: compact))
+                .font(.system(size: 11, weight: .bold))
+                .padding(.horizontal, compact ? 5 : 8).padding(.vertical, 4)
+                .background(output.isActive ? Theme.program : Theme.panelRaised)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .help(L10n.t("fullscreen.help"))
+        .contextMenu {
+            Section(L10n.t("fullscreen.display")) {
+                if output.displays.isEmpty { Text(L10n.t("fullscreen.none")) }
+                ForEach(output.displays, id: \.id) { d in
+                    Button { output.select(d) } label: {
+                        if output.target?.id == d.id { Label(d.name, systemImage: "checkmark") } else { Text(d.name) }
+                    }
+                }
+            }
+        }
+    }
+}
+
+struct AdaptiveLabelStyle: LabelStyle {
+    let iconOnly: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        if iconOnly { configuration.icon } else { HStack(spacing: 4) { configuration.icon; configuration.title } }
+    }
+}
+
 struct StatusPill: View {
     let text: String
     let color: Color
     let systemImage: String
+    var iconOnly = false
     var body: some View {
+        // One line, never wraps upward (0.55.1); the bar drops it to an icon when narrow.
         Label(text, systemImage: systemImage)
+            .labelStyle(AdaptiveLabelStyle(iconOnly: iconOnly))
             .font(.system(size: 11, weight: .bold))
+            .lineLimit(1)
+            .fixedSize()
             .padding(.horizontal, 8).padding(.vertical, 4)
             .background(color)
             .clipShape(Capsule())
@@ -85,5 +285,36 @@ struct StatusPill: View {
 func formatDuration(_ s: Double) -> String {
     let t = Int(max(0, s))
     return String(format: "%02d:%02d:%02d", t / 3600, (t / 60) % 60, t % 60)
+}
+/// The AI Assistant button next to Multiview (0.69.0): a gradient sparkle that glows and
+/// wiggles on hover.
+struct AIAssistantButton: View {
+    let action: () -> Void
+    @State private var hover = false
+
+    private static let gradient = LinearGradient(colors: [Color(red: 0.55, green: 0.36, blue: 1), Color(red: 0.2, green: 0.6, blue: 1),
+                                                          Color(red: 1, green: 0.45, blue: 0.6)],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing)
+
+    var body: some View {
+        Button(action: action) {
+            ZStack {
+                Capsule().fill(Self.gradient).blur(radius: hover ? 8 : 4).opacity(hover ? 0.75 : 0.35)
+                Capsule().fill(Self.gradient)
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                        .rotationEffect(.degrees(hover ? -12 : 0))
+                        .scaleEffect(hover ? 1.2 : 1)
+                    Text("AI").font(.system(size: 11, weight: .heavy, design: .rounded))
+                }
+                .foregroundStyle(.white)
+            }
+            .frame(width: 52, height: 24)
+            .scaleEffect(hover ? 1.06 : 1)
+        }
+        .buttonStyle(.plain)
+        .help(L10n.t("ai.title") + " (⌥⌘J)")
+        .onHover { h in withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { hover = h } }
+    }
 }
 #endif

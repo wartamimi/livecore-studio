@@ -15,8 +15,9 @@ status "No signal" bila perangkat dicabut atau sumber HDMI hilang.
 ## Belum didukung (butuh SDK vendor)
 | Perangkat | Jalur | Status |
 |---|---|---|
-| Blackmagic DeckLink / UltraStudio (mode non-webcam) | Desktop Video SDK (`DeckLinkAPI`, C++/COM) | Planned M3 |
-| AJA Io/Kona | AJA NTV2 SDK | Planned M3 |
+| Blackmagic DeckLink / UltraStudio / Intensity | DeckLink API dari driver Desktop Video (`Sources/CDeckLink`) | Implemented 0.54.0, belum dites dengan kartu (T-297..T-300) |
+| AJA U-TAP (USB) | UVC/UAC, jalur kamera biasa | Didukung lewat jalur kamera |
+| AJA Io/Kona/T-TAP | AJA NTV2 (libajantv2, open source MIT) | Blocked: belum diintegrasikan (pustaka C++ besar, butuh perangkat AJA untuk uji) |
 | Magewell Pro Capture (PCIe/Thunderbolt) | Magewell SDK | Planned M3 |
 | NDI | NDI SDK (lisensi NDI, atribusi wajib) | Planned M3 |
 
@@ -32,7 +33,12 @@ status "No signal" bila perangkat dicabut atau sumber HDMI hilang.
 4. Discovery & hot-plug: tambahkan enumerasi di `DeviceManager` dan panggil `onChange`.
 5. Uji: T-03, T-12, T-13 dari `TEST_PLAN.md` dengan perangkat nyata.
 
-### Kerangka DeckLink (M3)
+### DeckLink (0.54.0)
+Tambah input › Blackmagic DeckLink / UltraStudio…. Butuh Blackmagic Desktop Video (driver + `DeckLinkAPI.framework`)
+terpasang; LiveCore tidak menyertakan apa pun dari runtime itu. Header SDK 12.0 di `Sources/CDeckLink/decklink`
+berlisensi bebas Blackmagic (boleh didistribusikan, catatan lisensi wajib tetap ada).
+
+### Kerangka DeckLink (rancangan awal M3)
 Callback `IDeckLinkInputCallback::VideoInputFrameArrived` → salin/konversi frame ke `CVPixelBuffer` dari pool →
 `FrameSlot.put`; `VideoInputFormatChanged` → rekonfigurasi (deteksi format otomatis); audio 48 kHz PCM dari frame yang sama →
 ring mixer. SDK dimuat dinamis (`DeckLinkAPIDispatch.cpp`) sehingga app tetap jalan tanpa driver Desktop Video.
