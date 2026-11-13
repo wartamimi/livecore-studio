@@ -30,6 +30,8 @@ public final class StreamingEngine {
         public var reconnects: Int = 0
         public var encoderHardware: Bool = false
         public var encoderDropped: UInt64 = 0
+        /// Streaming to the backup ingest server (0.71.0).
+        public var onBackup: Bool = false
         public init() {}
     }
 
@@ -38,6 +40,9 @@ public final class StreamingEngine {
 
     private let queue = DispatchQueue(label: "livecore.stream", qos: .userInitiated)
     private var url: RTMPURL?
+    private var mainURL: RTMPURL?
+    private var backupURL: RTMPURL?
+    private var failover = StreamFailover(hasBackup: false)
     private var settings = ProductionSettings()
     private var connection: NWConnection?
     private var session: RTMPPublishSession?
@@ -65,9 +70,12 @@ public final class StreamingEngine {
 
     // MARK: Control (any thread)
 
-    public func start(url: RTMPURL, settings: ProductionSettings, audioSpecificConfig: [UInt8]) {
+    public func start(url: RTMPURL, backup: RTMPURL? = nil, settings: ProductionSettings, audioSpecificConfig: [UInt8]) {
         queue.async {
             self.url = url
+            self.mainURL = url
+            self.backupURL = backup
+            self.failover = StreamFailover(hasBackup: backup != nil)
             self.settings = settings
             self.audioConfig = audioSpecificConfig
             self.wantRunning = true
@@ -174,6 +182,7 @@ public final class StreamingEngine {
                 case .publishing:
                     handshakeTimer?.cancel()
                     everPublished = true
+                    failover.connected()
                     attempt = 0
                     liveSince = HostClock.now()
                     setState(.live)
@@ -195,7 +204,7 @@ public final class StreamingEngine {
         guard let session else { return }
         let o = settings.output
         let meta = FLV.Metadata(width: o.size.width, height: o.size.height, frameRate: Double(o.frameRate),
-                                videoBitrateKbps: settings.video.bitrateKbps, audioBitrateKbps: settings.audio.bitrateKbps,
+                                videoBitrateKbps: settings.streamVideo.bitrateKbps, audioBitrateKbps: settings.streamAudioKbps,
                                 audioSampleRate: settings.audio.sampleRate, audioChannels: settings.audio.channels)
         if let bytes = try? session.metadataPacket(meta) { write(bytes) }
     }
@@ -280,6 +289,16 @@ public final class StreamingEngine {
         connection?.cancel()
         connection = nil
         session = nil
+        // Backup ingest (0.71.0): a destination that cannot connect at the start tries the backup
+        // once; after the stream was live, reconnects move between the two servers.
+        if wantRunning, !everPublished, failover.initialFailure() {
+            useFailoverServer()
+            let work = DispatchWorkItem { [weak self] in self?.connect() }
+            reconnectWork = work
+            queue.asyncAfter(deadline: .now() + 1, execute: work)
+            return
+        }
+        if everPublished, failover.connectionFailed() { useFailoverServer() }
         // Reconnect only after we were live once (a bad URL/key on first connect is reported instead).
         guard wantRunning, settings.stream.autoReconnect, everPublished,
               let delay = settings.stream.reconnect.delay(forAttempt: attempt, random01: Double.random(in: 0...1)) else {
@@ -292,6 +311,12 @@ public final class StreamingEngine {
         let work = DispatchWorkItem { [weak self] in self?.connect() }
         reconnectWork = work
         queue.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    private func useFailoverServer() {
+        url = failover.onBackup ? backupURL : mainURL
+        stats.onBackup = failover.onBackup
+        Log.stream.info("stream switching to \(self.failover.onBackup ? "backup" : "main", privacy: .public) server")
     }
 
     private func fail(_ reason: String) {

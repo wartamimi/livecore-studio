@@ -22,8 +22,6 @@ public struct StreamOutputQueue: Sendable {
 
     public init(maxQueuedMs: UInt32 = 3000) { self.maxQueuedMs = maxQueuedMs }
 
-    public var queuedBytes: Int { packets.reduce(0) { $0 + $1.body.count } }
-
     public var queuedDurationMs: UInt32 {
         guard let first = packets.first(where: { if case .video = $0.kind { return true }; return false }),
               let last = packets.last(where: { if case .video = $0.kind { return true }; return false })
