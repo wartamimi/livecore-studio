@@ -492,8 +492,6 @@ public final class ProductionEngine {
     var onAirInputs = Set<InputID>()
     /// Audio follow video (vMix AFV): mixer channel id -> the input it follows. Main thread.
     public internal(set) var afvLinks: [String: InputID] = [:]
-    /// Separate audio paired with a video input (vMix-style, 0.77.0): channel id -> input. Main thread.
-    public internal(set) var audioPairs: [String: InputID] = [:]
     /// PTZ camera control per input (saved in projects) and the open connections. Main thread.
     public internal(set) var ptzConfigs: [InputID: PTZConfig] = [:] {
         didSet { for id in ptzControllers.keys where ptzConfigs[id] == nil { ptzControllers.removeValue(forKey: id)?.stop() } }

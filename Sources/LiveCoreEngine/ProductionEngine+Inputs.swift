@@ -566,7 +566,6 @@ extension ProductionEngine {
         if let r = removed { watchRelease(r, name: id.raw) }
         // Channels that followed this input are no longer gated.
         afvLinks = afvLinks.filter { $0.value != id && Self.inputOfChannel($0.key) != id }
-        audioPairs = audioPairs.filter { $0.value != id }
         applyAFV()
         publishInputs()
     }

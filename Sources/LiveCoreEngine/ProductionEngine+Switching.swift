@@ -70,21 +70,6 @@ extension ProductionEngine {
         applyAutoPlay()   // recomputes what is on air, then applies AFV
     }
 
-    /// Pairs a separate audio channel (microphone, audio interface) with a video input so they
-    /// act as one input (0.77.0): one channel per input, shown on its tile and Properties › Audio.
-    /// `follow` also turns on AFV for a new pair; nil unpairs the input.
-    public func pairAudio(input: InputID, channelID: String?, follow: Bool) {
-        for (ch, i) in audioPairs where i == input && ch != channelID {
-            audioPairs[ch] = nil
-            if afvLinks[ch] == input { afvLinks[ch] = nil }
-        }
-        if let channelID, audioPairs[channelID] != input {
-            audioPairs[channelID] = input
-            afvLinks[channelID] = follow ? input : nil
-        }
-        applyAFV()
-    }
-
     func applyAFV() {
         let (sw, layers, overlays) = control.read { ($0.switcher.state, $0.layers, $0.overlays) }
         let heard = OnAir.audioInputs(switcher: sw, layers: layers, overlays: overlays)

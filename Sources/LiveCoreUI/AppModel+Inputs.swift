@@ -49,7 +49,7 @@ extension AppModel {
         var config = config
         config.audioDevice = audio?.id
         let id = engine?.addCamera(uniqueID: uniqueID, config: config)
-        if let id, let audio { pairAudio(id, deviceUID: audio.id, follow: false) }
+        if let audio { addAudioInput(audio) }
         return id
     }
 

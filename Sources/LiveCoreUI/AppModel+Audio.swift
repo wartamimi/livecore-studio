@@ -61,31 +61,13 @@ extension AppModel {
     /// file, capture, NDI, SRT, DeckLink, call) or the device channel that follows it (AFV).
     public func meterChannel(for id: InputID) -> String? {
         if let vm = audioChannels.first(where: { ProductionEngine.inputOfChannel($0.id) == id }) { return vm.id }
-        return pairedChannel(of: id)?.id ?? engine?.afvLinks.first { $0.value == id }?.key
+        return engine?.afvLinks.first { $0.value == id }?.key
     }
 
     public func afvLink(_ channelID: String) -> InputID? { engine?.afvLinks[channelID] }
 
     public func setAFV(_ channelID: String, input: InputID?) {
         engine?.setAudioFollowVideo(channelID: channelID, input: input)
-        objectWillChange.send()
-    }
-
-    // MARK: Paired audio (0.77.0)
-
-    /// The separate audio channel combined with a video input, if any.
-    public func pairedChannel(of id: InputID) -> ChannelVM? {
-        guard let ch = engine?.audioPairs.first(where: { $0.value == id })?.key else { return nil }
-        return audioChannels.first { $0.id == ch }
-    }
-
-    public func pairedInput(of channelID: String) -> InputID? { engine?.audioPairs[channelID] }
-
-    /// Combines an audio device with a video input (nil = separate again). The device joins the
-    /// mixer if it is not there yet; a new pair follows its video (AFV) unless `follow` is false.
-    public func pairAudio(_ id: InputID, deviceUID: String?, follow: Bool = true) {
-        if let d = deviceUID.flatMap({ uid in audioDevices.first { $0.id == uid } }) { addAudioInput(d) }
-        engine?.pairAudio(input: id, channelID: deviceUID, follow: follow)
         objectWillChange.send()
     }
 

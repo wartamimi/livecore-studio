@@ -2131,13 +2131,3 @@
 "stream.login_help_twitch" = "Uses your own Twitch application (client type Public) from the Twitch developer console. After you approve the code, your stream key is filled in.";
 "capture.reset_permission" = "Ask again";
 "capture.reset_permission_help" = "Clears an old Screen Recording entry (e.g. from a previous build) and asks again. Allow it, then quit and reopen LiveCore Studio.";
-
-/* 0.77.0 Properties › Audio: separate audio combined with a video input */
-"props.tab.audio" = "Audio";
-"pair.source" = "Audio source";
-"pair.none" = "None (input's own sound only)";
-"pair.level" = "Level";
-"pair.follow" = "Audio follows video (heard only while on air)";
-"pair.delay" = "Sync delay";
-"pair.help" = "Combine a microphone or audio interface with this input, so picture and sound switch together like one input. The audio keeps its own strip in the mixer (marked with a link). Raise the sync delay until lips and sound line up.";
-"pair.with" = "Combined with %@";

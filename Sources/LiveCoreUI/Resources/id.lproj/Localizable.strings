@@ -2131,13 +2131,3 @@
 "stream.login_help_twitch" = "Memakai aplikasi Twitch milik Anda sendiri (client type Public) dari Twitch developer console. Setelah kode disetujui, stream key Anda terisi.";
 "capture.reset_permission" = "Minta izin ulang";
 "capture.reset_permission_help" = "Menghapus izin Screen Recording lama (misalnya dari build sebelumnya) lalu meminta lagi. Izinkan, lalu tutup dan buka ulang LiveCore Studio.";
-
-/* 0.77.0 Properties › Audio: audio terpisah digabung dengan input video */
-"props.tab.audio" = "Audio";
-"pair.source" = "Sumber audio";
-"pair.none" = "Tidak ada (hanya suara input sendiri)";
-"pair.level" = "Level";
-"pair.follow" = "Audio mengikuti video (terdengar hanya saat on air)";
-"pair.delay" = "Delay sinkron";
-"pair.help" = "Gabungkan mikrofon atau audio interface dengan input ini, agar gambar dan suara berpindah bersama seperti satu input. Audio tetap punya strip sendiri di mixer (ditandai ikon link). Naikkan delay sinkron sampai gerak bibir dan suara pas.";
-"pair.with" = "Digabung dengan %@";

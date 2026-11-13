@@ -33,13 +33,10 @@ final class OnAirTests: XCTestCase {
     func testAFVLinkSurvivesProjectRoundTripAndOldProjectsDecode() throws {
         var ch = ProjectAudioChannel(deviceUniqueID: "mic", name: "Mic")
         ch.afvInput = cam
-        ch.pairedInput = cam
         let back = try JSONDecoder().decode(ProjectAudioChannel.self, from: JSONEncoder().encode(ch))
         XCTAssertEqual(back.afvInput, cam)
-        XCTAssertEqual(back.pairedInput, cam)
         let old = #"{"name":"Mic","faderDB":0,"gainDB":0,"pan":0,"muted":false,"toProgram":true,"compressorEnabled":false,"compThresholdDB":-18,"compRatio":3,"gateEnabled":false,"gateThresholdDB":-50}"#
         XCTAssertNil(try JSONDecoder().decode(ProjectAudioChannel.self, from: Data(old.utf8)).afvInput)
-        XCTAssertNil(try JSONDecoder().decode(ProjectAudioChannel.self, from: Data(old.utf8)).pairedInput)
     }
 
     func testChannelStripSilencesWhenAFVClosed() {
