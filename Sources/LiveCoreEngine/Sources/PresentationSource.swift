@@ -3,6 +3,7 @@ import AppKit
 import CoreVideo
 import ScreenCaptureKit
 import LiveCoreCore
+import LiveCoreServices
 
 /// PowerPoint / Keynote / OpenDocument / PDF slides. A PDF is shown directly; other files are
 /// first exported to a cached PDF by Keynote, PowerPoint or LibreOffice (whichever is installed).
@@ -249,6 +250,7 @@ public final class PresentationSource: VideoSource {
     private func setStatus(_ s: SourceStatus) {
         let changed: Bool = lock.withLock { let c = st != s; st = s; return c }
         if changed { DispatchQueue.main.async { [weak self] in self?.onStatusChange?(s) } }
+        if changed, case .error(let m) = s { FileLog.shared.error("presentation \(url.lastPathComponent): \(m)") }
     }
     private func notify() { DispatchQueue.main.async { [weak self] in self?.onChange?() } }
 
