@@ -65,6 +65,8 @@ if [ -n "${LC_SIGN_P12:-}" ]; then
   security import "$KC.p12" -k "$KC" -P "${LC_SIGN_P12_PASSWORD:-}" -T /usr/bin/codesign
   rm -f "$KC.p12"
   security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k livecore "$KC" >/dev/null
+  # codesign only finds identities in keychains on the search list.
+  security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
   IDENTITY=$(security find-identity -p codesigning "$KC" | awk '/^ *1\)/{print $2; exit}')
   codesign --force --deep --options runtime --entitlements Config/LiveCoreStudio.entitlements \
     --keychain "$KC" --sign "$IDENTITY" "$APP"
