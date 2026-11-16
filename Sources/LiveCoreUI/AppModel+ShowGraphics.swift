@@ -5,30 +5,8 @@ import QuartzCore
 import LiveCoreCore
 import LiveCoreEngine
 
-/// Show graphics (0.74.0): logo bug, scoreboard and automatic speaker name tags.
+/// Show graphics (0.74.0): scoreboard and automatic speaker name tags.
 extension AppModel {
-    /// Overlay channel the logo bug goes on (the last one, so the others stay free for titles).
-    static let logoOverlay = 4
-
-    // MARK: Logo bug
-
-    /// Picks one or more logos and shows them small in a corner on overlay 4. Several logos
-    /// take turns (a slideshow) every 30 seconds.
-    public func addLogoBug(corner: LogoCorner = .topRight) {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = true
-        panel.canChooseDirectories = false
-        panel.allowedContentTypes = ImageFormats.contentTypes
-        guard panel.runModal() == .OK, !panel.urls.isEmpty, let e = engine else { return }
-        let urls = panel.urls
-        let id = urls.count == 1 ? e.addImage(url: urls[0])
-                                 : e.addSlideshow(urls: urls, interval: 30, fade: 1, loop: true)
-        e.setLayers([Layer(source: id, rect: corner.rect(), scaleMode: .fit, opacity: 0.85)], of: id)
-        configureOverlay(Self.logoOverlay, source: id, preset: .fullScreen)
-        e.setOverlay(Self.logoOverlay, on: true)
-        overlays = e.overlays
-    }
-
     // MARK: Scoreboard
 
     var titleInputs: [ProductionEngine.InputInfo] { inputs.filter { $0.kind == .text } }

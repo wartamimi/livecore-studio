@@ -344,12 +344,13 @@ extension AppModel {
         let installed = PresentationConverter.installed()
         for url in panel.urls {
             let ext = url.pathExtension.lowercased()
-            if PresentationFiles.needsConversion(ext), PresentationFiles.converter(for: ext, installed: installed) == nil {
+            if PresentationFiles.needsConversion(ext), !PresentationFiles.builtIn.contains(ext),
+               PresentationFiles.converter(for: ext, installed: installed) == nil {
                 report(L10n.f("presentation.no_converter", ext))
                 continue
             }
-            // With PowerPoint installed, decks play live (animations, transitions, video) like vMix.
-            e.addPresentation(url: url, live: PresentationSource.canPlayLive(url))
+            // .pptx opens in LiveCore's own engine; Live mode (PowerPoint plays it) stays a choice in Properties.
+            e.addPresentation(url: url, live: !PresentationFiles.builtIn.contains(ext) && PresentationSource.canPlayLive(url))
         }
         reloadAudioChannels()
     }

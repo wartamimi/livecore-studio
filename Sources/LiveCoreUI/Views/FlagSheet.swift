@@ -108,10 +108,10 @@ struct FlagSheet: View {
             .frame(height: 330)
             Toggle("Animate (waving flag)", isOn: $animate)
             if animate {
-                LabeledContent("Wave height") { Slider(value: $wave.amplitude, in: 0.01...0.12) }
-                LabeledContent("Waves") { Slider(value: $wave.frequency, in: 0.5...3) }
-                LabeledContent("Speed") { Slider(value: $wave.speed, in: 0.1...2) }
-                LabeledContent("Shading") { Slider(value: $wave.shading, in: 0...1) }
+                LabeledContent("Wave height") { SoftSlider(value: $wave.amplitude, in: 0.01...0.12) }
+                LabeledContent("Waves") { SoftSlider(value: $wave.frequency, in: 0.5...3) }
+                LabeledContent("Speed") { SoftSlider(value: $wave.speed, in: 0.1...2) }
+                LabeledContent("Shading") { SoftSlider(value: $wave.shading, in: 0...1) }
             }
             Text("Public-domain flags (Wikipedia), original proportions. Animation and mask can be changed later in Properties › Colour, Orientation & Mask.")
                 .font(.caption).foregroundStyle(Theme.textDim)
@@ -177,7 +177,7 @@ struct MaskWaveSection: View {
 
     private func slider(_ label: String, _ v: Binding<Double>, _ r: ClosedRange<Double>) -> some View {
         LabeledContent(label) {
-            Slider(value: v, in: r)
+            SoftSlider(value: v, in: r)
             Text(String(format: "%.2f", v.wrappedValue)).monospacedDigit().frame(width: 42, alignment: .trailing)
         }
     }

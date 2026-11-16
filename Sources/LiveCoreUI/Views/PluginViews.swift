@@ -331,7 +331,7 @@ struct GenericPluginEditor: View {
                     ForEach($params) { $p in
                         HStack {
                             Text(p.name).font(.system(size: 11)).frame(width: 140, alignment: .leading).lineLimit(1)
-                            Slider(value: $p.value, in: 0...1)
+                            SoftSlider(value: $p.value, in: 0...1)
                                 .onChange(of: p.value) { v in slot.setParameter(p.id, normalized: v) }
                             Text(slot.display(p.id, normalized: p.value) + (p.unit.isEmpty ? "" : " \(p.unit)"))
                                 .font(.system(size: 10).monospacedDigit()).frame(width: 90, alignment: .trailing).lineLimit(1)

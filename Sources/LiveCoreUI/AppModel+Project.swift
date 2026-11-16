@@ -47,25 +47,32 @@ extension AppModel {
     public func openProject(at url: URL) { openProject(at: url, asTemplate: false) }
 
     /// `asTemplate`: a saved template opens as a new untitled project (Save asks for a name).
+    /// Media files that were moved or deleted are listed first in the Missing Files dialog (0.80.0).
     func openProject(at url: URL, asTemplate: Bool) {
-        guard let e = engine else { return }
         do {
-            let data = try Data(contentsOf: url)
-            let doc = try JSONDecoder().decode(ProjectDocument.self, from: data)
-            var warnings: [String] = []
-            withUndoSuspended { warnings = e.loadProject(doc, projectDirectory: url.deletingLastPathComponent()) }
-            clearUndo()
-            FileLog.shared.info("opened project \(url.lastPathComponent)")
-            projectURL = asTemplate ? nil : url
-            if !asTemplate { noteRecent(url) }
-            afterProjectLoad()
-            setOutputRouting(doc.sanitized().outputs ?? OutputRouting())
-            multiCorder = doc.sanitized().multiCorder ?? MultiCorderConfig()
-            applyInputGroups(from: doc)
-            if !warnings.isEmpty { report("\(L10n.t("project.warnings")): " + warnings.joined(separator: " · ")) }
+            let doc = try JSONDecoder().decode(ProjectDocument.self, from: Data(contentsOf: url))
+            let request = MissingFilesRequest(doc: doc, url: url, asTemplate: asTemplate)
+            if request.missing.isEmpty { finishOpen(request) } else { missingFiles = request }
         } catch {
             report("Cannot open project: \(error.localizedDescription)")
         }
+    }
+
+    /// Loads the project, with the files in `moves` (old path → new path) pointing at their new place.
+    func finishOpen(_ r: MissingFilesRequest, moves: [String: String] = [:]) {
+        guard let e = engine else { return }
+        let doc = r.doc.relinked(moves)
+        var warnings: [String] = []
+        withUndoSuspended { warnings = e.loadProject(doc, projectDirectory: r.url.deletingLastPathComponent()) }
+        clearUndo()
+        FileLog.shared.info("opened project \(r.url.lastPathComponent)")
+        projectURL = r.asTemplate ? nil : r.url
+        if !r.asTemplate { noteRecent(r.url) }
+        afterProjectLoad()
+        setOutputRouting(doc.sanitized().outputs ?? OutputRouting())
+        multiCorder = doc.sanitized().multiCorder ?? MultiCorderConfig()
+        applyInputGroups(from: doc)
+        if !warnings.isEmpty { report("\(L10n.t("project.warnings")): " + warnings.joined(separator: " · ")) }
     }
 
     public func saveProject() {

@@ -198,27 +198,15 @@ struct PlaylistDockView: View {
             }
         }()
         let d = max(dur ?? 0, 0)
-        let f = d > 0 ? min(max(pos / d, 0), 1) : 0
         return HStack(spacing: 6) {
             Text(Self.time(pos)).frame(width: 40, alignment: .leading)
-            GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.12))
-                    Capsule().fill(Theme.accent).frame(width: max(4, g.size.width * f))
+            SoftSlider(value: Binding(get: { min(pos, d) }, set: { t in
+                switch s {
+                case let .music(m): m.seek(to: t)
+                case let .video(_, vs): vs.seek(to: t)
                 }
-                .frame(height: 4)
-                .frame(maxHeight: .infinity)
-                .contentShape(Rectangle())
-                .gesture(DragGesture(minimumDistance: 0).onEnded { v in
-                    guard d > 0, !isLocked(s) else { return }
-                    let t = min(max(v.location.x / max(g.size.width, 1), 0), 1) * d
-                    switch s {
-                    case let .music(m): m.seek(to: t)
-                    case let .video(_, vs): vs.seek(to: t)
-                    }
-                })
-            }
-            .frame(height: 12)
+            }), in: 0...max(d, 0.001))
+            .disabled(d <= 0 || isLocked(s))
             Text(d > 0 ? "-" + Self.time(d - pos) : "--:--").frame(width: 44, alignment: .trailing)
         }
         .font(.system(size: 10).monospacedDigit())

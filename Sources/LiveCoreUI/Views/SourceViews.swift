@@ -288,7 +288,7 @@ struct InputAdjustSheet: View {
 
     private func row(_ label: String, _ path: WritableKeyPath<InputAdjust, Double>, _ range: ClosedRange<Double>, _ fmt: String) -> some View {
         LabeledContent(label) {
-            Slider(value: binding(path), in: range)
+            SoftSlider(value: binding(path), in: range)
             Text(String(format: fmt, a[keyPath: path])).monospacedDigit().frame(width: 50, alignment: .trailing)
         }
     }
@@ -352,11 +352,11 @@ struct SlideshowSheet: View {
                            look.backgroundHex = ProjectColor(r: Double(n.redComponent), g: Double(n.greenComponent), b: Double(n.blueComponent)).hex }),
                     supportsOpacity: false)
                 LabeledContent(L10n.t("slideshow.interval")) {
-                    Slider(value: $interval, in: 1...60, step: 0.5)
+                    SoftSlider(value: $interval, in: 1...60, step: 0.5)
                     Text(String(format: "%.1f s", interval)).monospacedDigit().frame(width: 60, alignment: .trailing)
                 }
                 LabeledContent(L10n.t("slideshow.fade")) {
-                    Slider(value: $fade, in: 0...5, step: 0.25)
+                    SoftSlider(value: $fade, in: 0...5, step: 0.25)
                     Text(String(format: "%.2f s", fade)).monospacedDigit().frame(width: 60, alignment: .trailing)
                 }
                 Toggle(L10n.t("slideshow.loop"), isOn: $loop)

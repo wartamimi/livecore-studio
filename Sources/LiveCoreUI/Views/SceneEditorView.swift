@@ -192,7 +192,7 @@ struct SceneEditorSheet: View {
                 }
                 HStack {
                     Text(L10n.t("scene.opacity")).font(.system(size: 11))
-                    Slider(value: Binding(get: { l.opacity }, set: { v in update(selected) { $0.opacity = v } }), in: 0...1)
+                    SoftSlider(value: Binding(get: { l.opacity }, set: { v in update(selected) { $0.opacity = v } }), in: 0...1)
                 }
                 Toggle(L10n.t("scene.lock"), isOn: $lockAspect).font(.system(size: 11))
                 styleEditor(l)
@@ -324,7 +324,7 @@ struct SceneEditorSheet: View {
     private func slider(_ title: String, _ value: Binding<Double>, _ range: ClosedRange<Double>) -> some View {
         HStack(spacing: 4) {
             Text(title).frame(width: 70, alignment: .leading)
-            Slider(value: value, in: range)
+            SoftSlider(value: value, in: range)
             Text("\(Int((value.wrappedValue * 100).rounded()))%").font(.system(size: 10).monospacedDigit()).frame(width: 34, alignment: .trailing)
         }
     }

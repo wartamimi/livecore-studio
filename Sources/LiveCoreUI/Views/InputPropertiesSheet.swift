@@ -206,11 +206,11 @@ struct MotionSection: View {
             }
             if adjust.motion.kind != .none {
                 LabeledContent(L10n.t("motion.amount")) {
-                    Slider(value: $adjust.motion.amount, in: 0...1)
+                    SoftSlider(value: $adjust.motion.amount, in: 0...1)
                     Text("\(Int((adjust.motion.amount * 100).rounded()))%").monospacedDigit().frame(width: 46, alignment: .trailing)
                 }
                 LabeledContent(L10n.t("motion.speed")) {
-                    Slider(value: $adjust.motion.speed, in: 0.05...4)
+                    SoftSlider(value: $adjust.motion.speed, in: 0.05...4)
                     Text(String(format: "%.2f/s", adjust.motion.speed)).monospacedDigit().frame(width: 56, alignment: .trailing)
                 }
                 Button(L10n.t("motion.off")) { adjust.motion = InputMotion() }
