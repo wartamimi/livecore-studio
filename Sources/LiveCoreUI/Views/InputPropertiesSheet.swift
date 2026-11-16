@@ -53,7 +53,7 @@ struct InputPropertiesSheet: View {
         case .camera, .screen, .ndi, .srt, .decklink, .color: t.append(.source)
         default: break
         }
-        if kind != .scene { t.append(.color) }
+        if kind != .scene && kind != .mix { t.append(.color) }
         if [.camera, .videoFile, .image, .ndi, .srt, .decklink].contains(kind) { t.append(.key) }
         if kind != .scene { t.append(.animation) }
         if [.camera, .ndi, .videoFile, .screen, .srt, .decklink].contains(kind) { t.append(.ai) }

@@ -275,6 +275,7 @@ public final class AppModel: ObservableObject {
             self.viewerFeed.push(pb)
         }
         e.onSwitcherChange = { [weak self] s in self?.receiveSwitcher(s) }
+        e.onMixChange = { [weak self] m in self?.mixStates = m }
         e.onInputsChange = { [weak self] list in
             guard let self else { return }
             self.inputs = list
@@ -482,6 +483,8 @@ public final class AppModel: ObservableObject {
     @Published public var openSettingsRequest = false
     /// Sheet asked for by an add-input menu (Inputs panel or ADD INPUT in the bottom bar).
     @Published public var addInputSheet: AddInputSheet?
+    /// Preview / Program of each Mix input (0.79.0).
+    @Published public var mixStates: [InputID: SwitcherSnapshot] = [:]
     // Macros and triggers (0.65.0), saved in the project.
     @Published public var macroBook = MacroBook()
     @Published public internal(set) var runningMacros: Set<String> = []

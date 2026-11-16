@@ -10,7 +10,7 @@
 "inputs.rename" = "重命名";
 "inputs.preview" = "送到预览";
 "inputs.cutdirect" = "直接切到节目";
-"inputs.empty" = "还没有输入。点击 + 添加摄像头、文件、图片、颜色或标题。";
+"inputs.empty" = "还没有输入。点击 ADD INPUT 添加摄像头、文件、图片、颜色或标题。";
 "inputs.close" = "关闭源";
 "inputs.colorbars" = "彩条";
 "inputs.title_menu" = "标题 / 下三分之一 / 滚动字幕…";

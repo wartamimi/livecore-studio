@@ -236,19 +236,25 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
     case weddingFloral, weddingElegant, weddingCenter, weddingSaveDate, weddingHashtag
     // 0.59.0: 3D
     case chrome3D, gold3D, neonCube3D, newsFlip3D, headline3D, cinematic3D, wedding3D, badge3D
+    // 0.79.0: more original looks
+    case slateLine, boldYellow, mintPill, techTag, magazine, navyGold, esports, sermon, minimalDot, sunsetSplit
+    case eventOpener, thinCenter, corporateCard, verseCard, statement
+    case breakingCorner, glassTag, goldCorner, onAirDot
 
     public var category: TitleCategory {
         switch self {
         case .classicStrap, .roundedStrap, .twoTone, .boxedName, .accentLine, .modernGlass,
              .newsLive, .minimalUnderline, .pill, .socialHandle, .fullWidthBar, .rightStrap,
              .weddingScript, .corporateSplit, .cleanWhite, .neonDark, .outlineBold, .goldBar, .sportsBar,
-             .weddingFloral, .weddingElegant, .chrome3D, .gold3D, .neonCube3D, .newsFlip3D:
+             .weddingFloral, .weddingElegant, .chrome3D, .gold3D, .neonCube3D, .newsFlip3D,
+             .slateLine, .boldYellow, .mintPill, .techTag, .magazine, .navyGold, .esports, .sermon, .minimalDot, .sunsetSplit:
             return .lowerThird
         case .headline, .fullScreenTitle, .chapterCard, .quote, .endCard, .breakingBanner,
              .weddingCard, .seminarTitle, .sponsorCard, .weddingCenter, .weddingSaveDate,
-             .headline3D, .cinematic3D, .wedding3D:
+             .headline3D, .cinematic3D, .wedding3D, .eventOpener, .thinCenter, .corporateCard, .verseCard, .statement:
             return .title
-        case .cornerBug, .locationTag, .liveBadge, .hashtagTag, .sponsorBug, .weddingHashtag, .badge3D:
+        case .cornerBug, .locationTag, .liveBadge, .hashtagTag, .sponsorBug, .weddingHashtag, .badge3D,
+             .breakingCorner, .glassTag, .goldCorner, .onAirDot:
             return .corner
         }
     }
@@ -257,8 +263,14 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
         switch self {
         case .classicStrap, .roundedStrap, .modernGlass, .pill, .socialHandle, .rightStrap,
              .cornerBug, .locationTag, .liveBadge, .cleanWhite, .neonDark, .hashtagTag, .sponsorBug,
-             .weddingElegant, .weddingHashtag, .chrome3D, .neonCube3D, .badge3D:
+             .weddingElegant, .weddingHashtag, .chrome3D, .neonCube3D, .badge3D,
+             .mintPill, .breakingCorner, .glassTag, .goldCorner, .onAirDot:
             return .strap
+        case .boldYellow, .navyGold, .esports, .sunsetSplit: return .twoTone
+        case .slateLine, .sermon, .minimalDot: return .accentLine
+        case .techTag: return .news
+        case .magazine, .thinCenter, .verseCard, .statement: return .underline
+        case .eventOpener, .corporateCard: return .card
         case .gold3D: return .twoTone
         case .newsFlip3D: return .news
         case .headline3D, .cinematic3D, .wedding3D: return .underline
@@ -307,6 +319,18 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
         case .cinematic3D: return ("THE EVENT", "Live from Jakarta", "")
         case .wedding3D: return ("Rina & Dimas", "The Wedding · 12.12.2026", "")
         case .badge3D: return ("LIVE", "", "")
+        case .techTag: return ("Speaker Name", "Title / Organisation", "SPEAKER")
+        case .esports: return ("PLAYER ONE", "Team Name · Captain", "")
+        case .sermon: return ("Pastor Name", "Sunday Service", "")
+        case .eventOpener: return ("ANNUAL MEETING 2026", "Welcome", "")
+        case .thinCenter: return ("Session Title", "Speaker Name", "")
+        case .corporateCard: return ("Company Name", "Quarterly Town Hall", "")
+        case .verseCard: return ("“Love is patient, love is kind.”", "1 Corinthians 13:4", "")
+        case .statement: return ("THANK YOU", "", "")
+        case .breakingCorner: return ("BREAKING", "", "")
+        case .glassTag: return ("Jakarta · 19:30", "", "")
+        case .goldCorner: return ("R & D", "", "")
+        case .onAirDot: return ("● ON AIR", "", "")
         default: return ("Speaker Name", "Title / Organisation", "")
         }
     }
@@ -346,6 +370,12 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
             return .pop
         case .chrome3D, .gold3D, .neonCube3D, .newsFlip3D, .headline3D, .cinematic3D, .wedding3D, .badge3D:
             return .fade   // the 3D motion moves the title itself (see ProductionEngine.sourceAnimation)
+        case .slateLine, .magazine, .navyGold, .sermon, .minimalDot, .sunsetSplit: return .slideFromLeft
+        case .boldYellow, .esports, .techTag: return .nudgeLeft
+        case .mintPill, .breakingCorner, .onAirDot: return .pop
+        case .eventOpener, .statement: return .zoomOut
+        case .thinCenter, .verseCard, .corporateCard, .glassTag: return .fade
+        case .goldCorner: return .riseFade
         }
     }
 
@@ -784,6 +814,194 @@ public enum TitleTemplate: String, Codable, Sendable, CaseIterable {
             d.marginY = 0.06
             d.marginX = 0.04
             d.look3D = Title3D(depth: 8, direction: 300, motion: .spin, duration: 0.9)
+        case .slateLine:
+            // Charcoal text panel with a teal line beside it.
+            d.accentColor = Self.rgb(0.1, 0.75, 0.7)
+            d.titleWeight = .semibold
+            d.subtitleColor = Self.rgb(0.8, 0.84, 0.88)
+            d.shadow = true
+        case .boldYellow:
+            d.boxColor = Self.rgb(0.05, 0.05, 0.06, 0.96)
+            d.box2Color = Self.rgb(1, 0.84, 0.0, 0.98)
+            d.subtitleColor = Self.rgb(0.05, 0.05, 0.06)
+            d.titleWeight = .heavy
+            d.subtitleWeight = .bold
+            d.uppercase = true
+            d.paddingY = 9
+        case .mintPill:
+            d.pill = true
+            d.paddingX = 38
+            d.boxColor = Self.rgb(0.62, 0.93, 0.8, 0.95)
+            d.titleColor = Self.rgb(0.04, 0.2, 0.16)
+            d.subtitleColor = Self.rgb(0.08, 0.32, 0.26)
+            d.titleWeight = .semibold
+        case .techTag:
+            d.boxColor = Self.rgb(0.03, 0.06, 0.1, 0.94)
+            d.box2Color = Self.rgb(0.0, 0.8, 0.95, 0.95)
+            d.subtitleColor = Self.rgb(0.02, 0.1, 0.14)
+            d.accentColor = Self.rgb(0.0, 0.8, 0.95)
+            d.tagColor = Self.rgb(0.02, 0.1, 0.14)
+            d.titleWeight = .semibold
+            d.tracking = 1
+            d.paddingY = 8
+        case .magazine:
+            d.showBox = false
+            d.fontFamily = "Didot"
+            d.titleSize = 64
+            d.titleWeight = .regular
+            d.italic = true
+            d.subtitleWeight = .medium
+            d.uppercase = false
+            d.accentColor = Self.rgb(0.95, 0.3, 0.35)
+            d.shadow = true
+        case .navyGold:
+            d.boxColor = Self.rgb(0.05, 0.1, 0.24, 0.96)
+            d.box2Color = Self.rgb(0.8, 0.65, 0.32, 0.97)
+            d.subtitleColor = Self.rgb(0.08, 0.08, 0.1)
+            d.titleWeight = .semibold
+            d.tracking = 0.5
+            d.paddingY = 10
+            d.cornerRadius = 3
+        case .esports:
+            d.boxColor = Self.rgb(0.06, 0.06, 0.08, 0.96)
+            d.box2Color = Self.rgb(0.55, 1, 0.2, 0.97)
+            d.titleColor = Self.rgb(0.55, 1, 0.2)
+            d.subtitleColor = Self.rgb(0.04, 0.08, 0.02)
+            d.titleWeight = .heavy
+            d.italic = true
+            d.uppercase = true
+            d.tracking = 1.5
+            d.paddingY = 8
+        case .sermon:
+            d.fontFamily = "Didot"
+            d.titleWeight = .regular
+            d.subtitleWeight = .light
+            d.tracking = 1
+            d.accentColor = Self.rgb(0.9, 0.82, 0.62)
+            d.subtitleColor = Self.rgb(0.95, 0.92, 0.85)
+            d.shadow = true
+            d.textAnimation = .fade
+            d.letterDelay = 0.03
+        case .minimalDot:
+            d.accentColor = Self.rgb(1, 1, 1, 0.85)
+            d.titleWeight = .medium
+            d.subtitleWeight = .light
+            d.titleSize = 48
+            d.subtitleSize = 28
+            d.shadow = true
+            d.shadowColor = Self.rgb(0, 0, 0, 0.6)
+        case .sunsetSplit:
+            d.boxColor = Self.rgb(0.98, 0.45, 0.2, 0.96)
+            d.box2Color = Self.rgb(0.35, 0.12, 0.45, 0.95)
+            d.subtitleColor = Self.rgb(1, 0.92, 0.85)
+            d.titleWeight = .bold
+            d.cornerRadius = 8
+            d.paddingY = 10
+        case .eventOpener:
+            d.anchor = .center
+            d.align = .center
+            d.titleSize = 104
+            d.subtitleSize = 40
+            d.titleWeight = .heavy
+            d.uppercase = true
+            d.tracking = 6
+            d.box2Color = Self.rgb(0.03, 0.05, 0.14, 0.94)
+            d.subtitleColor = Self.rgb(0.55, 0.75, 1)
+            d.lineGap = 16
+            d.textAnimation = .rise
+        case .thinCenter:
+            d.showBox = false
+            d.anchor = .center
+            d.align = .center
+            d.titleSize = 88
+            d.subtitleSize = 36
+            d.titleWeight = .light
+            d.subtitleWeight = .regular
+            d.tracking = 3
+            d.accentColor = Self.rgb(1, 1, 1, 0.7)
+            d.shadow = true
+            d.lineGap = 18
+        case .corporateCard:
+            d.anchor = .center
+            d.align = .center
+            d.titleSize = 96
+            d.subtitleSize = 40
+            d.titleWeight = .bold
+            d.box2Color = Self.rgb(0.97, 0.98, 1, 0.96)
+            d.titleColor = Self.rgb(0.04, 0.18, 0.4)
+            d.subtitleColor = Self.rgb(0.3, 0.36, 0.45)
+            d.lineGap = 14
+        case .verseCard:
+            d.showBox = false
+            d.anchor = .center
+            d.align = .center
+            d.fontFamily = "Didot"
+            d.italic = true
+            d.titleSize = 70
+            d.subtitleSize = 34
+            d.titleWeight = .regular
+            d.accentColor = Self.rgb(0.9, 0.8, 0.55)
+            d.subtitleColor = Self.rgb(0.95, 0.88, 0.7)
+            d.shadow = true
+            d.shadowBlur = 12
+            d.lineGap = 22
+            d.textAnimation = .fade
+        case .statement:
+            d.showBox = false
+            d.anchor = .center
+            d.align = .center
+            d.titleSize = 150
+            d.titleWeight = .heavy
+            d.uppercase = true
+            d.outlineWidth = 4
+            d.outlineColor = Self.rgb(0.05, 0.05, 0.08)
+            d.accentColor = Self.rgb(1, 0.3, 0.3)
+            d.textAnimation = .pop
+        case .breakingCorner:
+            d.anchor = .topLeft
+            d.titleSize = 32
+            d.paddingX = 20
+            d.paddingY = 7
+            d.boxColor = Self.rgb(0.8, 0.04, 0.06, 0.97)
+            d.titleWeight = .heavy
+            d.uppercase = true
+            d.tracking = 2.5
+            d.marginY = 0.06
+            d.marginX = 0.04
+        case .glassTag:
+            d.anchor = .bottomRight
+            d.titleSize = 28
+            d.cornerRadius = 10
+            d.paddingX = 20
+            d.paddingY = 8
+            d.boxColor = Self.rgb(1, 1, 1, 0.18)
+            d.titleWeight = .medium
+            d.marginY = 0.06
+            d.marginX = 0.04
+        case .goldCorner:
+            d.anchor = .topRight
+            d.fontFamily = "Didot"
+            d.titleSize = 40
+            d.cornerRadius = 2
+            d.paddingX = 22
+            d.paddingY = 8
+            d.boxColor = Self.rgb(0.1, 0.08, 0.05, 0.7)
+            d.titleColor = Self.rgb(0.9, 0.76, 0.45)
+            d.tracking = 4
+            d.marginY = 0.06
+            d.marginX = 0.04
+        case .onAirDot:
+            d.anchor = .topRight
+            d.pill = true
+            d.titleSize = 28
+            d.paddingX = 22
+            d.paddingY = 7
+            d.boxColor = Self.rgb(0.06, 0.06, 0.08, 0.85)
+            d.titleColor = Self.rgb(1, 0.3, 0.3)
+            d.titleWeight = .bold
+            d.tracking = 2
+            d.marginY = 0.06
+            d.marginX = 0.04
         }
         return d
     }
