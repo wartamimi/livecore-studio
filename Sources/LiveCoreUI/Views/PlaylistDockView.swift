@@ -43,9 +43,7 @@ struct PlaylistDockView: View {
         VStack(alignment: .leading, spacing: 6) {
             SectionHeader(title: L10n.t("playlist.dock"))
             if choices.isEmpty {
-                EmptyState(symbol: "music.note.list", text: L10n.t("playlist.dock_empty")) {
-                    Menu(L10n.t("inputs.add")) { AddInputMenuItems() }.fixedSize()
-                }
+                EmptyState(symbol: "music.note.list", text: L10n.t("playlist.dock_empty")) { EmptyView() }
             } else {
                 Picker("", selection: Binding(get: { choices.contains { $0.id == selection } ? selection : (choices.first?.id ?? "") },
                                               set: { selection = $0 })) {

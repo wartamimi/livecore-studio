@@ -122,14 +122,15 @@ public final class ColorBarsSource: VideoSource {
 /// Empty, transparent canvas: a vMix-style scene whose picture is made of its layers only.
 public final class SceneSource: VideoSource {
     public let id: InputID
-    public let kind: InputKind = .scene
+    /// `.scene`, or `.mix` for a Mix input (its picture is its own Program, see `MixBus`).
+    public let kind: InputKind
     public var name: String
     public private(set) var status: SourceStatus = .live
     public var onStatusChange: ((SourceStatus) -> Void)?
     private let frame: CVPixelBuffer?
 
-    public init(id: InputID, name: String) {
-        self.id = id; self.name = name
+    public init(id: InputID, name: String, kind: InputKind = .scene) {
+        self.id = id; self.name = name; self.kind = kind
         frame = PixelBufferFactory.draw(width: 32, height: 18) { _ in }   // cleared = transparent
     }
     public func start() {}

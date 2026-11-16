@@ -33,7 +33,7 @@ extension ProductionEngine {
             case let i as ImageSource: ps = .image(path: i.url.path, relativePath: rel(i.url))
             case let c as ColorSource: ps = .color(ProjectColor(c.color))
             case is ColorBarsSource: ps = .colorBars
-            case is SceneSource: ps = .scene
+            case let s as SceneSource: ps = s.kind == .mix ? .mix(mixProject(id)) : .scene
             case let t as TextSource: ps = .title(ProjectTitleStyle(t.style))
             case let b as BrowserSource: ps = .browser(b.config)
             case let t as TimerSource: ps = .timer(t.config, nil)
@@ -316,6 +316,8 @@ extension ProductionEngine {
             addQRCode(d, id: pi.id)
         case let .virtualSet(d):
             addVirtualSet(d, id: pi.id)
+        case let .mix(m):
+            addMix(name: pi.name, mix: m, id: pi.id)
         case .gtTitle:
             found.append("vMix GT title inputs are no longer supported; input \"\(pi.name)\" was skipped.")
             return false

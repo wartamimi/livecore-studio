@@ -208,6 +208,8 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case qrCode(QRDesign)
     /// Virtual studio with keyed talents (0.59.0); talents and screen are its layers.
     case virtualSet(VirtualSetDesign)
+    /// Mix input with its own Preview/Program (0.79.0).
+    case mix(ProjectMix)
 }
 
 /// A presentation input: the file and the slide on air.

@@ -53,6 +53,7 @@ struct OutputDockView: View {
                 .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous).stroke(Theme.border, lineWidth: 1))
                 .help(L10n.t("inputs.add"))
+                .onAppear { model.refreshDevices() }
             }
             // One padlock for the whole dock: while locked RECORD and STREAM cannot start or stop.
             LockButton(locked: Binding(get: { model.recordLocked && model.streamLocked },

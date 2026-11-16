@@ -104,8 +104,9 @@ struct ChannelStripView: View {
                 if model.tone(vm.id) != nil { Image(systemName: "waveform").font(.system(size: 9)).help(L10n.t("tone.name")) }
                 Text(vm.name).font(.system(size: 10, weight: .semibold)).lineLimit(1)
                 Spacer(minLength: 0)
-                Button { vm.locked.toggle() } label: {
-                    Image(systemName: vm.locked ? "lock.fill" : "lock.open").font(.system(size: 9))
+                Button { model.setAudioLock([vm], !vm.locked) } label: {
+                    Image(systemName: vm.locked ? "lock.fill" : "lock.open").font(.system(size: 10))
+                        .frame(width: 16, height: 16).contentShape(Rectangle())
                         .foregroundStyle(vm.locked ? Theme.warning : Theme.textDim)
                 }
                 .buttonStyle(.plain)
@@ -121,7 +122,7 @@ struct ChannelStripView: View {
             .frame(width: 84)
             HStack(spacing: 4) {
                 StereoMeter(source: .channel(vm.id))
-                VerticalFader(value: $vm.fader)
+                VerticalFader(value: $vm.fader).disabled(vm.locked)
             }
             .frame(height: compact ? 90 : 120)
             Text(dbLabel).font(.system(size: 9).monospacedDigit()).foregroundStyle(Theme.textDim)
@@ -130,7 +131,8 @@ struct ChannelStripView: View {
                 toggle(L10n.t("audio.solo"), $vm.solo, Theme.warning)
                 toggle(L10n.t("audio.pgm"), $vm.toProgram, Theme.accent)
             }
-            if !compact { details }
+            .disabled(vm.locked)
+            if !compact { details.disabled(vm.locked) }
         }
         .padding(4)
         .card(stroke: hovering ? Color.white.opacity(0.2) : Theme.border)

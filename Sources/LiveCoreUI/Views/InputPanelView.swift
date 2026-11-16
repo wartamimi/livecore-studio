@@ -52,11 +52,9 @@ struct InputPanelView: View {
                         .buttonStyle(.borderless)
                         .help(allLocked ? L10n.t("lock.unlock_all") : L10n.t("lock.lock_all"))
                 }
-                addMenu
             }
             if model.inputs.isEmpty {
                 EmptyState(symbol: "video.badge.plus", text: L10n.t("inputs.empty")) {
-                    Menu(L10n.t("inputs.add")) { AddInputMenuItems() }.fixedSize()
                     Button(L10n.t("template.menu")) { model.showTemplates = true }.buttonStyle(.link)
                 }
             } else {
@@ -187,16 +185,6 @@ struct InputPanelView: View {
         }
     }
 
-    private var addMenu: some View {
-        Menu { AddInputMenuItems() } label: {
-            Image(systemName: "plus.circle.fill")
-        }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
-        .help(L10n.t("inputs.add"))
-        .onAppear { model.refreshDevices() }
-    }
-
     @ViewBuilder
     private func contextMenu(_ info: ProductionEngine.InputInfo) -> some View {
         Button(L10n.t("inputs.preview")) { model.preview(info.id) }
@@ -214,6 +202,7 @@ struct InputPanelView: View {
 
     @ViewBuilder
     private func editItems(_ info: ProductionEngine.InputInfo) -> some View {
+        if info.kind == .mix { Button(L10n.t("mix.open")) { model.addInputSheet = .mix(info.id) } }
         Button(L10n.t("scene.edit")) { editingScene = info.id }
         Menu(L10n.t("inputs.addlayer")) {
             ForEach([LayoutPreset.pipTopRight, .pipTopLeft, .pipBottomRight, .pipBottomLeft, .sideBySideLeft, .sideBySideRight], id: \.self) { p in
@@ -487,6 +476,7 @@ extension InputKind {
         case .replay: return "gobackward"
         case .colorBars: return "chart.bar.fill"
         case .scene: return "square.on.square"
+        case .mix: return "rectangle.split.2x1"
         case .ticker: return "text.line.first.and.arrowtriangle.forward"
         case .slideshow: return "photo.stack"
         case .ndi: return "antenna.radiowaves.left.and.right"

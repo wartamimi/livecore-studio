@@ -521,6 +521,8 @@ extension ProductionEngine {
     public func removeInput(_ id: InputID) {
         let removed: VideoSource? = control.mutate { st in
             st.switcher.inputRemoved(id)
+            st.mixes[id] = nil
+            for m in st.mixes.values { m.switcher.inputRemoved(id) }
             for i in st.overlays.indices where st.overlays[i].source == id { st.overlays[i].source = nil }
             for key in st.layers.keys { st.layers[key]?.removeAll { $0.source == id && key != id } }
             st.layers[id] = nil

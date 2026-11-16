@@ -116,7 +116,12 @@ extension AppModel {
         if vm.isMusicChannel { removeMusic(id) } else if vm.isRadioChannel { removeRadio(id) } else { removeAudioInput(id) }
     }
 
-    public func lockAllAudio(_ locked: Bool) { for vm in audioChannels { vm.locked = locked } }
+    /// The mixer header's padlock reads AppModel, so a lock change must also publish here (0.79.0 fix).
+    public func lockAllAudio(_ locked: Bool) { setAudioLock(audioChannels, locked) }
+    public func setAudioLock(_ channels: [ChannelVM], _ locked: Bool) {
+        objectWillChange.send()
+        for vm in channels { vm.locked = locked }
+    }
 
     public func removeAudioInput(_ id: String) {
         if let t = engine?.tone(channelID: id) { engine?.removeTone(id: t.id) } else { engine?.removeAudioInput(uniqueID: id) }

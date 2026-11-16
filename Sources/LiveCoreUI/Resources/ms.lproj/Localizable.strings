@@ -10,7 +10,7 @@
 "inputs.rename" = "Namakan semula";
 "inputs.preview" = "Hantar ke Preview";
 "inputs.cutdirect" = "Potong terus ke Program";
-"inputs.empty" = "Belum ada input. Guna + untuk menambah kamera, fail, imej, warna atau tajuk.";
+"inputs.empty" = "Belum ada input. Guna ADD INPUT untuk menambah kamera, fail, imej, warna atau tajuk.";
 "inputs.close" = "Tutup sumber";
 "inputs.colorbars" = "Bar Warna";
 "inputs.title_menu" = "Tajuk / Lower third / Teks bergerak…";

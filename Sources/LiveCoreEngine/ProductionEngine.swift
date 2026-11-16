@@ -69,6 +69,8 @@ public final class ProductionEngine {
         public var pts: CMTime
     }
     public var onSwitcherChange: ((SwitcherSnapshot) -> Void)?
+    /// Main thread: a Mix input's Preview, Program or fade changed.
+    public var onMixChange: (([InputID: SwitcherSnapshot]) -> Void)?
     public var onInputsChange: (([InputInfo]) -> Void)?
     /// Statistics of one stream destination (destination id, stats). Main thread.
     public var onStreamStats: ((String, StreamingEngine.Stats) -> Void)?
@@ -134,6 +136,8 @@ public final class ProductionEngine {
         /// Layer Designer edits not yet on air, per input: Preview shows the draft of its input;
         /// everything else (Program, overlays, other inputs) keeps the committed layers.
         var drafts: [InputID: [Layer]] = [:]
+        /// Mix inputs and their own switchers (0.79.0).
+        var mixes: [InputID: MixBus] = [:]
 
         /// The input about to go on air (the one on Preview / being transitioned in) takes its
         /// draft with it: Layer Designer edits reach Program only through a transition.
@@ -221,6 +225,7 @@ public final class ProductionEngine {
     var aacEncoders: [AACEncoder] = []
     var audioInputs: [String: AudioCaptureInput] = [:]
     var lastSwitcher = SwitcherSnapshot()
+    var lastMixes: [InputID: SwitcherSnapshot] = [:]
 
     /// Frames waiting for the main thread (monitors, thumbnails). One slot, newest wins (0.49.0):
     /// before, every frame was queued with its own main-queue block, so while the main thread was
@@ -429,6 +434,7 @@ public final class ProductionEngine {
 
         // Snapshot control state and advance transitions.
         var events: [SwitcherEvent] = []
+        var mixStates: [InputID: SwitcherSnapshot] = [:]
         frameCounter += 1
         // Input thumbnails (inputs panel + multiview) at 25–30 fps (0.55.0; was ~10 fps, which
         // made the small previews of cameras and videos look jerky).
@@ -436,6 +442,8 @@ public final class ProductionEngine {
         let demand = uiDemand.current
         let (plannedFrame, sources, snapshot, adjusts) = control.mutate { st -> (FramePlan, [InputID: VideoSource], SwitcherSnapshot, [InputID: InputAdjust]) in
             events = st.switcher.update(now: now)
+            for m in st.mixes.values { m.switcher.update(now: now) }
+            mixStates = st.mixes.mapValues(\.switcher.state)
             let layers = st.layers
             let keys = st.keys.filter { $0.value.enabled }.mapValues { $0.clamped }
             let draft = st.drafts
@@ -446,7 +454,8 @@ public final class ProductionEngine {
                                          detailInput: st.detail,
                                          extraInputs: st.extraInputs + st.isoInputs.filter { !st.extraInputs.contains($0) },
                                          fullPreview: st.fullPreview,
-                                         previewLayers: draft)
+                                         previewLayers: draft,
+                                         mixes: mixStates)
             return (plan, st.sources, st.switcher.state, st.adjusts)
         }
         if !events.isEmpty || snapshot != lastSwitcher {
@@ -455,6 +464,10 @@ public final class ProductionEngine {
                 self?.applyAutoPlay()
                 self?.onSwitcherChange?(snapshot)
             }
+        }
+        if mixStates != lastMixes {
+            lastMixes = mixStates
+            DispatchQueue.main.async { [weak self] in self?.onMixChange?(mixStates) }
         }
 
         // Up to three frames queued on the GPU: rides out short GPU stalls (window animations,
