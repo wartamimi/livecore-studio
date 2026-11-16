@@ -537,6 +537,8 @@ public final class AppModel: ObservableObject {
     @Published public var highlightProgress: String?
     @Published public var showOutputsPanel = false
     @Published public var showTemplates = false
+    /// Project waiting in the Missing Files dialog (0.80.0).
+    @Published public var missingFiles: MissingFilesRequest?
     /// File › Open Recent and File › New from My Template (0.62.0).
     @Published public var recentProjects: [URL] = AppModel.loadRecentProjects()
     @Published public var userTemplates: [URL] = AppModel.listUserTemplates()

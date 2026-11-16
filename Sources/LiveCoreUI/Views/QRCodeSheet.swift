@@ -305,7 +305,7 @@ struct QRCodeSheet: View {
     private func slider(_ label: String, _ kp: WritableKeyPath<QRStyle, Double>, _ range: ClosedRange<Double>, pct: Bool) -> some View {
         row(label) {
             HStack {
-                Slider(value: Binding(get: { design.style[keyPath: kp] }, set: { design.style[keyPath: kp] = $0 }), in: range)
+                SoftSlider(value: Binding(get: { design.style[keyPath: kp] }, set: { design.style[keyPath: kp] = $0 }), in: range)
                 Text(String(format: "%.0f%%", design.style[keyPath: kp] * 100)).monospacedDigit().frame(width: 44, alignment: .trailing)
             }
         }
@@ -328,7 +328,7 @@ struct QRCodeSheet: View {
             }
             row(L10n.t("qr.animation_time")) {
                 HStack {
-                    Slider(value: $design.style.animationDuration, in: 0.1...2)
+                    SoftSlider(value: $design.style.animationDuration, in: 0.1...2)
                     Text(String(format: "%.1f s", design.style.animationDuration)).monospacedDigit().frame(width: 44, alignment: .trailing)
                 }
             }

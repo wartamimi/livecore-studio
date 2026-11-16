@@ -424,7 +424,7 @@ private struct LayerStylePopover: View {
             if let l = state.selectedLayer {
                 HStack {
                     Text(L10n.t("scene.opacity"))
-                    Slider(value: Binding(get: { l.opacity }, set: { v in state.update(model, state.selected) { $0.opacity = v } }), in: 0...1)
+                    SoftSlider(value: Binding(get: { l.opacity }, set: { v in state.update(model, state.selected) { $0.opacity = v } }), in: 0...1)
                 }
             }
             Text(String(format: L10n.t("designer.crop_values"), st.crop.left * 100, st.crop.top * 100, st.crop.right * 100, st.crop.bottom * 100))
@@ -441,7 +441,7 @@ private struct LayerStylePopover: View {
     private func slider(_ title: String, _ value: Binding<Double>, _ range: ClosedRange<Double>) -> some View {
         HStack(spacing: 4) {
             Text(title).frame(width: 70, alignment: .leading)
-            Slider(value: value, in: range)
+            SoftSlider(value: value, in: range)
             Text("\(Int((value.wrappedValue * 100).rounded()))%").font(.system(size: 10).monospacedDigit()).frame(width: 34, alignment: .trailing)
         }
     }

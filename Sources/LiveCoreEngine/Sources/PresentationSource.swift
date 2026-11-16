@@ -5,8 +5,9 @@ import ScreenCaptureKit
 import LiveCoreCore
 import LiveCoreServices
 
-/// PowerPoint / Keynote / OpenDocument / PDF slides. A PDF is shown directly; other files are
-/// first exported to a cached PDF by Keynote, PowerPoint or LibreOffice (whichever is installed).
+/// PowerPoint / Keynote / OpenDocument / PDF slides. A PDF is shown directly; a .pptx is drawn into
+/// a cached PDF by LiveCore's own engine (`PPTXRenderer`, 0.80.0); .ppt, .key and .odp are exported
+/// by Keynote, PowerPoint or LibreOffice (whichever is installed).
 /// Each slide is drawn aspect-fit at the output size; the slide on air and its neighbours are kept
 /// rendered so next / previous switch at once. These slides are static.
 ///
@@ -332,7 +333,7 @@ public final class PresentationSource: VideoSource {
     }
 }
 
-/// Turns a .pptx / .key / .odp into PDF with an app the user has installed.
+/// Turns a presentation into PDF: .pptx with LiveCore's own engine, others with an installed app.
 public enum PresentationConverter {
     public typealias Converter = PresentationFiles.Converter
 
@@ -361,20 +362,31 @@ public enum PresentationConverter {
         let stamp = (attrs?[.modificationDate] as? Date)?.timeIntervalSince1970 ?? 0
         let size = (attrs?[.size] as? NSNumber)?.int64Value ?? 0
         var hash: UInt64 = 0xcbf2_9ce4_8422_2325
-        for b in "\(url.standardizedFileURL.path)|\(size)|\(stamp)".utf8 { hash = (hash ^ UInt64(b)) &* 0x100_0000_01b3 }
+        for b in "\(url.standardizedFileURL.path)|\(size)|\(stamp)|\(engineVersion)".utf8 { hash = (hash ^ UInt64(b)) &* 0x100_0000_01b3 }
         let dir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("studio.livecore.LiveCoreStudio/Presentations", isDirectory: true)
         return dir.appendingPathComponent("\(url.deletingPathExtension().lastPathComponent)-\(String(hash, radix: 16)).pdf")
     }
 
-    /// Blocking; call off the main thread. Tries each installed app in turn.
+    /// Bumped when the built-in engine draws differently, so cached slides are drawn again.
+    static let engineVersion = 1
+
+    /// Blocking; call off the main thread. A .pptx is drawn by the built-in engine; other files
+    /// try each installed app in turn.
     public static func convert(_ url: URL, to out: URL) throws {
         guard FileManager.default.fileExists(atPath: url.path) else { throw Failure(message: "File not found") }
         try FileManager.default.createDirectory(at: out.deletingLastPathComponent(), withIntermediateDirectories: true)
         let ext = url.pathExtension
+        if PresentationFiles.builtIn.contains(ext.lowercased()) {
+            do { try PPTXRenderer.writePDF(url, to: out) } catch {
+                try? FileManager.default.removeItem(at: out)
+                throw Failure(message: "Cannot read the PowerPoint file: \(error)")
+            }
+            return
+        }
         let apps = PresentationFiles.converters(for: ext).filter { appURL($0) != nil }
         guard !apps.isEmpty else {
-            throw Failure(message: "To show .\(ext.lowercased()) slides install Keynote (free in the App Store), PowerPoint or LibreOffice, or export the presentation as PDF and add the PDF.")
+            throw Failure(message: "To show .\(ext.lowercased()) slides save the file as .pptx (LiveCore draws those itself), or install Keynote, PowerPoint or LibreOffice.")
         }
         var errors: [String] = []
         for app in apps {

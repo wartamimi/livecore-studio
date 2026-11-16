@@ -98,18 +98,3 @@ public struct NameTagger: Sendable {
 
     public mutating func reset() { lastShown = [:] }
 }
-
-// MARK: - Logo bug
-
-/// A small logo in a corner of the picture (station bug / watermark).
-public enum LogoCorner: String, CaseIterable, Codable, Sendable {
-    case topLeft, topRight, bottomLeft, bottomRight
-
-    /// Layer rect for a logo `width` wide (fraction of the picture), square in a 16:9 frame.
-    public func rect(width: Double = 0.14, margin: Double = 0.03) -> NormRect {
-        let w = min(max(width, 0.02), 0.5), h = w * 16 / 9
-        let mx = margin, my = margin * 16 / 9
-        let left = self == .topLeft || self == .bottomLeft, top = self == .topLeft || self == .topRight
-        return NormRect(x: left ? mx : 1 - mx - w, y: top ? my : 1 - my - h, width: w, height: h)
-    }
-}

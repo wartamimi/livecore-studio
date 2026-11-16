@@ -616,7 +616,6 @@ Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; k
 | Splash screen logo LiveCore animasi saat aplikasi dibuka (±3,8 dt, lewati dengan klik/tombol, bisa dimatikan, tanpa gerakan bila Reduce Motion) | Implemented, belum dites di Mac | kompilasi CI | T-359. Engine sudah start di belakang splash |
 | Desain flat yang dirapikan (0.73.1; tampilan Glass 0.73.0 dihapus): satu radius sudut dan garis tepi untuk panel, tile, strip mixer dan tombol; status tombol hover / tekan / aktif lebih jelas; Settings dengan daftar sisi dan panel; dock responsif (jendela < ±1060 pt: dock Input dan Playlist lebih ramping, jarak lebih rapat; layar ≥ ±1600 pt: dock Input lebih lebar) | Implemented, belum dites di Mac | belum dikompilasi | T-360 |
 | Tile input, Properties dan dialog didesain ulang (0.73.2): tile dengan gambar bersudut bulat, badge nomor berwarna tally, tombol hover di strip bawah; Properties dengan header (ikon jenis input, status Preview / Program) dan daftar sisi seperti Settings; semua dialog memakai satu gaya bersama (`DialogChrome.swift`: latar tema, warna aksen) | Implemented, belum dites di Mac | belum dikompilasi | T-361 |
-| Logo bug (0.74.0): Add Input › Logo bug — satu atau beberapa logo kecil di sudut kanan atas lewat overlay 4; beberapa logo bergantian tiap 30 dtk | Implemented, belum dites di Mac | unit test (posisi sudut) | T-362 |
 | Scoreboard (0.74.0): Show Automation › Scoreboard — tim, skor, babak ditulis ke input title; tombol +/− di app dan Web Controller (`/api/score?do=`) | Implemented, belum dites di Mac | unit test (skor, route) | T-363 |
 | End credits (0.74.0): running text arah Bawah → atas dan template "Kredit penutup", teks bergulir layar penuh | Implemented, belum dites di Mac | unit test (posisi gulir) | T-364 |
 | Name tag pembicara otomatis (0.74.0): kamera masuk Program → nama dan jabatan tampil di lower third (overlay pilihan) beberapa detik, maks. sekali tiap 2 menit per pembicara | Implemented, belum dites di Mac | unit test (jendela ulang) | T-365 |
@@ -642,3 +641,12 @@ Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; k
 | Tampilan kosong (Input, Playlist) | Implemented, belum dites | M | Ikon, satu kalimat, tombol tambah input / template |
 | UI lebih luwes | Partial | M | Sudut seragam (4/8 pt), animasi 0,18 dtk untuk tally, dock, pil status; teks 8 pt → 9 pt. Jarak 4 pt belum disisir. |
 | Tes pra-acara | Implemented | — | docs/PRE_EVENT_TEST.md |
+
+## 0.80.0
+
+| Fitur | Status | Bukti | Catatan |
+|---|---|---|---|
+| Engine PowerPoint bawaan (.pptx/.ppsx/.pptm/.potx) | Partial, belum dites di Mac | unit test parser (Linux) | Tanpa Keynote/PowerPoint/LibreOffice. Didukung: background, teks & placeholder dengan style layout/master/theme, bullet & nomor, gambar (crop), bentuk dasar & freeform, grup, tabel sederhana, slide tersembunyi dilewati. Belum: animasi & transisi, video/audio, chart, SmartArt, efek WordArt/bayangan/3-D, detail gradien (warna pertama), gambar EMF/WMF. .ppt/.key/.odp tetap lewat app terpasang; mode Live (PowerPoint) tetap opsional di Properties |
+| Dialog File Hilang (seperti OBS) | Implemented, belum dites di Mac | unit test (deteksi & relink) | Saat buka proyek/template: daftar file yang dipindah/dihapus, Cari… per file, Cari di Folder… (cocok nama file), Buka Proyek |
+| Kontrol Soft Pro | Implemented, belum dites di Mac | — | Semua slider, seekbar (transport, playlist, musik) dan fader mixer: track tipis membulat, knob putih dengan halo accent |
+| Logo bug, New from Template di panel Inputs | Dihapus | — | Template tetap di menu File |

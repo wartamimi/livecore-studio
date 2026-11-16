@@ -1950,7 +1950,6 @@
 /* 0.74.0 show graphics */
 "ticker.credits" = "Bawah → atas (kredit)";
 "tickertpl.endCredits" = "Kredit penutup";
-"logobug.add" = "Logo bug (logo di sudut)…";
 "score.title" = "Papan skor";
 "score.input" = "Input title";
 "score.home" = "Tim tuan rumah";
@@ -2015,3 +2014,10 @@
 "mix.output_help" = "Tampilkan Mix ini di output tambahan (jendela, layar atau NDI). Klik lagi untuk kembali ke Program.";
 "mix.iso" = "Rekam ISO";
 "mix.iso_help" = "Rekam Mix ini ke file sendiri dengan MultiCorder (berlaku saat mulai berikutnya).";
+
+/* Missing Files dialog (0.80.0) */
+"missing.title" = "File Hilang";
+"missing.subtitle" = "%d file media sudah dipindah atau dihapus";
+"missing.search" = "Cari di Folder…";
+"missing.locate" = "Cari…";
+"missing.open" = "Buka Proyek";

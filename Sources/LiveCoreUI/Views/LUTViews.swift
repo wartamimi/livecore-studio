@@ -23,7 +23,7 @@ struct LUTSection: View {
                 }
             }
             LabeledContent(L10n.t("lut.strength")) {
-                Slider(value: Binding(get: { adjust.lutStrength }, set: { adjust.lutStrength = $0; model.setAdjust(input, adjust) }), in: 0...1)
+                SoftSlider(value: Binding(get: { adjust.lutStrength }, set: { adjust.lutStrength = $0; model.setAdjust(input, adjust) }), in: 0...1)
                     .disabled(adjust.lut == nil)
                 Text("\(Int((adjust.lutStrength * 100).rounded()))%").monospacedDigit().frame(width: 50, alignment: .trailing)
             }
@@ -183,7 +183,7 @@ struct LUTGeneratorSheet: View {
 
     private func row(_ label: String, _ path: WritableKeyPath<LUTLook, Double>, _ range: ClosedRange<Double>, _ fmt: String) -> some View {
         LabeledContent(label) {
-            Slider(value: Binding(get: { look[keyPath: path] }, set: { look[keyPath: path] = $0; presetID = "" }), in: range)
+            SoftSlider(value: Binding(get: { look[keyPath: path] }, set: { look[keyPath: path] = $0; presetID = "" }), in: range)
             Text(String(format: fmt, look[keyPath: path])).monospacedDigit().frame(width: 56, alignment: .trailing)
         }
     }

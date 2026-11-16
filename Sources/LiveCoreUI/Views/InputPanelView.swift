@@ -54,9 +54,7 @@ struct InputPanelView: View {
                 }
             }
             if model.inputs.isEmpty {
-                EmptyState(symbol: "video.badge.plus", text: L10n.t("inputs.empty")) {
-                    Button(L10n.t("template.menu")) { model.showTemplates = true }.buttonStyle(.link)
-                }
+                EmptyState(symbol: "video.badge.plus", text: L10n.t("inputs.empty")) { EmptyView() }
             } else {
                 if !model.usedColorTags.isEmpty { filterBar }
                 ScrollView {
@@ -766,7 +764,7 @@ struct BrowserSheet: View {
             Toggle(L10n.t("browser.mute"), isOn: Binding(get: { config.muted ?? false }, set: { config.muted = $0 ? true : nil }))
             HStack {
                 Text(L10n.t("browser.zoom"))
-                Slider(value: Binding(get: { config.pageZoom }, set: { config.zoom = abs($0 - 1) < 0.01 ? nil : $0 }),
+                SoftSlider(value: Binding(get: { config.pageZoom }, set: { config.zoom = abs($0 - 1) < 0.01 ? nil : $0 }),
                        in: ProjectBrowser.zoomRange, step: 0.05)
                 Text("\(Int((config.pageZoom * 100).rounded())) %").monospacedDigit().frame(width: 48, alignment: .trailing)
             }
@@ -873,7 +871,7 @@ struct TimerSheet: View {
                         hexColor(L10n.t("timer.color_end"), $style.accentHex)
                     }
                     LabeledContent(L10n.t("timer.plate_opacity")) {
-                        Slider(value: $style.plateOpacity, in: 0...1)
+                        SoftSlider(value: $style.plateOpacity, in: 0...1)
                         Text("\(Int(style.plateOpacity * 100)) %").monospacedDigit().frame(width: 44)
                     }
                     HStack(spacing: 6) {
@@ -1041,7 +1039,7 @@ struct ChromaKeySheet: View {
     private func slider(_ label: String, _ value: Binding<Double>, _ range: ClosedRange<Double>) -> some View {
         HStack {
             Text(label).frame(width: 110, alignment: .leading)
-            Slider(value: value, in: range)
+            SoftSlider(value: value, in: range)
             Text(String(format: "%.3f", value.wrappedValue)).font(.system(size: 11).monospacedDigit()).frame(width: 44)
         }
     }

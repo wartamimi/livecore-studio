@@ -44,8 +44,8 @@ struct SubtitleSheet: View {
                 }
                 Stepper(L10n.f("subtitles.font", "\(Int(style.fontSize))"), value: $style.fontSize, in: 24...96, step: 4)
                 Stepper(L10n.f("subtitles.lines", "\(style.maxLines)"), value: $style.maxLines, in: 1...3)
-                HStack { Text(L10n.t("subtitles.box")); Slider(value: $style.boxOpacity, in: 0...1) }
-                HStack { Text(L10n.t("subtitles.margin")); Slider(value: $style.bottomMargin, in: 0.02...0.4) }
+                HStack { Text(L10n.t("subtitles.box")); SoftSlider(value: $style.boxOpacity, in: 0...1) }
+                HStack { Text(L10n.t("subtitles.margin")); SoftSlider(value: $style.bottomMargin, in: 0.02...0.4) }
                 DisclosureGroup("Advanced", isExpanded: $showAdvanced) {
                     TranscriptionAdvancedView(adv: $style.advanced, provider: style.provider)
                 }
@@ -152,7 +152,7 @@ struct SubtitleSheet: View {
             HStack {
                 Toggle(label, isOn: Binding(get: { v.wrappedValue != nil }, set: { v.wrappedValue = $0 ? def : nil }))
                 if let cur = v.wrappedValue {
-                    Slider(value: Binding(get: { cur }, set: { v.wrappedValue = $0 }), in: r).frame(width: 110)
+                    SoftSlider(value: Binding(get: { cur }, set: { v.wrappedValue = $0 }), in: r).frame(width: 110)
                     Text(String(format: fmt, cur)).monospacedDigit().frame(width: 36)
                 }
             }

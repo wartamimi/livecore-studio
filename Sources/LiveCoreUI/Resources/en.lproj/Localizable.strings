@@ -1950,7 +1950,6 @@
 /* 0.74.0 show graphics */
 "ticker.credits" = "Bottom → top (credits)";
 "tickertpl.endCredits" = "End credits";
-"logobug.add" = "Logo bug (corner logo)…";
 "score.title" = "Scoreboard";
 "score.input" = "Title input";
 "score.home" = "Home team";
@@ -2015,3 +2014,10 @@
 "mix.output_help" = "Show this Mix on the extra output (window, display or NDI). Click again to put Program back.";
 "mix.iso" = "ISO record";
 "mix.iso_help" = "Record this Mix to its own file with MultiCorder (applies at the next start).";
+
+/* Missing Files dialog (0.80.0) */
+"missing.title" = "Missing Files";
+"missing.subtitle" = "%d media files were moved or deleted";
+"missing.search" = "Search Folder…";
+"missing.locate" = "Locate…";
+"missing.open" = "Open Project";

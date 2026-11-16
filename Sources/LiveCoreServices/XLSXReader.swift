@@ -6,7 +6,7 @@ import LiveCoreCore
 
 /// Reads the first worksheet of an Excel .xlsx file into a `CSVTable` (first row = header), for
 /// title data sources. Values only: formulas show their last calculated result, formatting is
-/// ignored. The archive is opened with the system `unzip`.
+/// ignored. The archive is opened with `Unzip`.
 public enum XLSXReader {
     public enum ReadError: Error, CustomStringConvertible {
         case notXLSX
@@ -42,21 +42,12 @@ public enum XLSXReader {
 
     /// One file from the archive, nil when it is not there.
     static func entry(_ url: URL, _ path: String) throws -> Data? {
-        let p = Process()
-        p.executableURL = URL(fileURLWithPath: "/usr/bin/unzip")
-        p.arguments = ["-p", url.path, path]
-        let out = Pipe(), err = Pipe()
-        p.standardOutput = out
-        p.standardError = err
-        do { try p.run() } catch { throw ReadError.unzipFailed(error.localizedDescription) }
-        let data = out.fileHandleForReading.readDataToEndOfFile()
-        _ = err.fileHandleForReading.readDataToEndOfFile()
-        p.waitUntilExit()
-        // unzip exits 11 when the entry does not exist, 9 when the file is not a zip.
-        if p.terminationStatus == 11 { return nil }
-        if p.terminationStatus == 9 { throw ReadError.notXLSX }
-        guard p.terminationStatus == 0 else { throw ReadError.unzipFailed("unzip exit \(p.terminationStatus)") }
-        return data
+        let r: (output: Data, status: Int32)
+        do { r = try Unzip.run(["-p", url.path, path]) } catch { throw ReadError.unzipFailed("\(error)") }
+        if r.status == 11 { return nil }
+        if r.status == 9 { throw ReadError.notXLSX }
+        guard r.status == 0 else { throw ReadError.unzipFailed("unzip exit \(r.status)") }
+        return r.output
     }
 
     /// Builds the table from the sheet XML and the shared-string table.
