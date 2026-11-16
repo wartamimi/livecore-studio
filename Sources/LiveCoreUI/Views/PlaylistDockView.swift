@@ -43,8 +43,9 @@ struct PlaylistDockView: View {
         VStack(alignment: .leading, spacing: 6) {
             SectionHeader(title: L10n.t("playlist.dock"))
             if choices.isEmpty {
-                Text(L10n.t("playlist.dock_empty")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                EmptyState(symbol: "music.note.list", text: L10n.t("playlist.dock_empty")) {
+                    Menu(L10n.t("inputs.add")) { AddInputMenuItems() }.fixedSize()
+                }
             } else {
                 Picker("", selection: Binding(get: { choices.contains { $0.id == selection } ? selection : (choices.first?.id ?? "") },
                                               set: { selection = $0 })) {
@@ -93,7 +94,7 @@ struct PlaylistDockView: View {
                 .contentShape(Rectangle())
                 .onTapGesture(count: 2) { play(s, i) }
                 .onTapGesture { picked = key(s) + "#\(i)" }
-                .listRowBackground(RoundedRectangle(cornerRadius: 4)
+                .listRowBackground(RoundedRectangle(cornerRadius: Theme.radiusS)
                     .fill(picked == key(s) + "#\(i)" ? Theme.accent.opacity(0.35) : Color.clear))
                 .help(u.lastPathComponent)
                 // Hold and drag a row up or down to reorder (0.48.0). List.onMove never started a
@@ -323,12 +324,12 @@ private struct PlaylistModeButton: View {
         Button(action: action) {
             HStack(spacing: 3) {
                 Image(systemName: icon).font(.system(size: 10, weight: .bold))
-                if on { Text(label ?? L10n.t("playlist.mode_on")).font(.system(size: 8, weight: .heavy)) }
+                if on { Text(label ?? L10n.t("playlist.mode_on")).font(.system(size: 9, weight: .heavy)) }
             }
             .foregroundStyle(on ? Color.white : Theme.textDim)
             .padding(.horizontal, 6).frame(height: 18)
-            .background(RoundedRectangle(cornerRadius: 4).fill(on ? Theme.accent : Color.white.opacity(0.06)))
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(on ? Theme.accent.opacity(0.9) : Color.white.opacity(0.12), lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: Theme.radiusS).fill(on ? Theme.accent : Color.white.opacity(0.06)))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(on ? Theme.accent.opacity(0.9) : Color.white.opacity(0.12), lineWidth: 1))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

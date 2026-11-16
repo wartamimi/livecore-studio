@@ -123,7 +123,7 @@ extension AppModel {
                 }
                 await MainActor.run {
                     self?.highlightProgress = nil
-                    self?.report(L10n.f("highlights.done", ClientPackage.timestamp(len), "\(clips)"))
+                    self?.notify(L10n.f("highlights.done", ClientPackage.timestamp(len), "\(clips)"))
                     NSWorkspace.shared.activateFileViewerSelecting([out])
                 }
             } catch {

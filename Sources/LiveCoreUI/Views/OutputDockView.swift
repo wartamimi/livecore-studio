@@ -50,8 +50,8 @@ struct OutputDockView: View {
                 .fixedSize()
                 .padding(.vertical, 6).padding(.horizontal, 12)
                 .background(Theme.panelRaised)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Theme.border, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous).stroke(Theme.border, lineWidth: 1))
                 .help(L10n.t("inputs.add"))
             }
             // One padlock for the whole dock: while locked RECORD and STREAM cannot start or stop.
@@ -279,7 +279,7 @@ struct NotRecordingBadge: View {
                 .foregroundStyle(.white)
                 .padding(.horizontal, 10).padding(.vertical, 3)
                 .background(Theme.program)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
                 .opacity(RecordReminder.visible(elapsed: ctx.date.timeIntervalSinceReferenceDate) ? 1 : 0.12)
         }
         .allowsHitTesting(false)

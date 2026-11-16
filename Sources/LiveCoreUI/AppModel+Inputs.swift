@@ -197,7 +197,8 @@ extension AppModel {
     /// Button / menu / shortcut entry points: starting is immediate, stopping asks first.
     public func requestToggleStream() {
         guard !streamLocked else { report(L10n.t("lock.stream_locked")); return }
-        if isStreamingActive { pendingStop = .stream } else { toggleStream() }
+        if isStreamingActive { pendingStop = .stream; return }
+        if let t = lastPreflightAt, Date().timeIntervalSince(t) < 3600 { toggleStream() } else { readyCheck = true }
     }
 
     public func requestToggleRecord() {

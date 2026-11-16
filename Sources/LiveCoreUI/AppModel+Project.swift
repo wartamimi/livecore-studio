@@ -180,7 +180,7 @@ extension AppModel {
         }
         writeProject(to: url, makeCurrent: false)
         refreshUserTemplates()
-        report(L10n.f("template.saved", name))
+        notify(L10n.f("template.saved", name))
     }
 
     public func newFromUserTemplate(_ url: URL) {

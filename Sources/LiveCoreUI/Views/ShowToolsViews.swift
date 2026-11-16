@@ -11,10 +11,10 @@ import LiveCoreEngine
 struct ExperimentalTag: View {
     var body: some View {
         Text(L10n.t("common.experimental"))
-            .font(.system(size: 8, weight: .heavy)).tracking(0.5)
+            .font(.system(size: 9, weight: .heavy)).tracking(0.5)
             .padding(.horizontal, 4).padding(.vertical, 1)
             .background(Theme.warning.opacity(0.25))
-            .clipShape(RoundedRectangle(cornerRadius: 3))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
             .help(L10n.t("common.experimental_help"))
     }
 }
@@ -31,6 +31,8 @@ struct PreflightSheet: View {
     @Environment(\.dismiss) private var dismiss
     /// Shown as a tab inside Settings: no Close button and no Return/Escape shortcuts (Settings has them).
     var embedded = false
+    /// Ready check before Go Live: the check runs at once and the sheet ends with Go Live.
+    var goLive: (() -> Void)? = nil
     @State private var plan: AppModel.PreflightPlan?
     @State private var items: [PreflightItem] = []
     @State private var running = false
@@ -85,6 +87,12 @@ struct PreflightSheet: View {
                 if embedded {
                     Button(items.isEmpty ? L10n.t("preflight.run") : L10n.t("preflight.run_again")) { confirmRun = true }
                         .disabled(running || plan == nil)
+                } else if let goLive {
+                    Button(L10n.t("settings.cancel")) { dismiss() }.keyboardShortcut(.cancelAction)
+                    Button(L10n.t("preflight.run_again")) { run() }.disabled(running)
+                    Button(Preflight.overall(items) == .ok ? L10n.t("preflight.go_live") : L10n.t("preflight.go_live_anyway"), action: goLive)
+                        .keyboardShortcut(.defaultAction)
+                        .disabled(running)
                 } else {
                     Button(L10n.t("common.close")) { dismiss() }.keyboardShortcut(.cancelAction)
                     Button(items.isEmpty ? L10n.t("preflight.run") : L10n.t("preflight.run_again")) { confirmRun = true }
@@ -97,6 +105,7 @@ struct PreflightSheet: View {
         .frame(width: embedded ? nil : 620, height: embedded ? nil : 520)
         .onAppear {
             if plan == nil { plan = model.defaultPreflightPlan }
+            if goLive != nil { run() }
         }
         .alert(L10n.t("preflight.confirm_title"), isPresented: $confirmRun) {
             Button(L10n.t("preflight.run")) { run() }
@@ -112,6 +121,7 @@ struct PreflightSheet: View {
         model.runPreflight(p) { result in
             items = result
             running = false
+            model.lastPreflightAt = Date()
         }
     }
 
@@ -187,7 +197,7 @@ struct OutputsPanelSheet: View {
         }
         .padding(10)
         .background(Theme.panel)
-        .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
     }
 
     static func stateText(_ s: StreamingEngine.State) -> String {
@@ -226,7 +236,7 @@ struct TemplatesSheet: View {
                         .padding(12)
                         .frame(width: 200, height: 170, alignment: .topLeading)
                         .background(Theme.panelRaised)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM))
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -240,7 +250,7 @@ struct TemplatesSheet: View {
                             Button { dismiss(); DispatchQueue.main.async { model.openProject(at: u, asTemplate: true) } } label: {
                                 Label(u.deletingPathExtension().lastPathComponent, systemImage: "square.stack.3d.up")
                                     .lineLimit(1).padding(.horizontal, 10).padding(.vertical, 7)
-                                    .background(Theme.panelRaised).clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                                    .background(Theme.panelRaised).clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
                             }
                             .buttonStyle(.plain)
                             .contextMenu { Button(L10n.t("template.delete"), role: .destructive) { model.deleteUserTemplate(u) } }
@@ -285,7 +295,7 @@ struct LoudnessReadout: View {
             .frame(width: 70)
             .padding(.vertical, 2)
             .background(Theme.panel)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
         }
         .buttonStyle(.plain)
         .help(L10n.t("lufs.help"))
@@ -298,11 +308,11 @@ struct LoudnessReadout: View {
         @ObservedObject var lufs: LoudnessMeter
         var body: some View {
             VStack(spacing: 0) {
-                Text("LUFS").font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.textDim)
+                Text("LUFS").font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.textDim)
                 Text(LoudnessReadout.format(lufs.loudness.shortTerm)).font(.system(size: 12, weight: .semibold).monospacedDigit())
                     .foregroundStyle(LoudnessReadout.color(lufs.loudness.shortTerm))
                 if lufs.loudness.duckDB < -0.5 {
-                    Text(String(format: "DUCK %.0f", lufs.loudness.duckDB)).font(.system(size: 8, weight: .bold)).foregroundStyle(Theme.preview)
+                    Text(String(format: "DUCK %.0f", lufs.loudness.duckDB)).font(.system(size: 9, weight: .bold)).foregroundStyle(Theme.preview)
                 }
             }
         }
@@ -660,7 +670,7 @@ private struct PTZHoldButton: View {
         Image(systemName: symbol)
             .frame(width: 34, height: 34)
             .background(pressed ? Theme.accent : Theme.panelRaised)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
             .gesture(DragGesture(minimumDistance: 0)
                 .onChanged { _ in if !pressed { pressed = true; onChange(true) } }
                 .onEnded { _ in pressed = false; onChange(false) })

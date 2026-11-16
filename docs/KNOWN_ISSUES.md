@@ -1,4 +1,6 @@
-# Known Issues & Batasan (Milestone 1 & 2)
+# Known Issues & Batasan
+
+Diperbarui 2026-11-16 (0.78.0).
 
 1. **Fitur M2 belum diuji di perangkat** (T-17..T-22). Kompilasi & unit test lulus di CI; perilaku nyata menunggu laporan.
 2. **Audio file video (M2):** latensi ±85–300 ms jitter buffer (AVPlayer menyerahkan audio dalam blok besar); sinkronisasi
@@ -6,7 +8,7 @@
    kanal tidak dibuat. Format sampel non-float diabaikan (senyap) dan dicatat di log.
 3. **Koreksi drift clock (0.3.0)** memakai interpolasi linear dengan rasio adaptif (maks ±0,5 %). Teruji dalam simulasi,
    belum diukur di perangkat untuk sesi > 1 jam (T-25). Batas keras (buang kelebihan) tetap ada sebagai jaring pengaman.
-4. **Limiter tanpa look-ahead.** Transien sangat cepat di-clamp keras pada −1 dBFS (bisa sedikit distorsi), bukan dihaluskan.
+4. ~~Limiter tanpa look-ahead~~ — 0.78.0: look-ahead 1,5 ms (gain sudah turun saat transien tiba). Menambah jeda audio 1,5 ms per limiter.
 5. **Offset A/V manual.** Latensi kamera berbeda per perangkat; kalibrasi dengan tes tepuk tangan (T-07).
 6. **Encoder AAC priming** diasumsikan 2112 sampel (encoder Apple). Jika berbeda di versi macOS tertentu, gunakan offset A/V.
 7. **BGRA end-to-end.** Capture dalam BGRA (konversi oleh hardware capture) — bandwidth lebih besar dari 4:2:0. Optimasi M2.
@@ -14,7 +16,7 @@
    Disengaja agar bitrate rekaman independen. Pipeline capture/komposisi tetap satu.
 9. **Resolusi/frame rate tidak dapat diubah saat stream/rekam aktif** (by design).
 10. **MP4 hanya dapat diputar setelah stop yang bersih.** Gunakan MOV (movie fragments 10 s) untuk acara penting.
-11. **Reconnect hanya setelah pernah LIVE.** Kegagalan pertama (URL/key salah, ditolak) dilaporkan tanpa retry.
+11. **Koneksi pertama (0.78.0)**: gangguan jaringan saat mulai dicoba ulang maksimal 3 kali; URL/key yang ditolak server langsung dilaporkan tanpa retry. Setelah pernah LIVE, jadwal reconnect penuh berlaku.
 12. **Timestamp RTMP mulai dari 0 lagi setelah reconnect**; beberapa platform menganggapnya sesi baru (perilaku umum encoder).
 13. ~~Overlay/scene tidak disimpan~~ — M2: disimpan di file proyek `.livecore`.
 14. **Keyboard shortcut tanpa modifier** (Space/Return/angka) aktif saat jendela utama fokus; saat mengetik di dialog,
@@ -162,7 +164,8 @@
 92. **Radio & hak cipta (0.38.0)**: memutar siaran radio di live stream/rekaman biasanya butuh izin stasiun dan pemegang hak
     musik; platform bisa membisukan atau menurunkan stream.
 93. **Uji disk penuh (0.37.0–0.38.0)**: di CI, rekaman ke disk image 160 MB yang diisi cepat masih berakhir dengan error
-    "Disk Full" (file mungkin tidak bisa diputar). Pemakaian normal tidak terdampak (rekaman berhenti sendiri saat sisa 1 GB),
+    "Disk Full" (file mungkin tidak bisa diputar). 0.78.0: batas berhenti memakai laju tulis terbesar (puncak terukur atau
+    bitrate setelan) dan cadangan 8 detik, bukan 4; uji soak di CI dinyalakan lagi untuk memastikan. Pemakaian normal tidak terdampak (rekaman berhenti sendiri saat sisa 1 GB),
     tapi hindari merekam ke drive yang hampir penuh. Langkah soak check ini tidak menahan pembuatan DMG.
 79. **Autosave & pemulihan (0.37.0)**: simpanan otomatis tiap 30 detik, jadi perubahan hingga 30 detik terakhir sebelum crash
     bisa hilang. Pemulihan hanya mengembalikan susunan produksi (input, layer, audio, overlay); rekaman yang sedang berjalan

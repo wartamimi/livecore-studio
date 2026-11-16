@@ -63,6 +63,17 @@ final class AudioDSPTests: XCTestCase {
         XCTAssertLessThanOrEqual(AudioMath.peak(r, count: r.count), ceiling + 1e-6)
     }
 
+    func testLimiterLooksAheadBeforeATransient() {
+        var lim = Limiter(sampleRate: 48000)
+        var l = [Float](repeating: 0.5, count: 960)
+        for i in 480..<960 { l[i] = 2 }
+        l.withUnsafeMutableBufferPointer { lim.process(left: $0.baseAddress!, right: nil, frames: $0.count) }
+        let edge = 480 + lim.latencyFrames
+        // The quiet part just before the transient comes out already turned down, and the jump is not clipped.
+        XCTAssertLessThan(l[edge - 1], 0.5)
+        XCTAssertLessThan(l[edge], AudioMath.dbToLinear(-1) + 1e-6)
+    }
+
     func testGainRampIsClickFreeAndReachesTarget() {
         var ramp = GainRamp(initial: 1)
         var l = [Float](repeating: 1, count: 100)

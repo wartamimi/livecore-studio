@@ -98,14 +98,14 @@ struct ChannelStripView: View {
     var body: some View {
         VStack(spacing: 4) {
             HStack(spacing: 2) {
-                if vm.isFileChannel { Image(systemName: "film").font(.system(size: 8)).help(L10n.t("audio.file")) }
-                if vm.isMusicChannel { Image(systemName: "music.note").font(.system(size: 8)).help(L10n.t("music.title")) }
-                if vm.isRadioChannel { Image(systemName: "antenna.radiowaves.left.and.right").font(.system(size: 8)).help(L10n.t("radio.title")) }
-                if model.tone(vm.id) != nil { Image(systemName: "waveform").font(.system(size: 8)).help(L10n.t("tone.name")) }
+                if vm.isFileChannel { Image(systemName: "film").font(.system(size: 9)).help(L10n.t("audio.file")) }
+                if vm.isMusicChannel { Image(systemName: "music.note").font(.system(size: 9)).help(L10n.t("music.title")) }
+                if vm.isRadioChannel { Image(systemName: "antenna.radiowaves.left.and.right").font(.system(size: 9)).help(L10n.t("radio.title")) }
+                if model.tone(vm.id) != nil { Image(systemName: "waveform").font(.system(size: 9)).help(L10n.t("tone.name")) }
                 Text(vm.name).font(.system(size: 10, weight: .semibold)).lineLimit(1)
                 Spacer(minLength: 0)
                 Button { vm.locked.toggle() } label: {
-                    Image(systemName: vm.locked ? "lock.fill" : "lock.open").font(.system(size: 8))
+                    Image(systemName: vm.locked ? "lock.fill" : "lock.open").font(.system(size: 9))
                         .foregroundStyle(vm.locked ? Theme.warning : Theme.textDim)
                 }
                 .buttonStyle(.plain)
@@ -221,7 +221,7 @@ struct ChannelStripView: View {
                 Text("AFV").font(.system(size: 9, weight: .bold))
                     .frame(width: 26, height: 18)
                     .background(link != nil ? Theme.program : Theme.panel)
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
             }
             .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
             .help(link.flatMap { id in model.inputs.first { $0.id == id }?.name }.map { L10n.f("afv.following", $0) } ?? L10n.t("afv.help"))
@@ -245,7 +245,7 @@ struct ChannelStripView: View {
             .font(.system(size: 9, weight: .bold))
             .frame(width: 26, height: 18)
             .background(b.wrappedValue ? color : Theme.panel)
-            .clipShape(RoundedRectangle(cornerRadius: 3))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
             .buttonStyle(.plain)
     }
 }
@@ -547,7 +547,7 @@ struct EQCurveView: View {
             ctx.stroke(path, with: .color(Theme.accent), lineWidth: 1.5)
         }
         .background(Theme.panelRaised.opacity(0.5))
-        .clipShape(RoundedRectangle(cornerRadius: 4))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
     }
 }
 
@@ -568,7 +568,7 @@ struct AuxStripView: View {
                 .font(.system(size: 9, weight: .bold))
                 .frame(width: 34, height: 18)
                 .background(bus.muted ? Theme.program : Theme.panel)
-                .clipShape(RoundedRectangle(cornerRadius: 3))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
                 .buttonStyle(.plain)
             Menu {
                 Button(L10n.t("aux.no_output")) { model.setAuxDevice(bus.index, uid: "") }
@@ -659,7 +659,7 @@ struct StereoMeterBars: View {
             let peak = max(level.holdL, level.holdR)
             VStack(spacing: 2) {
                 Text(peak > MeterView.floor ? String(format: "%.0f", peak) : "-∞")
-                    .font(.system(size: 8, weight: .semibold).monospacedDigit())
+                    .font(.system(size: 9, weight: .semibold).monospacedDigit())
                     .foregroundStyle(peak > -6 ? Theme.meterRed : Theme.textDim)
                     .help("Peak hold (dBFS)")
                 HStack(spacing: 2) {
@@ -716,7 +716,7 @@ struct MeterView: View {
             }
         }
         .frame(width: 8)
-        .clipShape(RoundedRectangle(cornerRadius: 2))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
     }
 
     static func fraction(_ db: Float) -> CGFloat {
@@ -734,7 +734,7 @@ struct VerticalFader: View {
             let h = geo.size.height
             ZStack(alignment: .bottom) {
                 Capsule().fill(Color.black.opacity(0.5)).frame(width: 4)
-                RoundedRectangle(cornerRadius: 2).fill(Theme.text)
+                RoundedRectangle(cornerRadius: Theme.radiusS).fill(Theme.text)
                     .frame(width: 22, height: 10)
                     .offset(y: -CGFloat(value) * (h - 10))
                     .shadow(radius: 1)

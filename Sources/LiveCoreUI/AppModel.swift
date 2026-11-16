@@ -146,6 +146,8 @@ public final class AppModel: ObservableObject {
 
     // Errors
     @Published public var errors: [ErrorItem] = []
+    /// Short confirmation shown at the bottom for 3 s (0.78.0); problems still go to `errors`.
+    @Published public var toast: String?
     public struct ErrorItem: Identifiable, Equatable { public let id = UUID(); public let message: String }
 
     var statsTimer: Timer?
@@ -340,6 +342,16 @@ public final class AppModel: ObservableObject {
 
     public func dismissError(_ e: ErrorItem) { errors.removeAll { $0.id == e.id } }
 
+    /// Success or info message: logged, then shown briefly without needing a click.
+    public func notify(_ message: String) {
+        FileLog.shared.info(message)
+        withAnimation(Theme.motion) { toast = message }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard self?.toast == message else { return }
+            withAnimation(Theme.motion) { self?.toast = nil }
+        }
+    }
+
     // MARK: Ticks (30 Hz meters, 1 Hz performance)
 
     var tickCount = 0
@@ -463,6 +475,9 @@ public final class AppModel: ObservableObject {
     @Published public internal(set) var ptzStatus: [InputID: String] = [:]
     /// Panels opened from the menus.
     @Published public var showPreflight = false
+    /// Ready check (0.78.0): Go Live from the button opens the pre-flight first, unless it ran in the last hour.
+    @Published public var readyCheck = false
+    var lastPreflightAt: Date?
     /// LiveCore Studio ▸ Settings… asks the main window to open its Settings sheet (0.55.0).
     @Published public var openSettingsRequest = false
     /// Sheet asked for by an add-input menu (Inputs panel or ADD INPUT in the bottom bar).

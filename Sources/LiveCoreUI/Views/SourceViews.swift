@@ -330,7 +330,7 @@ struct SlideshowSheet: View {
                         Text(L10n.t("slideshow.tpl.\(t.id)")).font(.system(size: 11, weight: .medium))
                             .frame(maxWidth: .infinity).padding(.vertical, 6)
                             .background(templateID == t.id ? Theme.accent.opacity(0.35) : Theme.panelRaised)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }

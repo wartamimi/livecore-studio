@@ -106,7 +106,8 @@ struct PerformanceReadouts: View {
             if !compact {
                 // Click to set it back to 0 (0.49.0).
                 Button { model.resetDropCounter() } label: {
-                    stat(L10n.t("top.dropped"), "\(model.performance.droppedRenderFrames)", warn: false)
+                    stat(L10n.t("top.dropped"), "\(model.performance.droppedRenderFrames)",
+                         warn: model.performance.droppedRenderFrames > 0, alert: model.performance.droppedRenderFrames > 100)
                 }
                 .buttonStyle(.plain)
                 .help(L10n.t("top.dropped_reset"))
@@ -119,7 +120,7 @@ struct PerformanceReadouts: View {
             StatusPill(text: streamText, color: streamColor, systemImage: "dot.radiowaves.left.and.right",
                        iconOnly: compact && !model.isStreamingActive)
                 .help(streamText)
-            StatusPill(text: recordText, color: model.isRecording ? Theme.program : Theme.panelRaised, systemImage: "record.circle",
+            StatusPill(text: recordText, color: !model.isRecording ? Theme.panelRaised : diskLow ? Theme.warning : Theme.program, systemImage: "record.circle",
                        iconOnly: compact && !model.isRecording)
                 .help(recordText)
     }
@@ -127,16 +128,19 @@ struct PerformanceReadouts: View {
     @ViewBuilder
     private var machineStats: some View {
         stat(L10n.t("top.cpu"), String(format: "%.0f%%", model.performance.cpuPercentOfMachine),
-             warn: model.performance.cpuPercentOfMachine > 70)
+             warn: model.performance.cpuPercentOfMachine > 70, alert: model.performance.cpuPercentOfMachine > 90)
         stat(L10n.t("top.gpu"), String(format: "%.1f ms", model.performance.gpuFrameMs),
              warn: model.performance.gpuFrameMs > 1000 / Double(max(model.settings.output.frameRate, 1)) * 0.8)
         stat(L10n.t("top.mem"), String(format: "%.0f MB", model.performance.memoryMB), warn: false)
     }
 
-    private func stat(_ label: String, _ value: String, warn: Bool) -> some View {
+    /// A reading in three states: normal, `warn` (amber) and `alert` (red).
+    private func stat(_ label: String, _ value: String, warn: Bool, alert: Bool = false) -> some View {
         VStack(spacing: 0) {
             Text(label).font(.system(size: 9, weight: .semibold)).foregroundStyle(Theme.textDim)
-            Text(value).font(.system(size: 12, weight: .medium).monospacedDigit()).foregroundStyle(warn ? Theme.warning : Theme.text)
+            Text(value).font(.system(size: 12, weight: .medium).monospacedDigit())
+                .foregroundStyle(alert ? Theme.meterRed : warn ? Theme.warning : Theme.text)
+                .animation(Theme.motion, value: alert || warn)
         }
     }
 
@@ -161,8 +165,14 @@ struct PerformanceReadouts: View {
     }
 
     private var recordText: String {
-        model.isRecording ? "\(L10n.t("top.record")) \(formatDuration(model.recordStats.duration))" : L10n.t("top.record")
+        guard model.isRecording else { return L10n.t("top.record") }
+        let text = "\(L10n.t("top.record")) \(formatDuration(model.recordStats.duration))"
+        guard let left = model.recordStats.secondsLeft, left < 24 * 3600 else { return text }
+        return "\(text) · \(L10n.f("record.left", formatDuration(left)))"
     }
+
+    /// Less than 10 minutes of disk left for the recording.
+    private var diskLow: Bool { (model.recordStats.secondsLeft ?? .infinity) < 600 }
 }
 
 /// FULLSCREEN ⚙: for each output, whether the button opens it, on which display, with which picture.
@@ -279,6 +289,7 @@ struct StatusPill: View {
             .padding(.horizontal, 8).padding(.vertical, 4)
             .background(color)
             .clipShape(Capsule())
+            .animation(Theme.motion, value: color)
     }
 }
 

@@ -1978,3 +1978,6 @@
 "stream.login_open" = "Buka halaman login";
 "capture.reset_permission" = "Minta izin ulang";
 "capture.reset_permission_help" = "Menghapus izin Screen Recording lama (misalnya dari build sebelumnya) lalu meminta lagi. Izinkan, lalu tutup dan buka ulang LiveCore Studio.";
+"record.left" = "sisa %@";
+"preflight.go_live" = "Mulai Live";
+"preflight.go_live_anyway" = "Tetap Mulai Live";

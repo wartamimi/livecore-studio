@@ -37,7 +37,7 @@ extension AppModel {
                 self?.packageProgress = nil
                 switch result {
                 case let .success(n):
-                    self?.report(L10n.f("package.done", "\(n)"))
+                    self?.notify(L10n.f("package.done", "\(n)"))
                     NSWorkspace.shared.activateFileViewerSelecting([folder])
                 case let .failure(err):
                     self?.report(L10n.f("package.failed", err.localizedDescription))

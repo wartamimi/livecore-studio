@@ -189,7 +189,7 @@ public final class StreamingEngine {
                     sendMetadata()
                     onRequestKeyframe?()
                 case let .failed(reason):
-                    connectionLost(reason)
+                    connectionLost(reason, rejected: true)
                 case .closed:
                     if wantRunning && state != .stopping { connectionLost("Server closed the stream") }
                 default: break
@@ -279,7 +279,7 @@ public final class StreamingEngine {
 
     // MARK: Failure & reconnect
 
-    private func connectionLost(_ reason: String) {
+    private func connectionLost(_ reason: String, rejected: Bool = false) {
         guard state != .stopping, state != .idle else { return }
         if case .failed = state { return }
         handshakeTimer?.cancel()
@@ -299,8 +299,10 @@ public final class StreamingEngine {
             return
         }
         if everPublished, failover.connectionFailed() { useFailoverServer() }
-        // Reconnect only after we were live once (a bad URL/key on first connect is reported instead).
-        guard wantRunning, settings.stream.autoReconnect, everPublished,
+        // Before the first LIVE, only network failures are retried, at most 3 times (a URL/key the
+        // server rejects is reported at once). After that, the reconnect schedule applies.
+        let mayRetry = everPublished || (!rejected && attempt < 3)
+        guard wantRunning, settings.stream.autoReconnect, mayRetry,
               let delay = settings.stream.reconnect.delay(forAttempt: attempt, random01: Double.random(in: 0...1)) else {
             fail(safeReason)
             return

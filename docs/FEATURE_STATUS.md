@@ -78,7 +78,7 @@ Tambahan: **U** = dilaporkan berfungsi oleh pengguna di Mac miliknya (build 0.1.
 | Routing ke Program on/off | Implemented | M | |
 | Peak meter + peak hold | Implemented | L + U | 0.76.3: skala dBFS (0, -6, -12, -18, -30, -45) dan angka peak dB di atas meter tiap strip (channel, bus A/B, master). |
 | Compressor per kanal | Implemented | L + M | Feed-forward, stereo-linked |
-| Limiter master | Implemented | L + M | Tanpa look-ahead (lihat known issues) |
+| Limiter master | Implemented | L + M | Look-ahead 1,5 ms sejak 0.78.0 |
 | Noise gate | Implemented (M2) | L + M | Per kanal: threshold, range, hysteresis 4 dB, hold 60 ms |
 | High-pass filter + EQ 3-band | Implemented (0.3.0) | L + M | HPF 40–300 Hz; low shelf 120 Hz, mid peak 200–6000 Hz, high shelf 8 kHz, ±12 dB |
 | Monitoring + pemilihan perangkat output | Implemented | M | |
@@ -627,3 +627,17 @@ Rilis stabilisasi + fitur dari evaluasi 0.36.0. Semua dikompilasi di CI macOS; k
 | Audio Properties responsif, Web Controller bergaya Studio Black (0.76.2) | Implemented, belum dites di Mac | Web Controller dicek di Chromium (desktop, tablet, HP) | T-374 |
 | Login akun untuk stream key (0.75.0): YouTube dan Twitch lewat OAuth device login. Butuh Client ID milik pengguna sendiri (LiveCore belum punya client terverifikasi); Facebook/TikTok/Kick dll. tidak punya API publik untuk key → hanya tautan | Partially implemented | unit test (request/parse) | T-369 |
 | Preview langsung di Properties input (0.75.0): gambar input 25–30 fps di atas setiap halaman | Implemented, belum dites di Mac | belum dites | T-370 |
+
+## 0.78.0
+
+| Fitur | Status | Uji | Catatan |
+|---|---|---|---|
+| Retry koneksi pertama (RTMP/SRT) | Implemented, belum dites | M | Maks 3 kali untuk gangguan jaringan; key ditolak langsung gagal |
+| Rekaman aman saat disk hampir penuh | Partial | CI soak + M | Batas 8 dtk × laju tulis terbesar; uji soak CI dinyalakan lagi |
+| Sisa waktu rekam di bar atas | Implemented, belum dites | M | Pil REC kuning bila sisa < 10 menit |
+| Limiter look-ahead | Implemented | L (unit test) + M | 1,5 ms |
+| Panel Siap Siaran | Implemented, belum dites | M | Tombol STREAM menjalankan pre-flight dulu kecuali sudah jalan dalam 1 jam terakhir; makro/Web Controller tidak |
+| Toast konfirmasi | Implemented, belum dites | M | Pesan sukses hilang sendiri setelah 3 dtk; error tetap di banner |
+| Tampilan kosong (Input, Playlist) | Implemented, belum dites | M | Ikon, satu kalimat, tombol tambah input / template |
+| UI lebih luwes | Partial | M | Sudut seragam (4/8 pt), animasi 0,18 dtk untuk tally, dock, pil status; teks 8 pt → 9 pt. Jarak 4 pt belum disisir. |
+| Tes pra-acara | Implemented | — | docs/PRE_EVENT_TEST.md |

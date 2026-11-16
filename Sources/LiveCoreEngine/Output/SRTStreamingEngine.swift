@@ -220,7 +220,8 @@ public final class SRTStreamingEngine: StreamOutput {
         connection?.cancel()
         connection = nil
         caller = nil
-        guard wantRunning, settings.stream.autoReconnect, everLive,
+        // Before the first connect, network failures are retried at most 3 times (as RTMP).
+        guard wantRunning, settings.stream.autoReconnect, everLive || attempt < 3,
               let delay = settings.stream.reconnect.delay(forAttempt: attempt, random01: Double.random(in: 0...1)) else {
             fail(safe)
             return

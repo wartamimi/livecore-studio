@@ -56,7 +56,7 @@ struct MonitorView: View {
                 if live {
                     Text("ON AIR").font(.system(size: 10, weight: .heavy))
                         .padding(.horizontal, 6).padding(.vertical, 1)
-                        .background(Theme.program).clipShape(RoundedRectangle(cornerRadius: 3))
+                        .background(Theme.program).clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
                 }
             }
             .padding(.horizontal, 8).padding(.vertical, 6)
@@ -141,7 +141,7 @@ private struct SnapshotConfirmation: View {
                     }
                     .padding(.horizontal, 10).padding(.vertical, 6)
                     .background(.black.opacity(0.8))
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .help(L10n.t("snapshot.show_in_finder"))
@@ -152,7 +152,7 @@ private struct SnapshotConfirmation: View {
                             .font(.system(size: 10, weight: .semibold))
                             .padding(.horizontal, 6).padding(.vertical, 3)
                             .background(Theme.accent).foregroundStyle(Color.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
                     }
                     .buttonStyle(.plain)
                     .offset(x: 8, y: -16)
@@ -183,7 +183,7 @@ private struct DesignerToggle: View {
                 .font(.system(size: 10, weight: .bold))
                 .padding(.horizontal, 6).padding(.vertical, 1)
                 .background(state.active ? Theme.accent : Theme.panelRaised)
-                .clipShape(RoundedRectangle(cornerRadius: 3))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
         }
         .buttonStyle(.plain)
         .disabled(model.switcher.preview == nil)
@@ -283,8 +283,8 @@ struct ProgramTransportBar: View {
                 .frame(width: 30, height: 22)
                 .background(on ? Theme.program : Theme.panelRaised)
                 .foregroundStyle(on ? Color.white : Theme.text)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(on ? Theme.program : Theme.border, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
+                .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(on ? Theme.program : Theme.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .help(help)
@@ -298,8 +298,8 @@ struct ProgramTransportBar: View {
                 .padding(.horizontal, 7)
                 .background(on ? Theme.accent : Theme.panelRaised)
                 .foregroundStyle(on ? Color.white : Theme.textDim)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.border, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
+                .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(Theme.border, lineWidth: 1))
         }
         .buttonStyle(.plain)
         .help(help)

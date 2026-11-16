@@ -116,7 +116,7 @@ extension AppModel {
         }
         clearUndo()
         FileLog.shared.info("recovered project from autosave of \(r.savedAt)")
-        report(L10n.f("recovery.done", DateFormatter.localizedString(from: r.savedAt, dateStyle: .none, timeStyle: .short)))
+        notify(L10n.f("recovery.done", DateFormatter.localizedString(from: r.savedAt, dateStyle: .none, timeStyle: .short)))
     }
 
     static var appVersion: String {

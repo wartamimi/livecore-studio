@@ -94,7 +94,7 @@ struct MultiviewView: View {
             .menuStyle(.borderlessButton)
             .fixedSize()
             .padding(6)
-            .background(Color.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .background(Color.black.opacity(0.55), in: RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
             .padding(8)
             .help(L10n.t("multiview.layout"))
         }

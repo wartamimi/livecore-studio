@@ -76,12 +76,12 @@ struct AppearanceSettingsView: View {
                     .padding(5)
                 }
                 .frame(height: 64)
-                .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
                 Text(L10n.t("appearance.theme.\(t.rawValue)")).font(.caption).lineLimit(1)
             }
             .padding(6)
             .background(on ? Theme.accent.opacity(0.2) : Color.clear)
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(on ? Theme.accent : Theme.border, lineWidth: on ? 2 : 1))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).stroke(on ? Theme.accent : Theme.border, lineWidth: on ? 2 : 1))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -115,7 +115,7 @@ struct AppearanceSettingsView: View {
             .padding(6)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(on ? Theme.accent.opacity(0.2) : Color.clear)
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(on ? Theme.accent : Theme.border, lineWidth: on ? 2 : 1))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusM).stroke(on ? Theme.accent : Theme.border, lineWidth: on ? 2 : 1))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -161,7 +161,7 @@ private struct LayoutSketch: View {
         }
         .padding(3)
         .background(Theme.background)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
     }
 }
 #endif

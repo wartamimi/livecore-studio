@@ -234,7 +234,7 @@ struct TitleSheet: View {
                     Button { galleryTab = tab } label: {
                         Text(name).font(.system(size: 11, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
                             .frame(maxWidth: .infinity).padding(.vertical, 4)
-                            .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .background(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous)
                                 .fill(galleryTab == tab ? Theme.accent : Color.white.opacity(0.07)))
                             .contentShape(Rectangle())
                     }
@@ -297,13 +297,13 @@ struct TitleSheet: View {
                     if let image { Image(decorative: image, scale: 1).resizable().aspectRatio(contentMode: .fit) }
                 }
                 .aspectRatio(16 / 9, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
                 Text(name).font(.system(size: 10, weight: on ? .bold : .regular)).lineLimit(1)
             }
             .padding(4)
             .background(on ? Theme.accent.opacity(0.25) : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).stroke(on ? Theme.accent : Theme.border, lineWidth: on ? 2 : 1))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous).stroke(on ? Theme.accent : Theme.border, lineWidth: on ? 2 : 1))
         }
         .buttonStyle(.plain)
     }
@@ -407,8 +407,8 @@ struct TitleSheet: View {
                 .clipped()
             }
             .frame(width: pw, height: ph)
-            .clipShape(RoundedRectangle(cornerRadius: 4))
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.border))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(Theme.border))
             Spacer(minLength: 0)
         }
     }
@@ -590,10 +590,10 @@ struct TitleSheet: View {
                             ForEach(0..<3, id: \.self) { c in
                                 let a = TitleAnchor.allCases[r * 3 + c]
                                 Button { design.anchor = a } label: {
-                                    RoundedRectangle(cornerRadius: 2)
+                                    RoundedRectangle(cornerRadius: Theme.radiusS)
                                         .fill(design.anchor == a ? Theme.accent : Theme.panelRaised)
                                         .frame(width: 26, height: 16)
-                                        .overlay(RoundedRectangle(cornerRadius: 2).stroke(Theme.border))
+                                        .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(Theme.border))
                                 }
                                 .buttonStyle(.plain)
                                 .help(L10n.t("titled.anchor." + a.rawValue))
@@ -752,7 +752,7 @@ struct TickerEditorPanel: View {
             TextEditor(text: $config.text)
                 .font(.system(size: 13))
                 .frame(height: 110)
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.textDim.opacity(0.4)))
+                .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(Theme.textDim.opacity(0.4)))
                 .disabled(config.textFilePath != nil || !(config.feedURL ?? "").isEmpty)
             HStack {
                 Button(L10n.t("ticker.from_file")) {

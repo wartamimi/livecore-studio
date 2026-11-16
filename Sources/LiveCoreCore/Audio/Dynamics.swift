@@ -54,31 +54,50 @@ public struct Compressor: Sendable {
     }
 }
 
-/// Brick-wall style peak limiter without look-ahead: instant attack (the gain reduction for a
-/// sample is applied to that same sample), exponential release, and a final safety clamp at the
-/// ceiling. Because there is no look-ahead, fast transients are clamped hard rather than
-/// smoothly — acceptable as a protective output limiter, documented in KNOWN_ISSUES.
+/// Look-ahead peak limiter (0.78.0). The signal is delayed by `lookaheadSeconds` (1.5 ms) so the
+/// gain is already coming down when a transient reaches the output: peaks are rounded off instead
+/// of clipped. Attack ramps over the look-ahead, release is exponential, and a final clamp at
+/// the ceiling stays as a safety net. Buffers are allocated once, so `process` is real-time safe.
 public struct Limiter: Sendable {
     public var ceilingDB: Float = -1
     public var releaseSeconds: Float = 0.080
     public private(set) var sampleRate: Float
     public private(set) var gainReductionDB: Float = 0
+    private var delayL: [Float]
+    private var delayR: [Float]
+    private var pos = 0
+    private var held: Float = 0
+    private var holdLeft = 0
 
-    public init(sampleRate: Float) { self.sampleRate = sampleRate }
+    public init(sampleRate: Float, lookaheadSeconds: Float = 0.0015) {
+        self.sampleRate = sampleRate
+        let n = max(1, Int(lookaheadSeconds * sampleRate))
+        delayL = [Float](repeating: 0, count: n)
+        delayR = [Float](repeating: 0, count: n)
+    }
+
+    /// Delay added by the look-ahead, in samples.
+    public var latencyFrames: Int { delayL.count }
 
     public mutating func process(left: UnsafeMutablePointer<Float>, right: UnsafeMutablePointer<Float>?, frames: Int) {
+        let look = delayL.count
+        let aC = AudioMath.timeConstantCoeff(seconds: Float(look) / 3 / sampleRate, sampleRate: sampleRate)
         let rC = AudioMath.timeConstantCoeff(seconds: releaseSeconds, sampleRate: sampleRate)
         let ceiling = AudioMath.dbToLinear(ceilingDB)
         var env = gainReductionDB
         for i in 0..<frames {
             let l = left[i]
             let r = right?[i] ?? l
-            let x = AudioMath.linearToDB(max(abs(l), abs(r)))
-            let target = max(0, x - ceilingDB)
-            env = target > env ? target : target + rC * (env - target)
+            // Reduction needed by the newest sample, held for the look-ahead window.
+            let target = max(0, AudioMath.linearToDB(max(abs(l), abs(r))) - ceilingDB)
+            if target >= held { held = target; holdLeft = look } else if holdLeft > 0 { holdLeft -= 1 } else { held = target }
+            env = held > env ? held + aC * (env - held) : held + rC * (env - held)
             let g = AudioMath.dbToLinear(-env)
-            left[i] = min(max(l * g, -ceiling), ceiling)
-            right?[i] = min(max(r * g, -ceiling), ceiling)
+            let dl = delayL[pos], dr = delayR[pos]
+            delayL[pos] = l; delayR[pos] = r
+            pos = pos + 1 == look ? 0 : pos + 1
+            left[i] = min(max(dl * g, -ceiling), ceiling)
+            right?[i] = min(max(dr * g, -ceiling), ceiling)
         }
         gainReductionDB = env
     }

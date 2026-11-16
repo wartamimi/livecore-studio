@@ -37,9 +37,9 @@ struct TBarControl: View {
             let restX = rest * range + handleWidth / 2
             ZStack(alignment: .leading) {
                 // Recessed track
-                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous)
                     .fill(LinearGradient(colors: [Color.black.opacity(0.65), Theme.panel], startPoint: .top, endPoint: .bottom))
-                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).stroke(Color.white.opacity(0.10), lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous).stroke(Color.white.opacity(0.10), lineWidth: 1))
                 // Tick marks (every 10 %, longer at 0 / 50 / 100), above and below the slot
                 ForEach(0...10, id: \.self) { i in
                     let major = i % 5 == 0
@@ -85,10 +85,10 @@ struct TBarControl: View {
     /// Metallic lever cap with grip lines.
     private var handle: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 4)
+            RoundedRectangle(cornerRadius: Theme.radiusS)
                 .fill(LinearGradient(colors: [Color(white: 0.92), Color(white: 0.62), Color(white: 0.78)],
                                      startPoint: .leading, endPoint: .trailing))
-            RoundedRectangle(cornerRadius: 4).stroke(Color.black.opacity(0.55), lineWidth: 1)
+            RoundedRectangle(cornerRadius: Theme.radiusS).stroke(Color.black.opacity(0.55), lineWidth: 1)
             HStack(spacing: 3) {
                 ForEach(0..<3, id: \.self) { _ in
                     Rectangle().fill(Color.black.opacity(0.35)).frame(width: 1)

@@ -1978,3 +1978,6 @@
 "stream.login_open" = "Open login page";
 "capture.reset_permission" = "Ask again";
 "capture.reset_permission_help" = "Clears an old Screen Recording entry (e.g. from a previous build) and asks again. Allow it, then quit and reopen LiveCore Studio.";
+"record.left" = "%@ left";
+"preflight.go_live" = "Go Live";
+"preflight.go_live_anyway" = "Go Live Anyway";

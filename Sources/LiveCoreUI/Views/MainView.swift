@@ -56,6 +56,7 @@ struct MainView: View {
                     dockArea
                         .id(DockKey(appearance: model.appearance, inputsMin: inputsMin, playlistMin: playlistMin,
                                     mixerInputsMin: mixerInputsMin, sizeClass: sizeClass))
+                        .overlay(alignment: .bottom) { ToastView() }
                     // Always shown: RECORD, STREAM, EXTERNAL and the four outputs.
                     OutputDockView { tab in settingsTab = tab; showSettings = true }
                 }
@@ -74,6 +75,9 @@ struct MainView: View {
         })
         .foregroundStyle(Theme.text)
         .dialog(isPresented: $showSettings, model) { SettingsView(initialTab: settingsTab) }
+        .dialog(isPresented: $model.readyCheck, model) {
+            PreflightSheet(goLive: { model.readyCheck = false; model.toggleStream() })
+        }
         .onChange(of: showSettings) { shown in if !shown { settingsTab = 6 } }
         .background(KeyboardShortcuts())
         // Pre-flight lives in Settings (0.38.0); the menu command opens that tab.
@@ -233,7 +237,7 @@ struct DockBar: View {
     let restore: () -> Void
 
     var body: some View {
-        Button(action: restore) {
+        Button { withAnimation(Theme.motion) { restore() } } label: {
             Group {
                 if axis == .vertical {
                     VStack(spacing: 8) {
@@ -261,7 +265,7 @@ struct DockBar: View {
             }
             .foregroundStyle(Theme.textDim)
             .background(Theme.panel)
-            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -273,9 +277,9 @@ extension View {
     /// Small handle at the top centre of a docked panel that minimizes it.
     func dockHandle(_ minimize: @escaping () -> Void) -> some View {
         overlay(alignment: .top) {
-            Button(action: minimize) {
+            Button { withAnimation(Theme.motion) { minimize() } } label: {
                 Image(systemName: "minus")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                     .frame(width: 30, height: 11)
                     .background(Theme.panelRaised)
                     .clipShape(Capsule())
@@ -299,6 +303,24 @@ struct KeyboardShortcuts: View {
     }
 }
 
+/// Bottom capsule for `model.toast`; it fades away by itself.
+struct ToastView: View {
+    @EnvironmentObject var model: AppModel
+    var body: some View {
+        if let t = model.toast {
+            Label(t, systemImage: "checkmark.circle.fill")
+                .font(.system(size: 12, weight: .medium))
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(Theme.panelRaised, in: Capsule())
+                .overlay(Capsule().strokeBorder(Theme.border))
+                .shadow(color: .black.opacity(0.35), radius: 8, y: 2)
+                .padding(.bottom, 12)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .onTapGesture { model.toast = nil }
+        }
+    }
+}
+
 struct ErrorBanner: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
@@ -313,7 +335,7 @@ struct ErrorBanner: View {
                     }
                     .padding(8)
                     .background(Theme.warning.opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
                 }
             }
         }

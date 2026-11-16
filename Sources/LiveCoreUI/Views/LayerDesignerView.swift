@@ -299,7 +299,7 @@ struct LayerDesignerBar: View {
             Image(systemName: icon)
                 .frame(width: 22, height: 18)
                 .background(on ? Theme.accent.opacity(0.45) : Color.clear)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
         }
         .buttonStyle(.borderless)
         .help(help)

@@ -55,8 +55,10 @@ struct InputPanelView: View {
                 addMenu
             }
             if model.inputs.isEmpty {
-                Text(L10n.t("inputs.empty")).font(.system(size: 12)).foregroundStyle(Theme.textDim).padding(.top, 20)
-                Spacer()
+                EmptyState(symbol: "video.badge.plus", text: L10n.t("inputs.empty")) {
+                    Menu(L10n.t("inputs.add")) { AddInputMenuItems() }.fixedSize()
+                    Button(L10n.t("template.menu")) { model.showTemplates = true }.buttonStyle(.link)
+                }
             } else {
                 if !model.usedColorTags.isEmpty { filterBar }
                 ScrollView {
@@ -169,7 +171,7 @@ struct InputPanelView: View {
         let collapsed = collapsedGroups.contains(g.key)
         return HStack(spacing: 6) {
             Image(systemName: collapsed ? "chevron.right" : "chevron.down").font(.system(size: 9, weight: .bold)).frame(width: 10)
-            RoundedRectangle(cornerRadius: 2).fill(g.tag?.color ?? Theme.labelAll).frame(width: 14, height: 8)
+            RoundedRectangle(cornerRadius: Theme.radiusS).fill(g.tag?.color ?? Theme.labelAll).frame(width: 14, height: 8)
             Text(model.groupName(g.tag)).font(.system(size: 11, weight: .semibold))
             Text("\(g.inputs.count)").font(.system(size: 10).monospacedDigit()).foregroundStyle(Theme.textDim)
             Rectangle().fill((g.tag?.color ?? Theme.border).opacity(0.35)).frame(height: 1)
@@ -355,8 +357,8 @@ struct OverlayNumbers: View {
                     .frame(maxWidth: .infinity, minHeight: 16)
                     .foregroundStyle(program || preview ? Color.white : Theme.textDim)
                     .background(program ? Theme.overlayProgram : (preview ? Theme.overlayPreview : Theme.panel))
-                    .clipShape(RoundedRectangle(cornerRadius: 3))
-                    .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.border, lineWidth: 1))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(Theme.border, lineWidth: 1))
                     .overlay(TwoClickArea(primary: { model.overlayFromTile(ch.index, input: input, toProgram: false) },
                                           secondary: { model.overlayFromTile(ch.index, input: input, toProgram: true) }))
                     .help(L10n.f("overlay.tile_help", ch.index))
@@ -384,7 +386,7 @@ struct InputTile: View {
                 PixelBufferView(feed: model.feed(for: info.id), transparent: true)
             }
             .aspectRatio(16 / 9, contentMode: .fit)
-            .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS, style: .continuous))
             .overlay(alignment: .topLeading) {
                 TallyBadge(number: info.number, color: isProgram ? Theme.program : (isPreview ? Theme.preview : nil)).padding(4)
             }
@@ -446,7 +448,7 @@ struct InputTile: View {
         }
         .padding(.horizontal, 5).padding(.vertical, 4)
         .background(LinearGradient(colors: [Color.clear, Color.black.opacity(0.7)], startPoint: .top, endPoint: .bottom))
-        .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS, style: .continuous))
     }
 
     private func tileButton(_ symbol: String, _ help: String, action: @escaping () -> Void) -> some View {
@@ -595,7 +597,7 @@ struct MiniInputTile: View {
                 .frame(minWidth: 18)
                 .padding(.vertical, 1)
                 .background(isProgram ? Theme.program : (isPreview ? Theme.preview : Color.black.opacity(0.5)))
-                .clipShape(RoundedRectangle(cornerRadius: 3))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
             Image(systemName: info.kind.symbol).font(.system(size: 9)).foregroundStyle(Theme.textDim)
             Text(info.name).font(.system(size: 11, weight: .medium)).lineLimit(1)
             Spacer(minLength: 0)
@@ -609,8 +611,8 @@ struct MiniInputTile: View {
         .padding(.trailing, 5)
         .frame(height: 24)
         .background(Theme.panelRaised)
-        .clipShape(RoundedRectangle(cornerRadius: 4))
-        .overlay(RoundedRectangle(cornerRadius: 4).stroke(isProgram ? Theme.program : (isPreview ? Theme.preview : Theme.border), lineWidth: isProgram || isPreview ? 2 : 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(isProgram ? Theme.program : (isPreview ? Theme.preview : Theme.border), lineWidth: isProgram || isPreview ? 2 : 1))
         .contentShape(Rectangle())
         .onTapGesture(count: 2) { model.cutDirect(info.id) }
         .onTapGesture { model.preview(info.id) }
@@ -782,7 +784,7 @@ struct BrowserSheet: View {
             TextEditor(text: Binding(get: { config.css ?? "" }, set: { config.css = $0.isEmpty ? nil : $0 }))
                 .font(.system(size: 11, design: .monospaced))
                 .frame(height: 70)
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.textDim.opacity(0.4)))
+                .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(Theme.textDim.opacity(0.4)))
             Text(L10n.t("browser.note")).font(.system(size: 11)).foregroundStyle(Theme.textDim)
                 .fixedSize(horizontal: false, vertical: true)
             if let error { Text(error).foregroundStyle(Theme.warning).font(.system(size: 11)) }
@@ -959,8 +961,8 @@ struct SlideControls: View {
             Button { source.previous() } label: { Image(systemName: "chevron.left") }
                 .help(L10n.t("presentation.previous"))
             if source.prefersLive {
-                Text("LIVE").font(.system(size: 8, weight: .heavy)).padding(.horizontal, 3)
-                    .background(Theme.program).foregroundStyle(Color.white).clipShape(RoundedRectangle(cornerRadius: 2))
+                Text("LIVE").font(.system(size: 9, weight: .heavy)).padding(.horizontal, 3)
+                    .background(Theme.program).foregroundStyle(Color.white).clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
                     .help(L10n.t("presentation.live_help"))
             }
             if let s = info.slide, s.converting {

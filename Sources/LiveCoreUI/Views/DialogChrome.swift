@@ -74,7 +74,7 @@ struct IconChip: View {
             .foregroundStyle(color)
             .frame(width: 30, height: 30)
             .background(color.opacity(0.16))
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
     }
 }
 
@@ -120,7 +120,7 @@ struct SidebarRow: View {
     @State private var hovering = false
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous)
         Button(action: action) {
             HStack(spacing: 9) {
                 Image(systemName: icon)

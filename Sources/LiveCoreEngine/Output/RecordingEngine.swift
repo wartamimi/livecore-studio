@@ -12,7 +12,7 @@ import VideoToolbox
 /// its own (hardware) H.264 encode so recording quality/bitrate is independent from the stream.
 ///
 /// Robustness:
-///   * free disk space is checked before starting and every 5 s; below the threshold the
+///   * free disk space is checked before starting and every second; below the threshold the
 ///     recording is stopped and finalised cleanly.
 ///   * writer failures are surfaced with the underlying error.
 ///   * MOV recordings use movie fragments (every 10 s) so a crash or power loss leaves a
@@ -32,6 +32,8 @@ public final class RecordingEngine {
         public var droppedVideoFrames: Int = 0
         public var freeBytes: Int64 = 0
         public var fileBytes: Int64 = 0
+        /// Recording time left before the disk-space stop, in seconds (nil until measured).
+        public var secondsLeft: Double?
         public init() {}
     }
 
@@ -55,6 +57,10 @@ public final class RecordingEngine {
     private var stats = Stats()
     private var monitorTimer: DispatchSourceTimer?
     private var lastFileBytes: Int64 = 0
+    /// Write rate the settings call for, and the decaying peak of the measured rate. The stop
+    /// threshold uses the larger, so bursty writes cannot fill the disk between two checks.
+    private var expectedBytesPerSecond: Int64 = 0
+    private var peakBytesPerSecond: Int64 = 0
     private var settings = RecordingSettings()
     private var url: URL?
     private let fileLock = UnfairLock()
@@ -87,10 +93,10 @@ public final class RecordingEngine {
         return Int64(values?.volumeAvailableCapacity ?? 0)
     }
 
-    /// Free space below which a running recording is closed: half the start minimum, plus four
-    /// seconds at the current write rate.
+    /// Free space below which a running recording is closed: half the start minimum, plus eight
+    /// seconds at the write rate (room for the writer's buffers and the final index).
     public static func stopThreshold(minimumFree: Int64, bytesPerSecond: Int64) -> Int64 {
-        minimumFree / 2 + 4 * bytesPerSecond
+        minimumFree / 2 + 8 * bytesPerSecond
     }
 
     // MARK: Control
@@ -111,6 +117,8 @@ public final class RecordingEngine {
         guard writer == nil else { return }
         self.settings = settings
         stats = Stats()
+        expectedBytesPerSecond = Int64(settings.estimatedMbps(output: output) * 125_000)
+        peakBytesPerSecond = 0
         let folder = settings.folderPath.isEmpty ? Self.defaultFolder() : URL(fileURLWithPath: settings.folderPath, isDirectory: true)
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -318,9 +326,13 @@ public final class RecordingEngine {
                 }
                 self.stats.freeBytes = free
                 self.stats.fileBytes = fileBytes
-                let perSecond = max(0, fileBytes - self.lastFileBytes)
+                let measured = max(0, fileBytes - self.lastFileBytes)
                 self.lastFileBytes = fileBytes
-                if free < Self.stopThreshold(minimumFree: self.settings.minimumFreeBytes, bytesPerSecond: perSecond) {
+                self.peakBytesPerSecond = max(measured, self.peakBytesPerSecond * 9 / 10)
+                let perSecond = max(self.peakBytesPerSecond, self.expectedBytesPerSecond)
+                let threshold = Self.stopThreshold(minimumFree: self.settings.minimumFreeBytes, bytesPerSecond: perSecond)
+                self.stats.secondsLeft = perSecond > 0 ? Double(max(0, free - threshold)) / Double(perSecond) : nil
+                if free < threshold {
                     self.finish(reason: "Disk space is running out.")
                     return
                 }

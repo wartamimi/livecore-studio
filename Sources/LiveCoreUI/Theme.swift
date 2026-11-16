@@ -30,6 +30,12 @@ enum Theme {
     static var corner: CGFloat { palette.corner }
     /// Corner of raised items inside a panel (tiles, mixer strips, buttons).
     static var cardCorner: CGFloat { palette.corner > 4 ? 6 : 2 }
+    /// Shared corner radii (0.78.0): small items (chips, badges), controls, large cards.
+    static let radiusS: CGFloat = 4
+    static let radiusM: CGFloat = 8
+    static let radiusL: CGFloat = 12
+    /// One short ease for state changes (tally, selection, hover, docks), so the UI moves the same way everywhere.
+    static let motion = Animation.easeOut(duration: 0.18)
 }
 
 /// Settings › Appearance (0.62.0), kept in user preferences (not in projects).
@@ -136,7 +142,7 @@ struct CardStyle: ViewModifier {
         content
             .background(Theme.panelRaised)
             .clipShape(shape)
-            .overlay(shape.strokeBorder(stroke, lineWidth: lineWidth))
+            .overlay(shape.strokeBorder(stroke, lineWidth: lineWidth).animation(Theme.motion, value: stroke))
     }
 }
 
@@ -202,6 +208,22 @@ private struct StudioButtonBody: View {
             .animation(.easeOut(duration: 0.12), value: hovering)
             .contentShape(Rectangle())
             .onHover { hovering = $0 }
+    }
+}
+/// Empty panel (0.78.0): an icon, one line on what goes here and the action that fills it.
+struct EmptyState<Actions: View>: View {
+    let symbol: String
+    let text: String
+    @ViewBuilder var actions: Actions
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: symbol).font(.system(size: 26, weight: .light)).foregroundStyle(Theme.textDim)
+            Text(text).font(.system(size: 12)).foregroundStyle(Theme.textDim).multilineTextAlignment(.center)
+            actions
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 #endif

@@ -65,8 +65,8 @@ struct QRCodeSheet: View {
                         if let img = preview { Image(decorative: img, scale: 1).resizable().aspectRatio(contentMode: .fit) }
                     }
                     .aspectRatio(16 / 9, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.border))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(Theme.border))
                     if let p = design.current.payload {
                         Text(p).font(.system(size: 10, design: .monospaced)).foregroundStyle(Theme.textDim)
                             .lineLimit(3).textSelection(.enabled)
@@ -215,7 +215,7 @@ struct QRCodeSheet: View {
         TextEditor(text: text)
             .font(.system(size: 12))
             .frame(height: height)
-            .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.border))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(Theme.border))
     }
 
     private func note(_ s: String) -> some View {
@@ -243,7 +243,7 @@ struct QRCodeSheet: View {
                             ForEach(0..<3, id: \.self) { c in
                                 let a = QRAnchor.allCases[r * 3 + c]
                                 Button { design.style.anchor = a } label: {
-                                    RoundedRectangle(cornerRadius: 2)
+                                    RoundedRectangle(cornerRadius: Theme.radiusS)
                                         .fill(design.style.anchor == a ? Theme.accent : Theme.border)
                                         .frame(width: 22, height: 13)
                                 }

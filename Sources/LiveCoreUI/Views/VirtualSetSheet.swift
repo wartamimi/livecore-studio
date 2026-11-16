@@ -113,13 +113,13 @@ struct VirtualSetSheet: View {
                     if let img = thumbs[t] { Image(decorative: img, scale: 1).resizable().aspectRatio(contentMode: .fit) }
                 }
                 .aspectRatio(16 / 9, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
                 Text(L10n.t("vsettpl." + t.rawValue)).font(.system(size: 10, weight: design.template == t ? .bold : .regular)).lineLimit(1)
             }
             .padding(4)
             .background(design.template == t ? Theme.accent.opacity(0.25) : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).stroke(design.template == t ? Theme.accent : Theme.border,
+            .clipShape(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusM, style: .continuous).stroke(design.template == t ? Theme.accent : Theme.border,
                                                               lineWidth: design.template == t ? 2 : 1))
         }
         .buttonStyle(.plain)
@@ -134,8 +134,8 @@ struct VirtualSetSheet: View {
             if let img { Image(decorative: img, scale: 1).resizable().aspectRatio(contentMode: .fit) }
         }
         .frame(width: 320, height: 320 / aspect)
-        .clipShape(RoundedRectangle(cornerRadius: 4))
-        .overlay(RoundedRectangle(cornerRadius: 4).stroke(Theme.border))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.radiusS))
+        .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(Theme.border))
     }
 
     private func talent(_ i: Int) -> Binding<String?> {

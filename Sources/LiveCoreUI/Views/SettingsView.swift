@@ -189,9 +189,9 @@ struct SettingsView: View {
     private var canvasPreview: some View {
         let a = max(draft.output.size.aspect, 0.1)
         let w = min(96, 64 * a)
-        return RoundedRectangle(cornerRadius: 3)
+        return RoundedRectangle(cornerRadius: Theme.radiusS)
             .fill(Theme.accent.opacity(0.18))
-            .overlay(RoundedRectangle(cornerRadius: 3).stroke(Theme.accent, lineWidth: 1.5))
+            .overlay(RoundedRectangle(cornerRadius: Theme.radiusS).stroke(Theme.accent, lineWidth: 1.5))
             .overlay(Image(systemName: "person.fill").font(.system(size: 16)).foregroundStyle(Theme.accent.opacity(0.7)))
             .frame(width: w, height: w / a)
             .frame(width: 100, height: 70)
