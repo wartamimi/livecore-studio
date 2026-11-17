@@ -31,6 +31,7 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
     private let queue: DispatchQueue
     private var pacer = FramePacer<CVPixelBuffer>()
     private let pacerLock = UnfairLock()
+    private let color = CaptureColorConverter()
     private let target: OutputFormat
     /// Format and options chosen by the operator (automatic by default).
     public var config: CaptureConfig { configLock.withLock { _config } }
@@ -158,8 +159,8 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
         }
         if session.outputs.isEmpty {
             output.videoSettings = [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-                kCVPixelBufferMetalCompatibilityKey as String: true,
+                // YUV here, BGRA via `color` with the correct matrix (0.80.1).
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
             ]
             output.alwaysDiscardsLateVideoFrames = config.bufferFrames != true
             output.setSampleBufferDelegate(self, queue: queue)
@@ -282,7 +283,7 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
     // MARK: AVCaptureVideoDataOutputSampleBufferDelegate (capture queue)
 
     public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard let pb = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        guard let yuv = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let t = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
         let keep: Bool = statsLock.withLock {
             guard keepFPS > 0, t.isFinite else { return true }
@@ -292,7 +293,7 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
             lastKept = (lastKept > 0 && t - lastKept < iv * 1.5) ? lastKept + iv : t
             return true
         }
-        guard keep else { return }
+        guard keep, let pb = color.bgra(yuv) else { return }
         pacerLock.withLock { pacer.put(pb, pts: t, arrival: HostClock.now()) }
         if !liveReported.value { liveReported.value = true; setStatus(.live) }
         probeLevels(pb)

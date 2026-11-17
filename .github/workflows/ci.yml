@@ -131,4 +131,4 @@ jobs:
           if [ "$GITHUB_REF" = "refs/heads/main" ]; then TAG="build-${GITHUB_RUN_NUMBER}"; else TAG="dev-build-${GITHUB_RUN_NUMBER}"; fi
           gh release create "$TAG" build/LiveCoreStudio-0.80.1-unsigned.dmg build/title-templates.png --repo "$GITHUB_REPOSITORY" \
             --prerelease --target "$GITHUB_SHA" --title "LiveCore Studio 0.80.1 build ${GITHUB_RUN_NUMBER} (unsigned, ${GITHUB_REF_NAME})" \
-            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. 0.80.1: smooth capture-card video (frames played on their capture cadence, e.g. Datavideo CAP-2), 25 fps kept evenly from 50/60 fps devices."
+            --notes "Automated CI build from ${GITHUB_SHA} on ${GITHUB_REF_NAME}. Unsigned and not notarized: right-click the app and choose Open the first time. 0.80.1: smooth capture-card video (frames played on their capture cadence, e.g. Datavideo CAP-2), 25 fps kept evenly from 50/60 fps devices, correct BT.709 colours from capture cards."
