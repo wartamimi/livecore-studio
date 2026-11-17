@@ -81,9 +81,12 @@ public enum FramePlanner {
                             detailInput: InputID? = nil,
                             extraInputs: [InputID] = [],
                             fullPreview: Bool = false,
-                            previewLayers: [InputID: [Layer]] = [:]) -> FramePlan {
-        /// Flattened inputs draw as their one pre-composed picture (see `FlattenPass`).
+                            previewLayers: [InputID: [Layer]] = [:],
+                            mixes: [InputID: SwitcherSnapshot] = [:]) -> FramePlan {
+        /// Flattened inputs draw as their one pre-composed picture (see `FlattenPass`). A Mix
+        /// input is always flattened: its picture is its own Program.
         func isFlat(_ id: InputID) -> Bool {
+            if mixes[id] != nil { return layersFor(id) != nil }
             guard let l = layersFor(id), l.count > 1 else { return false }
             return l.first?.flatten == true
         }
@@ -106,6 +109,11 @@ public enum FramePlanner {
         /// The input's visible layers, back to front.
         func layered(_ id: InputID) -> [DrawCommand] {
             guard let layers = layersFor(id) else { return [] }
+            if let m = mixes[id] {
+                return m.mixLayers(now: now).flatMap { l in
+                    composition(l.source).filter { $0.source != id }.map { var c = $0; c.opacity *= l.opacity; return c }
+                }
+            }
             return layers.compactMap { l in
                 // Guard against a scene layer that points at a removed input.
                 guard !l.isHidden, l.source == id || layersFor(l.source) != nil else { return nil }

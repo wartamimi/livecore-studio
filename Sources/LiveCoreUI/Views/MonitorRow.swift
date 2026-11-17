@@ -240,7 +240,7 @@ struct ProgramTransportBar: View {
                 }
                 key("forward.fill", L10n.t("transport.next")) { v.nextClip() }.disabled(!v.isPlaylist)
                 if let d = v.duration, d > 0 {
-                    Slider(value: Binding(get: { scrub ?? min(v.position, d) }, set: { scrub = $0; v.seek(to: $0) }),
+                    SoftSlider(value: Binding(get: { scrub ?? min(v.position, d) }, set: { scrub = $0; v.seek(to: $0) }),
                            in: 0...d, onEditingChanged: { if !$0 { scrub = nil } })
                         .controlSize(.small)
                         .frame(minWidth: 60)
@@ -350,7 +350,7 @@ struct TransitionControls: View {
                     Spacer()
                     Text(String(format: "%.1fs", model.transitionDuration)).font(.system(size: 11).monospacedDigit())
                 }
-                Slider(value: $model.transitionDuration, in: 0.2...5, step: 0.1)
+                SoftSlider(value: $model.transitionDuration, in: 0.2...5, step: 0.1)
             }
             Button(L10n.t("transition.cut")) { model.cut() }
                 .buttonStyle(StudioButtonStyle(color: Theme.program))
@@ -389,7 +389,7 @@ struct StingerControls: View {
                     Spacer()
                     Text(String(format: "%.2f / %.2fs", cut, d)).font(.system(size: 11).monospacedDigit())
                 }
-                Slider(value: Binding(get: { cut }, set: { model.setStinger(source: model.stinger.source, cutPoint: $0) }),
+                SoftSlider(value: Binding(get: { cut }, set: { model.setStinger(source: model.stinger.source, cutPoint: $0) }),
                        in: 0...d)
             } else {
                 Text(clips.isEmpty ? L10n.t("stinger.add_clip") : L10n.t("stinger.choose"))

@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import LiveCoreCore
 
-/// 0.74.0: end credits, scoreboard, speaker name tags, logo bug corners, Web Controller score route.
+/// 0.74.0: end credits, scoreboard, speaker name tags, Web Controller score route.
 final class V074Tests: XCTestCase {
     let a = InputID("a"), b = InputID("b"), t = InputID("t")
 
@@ -53,15 +53,6 @@ final class V074Tests: XCTestCase {
         cfg.seconds = 0; cfg.overlay = 9
         XCTAssertEqual(cfg.showSeconds, 2)
         XCTAssertEqual(cfg.overlayIndex, 1)
-    }
-
-    func testLogoCorners() {
-        let r = LogoCorner.topRight.rect()
-        XCTAssertEqual(r.x + r.width, 0.97, accuracy: 0.0001)
-        XCTAssertEqual(r.y, 0.03 * 16 / 9, accuracy: 0.0001)
-        let bl = LogoCorner.bottomLeft.rect()
-        XCTAssertEqual(bl.x, 0.03, accuracy: 0.0001)
-        XCTAssertEqual(bl.y + bl.height, 1 - 0.03 * 16 / 9, accuracy: 0.0001)
     }
 
     func testRemoteScore() {

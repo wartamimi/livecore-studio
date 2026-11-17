@@ -8,13 +8,14 @@ import LiveCoreEngine
 /// add menu works the same from the Inputs panel and from ADD INPUT in the bottom bar (0.55.0).
 public enum AddInputSheet: Identifiable, Equatable {
     case title, timer, frame, qr, virtualSet, flag, pixabay, browser, ndi, srt, decklink, captureCard, slideshow
-    case subtitles(InputID), scene(InputID), liveCall(InputID), capture(ProjectScreenCapture.Target)
+    case subtitles(InputID), scene(InputID), liveCall(InputID), mix(InputID), capture(ProjectScreenCapture.Target)
 
     public var id: String {
         switch self {
         case let .subtitles(i): return "sub:" + i.raw
         case let .scene(i): return "scene:" + i.raw
         case let .liveCall(i): return "live:" + i.raw
+        case let .mix(i): return "mix:" + i.raw
         default: return "\(self)"
         }
     }
@@ -44,7 +45,6 @@ struct AddInputMenuItems: View {
         Section(L10n.t("inputs.graphics_group")) {
             // Titles, lower thirds and running text are all made in the Title Designer.
             Button { model.addInputSheet = .title } label: { Label(L10n.t("inputs.title_menu"), systemImage: "textformat") }
-            Button { model.addLogoBug() } label: { Label(L10n.t("logobug.add"), systemImage: "seal") }
             Button { model.addInputSheet = .timer } label: { Label(L10n.t("timer.add"), systemImage: "timer") }
             Button { model.addInputSheet = .frame } label: { Label(L10n.t("frame.add"), systemImage: "person.crop.rectangle") }
             Button { model.addInputSheet = .virtualSet } label: { Label(L10n.t("vset.add"), systemImage: "person.and.background.dotted") }
@@ -52,6 +52,7 @@ struct AddInputMenuItems: View {
             Button { model.addInputSheet = .flag } label: { Label(L10n.t("flag.add"), systemImage: "flag") }
             Button { if let id = model.addTranscription() { model.addInputSheet = .subtitles(id) } } label: { Label(L10n.t("transcription.add"), systemImage: "captions.bubble") }
             Button { if let id = model.addScene() { model.addInputSheet = .scene(id) } } label: { Label(L10n.t("scene.new"), systemImage: "square.on.square") }
+            Button { if let id = model.addMix() { model.addInputSheet = .mix(id) } } label: { Label(L10n.t("mix.add"), systemImage: "rectangle.split.2x1") }
         }
         Section(L10n.t("inputs.other_group")) {
             Button { if let id = model.addLiveCall() { model.addInputSheet = .liveCall(id) } } label: {
@@ -106,6 +107,7 @@ private struct AddInputSheetView: View {
         case let .subtitles(id): SubtitleSheet(input: id)
         case let .scene(id): SceneEditorSheet(input: id)
         case let .liveCall(id): LiveCallSheet(input: id)
+        case let .mix(id): MixSheet(input: id)
         }
     }
 }

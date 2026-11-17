@@ -10,7 +10,7 @@
 "inputs.rename" = "Renombrar";
 "inputs.preview" = "Enviar a Previo";
 "inputs.cutdirect" = "Corte directo a Programa";
-"inputs.empty" = "Aún no hay entradas. Usa + para añadir cámara, archivo, imagen, color o título.";
+"inputs.empty" = "Aún no hay entradas. Usa ADD INPUT para añadir cámara, archivo, imagen, color o título.";
 "inputs.close" = "Cerrar fuente";
 "inputs.colorbars" = "Barras de color";
 "inputs.title_menu" = "Título / Rótulo / Texto en movimiento…";

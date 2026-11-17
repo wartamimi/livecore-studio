@@ -95,6 +95,7 @@ struct MainView: View {
         .addInputSheets(model)
         .dialog(isPresented: $model.showOutputsPanel, model) { OutputsPanelSheet() }
         .dialog(isPresented: $model.showTemplates, model) { TemplatesSheet() }
+        .dialog(item: $model.missingFiles, model) { MissingFilesSheet(request: $0) }
         .dialog(item: $model.propertiesRequest, model) { id in InputPropertiesSheet(input: id) }
         .onAppear {
             // Welcome screen with the templates on an empty start (not over the recovery question).

@@ -16,7 +16,7 @@
 "inputs.preview" = "Kirim ke Preview";
 "inputs.cutdirect" = "Cut Langsung ke Program";
 "inputs.addlayer" = "Tambah sebagai Layer PiP ke Input Preview";
-"inputs.empty" = "Belum ada input. Gunakan + untuk menambah kamera, file, gambar, warna, atau judul.";
+"inputs.empty" = "Belum ada input. Gunakan TAMBAH INPUT untuk menambah kamera, file, gambar, warna, atau judul.";
 "inputs.no_cameras" = "Tidak ada kamera atau perangkat capture";
 "monitor.preview" = "PREVIEW";
 "monitor.program" = "PROGRAM";
@@ -1950,7 +1950,6 @@
 /* 0.74.0 show graphics */
 "ticker.credits" = "Bawah → atas (kredit)";
 "tickertpl.endCredits" = "Kredit penutup";
-"logobug.add" = "Logo bug (logo di sudut)…";
 "score.title" = "Papan skor";
 "score.input" = "Input title";
 "score.home" = "Tim tuan rumah";
@@ -1981,3 +1980,44 @@
 "record.left" = "sisa %@";
 "preflight.go_live" = "Mulai Live";
 "preflight.go_live_anyway" = "Tetap Mulai Live";
+
+/* 0.79.0 title templates */
+"titletpl.slateLine" = "Garis slate";
+"titletpl.boldYellow" = "Kuning tegas";
+"titletpl.mintPill" = "Pil mint";
+"titletpl.techTag" = "Tag teknologi";
+"titletpl.magazine" = "Majalah";
+"titletpl.navyGold" = "Navy & emas";
+"titletpl.esports" = "Esports";
+"titletpl.sermon" = "Khotbah";
+"titletpl.minimalDot" = "Garis minimal";
+"titletpl.sunsetSplit" = "Senja dua warna";
+"titletpl.eventOpener" = "Pembuka acara";
+"titletpl.thinCenter" = "Tengah tipis";
+"titletpl.corporateCard" = "Kartu korporat";
+"titletpl.verseCard" = "Kartu ayat";
+"titletpl.statement" = "Pernyataan besar";
+"titletpl.breakingCorner" = "Pojok breaking";
+"titletpl.glassTag" = "Tag kaca";
+"titletpl.goldCorner" = "Pojok emas";
+"titletpl.onAirDot" = "On air";
+
+/* 0.79.0 Mix input */
+"mix.add" = "Mix (Preview/Program sendiri)";
+"mix.open" = "Buka Mix…";
+"mix.title" = "Mix";
+"mix.default_name" = "Mix %d";
+"mix.subtitle" = "Preview dan Program sendiri; klik = Preview, klik dua kali = Cut";
+"mix.fade" = "FADE";
+"mix.send_to" = "Kirim Program Mix ke";
+"mix.output_n" = "Output %d";
+"mix.output_help" = "Tampilkan Mix ini di output tambahan (jendela, layar atau NDI). Klik lagi untuk kembali ke Program.";
+"mix.iso" = "Rekam ISO";
+"mix.iso_help" = "Rekam Mix ini ke file sendiri dengan MultiCorder (berlaku saat mulai berikutnya).";
+
+/* Missing Files dialog (0.80.0) */
+"missing.title" = "File Hilang";
+"missing.subtitle" = "%d file media sudah dipindah atau dihapus";
+"missing.search" = "Cari di Folder…";
+"missing.locate" = "Cari…";
+"missing.open" = "Buka Proyek";

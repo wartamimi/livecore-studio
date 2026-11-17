@@ -70,15 +70,15 @@ struct VirtualSetSheet: View {
                     }
                     GridRow {
                         Text(L10n.t("vset.size"))
-                        Slider(value: $design.talentScale, in: 0.5...1.6)
+                        SoftSlider(value: $design.talentScale, in: 0.5...1.6)
                     }
                     GridRow {
                         Text(L10n.t("vset.move_x"))
-                        Slider(value: $design.talentOffsetX, in: -0.3...0.3)
+                        SoftSlider(value: $design.talentOffsetX, in: -0.3...0.3)
                     }
                     GridRow {
                         Text(L10n.t("vset.move_y"))
-                        Slider(value: $design.talentOffsetY, in: -0.3...0.3)
+                        SoftSlider(value: $design.talentOffsetY, in: -0.3...0.3)
                     }
                 }
                 .font(.system(size: 12))

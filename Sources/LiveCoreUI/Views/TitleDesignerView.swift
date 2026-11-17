@@ -640,7 +640,7 @@ struct TitleSheet: View {
     private func slider(_ label: String, _ value: Binding<Double>, _ range: ClosedRange<Double>,
                         step: Double = 1, percent: Bool = false) -> some View {
         row(label) {
-            Slider(value: value, in: range, step: step)
+            SoftSlider(value: value, in: range, step: step)
             Text(percent ? "\(Int((value.wrappedValue * 100).rounded())) %" : String(format: step < 1 ? "%.1f" : "%.0f", value.wrappedValue))
                 .monospacedDigit().frame(width: 48, alignment: .trailing)
         }
@@ -915,7 +915,7 @@ struct TickerEditorPanel: View {
     private func slider(_ label: String, _ value: Binding<Double>, _ range: ClosedRange<Double>,
                         step: Double = 1, percent: Bool = false) -> some View {
         row(label) {
-            Slider(value: value, in: range, step: step)
+            SoftSlider(value: value, in: range, step: step)
             Text(percent ? "\(Int((value.wrappedValue * 100).rounded())) %" : String(format: step < 1 ? "%.1f" : "%.0f", value.wrappedValue))
                 .monospacedDigit().frame(width: 48, alignment: .trailing)
         }

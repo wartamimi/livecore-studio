@@ -16,7 +16,7 @@
 "inputs.preview" = "Send to Preview";
 "inputs.cutdirect" = "Cut Directly to Program";
 "inputs.addlayer" = "Add as PiP Layer to Preview Input";
-"inputs.empty" = "No inputs yet. Use + to add a camera, file, image, colour or title.";
+"inputs.empty" = "No inputs yet. Use ADD INPUT to add a camera, file, image, colour or title.";
 "inputs.no_cameras" = "No cameras or capture devices found";
 "monitor.preview" = "PREVIEW";
 "monitor.program" = "PROGRAM";
@@ -1950,7 +1950,6 @@
 /* 0.74.0 show graphics */
 "ticker.credits" = "Bottom → top (credits)";
 "tickertpl.endCredits" = "End credits";
-"logobug.add" = "Logo bug (corner logo)…";
 "score.title" = "Scoreboard";
 "score.input" = "Title input";
 "score.home" = "Home team";
@@ -1981,3 +1980,44 @@
 "record.left" = "%@ left";
 "preflight.go_live" = "Go Live";
 "preflight.go_live_anyway" = "Go Live Anyway";
+
+/* 0.79.0 title templates */
+"titletpl.slateLine" = "Slate line";
+"titletpl.boldYellow" = "Bold yellow";
+"titletpl.mintPill" = "Mint pill";
+"titletpl.techTag" = "Tech tag";
+"titletpl.magazine" = "Magazine";
+"titletpl.navyGold" = "Navy & gold";
+"titletpl.esports" = "Esports";
+"titletpl.sermon" = "Sermon";
+"titletpl.minimalDot" = "Minimal line";
+"titletpl.sunsetSplit" = "Sunset split";
+"titletpl.eventOpener" = "Event opener";
+"titletpl.thinCenter" = "Thin centre";
+"titletpl.corporateCard" = "Corporate card";
+"titletpl.verseCard" = "Verse card";
+"titletpl.statement" = "Big statement";
+"titletpl.breakingCorner" = "Breaking corner";
+"titletpl.glassTag" = "Glass tag";
+"titletpl.goldCorner" = "Gold corner";
+"titletpl.onAirDot" = "On air";
+
+/* 0.79.0 Mix input */
+"mix.add" = "Mix (own Preview/Program)";
+"mix.open" = "Open Mix…";
+"mix.title" = "Mix";
+"mix.default_name" = "Mix %d";
+"mix.subtitle" = "Its own Preview and Program; click = Preview, double-click = Cut";
+"mix.fade" = "FADE";
+"mix.send_to" = "Send Mix Program to";
+"mix.output_n" = "Output %d";
+"mix.output_help" = "Show this Mix on the extra output (window, display or NDI). Click again to put Program back.";
+"mix.iso" = "ISO record";
+"mix.iso_help" = "Record this Mix to its own file with MultiCorder (applies at the next start).";
+
+/* Missing Files dialog (0.80.0) */
+"missing.title" = "Missing Files";
+"missing.subtitle" = "%d media files were moved or deleted";
+"missing.search" = "Search Folder…";
+"missing.locate" = "Locate…";
+"missing.open" = "Open Project";

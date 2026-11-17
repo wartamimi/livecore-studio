@@ -208,6 +208,8 @@ public enum ProjectSource: Codable, Equatable, Sendable {
     case qrCode(QRDesign)
     /// Virtual studio with keyed talents (0.59.0); talents and screen are its layers.
     case virtualSet(VirtualSetDesign)
+    /// Mix input with its own Preview/Program (0.79.0).
+    case mix(ProjectMix)
 }
 
 /// A presentation input: the file and the slide on air.
@@ -224,13 +226,16 @@ public struct ProjectPresentation: Codable, Equatable, Sendable {
     }
 }
 
-/// Which presentation files are read directly and which are converted to PDF first.
+/// Which presentation files are read directly and which are converted to PDF first
+/// (.pptx by LiveCore itself, .ppt / .key / .odp by an installed app).
 public enum PresentationFiles {
     public static let pdf: Set<String> = ["pdf"]
     public static let powerPoint: Set<String> = ["pptx", "ppt", "pps", "ppsx", "pptm", "potx"]
     public static let keynote: Set<String> = ["key"]
     public static let openDocument: Set<String> = ["odp"]
     public static var all: Set<String> { pdf.union(powerPoint).union(keynote).union(openDocument) }
+    /// Drawn by LiveCore's own PowerPoint engine (0.80.0); no other app needed.
+    public static let builtIn: Set<String> = ["pptx", "ppsx", "pptm", "potx"]
 
     /// Apps that can turn a file into PDF, best first.
     public enum Converter: String, Sendable, Equatable { case powerPoint, keynote, libreOffice }

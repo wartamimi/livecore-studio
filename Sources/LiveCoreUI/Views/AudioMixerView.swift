@@ -104,8 +104,9 @@ struct ChannelStripView: View {
                 if model.tone(vm.id) != nil { Image(systemName: "waveform").font(.system(size: 9)).help(L10n.t("tone.name")) }
                 Text(vm.name).font(.system(size: 10, weight: .semibold)).lineLimit(1)
                 Spacer(minLength: 0)
-                Button { vm.locked.toggle() } label: {
-                    Image(systemName: vm.locked ? "lock.fill" : "lock.open").font(.system(size: 9))
+                Button { model.setAudioLock([vm], !vm.locked) } label: {
+                    Image(systemName: vm.locked ? "lock.fill" : "lock.open").font(.system(size: 10))
+                        .frame(width: 16, height: 16).contentShape(Rectangle())
                         .foregroundStyle(vm.locked ? Theme.warning : Theme.textDim)
                 }
                 .buttonStyle(.plain)
@@ -121,7 +122,7 @@ struct ChannelStripView: View {
             .frame(width: 84)
             HStack(spacing: 4) {
                 StereoMeter(source: .channel(vm.id))
-                VerticalFader(value: $vm.fader)
+                VerticalFader(value: $vm.fader).disabled(vm.locked)
             }
             .frame(height: compact ? 90 : 120)
             Text(dbLabel).font(.system(size: 9).monospacedDigit()).foregroundStyle(Theme.textDim)
@@ -130,7 +131,8 @@ struct ChannelStripView: View {
                 toggle(L10n.t("audio.solo"), $vm.solo, Theme.warning)
                 toggle(L10n.t("audio.pgm"), $vm.toProgram, Theme.accent)
             }
-            if !compact { details }
+            .disabled(vm.locked)
+            if !compact { details.disabled(vm.locked) }
         }
         .padding(4)
         .card(stroke: hovering ? Color.white.opacity(0.2) : Theme.border)
@@ -262,7 +264,7 @@ struct MusicTransport: View {
                 .help("\(player.index + 1)/\(player.tracks.count) · \(player.currentTitle)")
             TimelineView(.periodic(from: .now, by: 0.5)) { _ in
                 if let d = player.duration {
-                    Slider(value: Binding(get: { min(player.position, d) }, set: { player.seek(to: $0) }), in: 0...d)
+                    SoftSlider(value: Binding(get: { min(player.position, d) }, set: { player.seek(to: $0) }), in: 0...d)
                         .controlSize(.mini).frame(width: 84)
                         .help("\(TimerMath.duration(player.position)) / \(TimerMath.duration(d))")
                 }
@@ -499,7 +501,7 @@ struct AudioPropertiesSheet: View {
 
     private func row(_ label: String, _ value: Binding<Double>, _ range: ClosedRange<Double>, _ fmt: String) -> some View {
         LabeledContent(label) {
-            Slider(value: value, in: range)
+            SoftSlider(value: value, in: range)
             Text(String(format: fmt, value.wrappedValue)).monospacedDigit().frame(width: 70, alignment: .trailing)
         }
     }
@@ -610,7 +612,7 @@ struct MasterStripView: View {
             LoudnessReadout()
             HStack(spacing: 2) {
                 Image(systemName: "headphones").font(.system(size: 10))
-                Slider(value: $model.monitorVolume, in: 0...1)
+                SoftSlider(value: $model.monitorVolume, in: 0...1)
                     .frame(width: 70)
             }
             .help(L10n.t("audio.monitor"))
@@ -732,12 +734,15 @@ struct VerticalFader: View {
     var body: some View {
         GeometryReader { geo in
             let h = geo.size.height
+            // Soft Pro (0.80.0): thin rounded track filled in the accent colour, white rounded cap.
             ZStack(alignment: .bottom) {
-                Capsule().fill(Color.black.opacity(0.5)).frame(width: 4)
-                RoundedRectangle(cornerRadius: Theme.radiusS).fill(Theme.text)
-                    .frame(width: 22, height: 10)
-                    .offset(y: -CGFloat(value) * (h - 10))
-                    .shadow(radius: 1)
+                Capsule().fill(Color.white.opacity(0.12)).frame(width: 4)
+                Capsule().fill(Theme.accent).frame(width: 4, height: CGFloat(value) * (h - 10) + 5)
+                Capsule().fill(Color.white)
+                    .frame(width: 24, height: 12)
+                    .shadow(color: .black.opacity(0.55), radius: 2, y: 1)
+                    .scaleEffect(dragStart == nil ? 1 : 1.08)
+                    .offset(y: -CGFloat(value) * (h - 10) + 1)
             }
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
@@ -772,7 +777,7 @@ struct ToneControls: View {
                 ForEach([100.0, 440, 1000, 10_000], id: \.self) { f in Text(f >= 1000 ? "\(Int(f / 1000)) kHz" : "\(Int(f)) Hz").tag(f) }
             }
             LabeledContent(L10n.t("tone.level")) {
-                Slider(value: Binding(get: { level }, set: { level = $0; tone.levelDB = $0 }), in: ToneGenerator.levelRange, step: 1)
+                SoftSlider(value: Binding(get: { level }, set: { level = $0; tone.levelDB = $0 }), in: ToneGenerator.levelRange, step: 1)
                 Text(String(format: "%.0f dBFS", level)).monospacedDigit().frame(width: 70, alignment: .trailing)
             }
         }

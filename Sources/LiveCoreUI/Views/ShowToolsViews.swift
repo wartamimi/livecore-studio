@@ -387,7 +387,7 @@ struct LoudnessPanel: View {
                         set: @escaping (Float) -> Void) -> some View {
         HStack {
             Text(label).font(.system(size: 11)).frame(width: 80, alignment: .leading)
-            Slider(value: Binding(get: { Double(value) }, set: { set(Float($0)) }), in: Double(range.lowerBound)...Double(range.upperBound))
+            SoftSlider(value: Binding(get: { Double(value) }, set: { set(Float($0)) }), in: Double(range.lowerBound)...Double(range.upperBound))
             Text(String(format: fmt, value)).font(.system(size: 10).monospacedDigit()).frame(width: 56, alignment: .trailing)
         }
     }
@@ -575,7 +575,7 @@ struct PTZSheet: View {
                 }
                 GridRow {
                     Text(L10n.t("ptz.speed"))
-                    Slider(value: Binding(get: { Double(speed) }, set: { speed = Int($0) }), in: 1...24, step: 1).frame(width: 200)
+                    SoftSlider(value: Binding(get: { Double(speed) }, set: { speed = Int($0) }), in: 1...24, step: 1).frame(width: 200)
                 }
             }
             .font(.system(size: 12))

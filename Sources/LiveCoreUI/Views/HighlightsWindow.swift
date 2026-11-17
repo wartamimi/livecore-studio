@@ -78,7 +78,7 @@ struct HighlightsWindow: View {
             GridRow {
                 Text(L10n.t("highlights.crossfade"))
                 HStack {
-                    Slider(value: $model.highlightSettings.crossfade, in: 0...2)
+                    SoftSlider(value: $model.highlightSettings.crossfade, in: 0...2)
                     Text(String(format: "%.1f s", model.highlightSettings.crossfade)).monospacedDigit().frame(width: 40)
                 }
                 Text(L10n.t("highlights.format"))

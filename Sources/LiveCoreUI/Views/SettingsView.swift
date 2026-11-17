@@ -364,7 +364,7 @@ struct SettingsView: View {
                 ForEach(model.outputDevices, id: \.uid) { d in Text(d.name).tag(d.uid) }
             }
             LabeledContent(L10n.t("audio.sync")) {
-                Slider(value: $model.syncOffsetMs, in: -500...500, step: 10)
+                SoftSlider(value: $model.syncOffsetMs, in: -500...500, step: 10)
                 Text("\(Int(model.syncOffsetMs))").monospacedDigit().frame(width: 40)
             }
             Text("Positive values delay audio relative to video. Measure with a clap/slate test (docs/TEST_PLAN.md, T-07).")
@@ -374,17 +374,17 @@ struct SettingsView: View {
             Section(L10n.t("audio.master_section")) {
                 Toggle(L10n.t("audio.limiter"), isOn: $model.limiterEnabled)
                 LabeledContent(L10n.t("audio.limiter_ceiling")) {
-                    Slider(value: $limiterCeiling, in: -6...0, step: 0.5)
+                    SoftSlider(value: $limiterCeiling, in: -6...0, step: 0.5)
                     Text(String(format: "%.1f dBFS", limiterCeiling)).monospacedDigit().frame(width: 70)
                 }
                 .disabled(!model.limiterEnabled)
                 LabeledContent(L10n.t("audio.limiter_release")) {
-                    Slider(value: $limiterRelease, in: 20...500, step: 10)
+                    SoftSlider(value: $limiterRelease, in: 20...500, step: 10)
                     Text("\(Int(limiterRelease)) ms").monospacedDigit().frame(width: 70)
                 }
                 .disabled(!model.limiterEnabled)
                 LabeledContent(L10n.t("audio.monitor")) {
-                    Slider(value: $model.monitorVolume, in: 0...1)
+                    SoftSlider(value: $model.monitorVolume, in: 0...1)
                     Text("\(Int(model.monitorVolume * 100)) %").monospacedDigit().frame(width: 70)
                 }
             }

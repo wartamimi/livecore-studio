@@ -29,7 +29,9 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
     private let session = AVCaptureSession()
     private let output = AVCaptureVideoDataOutput()
     private let queue: DispatchQueue
-    private let slot = FrameSlot()
+    private var pacer = FramePacer<CVPixelBuffer>()
+    private let pacerLock = UnfairLock()
+    private let color = CaptureColorConverter()
     private let target: OutputFormat
     /// Format and options chosen by the operator (automatic by default).
     public var config: CaptureConfig { configLock.withLock { _config } }
@@ -48,7 +50,7 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
         super.init()
     }
 
-    public func currentFrame() -> CVPixelBuffer? { slot.get() }
+    public func currentFrame() -> CVPixelBuffer? { pacerLock.withLock { pacer.frame(at: HostClock.now()) } }
 
     public func start() {
         queue.async { [weak self] in self?.configureAndRun() }
@@ -157,8 +159,8 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
         }
         if session.outputs.isEmpty {
             output.videoSettings = [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-                kCVPixelBufferMetalCompatibilityKey as String: true,
+                // YUV here, BGRA via `color` with the correct matrix (0.80.1).
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
             ]
             output.alwaysDiscardsLateVideoFrames = config.bufferFrames != true
             output.setSampleBufferDelegate(self, queue: queue)
@@ -207,7 +209,7 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
         let ranges = formats[index].videoSupportedFrameRateRanges
         let native = Self.matchingRange(ranges, fps: fps) != nil
         let runFPS = native ? fps : (Self.matchingRange(ranges, fps: fps * 2) != nil ? fps * 2 : fps)
-        statsLock.withLock { keepFPS = (config.frameRate != nil && !native) ? fps : 0; lastKept = 0 }
+        statsLock.withLock { keepFPS = native ? 0 : fps; lastKept = 0 }
         let best = (format: formats[index], range: Self.matchingRange(ranges, fps: runFPS))
         do {
             if let err = lc_catch_objc_exception({ device.activeFormat = best.format }) {
@@ -281,7 +283,7 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
     // MARK: AVCaptureVideoDataOutputSampleBufferDelegate (capture queue)
 
     public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard let pb = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        guard let yuv = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let t = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
         let keep: Bool = statsLock.withLock {
             guard keepFPS > 0, t.isFinite else { return true }
@@ -291,8 +293,8 @@ public final class CameraSource: NSObject, VideoSource, AVCaptureVideoDataOutput
             lastKept = (lastKept > 0 && t - lastKept < iv * 1.5) ? lastKept + iv : t
             return true
         }
-        guard keep else { return }
-        slot.put(pb)
+        guard keep, let pb = color.bgra(yuv) else { return }
+        pacerLock.withLock { pacer.put(pb, pts: t, arrival: HostClock.now()) }
         if !liveReported.value { liveReported.value = true; setStatus(.live) }
         probeLevels(pb)
         // Measured frame rate over ~1 s windows.

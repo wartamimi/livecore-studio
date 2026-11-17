@@ -52,13 +52,9 @@ struct InputPanelView: View {
                         .buttonStyle(.borderless)
                         .help(allLocked ? L10n.t("lock.unlock_all") : L10n.t("lock.lock_all"))
                 }
-                addMenu
             }
             if model.inputs.isEmpty {
-                EmptyState(symbol: "video.badge.plus", text: L10n.t("inputs.empty")) {
-                    Menu(L10n.t("inputs.add")) { AddInputMenuItems() }.fixedSize()
-                    Button(L10n.t("template.menu")) { model.showTemplates = true }.buttonStyle(.link)
-                }
+                EmptyState(symbol: "video.badge.plus", text: L10n.t("inputs.empty")) { EmptyView() }
             } else {
                 if !model.usedColorTags.isEmpty { filterBar }
                 ScrollView {
@@ -187,16 +183,6 @@ struct InputPanelView: View {
         }
     }
 
-    private var addMenu: some View {
-        Menu { AddInputMenuItems() } label: {
-            Image(systemName: "plus.circle.fill")
-        }
-        .menuStyle(.borderlessButton)
-        .fixedSize()
-        .help(L10n.t("inputs.add"))
-        .onAppear { model.refreshDevices() }
-    }
-
     @ViewBuilder
     private func contextMenu(_ info: ProductionEngine.InputInfo) -> some View {
         Button(L10n.t("inputs.preview")) { model.preview(info.id) }
@@ -214,6 +200,7 @@ struct InputPanelView: View {
 
     @ViewBuilder
     private func editItems(_ info: ProductionEngine.InputInfo) -> some View {
+        if info.kind == .mix { Button(L10n.t("mix.open")) { model.addInputSheet = .mix(info.id) } }
         Button(L10n.t("scene.edit")) { editingScene = info.id }
         Menu(L10n.t("inputs.addlayer")) {
             ForEach([LayoutPreset.pipTopRight, .pipTopLeft, .pipBottomRight, .pipBottomLeft, .sideBySideLeft, .sideBySideRight], id: \.self) { p in
@@ -487,6 +474,7 @@ extension InputKind {
         case .replay: return "gobackward"
         case .colorBars: return "chart.bar.fill"
         case .scene: return "square.on.square"
+        case .mix: return "rectangle.split.2x1"
         case .ticker: return "text.line.first.and.arrowtriangle.forward"
         case .slideshow: return "photo.stack"
         case .ndi: return "antenna.radiowaves.left.and.right"
@@ -776,7 +764,7 @@ struct BrowserSheet: View {
             Toggle(L10n.t("browser.mute"), isOn: Binding(get: { config.muted ?? false }, set: { config.muted = $0 ? true : nil }))
             HStack {
                 Text(L10n.t("browser.zoom"))
-                Slider(value: Binding(get: { config.pageZoom }, set: { config.zoom = abs($0 - 1) < 0.01 ? nil : $0 }),
+                SoftSlider(value: Binding(get: { config.pageZoom }, set: { config.zoom = abs($0 - 1) < 0.01 ? nil : $0 }),
                        in: ProjectBrowser.zoomRange, step: 0.05)
                 Text("\(Int((config.pageZoom * 100).rounded())) %").monospacedDigit().frame(width: 48, alignment: .trailing)
             }
@@ -883,7 +871,7 @@ struct TimerSheet: View {
                         hexColor(L10n.t("timer.color_end"), $style.accentHex)
                     }
                     LabeledContent(L10n.t("timer.plate_opacity")) {
-                        Slider(value: $style.plateOpacity, in: 0...1)
+                        SoftSlider(value: $style.plateOpacity, in: 0...1)
                         Text("\(Int(style.plateOpacity * 100)) %").monospacedDigit().frame(width: 44)
                     }
                     HStack(spacing: 6) {
@@ -1051,7 +1039,7 @@ struct ChromaKeySheet: View {
     private func slider(_ label: String, _ value: Binding<Double>, _ range: ClosedRange<Double>) -> some View {
         HStack {
             Text(label).frame(width: 110, alignment: .leading)
-            Slider(value: value, in: range)
+            SoftSlider(value: value, in: range)
             Text(String(format: "%.3f", value.wrappedValue)).font(.system(size: 11).monospacedDigit()).frame(width: 44)
         }
     }
